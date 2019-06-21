@@ -1,0 +1,106 @@
+//int bar = 123;
+//int rab = bar;
+
+/*void foo(1, 2, 3)
+{
+	int a = 1;
+	a = 10;
+	int b = 0x10;
+	int c = 3;
+}
+
+foo(bar);*/
+
+/*decl foo = bar;
+int abc = foo;*/
+
+/*stmtdef float $I {
+	//vardef $2 = 123;
+	vardef abc = 123;
+
+	int a = 1;
+	a = 10;
+	int b = 0x10;
+	int c = 3;
+
+	//return 111;
+}*/
+
+//define int $I = $<int>, ...
+
+//typedef int LLVMInt32Type();
+
+/*stmtdef $T $I = $E, ... {
+	auto type = $0;
+	auto firstId = $1[0];
+	auto firstVal = $2[0];
+}*/
+
+
+
+
+/*stmtdef LLVMValueRef $E {
+	LLVMBuildRet(builder, codegen($0, parentBlock));
+	//addToScope(parentBlock, $0, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), ""));
+}
+
+LLVMValueRef 123;*/
+
+stmtdef create_null $I {
+	//LLVMValueRef foo = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0));
+
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0), "");
+	LLVMBuildStore(
+		builder,
+		LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0)),
+		foo
+	);
+	addToScope(parentBlock, $0, LLVMTypeRef, foo);
+}
+
+stmtdef func $I $E {
+	create_null nullptr;
+	//LLVMValueRef nullptr = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0));
+	LLVMTypeRef funcType = LLVMFunctionType(LLVMInt32Type(), nullptr, 0, 0);
+	LLVMValueRef func = LLVMAddFunction(module, $0.name, funcType);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
+	LLVMPositionBuilder(entry);
+	LLVMBuildRet(builder, codegen($1, parentBlock));
+
+	addToScope(parentBlock, $0, int, func);
+}
+
+func myFunction 123;
+
+//myFunction();
+
+
+
+/*int a;
+a = 4;
+int c = a + 3;*/
+return c;
+
+
+
+
+
+/*exprdef $I = $E {
+	return codegen($1, parentBlock);
+}*/
+
+
+/*stmtdef print $E {
+	puts($0[1]);
+}
+
+stmtdef print2 $E {
+	puts($0[1]);
+}*/
+
+//int abc = 5;
+//print2 abc;
+
+//print "this is a test";
+
+//int y = 0;

@@ -1,0 +1,32 @@
+import <builtin.acc>;
+
+/*stmtdef for($E; $E; $E) $B {
+}
+
+for (1; 2 == 2; 3) {
+	return 20;
+}
+return 10;*/
+
+stmtdef while ($<bool>) $B {
+	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");
+	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");
+
+	LLVMValueRef whileCond = codegen($0, parentBlock);
+	LLVMBuildCondBr(builder, whileCond, whileBlock, endWhileBlock);
+
+	LLVMPositionBuilder(whileBlock);
+	codegen($1, parentBlock);
+
+	whileCond = codegen($0, parentBlock);
+	LLVMBuildCondBr(builder, whileCond, whileBlock, endWhileBlock);
+
+	LLVMPositionBuilder(endWhileBlock);
+}
+
+
+int i = 0;
+while (i != 10) {
+	i = i + 1;
+}
+return i;

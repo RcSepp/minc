@@ -1,0 +1,29 @@
+import <builtin.acc>;
+/*stmtdef return $E {
+	LLVMBuildRet(builder, codegen($0, parentBlock));
+}*/
+
+exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype {
+	//LLVMBuildStructGEP(builder, codegen($0, parentBlock), 1, "gep");
+	//return LLVMConstNull(LLVMInt32Type());
+
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(builder, codegen($0, parentBlock), 2, "gep");
+	llvmtype = LLVMBuildLoad(builder, llvmtype, "llvmtype");
+	LLVMSetAlignment(llvmtype, 8);
+	return llvmtype;
+}
+
+stmtdef DEBUG $<int> $I {
+	printf("int ... %lu\n", gettype(int)); // int
+	printf("$0 ... %lu\n", gettype($0)); // int
+	printf("codegen($0, parentBlock) ... %lu\n", gettype(codegen($0, parentBlock))); // int
+
+	//printf("$0 ... %lu\n", gettype($0));
+	LLVMValueRef foo = codegen($0, parentBlock);
+	gettype(foo); // LLVMValueRef
+	//LLVMTypeRef myType = foo.llvmtype;
+	LLVMTypeRef myType = int.llvmtype;
+	printf("myType ... %lu\n", myType);
+	//LLVMValueRef foo = int; foo.llvmtype;
+}
+int bar;

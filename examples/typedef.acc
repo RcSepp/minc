@@ -1,0 +1,74 @@
+import <builtin.acc>;
+
+/*typedef<int> myType {
+	fake_return LLVMGetTypeByName(module, "struct.LLVMOpaqueValue");
+}
+
+stmtdef DEBUG $<int> $I {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, myType, "");
+	LLVMSetAlignment(foo, 4);
+	addToScope(parentBlock, $1, int, foo);
+}
+
+myType a;
+return a;*/
+
+
+exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype_old {
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(builder, codegen($0, parentBlock), 1, "gep");
+	llvmtype = LLVMBuildLoad(builder, llvmtype, "llvmtype");
+	LLVMSetAlignment(llvmtype, 8);
+	return llvmtype;
+}
+
+exprdef<LLVMTypeRef> $<LLVMValueRef>.llvmtype {
+LLVMValueRef t = codegen($0, parentBlock);
+t = LLVMBuildBitCast(
+	builder,
+	t,
+	LLVMPointerType(LLVMGetTypeByName(module, "BuiltinType"), 0),
+	""
+);
+printf("t ... %lu\n", t);
+
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(builder, t, 1, "gep");
+	llvmtype = LLVMBuildLoad(builder, llvmtype, "llvmtype");
+	LLVMSetAlignment(llvmtype, 8);
+	return llvmtype;
+}
+exprdef<int> $<BuiltinType>.align {
+	LLVMValueRef align = LLVMBuildStructGEP(builder, codegen($0, parentBlock), 2, "gep");
+	align = LLVMBuildLoad(builder, align, "align");
+	LLVMSetAlignment(align, 4);
+	return align;
+}
+
+stmtdef DEBUG foo $<BuiltinType> $I {
+	/*printf("int ... %lu\n", int);
+	printf("$0 ... %lu\n", $0);
+	printf("codegen($0, parentBlock) ... %lu\n", codegen($0, parentBlock));
+	printf("gettype($0) ... %lu\n", gettype($0));*/
+
+	LLVMTypeRef type = int.llvmtype_old;//gettype(codegen($0, parentBlock)).llvmtype_old;
+	printf("myType ... %lu\n", type);
+
+	LLVMValueRef intVal = codegen($0, parentBlock);
+	LLVMTypeRef type2 = intVal.llvmtype;
+	printf("myType2 ... %lu\n", type2);
+
+	int align = int.align;
+	printf("align ... %i\n", align);
+
+	LLVMValueRef foo = LLVMBuildAlloca(builder, type, "");
+	LLVMSetAlignment(foo, align);
+	addToScope(parentBlock, $1, int, foo);
+}
+
+stmtdef mark {
+	puts("mark");
+}
+mark;
+
+foo int bar;
+bar = 123;
+return bar;

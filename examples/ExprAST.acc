@@ -1,0 +1,12 @@
+import <builtin.acc>;
+
+stmtdef print_value $L $I {
+	//gettype($0);
+	//gettype($0.value);
+	printf("$0.value == %s\n", $0.value);
+	//gettype($1);
+	//gettype($1.name);
+	printf("$1.name == %s\n", $1.name);
+}
+
+print_value 123 ident;

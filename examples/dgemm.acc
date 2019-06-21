@@ -1,0 +1,49 @@
+import <builtin.acc>;
+
+stmtdef double $I[$L] {
+	// Fixed size array:
+	/*addToScope(
+		parentBlock,
+		$0,
+		LLVMTypeRef,
+		LLVMBuildAlloca(
+			builder,
+			LLVMArrayType(LLVMPointerType(LLVMDoubleType(), 0), atoi($1.value)),
+			""
+		)
+	);*/
+
+	// Dynamic array:
+	LLVMValueRef array = LLVMBuildArrayAlloca(
+		builder,
+		LLVMPointerType(LLVMDoubleType(), 0),
+		codegen($1, parentBlock),
+		""
+	);
+	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMDoubleType(), 0), 0), "");
+	LLVMBuildStore(
+		builder,
+		array,
+		arrayptr
+	);
+	addToScope(
+		parentBlock,
+		$0,
+		LLVMTypeRef,
+		arrayptr
+	);
+}
+
+stmtdef vec $I {
+	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMDoubleType(), 0), ""));
+}
+
+stmtdef printmat($E) {
+	vec m;
+	m = codegen($0, parentBlock);
+	printf("test\n");
+}
+
+double A[16];
+
+printmat(A);

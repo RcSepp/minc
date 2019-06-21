@@ -1,0 +1,7 @@
+import "../lib/builtin.acc";
+import <builtin.acc>;
+
+int a;
+a = 4;
+int c = a + 3;
+return a + 2 + c;

@@ -1,0 +1,10 @@
+# Compiled object files
+/tmp
+/bin
+
+# Generated LLVM IR code
+*.ll
+
+# Visual Studio Code
+**/.vscode/ipch
+**/.vscode/settings.json

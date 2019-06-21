@@ -1,0 +1,404 @@
+/* ---------------------------------------------------------------------------*\
+Name: Return statement
+Template: return $E
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef return $E {
+	LLVMBuildRet(builder, codegen($0, parentBlock));
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: LiteralExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<ExprAST> $<LiteralExprAST> {
+	return LLVMBuildBitCast(
+		builder,
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName(module, "class.ExprAST"), 0),
+		""
+	);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                                  LLVM TYPES                                  |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMValueRef declaration
+Template: LLVMValueRef $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMValueRef $I {
+	addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMValueRef declaration with initialization
+Template: LLVMValueRef $I = $<LLVMValueRef>
+Depends on: LLVMValueRef $I
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMValueRef $I = $<LLVMValueRef> {
+	LLVMValueRef foo;
+	foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), "");
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, LLVMValueRef, foo);
+}
+
+stmtdef LLVMValueRef $I[$L] {
+	// Fixed size array:
+	/*addToScope(
+		parentBlock,
+		$0,
+		LLVMValueRef,
+		LLVMBuildAlloca(
+			builder,
+			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), atoi($1.value)),
+			""
+		)
+	);*/
+
+	// Dynamic array:
+	LLVMValueRef array = LLVMBuildArrayAlloca(
+		builder,
+		LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0),
+		codegen($1, parentBlock),
+		""
+	);
+	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), 0), "");
+	LLVMBuildStore(
+		builder,
+		array,
+		arrayptr
+	);
+	addToScope(
+		parentBlock,
+		$0,
+		LLVMValueRefPtr,
+		arrayptr
+	);
+}
+
+//TODO: Generalize to `exprdef<gettype($2, parentBlock)> $E[$<int>] = $E {`
+exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] = $<LLVMValueRef> {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(builder, var, idx, "");
+
+	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMBuildStore(
+		builder,
+		expr,
+		gep
+	);
+	return expr;
+}
+
+//TODO: Untested
+exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(builder, var, idx, "");
+	LLVMValueRef val = LLVMBuildLoad(builder, gep, "");
+	LLVMSetAlignment(val, 8);
+	return val;
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMBasicBlockRef declaration
+Template: LLVMBasicBlockRef $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMBasicBlockRef $I {
+	addToScope(parentBlock, $0, LLVMBasicBlockRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueBasicBlock"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMBasicBlockRef declaration with initialization
+Template: LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+Depends on: LLVMBasicBlockRef $I
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMBasicBlockRef $I = $<LLVMBasicBlockRef> {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueBasicBlock"), 0), "");
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, LLVMBasicBlockRef, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMTypeRef declaration
+Template: LLVMTypeRef $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMTypeRef $I {
+	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LLVMTypeRef declaration with initialization
+Template: LLVMTypeRef $I = $<LLVMTypeRef>
+Depends on: LLVMTypeRef $I
+\* ---------------------------------------------------------------------------*/
+stmtdef LLVMTypeRef $I = $<LLVMTypeRef> {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), "");
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, LLVMTypeRef, foo);
+}
+
+stmtdef LLVMTypeRef $I[$L] {
+	// Fixed size array:
+	/*addToScope(
+		parentBlock,
+		$0,
+		LLVMTypeRef,
+		LLVMBuildAlloca(
+			builder,
+			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), atoi($1.value)),
+			""
+		)
+	);*/
+
+	// Dynamic array:
+	LLVMValueRef array = LLVMBuildArrayAlloca(
+		builder,
+		LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0),
+		codegen($1, parentBlock),
+		""
+	);
+	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0), "");
+	LLVMBuildStore(
+		builder,
+		array,
+		arrayptr
+	);
+	addToScope(
+		parentBlock,
+		$0,
+		LLVMTypeRefPtr,
+		arrayptr
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BaseType declaration
+Template: BaseType $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef BaseType $I {
+	addToScope(parentBlock, $0, BaseType, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BaseType declaration with initialization
+Template: BaseType $I = $E
+TODO: Should be $I = $<BaseType>
+Depends on: BaseType $I
+\* ---------------------------------------------------------------------------*/
+stmtdef BaseType $I = $E {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0), "");
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, BaseType, foo);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                                   AST TYPES                                  |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+exprdef<string> $<LiteralExprAST>.value {
+	LLVMValueRef args[1];
+	args[0] = LLVMBuildBitCast(
+		builder,
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName(module, "class.LiteralExprAST"), 0),
+		""
+	);
+	return LLVMBuildCall(
+		builder,
+		LLVMGetNamedFunction(module, "getLiteralExprASTValue"),
+		args,
+		1,
+		""
+	);
+}
+
+exprdef<string> $<IdExprAST>.name {
+	LLVMValueRef args[1];
+	args[0] = LLVMBuildBitCast(
+		builder,
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName(module, "class.IdExprAST"), 0),
+		""
+	);
+	return LLVMBuildCall(
+		builder,
+		LLVMGetNamedFunction(module, "getIdExprASTName"),
+		args,
+		1,
+		""
+	);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                                NUMERIC TYPES                                 |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+/* ---------------------------------------------------------------------------*\
+Name: 32 bit signed integer declaration
+Template: int $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef int $I {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+	LLVMSetAlignment(foo, 4);
+	addToScope(parentBlock, $0, int, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: 32 bit signed integer declaration with initialization
+Template: int $I = $<int>
+Depends on: LLVMValueRef $I = $<LLVMValueRef>
+\* ---------------------------------------------------------------------------*/
+stmtdef int $I = $<int> {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+	LLVMSetAlignment(foo, 4);
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, int, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Integer addition
+Template: $<int> + $<int>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $<int> + $<int> {
+	return LLVMBuildAdd(builder, codegen($0, parentBlock), codegen($1, parentBlock), "add");
+}
+
+exprdef<bool> $<int> == $<int> {
+int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(builder, LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+exprdef<bool> $<int> != $<int> {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(builder, LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: 64 bit float declaration
+Template: double $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef double $I {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMDoubleType(), "");
+	LLVMSetAlignment(foo, 8);
+	addToScope(parentBlock, $0, double, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: 64 bit float declaration with initialization
+Template: int $I = $<double>
+Depends on: LLVMValueRef $I = $<LLVMValueRef>
+\* ---------------------------------------------------------------------------*/
+stmtdef double $I = $<double> {
+	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMDoubleType(), "");
+	LLVMSetAlignment(foo, 8);
+	LLVMBuildStore(
+		builder,
+		codegen($1, parentBlock),
+		foo
+	);
+	addToScope(parentBlock, $0, double, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: int to double
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<double> $<int> {
+	return LLVMBuildSIToFP(
+		builder,
+		codegen($0, parentBlock),
+		LLVMDoubleType(),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: double to int
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<int> $<double> {
+	return LLVMBuildFPToSI(
+		builder,
+		codegen($0, parentBlock),
+		LLVMInt32Type(),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: bool to int
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<int> $<bool> {
+	return LLVMBuildZExt(
+		builder,
+		codegen($0, parentBlock),
+		LLVMInt32Type(),
+		""
+	);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                                  MISC TYPES                                  |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+/* ---------------------------------------------------------------------------*\
+Cast: BuiltinType to BaseType
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<BaseType> $<BuiltinType> {
+	return LLVMBuildBitCast(
+		builder,
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0),
+		""
+	);
+}

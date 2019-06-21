@@ -1,0 +1,35 @@
+import <builtin.acc>;
+
+/*stmtdef if($E) $B {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+
+	LLVMValueRef ifCond = LLVMBuildICmp(builder, LLVMIntNE, codegen($0, parentBlock), LLVMConstNull(LLVMInt32Type()), "ifCondition");
+	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
+	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
+	LLVMBuildCondBr(builder, ifCond, ifBlock, elseBlock);
+
+	LLVMPositionBuilder(ifBlock);
+	codegen($1, parentBlock);
+	LLVMBuildBr(builder, elseBlock);
+
+	LLVMPositionBuilder(elseBlock);
+}*/
+
+stmtdef if($E) $S {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+
+	LLVMValueRef ifCond = LLVMBuildICmp(builder, LLVMIntNE, codegen($0, parentBlock), LLVMConstNull(LLVMInt32Type()), "ifCondition");
+	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
+	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
+	LLVMBuildCondBr(builder, ifCond, ifBlock, elseBlock);
+
+	LLVMPositionBuilder(ifBlock);
+	codegen($1, parentBlock);
+	LLVMBuildBr(builder, elseBlock);
+
+	LLVMPositionBuilder(elseBlock);
+}
+
+int a = 3;
+if (a) return 20;
+return 10;

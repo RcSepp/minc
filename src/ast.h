@@ -376,7 +376,7 @@ public:
 				return true;
 			return block->lookupCast(exprType, tpltType) != nullptr;
 		}
-		default: throw CompileError(std::string("Invalid placeholder: $") + p1);
+		default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
 		}
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const;

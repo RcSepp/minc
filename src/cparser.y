@@ -68,8 +68,8 @@ expr_string
 ;
 
 expr_list
-	: expr { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
-	| expr_list ',' expr { ($$ = $1)->exprs.push_back($3); }
+	: expr_string { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
+	| expr_list ',' expr_string { ($$ = $1)->exprs.push_back($3); }
 	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
 ;
 

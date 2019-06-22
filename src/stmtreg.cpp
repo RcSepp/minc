@@ -120,7 +120,7 @@ void collectStatement(const BlockExprAST* block, std::vector<ExprAST*>::const_it
 
 bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr) const
 {
-	return matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend());
+	return expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend());
 }
 
 void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params) const

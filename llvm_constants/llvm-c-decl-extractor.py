@@ -143,18 +143,19 @@ def resolve_type(typestr):
 # Parse Core.ll
 ################################################################################
 
-with open('Core.ll', 'r') as file:
-    for line in file:
-        line = line.strip('\n')
-        
-        match = typedef_regex.fullmatch(line)
-        if match:
-            #print(match.group(1), match.group(2))
-            types[match.group(1)] = [False, match.group(2)]
+for filename in ['Core.ll', 'DebugInfo.ll']:
+    with open(filename, 'r') as file:
+        for line in file:
+            line = line.strip('\n')
+            
+            match = typedef_regex.fullmatch(line)
+            if match:
+                #print(match.group(1), match.group(2))
+                types[match.group(1)] = [False, match.group(2)]
 
-        if decl_regex.fullmatch(line):
-            #print(line)
-            decls.append(line)
+            if decl_regex.fullmatch(line):
+                #print(line)
+                decls.append(line)
 
 num_used = sum(1 for t in types.values() if t[0])
 num_unused = len(types)

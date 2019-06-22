@@ -92,6 +92,8 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 	defineSymbol(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMBasicBlockRef));
 	defineSymbol(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef));
 	defineSymbol(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef->Ptr()));
+	defineSymbol(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef));
+	defineSymbol(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef->Ptr()));
 
 	// Define single-expr statement
 	defineStmt2(rootBlock, "$E",

@@ -1,7 +1,7 @@
-all: Core.ll
+all: Core.ll DebugInfo.ll
 
 clean:
-	-rm Core.ll
+	-rm *.ll
 
-Core.ll: Core.cpp
+%.ll: %.cpp
 	clang -O1 -S -emit-llvm -o $@ $<

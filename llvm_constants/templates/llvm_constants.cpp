@@ -141,6 +141,7 @@ namespace BuiltinTypes
 	BuiltinType* LLVMBuilderRef;
 	BuiltinType* LLVMContextRef;
 	BuiltinType* LLVMDiagnosticInfoRef;
+	BuiltinType* LLVMDIBuilderRef;
 	BuiltinType* LLVMMemoryBufferRef;
 	BuiltinType* LLVMMetadataRef;
 	BuiltinType* LLVMModuleRef;

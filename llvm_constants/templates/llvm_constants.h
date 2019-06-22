@@ -185,6 +185,7 @@ namespace BuiltinTypes
 	extern BuiltinType* LLVMBuilderRef;
 	extern BuiltinType* LLVMContextRef;
 	extern BuiltinType* LLVMDiagnosticInfoRef;
+	extern BuiltinType* LLVMDIBuilderRef;
 	extern BuiltinType* LLVMMemoryBufferRef;
 	extern BuiltinType* LLVMMetadataRef;
 	extern BuiltinType* LLVMModuleRef;

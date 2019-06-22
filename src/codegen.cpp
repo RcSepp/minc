@@ -438,6 +438,7 @@ InitializeNativeTarget();
 	BuiltinTypes::LLVMBuilderRef = new BuiltinType("LLVMBuilderRef", wrap(Types::LLVMOpaqueBuilder->getPointerTo()), 8);
 	BuiltinTypes::LLVMContextRef = new BuiltinType("LLVMContextRef", wrap(Types::LLVMOpaqueContext->getPointerTo()), 8);
 	BuiltinTypes::LLVMDiagnosticInfoRef = new BuiltinType("LLVMDiagnosticInfoRef", wrap(Types::LLVMOpaqueDiagnosticInfo->getPointerTo()), 8);
+	BuiltinTypes::LLVMDIBuilderRef = new BuiltinType("LLVMDIBuilderRef", wrap(Types::LLVMOpaqueDIBuilder->getPointerTo()), 8);
 	BuiltinTypes::LLVMMemoryBufferRef = new BuiltinType("LLVMMemoryBufferRef", wrap(Types::LLVMOpaqueMemoryBuffer->getPointerTo()), 8);
 	BuiltinTypes::LLVMMetadataRef = new BuiltinType("LLVMMetadataRef", wrap(Types::LLVMOpaqueMetadata->getPointerTo()), 8);
 	BuiltinTypes::LLVMModuleRef = new BuiltinType("LLVMModuleRef", wrap(Types::LLVMOpaqueModule->getPointerTo()), 8);

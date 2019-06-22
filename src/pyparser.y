@@ -38,9 +38,12 @@
 %type<ExprAST*> id_or_plchld expr
 
 %start file
-%precedence '='
+%right '='
+%left EQ NE
+%left '<' LEQ '>' GEQ
+%left '+' '-'
+%left '*' '/' '%'
 %left '.' CALL SUBSCRIPT TPLT
-%left '+'
 
 %%
 

@@ -417,11 +417,11 @@ public:
 	EllipsisExprAST(const Location& loc, ExprAST* expr) : ExprAST(loc, ExprAST::ExprType::ELLIPSIS), expr(expr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr) const
 	{
-		return this->expr->match(block, expr);
+		return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
-		this->expr->collectParams(block, expr, params);
+		this->expr->collectParams(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, params);
 	}
 	void resolveTypes(BlockExprAST* block)
 	{

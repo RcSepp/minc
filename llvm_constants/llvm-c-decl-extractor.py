@@ -221,7 +221,7 @@ for filename in os.listdir("./templates"):
                     continue
 
                 output.append(
-                    'llvm_c_functions.push_back(FuncType("{}", {}, {{ {} }}, false));'
+                    'llvm_c_functions.push_back(Func("{}", {}, {{ {} }}, false));'
                     .format(d_name, restype, ", ".join(argtypes))
                 )
 

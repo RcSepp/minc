@@ -55,6 +55,61 @@ struct FuncType : public BuiltinType
 	}
 };
 
+struct XXXValue
+{
+private:
+	uint64_t constantValue;
+
+public:
+	llvm::Value* val;
+
+	XXXValue(llvm::Value* val)
+		: val(val), constantValue(0) {}
+	XXXValue(llvm::Type* type, uint64_t value)
+		: val(llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
+
+	uint64_t getConstantValue()
+	{
+		return constantValue;
+	}
+
+	virtual llvm::Function* getFunction(llvm::Module* module)
+	{
+		return nullptr;
+	}
+
+	virtual bool isFunction()
+	{
+		return false;
+	}
+};
+
+struct Func : XXXValue
+{
+public:
+	FuncType type;
+	const char* symName;
+
+	Func(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg, const char* symName = nullptr)
+		: XXXValue(nullptr), type(name, resultType, argTypes, isVarArg), symName(symName ? symName : name) {}
+
+	llvm::Function* getFunction(llvm::Module* module)
+	{
+		/*if (!val)
+			val = Function::Create((llvm::FunctionType*)unwrap(type.llvmtype), GlobalValue::ExternalLinkage, symName, module);
+		return (llvm::Function*)val;*/
+		val = module->getFunction(symName);
+		if (val == nullptr)
+			val = Function::Create((llvm::FunctionType*)unwrap(type.llvmtype), GlobalValue::ExternalLinkage, symName, module);
+		return (llvm::Function*)val;
+	}
+
+	bool isFunction()
+	{
+		return true;
+	}	
+};
+
 namespace Types
 {
 	// LLVM-c types
@@ -153,6 +208,6 @@ namespace BuiltinTypes
 };
 
 void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm_c_constants);
-void create_llvm_c_functions(LLVMContext& c, std::list<FuncType>& llvm_c_functions);
+void create_llvm_c_functions(LLVMContext& c, std::list<Func>& llvm_c_functions);
 
 #endif

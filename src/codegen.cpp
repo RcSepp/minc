@@ -50,7 +50,6 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include "cparser.h"
 #include "codegen.h"
 #include "llvm_constants.h" //DELETE
-#include "value.h"
 #include "KaleidoscopeJIT.h"
 
 using namespace llvm;
@@ -83,7 +82,7 @@ DIFile *dfile;
 // Misc
 DIBasicType* intType;
 Value* closure;
-std::list<FuncType> llvm_c_functions;
+std::list<Func> llvm_c_functions;
 BlockExprAST* fileBlock = nullptr;
 int foo = 0;
 
@@ -605,9 +604,9 @@ public:
 	FileModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
 		: XXXModule(sourcePath == "-" ? "main" : sourcePath, sourcePath, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 	{
-for (FuncType& funcType: llvm_c_functions)
+for (Func& func: llvm_c_functions)
 {
-	moduleBlock->addToScope(funcType.name, &funcType, new XXXValue((FunctionType*)unwrap(funcType.llvmtype), funcType.name));
+	moduleBlock->addToScope(func.type.name, &func.type, &func);
 }
 
 		// Generate main function
@@ -684,16 +683,16 @@ public:
 
 //capturedScope.clear();
 
-for (FuncType& funcType: llvm_c_functions)
+for (Func& func: llvm_c_functions)
 {
-	blockAST->addToScope(funcType.name, &funcType, new XXXValue((FunctionType*)unwrap(funcType.llvmtype), funcType.name));
+	blockAST->addToScope(func.type.name, &func.type, &func);
 }
-FuncType* LLVMPositionBuilderType = new FuncType("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false);
-blockAST->addToScope(LLVMPositionBuilderType->name, LLVMPositionBuilderType, new XXXValue((FunctionType*)unwrap(LLVMPositionBuilderType->llvmtype), "_LLVMPositionBuilder"));
-FuncType* LLVMBuildInBoundsGEP1Type = new FuncType("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false);
-blockAST->addToScope(LLVMBuildInBoundsGEP1Type->name, LLVMBuildInBoundsGEP1Type, new XXXValue((FunctionType*)unwrap(LLVMBuildInBoundsGEP1Type->llvmtype), "_LLVMBuildInBoundsGEP1"));
-FuncType* LLVMBuildInBoundsGEP2Type = new FuncType("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false);
-blockAST->addToScope(LLVMBuildInBoundsGEP2Type->name, LLVMBuildInBoundsGEP2Type, new XXXValue((FunctionType*)unwrap(LLVMBuildInBoundsGEP2Type->llvmtype), "_LLVMBuildInBoundsGEP2"));
+Func* LLVMPositionBuilderFunc = new Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "_LLVMPositionBuilder");
+blockAST->addToScope(LLVMPositionBuilderFunc->type.name, &LLVMPositionBuilderFunc->type, LLVMPositionBuilderFunc);
+Func* LLVMBuildInBoundsGEP1Func = new Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP1");
+blockAST->addToScope(LLVMBuildInBoundsGEP1Func->type.name, &LLVMBuildInBoundsGEP1Func->type, LLVMBuildInBoundsGEP1Func);
+Func* LLVMBuildInBoundsGEP2Func = new Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP2");
+blockAST->addToScope(LLVMBuildInBoundsGEP2Func->type.name, &LLVMBuildInBoundsGEP2Func->type, LLVMBuildInBoundsGEP2Func);
 
 Function::Create(
 	FunctionType::get(Types::LLVMOpaqueValue->getPointerTo(), { Types::ExprAST->getPointerTo(), Types::BlockExprAST->getPointerTo() }, false),
@@ -741,8 +740,8 @@ Function::Create(
 	Function::ExternalLinkage, "TestFunc",
 	*module
 );*/
-FuncType* testFuncType = new FuncType("TestFunc", BuiltinTypes::Void, { }, false);
-blockAST->addToScope(testFuncType->name, testFuncType, new XXXValue((FunctionType*)unwrap(testFuncType->llvmtype), testFuncType->name));
+Func* testFunc = new Func("TestFunc", BuiltinTypes::Void, { }, false);
+blockAST->addToScope(testFunc->type.name, &testFunc->type, testFunc);
 
 blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 

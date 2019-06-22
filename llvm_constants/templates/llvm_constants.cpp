@@ -169,11 +169,11 @@ void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm
 	llvm_c_constants["LLVMIntNE"] = Constant::getIntegerValue(Types::Int32, APInt(32, 33, true));
 }
 
-void create_llvm_c_functions(LLVMContext& c, std::list<FuncType>& llvm_c_functions)
+void create_llvm_c_functions(LLVMContext& c, std::list<Func>& llvm_c_functions)
 {
-llvm_c_functions.push_back(FuncType("puts", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
-llvm_c_functions.push_back(FuncType("printf", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, true));
-llvm_c_functions.push_back(FuncType("atoi", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
+llvm_c_functions.push_back(Func("puts", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
+llvm_c_functions.push_back(Func("printf", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, true));
+llvm_c_functions.push_back(Func("atoi", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
 
 @	LLVM_EXTERN_FUNC_DEF@
 }

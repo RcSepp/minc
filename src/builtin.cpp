@@ -11,7 +11,6 @@
 
 #include "api.h"
 #include "llvm_constants.h"
-#include "value.h"
 
 extern llvm::LLVMContext* context;
 extern llvm::IRBuilder<>* builder;
@@ -22,7 +21,7 @@ extern llvm::DIBuilder* dbuilder;
 extern llvm::DIFile* dfile;
 extern llvm::Value* closure;
 
-std::list<std::pair<std::string, XXXValue*>> capturedScope;
+std::list<std::pair<std::string, const Variable>> capturedScope;
 
 Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 {
@@ -33,7 +32,7 @@ Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 auto foo = getIdExprASTName(id);
 	XXXValue* varVal = var->value;
 	if (!varVal) raiseCompileError(("invalid use of type `" + std::string(getIdExprASTName(id)) + "` as expression").c_str(), (ExprAST*)id);
-	if (varVal->type->isFunctionTy() || isa<Constant>(varVal->val))
+	if (varVal->isFunction() || isa<Constant>(varVal->val))
 		return *var;
 
 	if (isCaptured //)
@@ -41,13 +40,13 @@ auto foo = getIdExprASTName(id);
 	{
 		if (!closure) assert(0);
 
-		capturedScope.push_back({getIdExprASTName(id), varVal});
+		capturedScope.push_back({getIdExprASTName(id), *var});
 
 Type** capturedTypes = new Type*[capturedScope.size()];
 int i = 0;
 for (auto&& [name, var]: capturedScope)
 {
-capturedTypes[i++] = var->type;
+capturedTypes[i++] = unwrap(((BuiltinType*)var.type)->llvmtype);
 }
 StructType* closureType = (StructType*)closure->getType()->getPointerElementType();
 closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
@@ -233,7 +232,7 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 // 					Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, 0, true)),
 // 					Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(32, i++, true))
 // 				});
-// 				builder->CreateStore(var->val, gep)->setAlignment(8);
+// 				builder->CreateStore(var.value->val, gep)->setAlignment(8);
 // 			}
 // 			closure = builder->CreateBitCast(closure, Type::getInt8PtrTy(*context));
 // 			Function* defineStatementFunc = currentModule->getFunction("DefineStatement");
@@ -635,7 +634,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineExpr3(rootBlock, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			if (var.value->type->isFunctionTy() || isa<Constant>(var.value->val))
+			if (var.value->isFunction() || isa<Constant>(var.value->val))
 				return var;
 
 			LoadInst* loadVal = builder->CreateLoad(var.value->val, getIdExprASTName((IdExprAST*)params[0]));

@@ -19,6 +19,7 @@ extern llvm::Function* currentFunc;
 extern llvm::BasicBlock* currentBB;
 extern llvm::DIBuilder* dbuilder;
 extern llvm::DIFile* dfile;
+extern llvm::DIBasicType* intType;
 extern llvm::Value* closure;
 
 std::list<std::pair<std::string, const Variable>> capturedScope;
@@ -387,22 +388,22 @@ std::string jitFuncName = "";
 			AllocaInst* var = builder->CreateAlloca(type, nullptr, getIdExprASTName(varAST));
 			var->setAlignment(4);
 
-			/*if (dbuilder)
+			if (dbuilder)
 			{
-				DILocalVariable *D = dbuilder->createParameterVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), ++foo, dfile, varAST->loc.begin_line, intType, true);
+				DILocalVariable *D = dbuilder->createAutoVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), dfile, getExprLine((ExprAST*)varAST), intType, true);
 				dbuilder->insertDeclare(
 					var, D, dbuilder->createExpression(),
-					DebugLoc::get(varAST->loc.begin_line, varAST->loc.begin_col, currentFunc->getSubprogram()),
+					DebugLoc::get(getExprLine((ExprAST*)varAST), getExprColumn((ExprAST*)varAST), currentFunc->getSubprogram()),
 					builder->GetInsertBlock()
 				);
-			}*/
+			}
 
-			defineSymbol(parentBlock, getIdExprASTName(varAST), nullptr, new XXXValue(var));
+			defineSymbol(parentBlock, getIdExprASTName(varAST), BuiltinTypes::Int32, new XXXValue(var));
 		}
 	);
 
 	// Define variable declaration with initialization
-	defineStmt2(rootBlock, "int_ref $I = $E",
+	defineStmt2(rootBlock, "int_ref $I = $<int>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
 			IdExprAST* varAST = (IdExprAST*)params[0];
 			ExprAST* valAST = (ExprAST*)params[1];
@@ -411,21 +412,20 @@ std::string jitFuncName = "";
 			AllocaInst* var = builder->CreateAlloca(type, nullptr, getIdExprASTName(varAST));
 			var->setAlignment(4);
 
-			/*if (dbuilder)
+			if (dbuilder)
 			{
-				DILocalVariable *D = dbuilder->createParameterVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), ++foo, dfile, varAST->loc.begin_line, intType, true);
+				DILocalVariable *D = dbuilder->createAutoVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), dfile, getExprLine((ExprAST*)varAST), intType, true);
 				dbuilder->insertDeclare(
 					var, D, dbuilder->createExpression(),
-					DebugLoc::get(varAST->loc.begin_line, varAST->loc.begin_col, currentFunc->getSubprogram()),
+					DebugLoc::get(getExprLine((ExprAST*)varAST), getExprColumn((ExprAST*)varAST), currentFunc->getSubprogram()),
 					builder->GetInsertBlock()
 				);
-			}*/
+			}
 
 			XXXValue* val = codegenExpr(valAST, parentBlock).value;
-			//TODO: See if val->type derives from or can be casted to type. Throw error if not
 			builder->CreateStore(val->val, var)->setAlignment(4);
 
-			defineSymbol(parentBlock, getIdExprASTName(varAST), nullptr, new XXXValue(var));
+			defineSymbol(parentBlock, getIdExprASTName(varAST), BuiltinTypes::Int32, new XXXValue(var));
 		}
 	);
 

@@ -39,6 +39,8 @@ extern "C"
 	bool ExprASTIsBlock(const ExprAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
+	unsigned getExprLine(const ExprAST* expr);
+	unsigned getExprColumn(const ExprAST* expr);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, uint64_t funcAddr, void* closure = nullptr);

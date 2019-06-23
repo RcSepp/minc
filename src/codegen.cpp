@@ -235,6 +235,15 @@ extern "C"
 		return expr->value;
 	}
 
+	unsigned getExprLine(const ExprAST* expr)
+	{
+		return expr->loc.begin_line;
+	}
+	unsigned getExprColumn(const ExprAST* expr)
+	{
+		return expr->loc.begin_col;
+	}
+
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
 	{
 		scope->addToScope(name, type, value);

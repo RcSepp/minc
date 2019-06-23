@@ -4,7 +4,7 @@
 
 
 /*exprdef<int> mytype {
-	return LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+	return LLVMBuildAlloca(LLVMInt32Type(), "");
 }
 return mytype;*/
 
@@ -39,7 +39,7 @@ typedef<mySuperType> myType {
 }
 
 stmtdef $<mySuperType> $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, $0.type, "");
+	LLVMValueRef foo = LLVMBuildAlloca($0.type, "");
 	LLVMSetAlignment(foo, $0.align);
 	addToScope(parentBlock, $1, mySuperType, foo);
 }
@@ -69,7 +69,7 @@ exprdef<mySuperType> $<myType> {
 // * Two way casting (i.e. int <-> float) no problem
 
 stmtdef $<mySuperType> $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, $0.type, "");
+	LLVMValueRef foo = LLVMBuildAlloca($0.type, "");
 	LLVMSetAlignment(foo, $0.align);
 	addToScope(parentBlock, $1, $0, foo); // old
 	symdef<$0> $1 = foo; // new

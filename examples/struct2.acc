@@ -23,7 +23,7 @@ stmtdef DEBUG class2 $I $B {
 	//TODO: Create statement to instantiate this class (see struct.acc for an attempt)
 
 // For now just allocate a class pointer. If this line is skipped, LLVM will not write the type definition to struct2.ll
-addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(builder, LLVMPointerType(structType, 0), "abc"));
+addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(LLVMPointerType(structType, 0), "abc"));
 }
 
 class2 Shape {

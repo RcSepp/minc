@@ -13,13 +13,13 @@ stmtdef while ($<bool>) $B {
 	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");
 
 	LLVMValueRef whileCond = codegen($0, parentBlock);
-	LLVMBuildCondBr(builder, whileCond, whileBlock, endWhileBlock);
+	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
 
 	LLVMPositionBuilder(whileBlock);
 	codegen($1, parentBlock);
 
 	whileCond = codegen($0, parentBlock);
-	LLVMBuildCondBr(builder, whileCond, whileBlock, endWhileBlock);
+	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
 
 	LLVMPositionBuilder(endWhileBlock);
 }

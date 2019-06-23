@@ -4,7 +4,7 @@ Template: string $I = $E
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef string $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(foo, 8);
 	addToScope(parentBlock, $0, int, foo);
 }
@@ -15,9 +15,8 @@ Template: string $I = $E
 Depends on: LLVMValueRef $I = $E
 \* ---------------------------------------------------------------------------*/
 stmtdef string $I = $E {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	), 8);

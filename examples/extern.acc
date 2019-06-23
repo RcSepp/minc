@@ -6,7 +6,7 @@ stmtdef DEBUG extern $<BaseType> $I {
 	LLVMTypeRef funcArgTypes[1];
 	funcArgTypes[0] = LLVMPointerType(LLVMInt8Type(), 0);
 	LLVMTypeRef funcType = LLVMFunctionType(LLVMInt32Type(), funcArgTypes, 1, 0);
-	LLVMValueRef func = LLVMAddFunction(module, $1.name, funcType);
+	LLVMValueRef func = LLVMAddFunction($1.name, funcType);
 	addToScope(parentBlock, $1, putsType, func);
 }
 

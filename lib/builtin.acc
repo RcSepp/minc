@@ -4,7 +4,7 @@ Template: return $E
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef return $E {
-	LLVMBuildRet(builder, codegen($0, parentBlock));
+	LLVMBuildRet(codegen($0, parentBlock));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -13,9 +13,8 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<ExprAST> $<LiteralExprAST> {
 	return LLVMBuildBitCast(
-		builder,
 		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName(module, "class.ExprAST"), 0),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
 		""
 	);
 }
@@ -34,7 +33,7 @@ Template: LLVMValueRef $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMValueRef $I {
-	addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), ""));
+	addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), ""));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -44,9 +43,8 @@ Depends on: LLVMValueRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMValueRef $I = $<LLVMValueRef> {
 	LLVMValueRef foo;
-	foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), "");
+	foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), "");
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -60,22 +58,19 @@ stmtdef LLVMValueRef $I[$L] {
 		$0,
 		LLVMValueRef,
 		LLVMBuildAlloca(
-			builder,
-			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), atoi($1.value)),
+			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), atoi($1.value)),
 			""
 		)
 	);*/
 
 	// Dynamic array:
 	LLVMValueRef array = LLVMBuildArrayAlloca(
-		builder,
-		LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0),
+		LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0),
 		codegen($1, parentBlock),
 		""
 	);
-	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), 0), "");
+	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), 0), "");
 	LLVMBuildStore(
-		builder,
 		array,
 		arrayptr
 	);
@@ -92,11 +87,10 @@ exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] = $<LLVMValueRef> {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 
-	LLVMValueRef gep = LLVMBuildInBoundsGEP1(builder, var, idx, "");
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 
 	LLVMValueRef expr = codegen($2, parentBlock);
 	LLVMBuildStore(
-		builder,
 		expr,
 		gep
 	);
@@ -108,8 +102,8 @@ exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 
-	LLVMValueRef gep = LLVMBuildInBoundsGEP1(builder, var, idx, "");
-	LLVMValueRef val = LLVMBuildLoad(builder, gep, "");
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+	LLVMValueRef val = LLVMBuildLoad(gep, "");
 	LLVMSetAlignment(val, 8);
 	return val;
 }
@@ -120,7 +114,7 @@ Template: LLVMBasicBlockRef $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMBasicBlockRef $I {
-	addToScope(parentBlock, $0, LLVMBasicBlockRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueBasicBlock"), 0), ""));
+	addToScope(parentBlock, $0, LLVMBasicBlockRef, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueBasicBlock"), 0), ""));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -129,9 +123,8 @@ Template: LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
 Depends on: LLVMBasicBlockRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMBasicBlockRef $I = $<LLVMBasicBlockRef> {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueBasicBlock"), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueBasicBlock"), 0), "");
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -144,7 +137,7 @@ Template: LLVMTypeRef $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMTypeRef $I {
-	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), ""));
+	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), ""));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -153,9 +146,8 @@ Template: LLVMTypeRef $I = $<LLVMTypeRef>
 Depends on: LLVMTypeRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMTypeRef $I = $<LLVMTypeRef> {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), "");
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -169,22 +161,19 @@ stmtdef LLVMTypeRef $I[$L] {
 		$0,
 		LLVMTypeRef,
 		LLVMBuildAlloca(
-			builder,
-			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), atoi($1.value)),
+			LLVMArrayType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), atoi($1.value)),
 			""
 		)
 	);*/
 
 	// Dynamic array:
 	LLVMValueRef array = LLVMBuildArrayAlloca(
-		builder,
-		LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0),
+		LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0),
 		codegen($1, parentBlock),
 		""
 	);
-	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0), "");
+	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0), "");
 	LLVMBuildStore(
-		builder,
 		array,
 		arrayptr
 	);
@@ -202,7 +191,7 @@ Template: BaseType $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef BaseType $I {
-	addToScope(parentBlock, $0, BaseType, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0), ""));
+	addToScope(parentBlock, $0, BaseType, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BaseType"), 0), ""));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -212,9 +201,8 @@ TODO: Should be $I = $<BaseType>
 Depends on: BaseType $I
 \* ---------------------------------------------------------------------------*/
 stmtdef BaseType $I = $E {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BaseType"), 0), "");
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -232,14 +220,12 @@ stmtdef BaseType $I = $E {
 exprdef<string> $<LiteralExprAST>.value {
 	LLVMValueRef args[1];
 	args[0] = LLVMBuildBitCast(
-		builder,
 		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName(module, "class.LiteralExprAST"), 0),
+		LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0),
 		""
 	);
 	return LLVMBuildCall(
-		builder,
-		LLVMGetNamedFunction(module, "getLiteralExprASTValue"),
+		LLVMGetNamedFunction("getLiteralExprASTValue"),
 		args,
 		1,
 		""
@@ -249,14 +235,12 @@ exprdef<string> $<LiteralExprAST>.value {
 exprdef<string> $<IdExprAST>.name {
 	LLVMValueRef args[1];
 	args[0] = LLVMBuildBitCast(
-		builder,
 		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName(module, "class.IdExprAST"), 0),
+		LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0),
 		""
 	);
 	return LLVMBuildCall(
-		builder,
-		LLVMGetNamedFunction(module, "getIdExprASTName"),
+		LLVMGetNamedFunction("getIdExprASTName"),
 		args,
 		1,
 		""
@@ -277,7 +261,7 @@ Template: int $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef int $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(foo, 4);
 	addToScope(parentBlock, $0, int, foo);
 }
@@ -288,10 +272,9 @@ Template: int $I = $<int>
 Depends on: LLVMValueRef $I = $<LLVMValueRef>
 \* ---------------------------------------------------------------------------*/
 stmtdef int $I = $<int> {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(foo, 4);
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -304,17 +287,17 @@ Template: $<int> + $<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<int> $<int> + $<int> {
-	return LLVMBuildAdd(builder, codegen($0, parentBlock), codegen($1, parentBlock), "add");
+	return LLVMBuildAdd(codegen($0, parentBlock), codegen($1, parentBlock), "add");
 }
 
 exprdef<bool> $<int> == $<int> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
-	return LLVMBuildICmp(builder, LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $<int> != $<int> {
 int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
-	return LLVMBuildICmp(builder, LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -323,7 +306,7 @@ Template: double $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef double $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMDoubleType(), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
 	LLVMSetAlignment(foo, 8);
 	addToScope(parentBlock, $0, double, foo);
 }
@@ -334,10 +317,9 @@ Template: int $I = $<double>
 Depends on: LLVMValueRef $I = $<LLVMValueRef>
 \* ---------------------------------------------------------------------------*/
 stmtdef double $I = $<double> {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMDoubleType(), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
 	LLVMSetAlignment(foo, 8);
 	LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	);
@@ -350,7 +332,6 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<double> $<int> {
 	return LLVMBuildSIToFP(
-		builder,
 		codegen($0, parentBlock),
 		LLVMDoubleType(),
 		""
@@ -363,7 +344,6 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<int> $<double> {
 	return LLVMBuildFPToSI(
-		builder,
 		codegen($0, parentBlock),
 		LLVMInt32Type(),
 		""
@@ -376,7 +356,6 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<int> $<bool> {
 	return LLVMBuildZExt(
-		builder,
 		codegen($0, parentBlock),
 		LLVMInt32Type(),
 		""
@@ -396,9 +375,8 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<BaseType> $<BuiltinType> {
 	return LLVMBuildBitCast(
-		builder,
 		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName(module, "BaseType"), 0),
+		LLVMPointerType(LLVMGetTypeByName("BaseType"), 0),
 		""
 	);
 }

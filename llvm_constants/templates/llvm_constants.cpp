@@ -2,6 +2,15 @@
 
 using namespace llvm;
 
+extern LLVMContext* context;
+extern IRBuilder<>* builder;
+extern Module* currentModule;
+extern Function* currentFunc;
+extern BasicBlock* currentBB;
+extern DIBuilder* dbuilder;
+extern DIFile* dfile;
+extern Value* closure;
+
 namespace Types
 {
 	// LLVM-c types
@@ -177,4 +186,9 @@ llvm_c_functions.push_back(Func("printf", BuiltinTypes::Int32, { BuiltinTypes::I
 llvm_c_functions.push_back(Func("atoi", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
 
 @	LLVM_EXTERN_FUNC_DEF@
+}
+
+extern "C"
+{
+@	MODIFIED_LLVM_EXTERN_FUNC_DEF@
 }

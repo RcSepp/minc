@@ -1,11 +1,11 @@
 import <builtin.acc>;
 
 /*typedef<int> myType {
-	fake_return LLVMGetTypeByName(module, "struct.LLVMOpaqueValue");
+	fake_return LLVMGetTypeByName("struct.LLVMOpaqueValue");
 }
 
 stmtdef DEBUG $<int> $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, myType, "");
+	LLVMValueRef foo = LLVMBuildAlloca(myType, "");
 	LLVMSetAlignment(foo, 4);
 	addToScope(parentBlock, $1, int, foo);
 }
@@ -15,8 +15,8 @@ return a;*/
 
 
 exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype_old {
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(builder, codegen($0, parentBlock), 1, "gep");
-	llvmtype = LLVMBuildLoad(builder, llvmtype, "llvmtype");
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 1, "gep");
+	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
 	LLVMSetAlignment(llvmtype, 8);
 	return llvmtype;
 }
@@ -24,21 +24,20 @@ exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype_old {
 exprdef<LLVMTypeRef> $<LLVMValueRef>.llvmtype {
 LLVMValueRef t = codegen($0, parentBlock);
 t = LLVMBuildBitCast(
-	builder,
 	t,
-	LLVMPointerType(LLVMGetTypeByName(module, "BuiltinType"), 0),
+	LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0),
 	""
 );
 printf("t ... %lu\n", t);
 
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(builder, t, 1, "gep");
-	llvmtype = LLVMBuildLoad(builder, llvmtype, "llvmtype");
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(t, 1, "gep");
+	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
 	LLVMSetAlignment(llvmtype, 8);
 	return llvmtype;
 }
 exprdef<int> $<BuiltinType>.align {
-	LLVMValueRef align = LLVMBuildStructGEP(builder, codegen($0, parentBlock), 2, "gep");
-	align = LLVMBuildLoad(builder, align, "align");
+	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
+	align = LLVMBuildLoad(align, "align");
 	LLVMSetAlignment(align, 4);
 	return align;
 }
@@ -59,7 +58,7 @@ stmtdef DEBUG foo $<BuiltinType> $I {
 	int align = int.align;
 	printf("align ... %i\n", align);
 
-	LLVMValueRef foo = LLVMBuildAlloca(builder, type, "");
+	LLVMValueRef foo = LLVMBuildAlloca(type, "");
 	LLVMSetAlignment(foo, align);
 	addToScope(parentBlock, $1, int, foo);
 }

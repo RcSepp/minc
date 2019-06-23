@@ -386,14 +386,14 @@ extern "C"
 	{
 		builder->SetInsertPoint(currentBB = unwrap(bb));
 	}
-	LLVMValueRef _LLVMBuildInBoundsGEP1(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef Idx0, const char *Name)
+	LLVMValueRef _LLVMBuildInBoundsGEP1(LLVMValueRef Pointer, LLVMValueRef Idx0, const char *Name)
 	{
-		return LLVMBuildInBoundsGEP(B, Pointer, &Idx0, 1, Name);
+		return LLVMBuildInBoundsGEP(wrap(builder), Pointer, &Idx0, 1, Name);
 	}
-	LLVMValueRef _LLVMBuildInBoundsGEP2(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef Idx0, LLVMValueRef Idx1, const char *Name)
+	LLVMValueRef _LLVMBuildInBoundsGEP2(LLVMValueRef Pointer, LLVMValueRef Idx0, LLVMValueRef Idx1, const char *Name)
 	{
 		LLVMValueRef Idxs[] = { Idx0, Idx1 };
-		return LLVMBuildInBoundsGEP(B, Pointer, Idxs, 2, Name);
+		return LLVMBuildInBoundsGEP(wrap(builder), Pointer, Idxs, 2, Name);
 	}
 }
 
@@ -699,9 +699,9 @@ for (Func& func: llvm_c_functions)
 }
 Func* LLVMPositionBuilderFunc = new Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "_LLVMPositionBuilder");
 blockAST->addToScope(LLVMPositionBuilderFunc->type.name, &LLVMPositionBuilderFunc->type, LLVMPositionBuilderFunc);
-Func* LLVMBuildInBoundsGEP1Func = new Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP1");
+Func* LLVMBuildInBoundsGEP1Func = new Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP1");
 blockAST->addToScope(LLVMBuildInBoundsGEP1Func->type.name, &LLVMBuildInBoundsGEP1Func->type, LLVMBuildInBoundsGEP1Func);
-Func* LLVMBuildInBoundsGEP2Func = new Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMBuilderRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP2");
+Func* LLVMBuildInBoundsGEP2Func = new Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP2");
 blockAST->addToScope(LLVMBuildInBoundsGEP2Func->type.name, &LLVMBuildInBoundsGEP2Func->type, LLVMBuildInBoundsGEP2Func);
 
 Function::Create(

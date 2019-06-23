@@ -2,7 +2,6 @@ import <builtin.acc>;
 
 /*exprdef<double> explicitcast($<int>) {
 	return LLVMBuildSIToFP(
-		builder,
 		codegen($0, parentBlock),
 		LLVMDoubleType(),
 		""
@@ -19,7 +18,7 @@ printDouble foo;*/
 
 // stmtdef DEBUG print($<int>) {
 // 	/*// LLVMValueRef foo = ;
-// 	//printf("LLVMGetNamedFunction(module, 'printf') = %u\n", getfunc(printf));
+// 	//printf("LLVMGetNamedFunction('printf') = %u\n", getfunc(printf));
 
 // 	LLVMValueRef value = codegen($0, parentBlock);
 
@@ -29,7 +28,6 @@ printDouble foo;*/
 // 	args[0] = LLVMConstString("xxx", 3, 0);//formatStr;//"%i\n";
 // 	//args[1] = formatStr;
 // 	LLVMBuildCall(
-// 		builder,
 // 		getfunc(printf),
 // 		args,
 // 		1,
@@ -38,8 +36,7 @@ printDouble foo;*/
 
 // 	/*LLVMValueRef args[0];
 // 	LLVMBuildCall(
-// 		builder,
-// 		LLVMGetNamedFunction(module, 'TestFunc'),
+// 		LLVMGetNamedFunction('TestFunc'),
 // 		args,
 // 		0,
 // 		""

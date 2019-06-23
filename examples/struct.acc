@@ -1,14 +1,13 @@
 import <builtin.acc>;
 
 stmtdef string $I {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(foo, 8);
 	addToScope(parentBlock, $0, int, foo);
 }
 stmtdef string $I = $E {
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(LLVMBuildStore(
-		builder,
 		codegen($1, parentBlock),
 		foo
 	), 8);
@@ -35,11 +34,11 @@ stmtdef DEBUG class $I $B {
 		// `i` doesn't exist in this scope!
 
 // For now just allocate an int
-LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMInt32Type(), "");
+LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
 LLVMSetAlignment(foo, 4);
 addToScope(parentBlock, $0, int, foo);
 
-		//addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(builder, LLVMPointerType(structType, 0), ""));
+		//addToScope(parentBlock, $0, LLVMValueRef, LLVMBuildAlloca(LLVMPointerType(structType, 0), ""));
 	}
 }
 

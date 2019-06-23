@@ -1,7 +1,7 @@
 import "../lib/builtin.acc";
 import <builtin.acc>;
 
-int a;
+int_ref a;
 a = 4;
-int c = a + 3;
+int_ref c = a + 3;
 return a + 2 + c;

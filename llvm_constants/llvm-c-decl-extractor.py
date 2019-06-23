@@ -2,7 +2,7 @@ import os
 import re
 
 ################################################################################
-# Exception classes
+# Classes
 ################################################################################
 
 class UnknownTypeException(Exception):
@@ -10,13 +10,20 @@ class UnknownTypeException(Exception):
         super().__init__("Unknown type: " + typestr)
         self.typestr = typestr
 
+class FuncDecl(object):
+    def __init__(self, attrs, restype, name, argtypes):
+        self.attrs = attrs
+        self.restype = restype
+        self.name = name
+        self.argtypes = argtypes
+        self.modified_name = None
+
 ################################################################################
 # Regexes
 ################################################################################
 
 type_regex = re.compile(r"(?:%\"[^\"]*\")|%[\w.:]+")
 typedef_regex = re.compile(r"(.*?) = type (.*)")
-decl_regex = re.compile(r"define [^@]+ @[^_\"].*")
 decl_parts_regex = re.compile(r"define (dso_local)? (.*?) @([^(]+)\((.*)\) (?:local_unnamed_addr )?#.*")
 
 template_regex = re.compile(r"@(\t*)(\w+)@")
@@ -58,7 +65,7 @@ def get_name(llvmid):
     if name.startswith("struct"): name = name[len("struct"):]
     return name.strip('_')
 
-def resolve_type(typestr):
+def get_builtin_type(typestr):
     typestr = typestr \
         .replace("noalias", "") \
         .replace("nocapture", "") \
@@ -139,6 +146,34 @@ def resolve_type(typestr):
 
     return typestr
 
+def get_c_type(typestr):
+    typestr = typestr \
+        .replace("noalias", "") \
+        .replace("nocapture", "") \
+        .replace("nonnull", "") \
+        .replace("readonly", "") \
+        .replace("readnone", "") \
+        .replace("zeroext", "") \
+        .strip()
+
+    typestr = get_name(typestr)
+
+    rawtypestr = typestr.rstrip('*')
+    ptrs = typestr[len(rawtypestr):]
+
+    if typestr == 'i8*':
+        typestr = 'const char*'
+    elif rawtypestr == 'i8':
+        typestr = 'int8_t' + ptrs
+    elif rawtypestr == 'i16':
+        typestr = 'int16_t' + ptrs
+    elif rawtypestr == 'i32':
+        typestr = 'int32_t' + ptrs
+    elif rawtypestr == 'i64':
+        typestr = 'int64_t' + ptrs
+
+    return typestr
+
 ################################################################################
 # Parse Core.ll
 ################################################################################
@@ -153,9 +188,12 @@ for filename in ['Core.ll', 'DebugInfo.ll']:
                 #print(match.group(1), match.group(2))
                 types[match.group(1)] = [False, match.group(2)]
 
-            if decl_regex.fullmatch(line):
-                #print(line)
-                decls.append(line)
+            match = decl_parts_regex.fullmatch(line)
+            if match and not match.group(3).startswith('_'): # Ignore C++ functions starting with '_'
+                decl = FuncDecl(*match.groups())
+                decl.name = get_name(decl.name)
+                decl.argtypes = split_outside_brackets(decl.argtypes, ", ")
+                decls.append(decl)
 
 num_used = sum(1 for t in types.values() if t[0])
 num_unused = len(types)
@@ -163,9 +201,11 @@ print(num_used, num_unused)
 
 # Mark all types in decls as used
 for decl in decls:
-    for match in type_regex.finditer(decl):
-        match = match.group(0)
-        types[match][0] = True
+    for tpe in [decl.restype] + decl.argtypes:
+        match = type_regex.search(tpe)
+        if match:
+            match = match.group(0)
+            types[match][0] = True
 
 num_used = sum(1 for t in types.values() if t[0])
 num_unused = len(types)
@@ -186,6 +226,21 @@ for i in range(1):
 types = { t: tb[1] for t, tb in types.items() if tb[0] }
 
 print(len(decls))
+
+################################################################################
+# Modify functions
+################################################################################
+
+REPLACE_PARAMS = {
+    '%struct.LLVMOpaqueBuilder*': 'wrap(builder)',
+    '%struct.LLVMOpaqueModule*': 'wrap(currentModule)',
+    '%struct.LLVMOpaqueDIBuilder*': 'wrap(dbuilder)',
+}
+for decl in decls:
+    for argtype in decl.argtypes:
+        if argtype in REPLACE_PARAMS:
+            decl.modified_name = "LLVMEX" + decl.name[4:]
+            break
 
 for filename in os.listdir("./templates"):
     template_path = os.path.join("./templates", filename)
@@ -210,20 +265,21 @@ for filename in os.listdir("./templates"):
             output = []
             unknown_types = set()
             for decl in decls:
-                match = decl_parts_regex.fullmatch(decl)
-
-                d_name = get_name(match.group(3))
-
                 try:
-                    restype = resolve_type(match.group(2))
-                    argtypes = [resolve_type(typestr) for typestr in split_outside_brackets(match.group(4), ", ")]
+                    restype = get_builtin_type(decl.restype)
+                    argtypes = [get_builtin_type(typestr) for typestr in decl.argtypes if typestr not in REPLACE_PARAMS]
                 except UnknownTypeException as err:
                     unknown_types.add(err.typestr)
                     continue
 
                 output.append(
-                    'llvm_c_functions.push_back(Func("{}", {}, {{ {} }}, false));'
-                    .format(d_name, restype, ", ".join(argtypes))
+                    'llvm_c_functions.push_back(Func("{}", {}, {{ {} }}, false{}));'
+                    .format(
+                        decl.name,
+                        restype,
+                        ", ".join(argtypes),
+                        ', "{}"'.format(decl.modified_name) if decl.modified_name else ""
+                    )
                 )
 
             # Report unknown file types
@@ -272,6 +328,39 @@ for filename in os.listdir("./templates"):
                 t_id = t[1:]
                 t_name = get_name(t)
                 output.append('{} = StructType::create(c, "{}");'.format(t_name, t_id))
+            return template_indent + ("\n" + template_indent).join(output)
+
+        elif template_name == "MODIFIED_LLVM_EXTERN_FUNC_DEF":
+
+            ####################################################################
+            # Print modified extern functions
+            ####################################################################
+
+            output = []
+            for decl in decls:
+                if decl.modified_name:
+                    restype = get_c_type(decl.restype)
+
+                    args = []
+                    argvals = []
+                    for i, typestr in enumerate(decl.argtypes):
+                        argval = REPLACE_PARAMS.get(typestr)
+                        if argval is None:
+                            argval = '_' + str(i)
+                            args.append(get_c_type(typestr) + ' ' + argval)
+                        argvals.append(argval)
+
+                    output.append(
+                        '{} {}({}) {{ return {}({}); }}'
+                        .format(
+                            restype,
+                            decl.modified_name,
+                            ", ".join(args),
+                            decl.name,
+                            ", ".join(argvals)
+                        )
+                    )
+
             return template_indent + ("\n" + template_indent).join(output)
 
     template = template_regex.sub(repl, template)

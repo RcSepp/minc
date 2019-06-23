@@ -40,19 +40,18 @@ int abc = foo;*/
 
 
 /*stmtdef LLVMValueRef $E {
-	LLVMBuildRet(builder, codegen($0, parentBlock));
-	//addToScope(parentBlock, $0, LLVMBuildAlloca(builder, LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueValue"), 0), ""));
+	LLVMBuildRet(codegen($0, parentBlock));
+	//addToScope(parentBlock, $0, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), ""));
 }
 
 LLVMValueRef 123;*/
 
 stmtdef create_null $I {
-	//LLVMValueRef foo = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0));
+	//LLVMValueRef foo = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0));
 
-	LLVMValueRef foo = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0), "");
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0), "");
 	LLVMBuildStore(
-		builder,
-		LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0)),
+		LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0)),
 		foo
 	);
 	addToScope(parentBlock, $0, LLVMTypeRef, foo);
@@ -60,12 +59,12 @@ stmtdef create_null $I {
 
 stmtdef func $I $E {
 	create_null nullptr;
-	//LLVMValueRef nullptr = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName(module, "struct.LLVMOpaqueType"), 0), 0));
+	//LLVMValueRef nullptr = LLVMConstNull(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0));
 	LLVMTypeRef funcType = LLVMFunctionType(LLVMInt32Type(), nullptr, 0, 0);
-	LLVMValueRef func = LLVMAddFunction(module, $0.name, funcType);
+	LLVMValueRef func = LLVMAddFunction($0.name, funcType);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
 	LLVMPositionBuilder(entry);
-	LLVMBuildRet(builder, codegen($1, parentBlock));
+	LLVMBuildRet(codegen($1, parentBlock));
 
 	addToScope(parentBlock, $0, int, func);
 }

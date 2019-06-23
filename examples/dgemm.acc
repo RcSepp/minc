@@ -7,7 +7,6 @@ stmtdef double $I[$L] {
 		$0,
 		LLVMTypeRef,
 		LLVMBuildAlloca(
-			builder,
 			LLVMArrayType(LLVMPointerType(LLVMDoubleType(), 0), atoi($1.value)),
 			""
 		)
@@ -15,14 +14,12 @@ stmtdef double $I[$L] {
 
 	// Dynamic array:
 	LLVMValueRef array = LLVMBuildArrayAlloca(
-		builder,
 		LLVMPointerType(LLVMDoubleType(), 0),
 		codegen($1, parentBlock),
 		""
 	);
-	LLVMValueRef arrayptr = LLVMBuildAlloca(builder, LLVMPointerType(LLVMPointerType(LLVMDoubleType(), 0), 0), "");
+	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMDoubleType(), 0), 0), "");
 	LLVMBuildStore(
-		builder,
 		array,
 		arrayptr
 	);
@@ -35,7 +32,7 @@ stmtdef double $I[$L] {
 }
 
 stmtdef vec $I {
-	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(builder, LLVMPointerType(LLVMDoubleType(), 0), ""));
+	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), ""));
 }
 
 stmtdef printmat($E) {

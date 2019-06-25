@@ -1,4 +1,4 @@
-all: Core.ll DebugInfo.ll
+all: Core.ll CloneModule.ll DebugInfo.ll
 
 clean:
 	-rm *.ll

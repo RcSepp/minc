@@ -19,6 +19,30 @@ castdef<ExprAST> $<LiteralExprAST> {
 	);
 }
 
+/* ---------------------------------------------------------------------------*\
+Cast: IdExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<ExprAST> $<IdExprAST> {
+	return LLVMBuildBitCast(
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: BlockExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<ExprAST> $<BlockExprAST> {
+	return LLVMBuildBitCast(
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
+		""
+	);
+}
+
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |

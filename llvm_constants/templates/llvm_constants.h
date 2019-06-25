@@ -206,6 +206,7 @@ namespace BuiltinTypes
 	extern BuiltinType* ExprAST;
 	extern BuiltinType* LiteralExprAST;
 	extern BuiltinType* IdExprAST;
+	extern BuiltinType* BlockExprAST;
 
 	// Misc. types
 	extern BuiltinType* Function;

@@ -465,6 +465,7 @@ InitializeNativeTarget();
 	BuiltinTypes::ExprAST = new BuiltinType("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
 	BuiltinTypes::LiteralExprAST = new BuiltinType("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
 	BuiltinTypes::IdExprAST = new BuiltinType("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
+	BuiltinTypes::BlockExprAST = new BuiltinType("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
 
 	// Misc. types
 	BuiltinTypes::Function = new BuiltinType("func", nullptr, 8);
@@ -477,6 +478,7 @@ InitializeNativeTarget();
 	printf("ExprAST ...           0x%lx\n", (uint64_t)BuiltinTypes::ExprAST);
 	printf("LiteralExprAST ...    0x%lx\n", (uint64_t)BuiltinTypes::LiteralExprAST);
 	printf("IdExprAST ...         0x%lx\n", (uint64_t)BuiltinTypes::IdExprAST);
+	printf("BlockExprAST ...      0x%lx\n", (uint64_t)BuiltinTypes::BlockExprAST);
 	printf("LLVMValueRef ...      0x%lx\n", (uint64_t)BuiltinTypes::LLVMValueRef);
 	printf("LLVMBasicBlockRef ... 0x%lx\n", (uint64_t)BuiltinTypes::LLVMBasicBlockRef);
 	printf("LLVMTypeRef ...       0x%lx\n", (uint64_t)BuiltinTypes::LLVMTypeRef);*/
@@ -1001,9 +1003,10 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	switch(p1)
 	{
-	case 'E': case 'B': return nullptr;
+	case 'E': return nullptr;
 	case 'L': return BuiltinTypes::LiteralExprAST;
 	case 'I': return BuiltinTypes::IdExprAST;
+	case 'B': return BuiltinTypes::BlockExprAST;
 	dafault: assert(0); return nullptr; //TODO: Throw exception
 	case '\0':
 		{
@@ -1063,6 +1066,7 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 				{
 				case 'L': return Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo())));
 				case 'I': return Variable(BuiltinTypes::IdExprAST, new XXXValue(builder->CreateBitCast(param, Types::IdExprAST->getPointerTo())));
+				case 'B': return Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo())));
 				/*case '\0':
 					var = parentBlock->lookupScope(((PlchldExprAST*)blockParamExpr)->p2);
 					if (var != nullptr)
@@ -1100,11 +1104,13 @@ BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 				{
 				case 'L': return BuiltinTypes::LiteralExprAST;
 				case 'I': return BuiltinTypes::IdExprAST;
+				case 'B': return BuiltinTypes::BlockExprAST;
 				}*/
 				switch(((PlchldExprAST*)blockParamExpr)->p1)
 				{
 				case 'L': return BuiltinTypes::LiteralExprAST;
 				case 'I': return BuiltinTypes::IdExprAST;
+				case 'B': return BuiltinTypes::BlockExprAST;
 				case '\0':
 					{
 						BaseType* codegenType = parentBlock->lookupScope(((PlchldExprAST*)blockParamExpr)->p2)->type;

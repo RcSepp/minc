@@ -168,6 +168,7 @@ namespace BuiltinTypes
 	BuiltinType* ExprAST;
 	BuiltinType* LiteralExprAST;
 	BuiltinType* IdExprAST;
+	BuiltinType* BlockExprAST;
 
 	// Misc. types
 	BuiltinType* Function;

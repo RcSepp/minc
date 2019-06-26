@@ -121,13 +121,20 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 			for (size_t i = 0; i < func->arg_size(); ++i)
 			{
 				BuiltinType *expectedType = funcType->argTypes[i], *gotType = (BuiltinType*)getType(params[i + 1], parentBlock);
+
 				if (expectedType != gotType)
 				{
-					std::string expectedTypeStr = expectedType->name, gotTypeStr = gotType == nullptr ? "NULL" : gotType->name;
-					raiseCompileError(
-						("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">").c_str(),
-						params[i + 1]
-					);
+//printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)expectedType)->name, ((BuiltinType*)gotType)->name, expr->loc.filename, expr->loc.begin_line);
+					ExprAST* castExpr = lookupCast(parentBlock, params[i + 1], expectedType);
+					if (castExpr == nullptr)
+					{
+						std::string expectedTypeStr = expectedType->name, gotTypeStr = gotType == nullptr ? "NULL" : gotType->name;
+						raiseCompileError(
+							("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">").c_str(),
+							params[i + 1]
+						);
+					}
+					params[i + 1] = castExpr;
 				}
 			}
 

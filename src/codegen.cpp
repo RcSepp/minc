@@ -327,6 +327,22 @@ extern "C"
 		return stmt;
 	}
 
+	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
+	{
+		BaseType* fromType = expr->getType(scope);
+		if (fromType == toType)
+			return expr;
+
+		IExprContext* castContext = scope->lookupCast(fromType, toType);
+		if (castContext == nullptr)
+			return nullptr;
+
+		ExprAST* castExpr = new PlchldExprAST({0}, ""); //TODO: Create CastExprAST class
+		castExpr->resolvedContext = castContext;
+		castExpr->resolvedParams.push_back(expr);
+		return castExpr;
+	}
+
 	BaseType* getBaseType()
 	{
 		return &BASE_TYPE;

@@ -1,12 +1,15 @@
 import <builtin.acc>;
 
-stmtdef print_value $L $I {
-	//gettype($0);
-	//gettype($0.value);
-	printf("$0.value == %s\n", $0.value);
-	//gettype($1);
-	//gettype($1.name);
-	printf("$1.name == %s\n", $1.name);
+stmtdef testExprASTMembers $L $I $B {
+	printf("$0.value == %s\n\n", $0.value);
+
+	printf("$1.name == %s\n\n", $1.name);
+
+	printf("parentBlock == 0x%lx\n", parentBlock);
+	printf("$2.parent == 0x%lx\n", $2.parent);
+	//codegen($2, parentBlock);
+	$2.parent = parentBlock;
+	printf("$2.parent == 0x%lx\n", $2.parent);
 }
 
-print_value 123 ident;
+testExprASTMembers 123 ident {}

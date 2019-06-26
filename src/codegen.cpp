@@ -234,6 +234,14 @@ extern "C"
 	{
 		return expr->value;
 	}
+	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr)
+	{
+		return expr->parent;
+	}
+	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent)
+	{
+		expr->parent = parent;
+	}
 
 	unsigned getExprLine(const ExprAST* expr)
 	{
@@ -742,6 +750,16 @@ Function::Create(
 	*module
 );
 Function::Create(
+	FunctionType::get(Types::BlockExprAST->getPointerTo(), { Types::BlockExprAST->getPointerTo() }, false),
+	Function::ExternalLinkage, "getBlockExprASTParent",
+	*module
+);
+Function::Create(
+	FunctionType::get(Types::Void, { Types::BlockExprAST->getPointerTo(), Types::BlockExprAST->getPointerTo() }, false),
+	Function::ExternalLinkage, "setBlockExprASTParent",
+	*module
+);
+Function::Create(
 	FunctionType::get(Types::BaseType->getPointerTo(), { Types::Int8Ptr, Types::Int8, Types::BaseType->getPointerTo(), Types::BaseType->getPointerTo()->getPointerTo(), Types::Int32 }, false),
 	Function::ExternalLinkage, "createFuncType",
 	*module
@@ -804,8 +822,7 @@ blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 		AllocaInst* parentBlockPtr = builder->CreateAlloca(Types::BlockExprAST->getPointerTo(), nullptr, "parentBlock");
 		parentBlockPtr->setAlignment(8);
 		builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(8);
-		//builder->CreateStore(ConstantInt::getIntegerValue(Types::BlockExprAST->getPointerTo(), APInt(64, (uint64_t)blockAST)), parentBlockPtr)->setAlignment(8);
-		blockAST->addToScope("parentBlock", BuiltinTypes::ExprAST, new XXXValue(parentBlockPtr)); //TODO: Type should be BlockExprAST
+		blockAST->addToScope("parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
 
 		Value* paramsVal = currentFunc->args().begin() + 4;
 		paramsVal->setName("params");

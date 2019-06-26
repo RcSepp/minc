@@ -39,6 +39,8 @@ extern "C"
 	bool ExprASTIsBlock(const ExprAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
+	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
+	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	unsigned getExprLine(const ExprAST* expr);
 	unsigned getExprColumn(const ExprAST* expr);
 

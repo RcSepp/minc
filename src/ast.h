@@ -175,13 +175,13 @@ public:
 class BlockExprAST : public ExprAST
 {
 private:
-	BlockExprAST* parent;
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
 	std::map<std::pair<BaseType*, BaseType*>, IExprContext*> casts;
 	std::vector<ExprAST*>* blockParams;
 	XXXValue* blockParamsVal;
 public:
+	BlockExprAST* parent;
 	std::list<StmtAST*>* stmts;
 	BlockExprAST(const Location& loc, std::list<StmtAST*>* stmts)
 		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), stmts(stmts), blockParams(nullptr), blockParamsVal(nullptr) {}

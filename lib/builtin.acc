@@ -243,11 +243,7 @@ stmtdef BaseType $I = $E {
 
 exprdef<string> $<LiteralExprAST>.value {
 	LLVMValueRef args[1];
-	args[0] = LLVMBuildBitCast(
-		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0),
-		""
-	);
+	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
 		LLVMGetNamedFunction("getLiteralExprASTValue"),
 		args,
@@ -258,15 +254,34 @@ exprdef<string> $<LiteralExprAST>.value {
 
 exprdef<string> $<IdExprAST>.name {
 	LLVMValueRef args[1];
-	args[0] = LLVMBuildBitCast(
-		codegen($0, parentBlock),
-		LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0),
-		""
-	);
+	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
 		LLVMGetNamedFunction("getIdExprASTName"),
 		args,
 		1,
+		""
+	);
+}
+
+exprdef<BlockExprAST> $<BlockExprAST>.parent {
+	LLVMValueRef args[1];
+	args[0] = codegen($0, parentBlock);
+	return LLVMBuildCall(
+		LLVMGetNamedFunction("getBlockExprASTParent"),
+		args,
+		1,
+		""
+	);
+}
+
+exprdef<BlockExprAST> $<BlockExprAST>.parent = $<BlockExprAST> {
+	LLVMValueRef args[1];
+	args[0] = codegen($0, parentBlock);
+	args[1] = codegen($1, parentBlock);
+	return LLVMBuildCall(
+		LLVMGetNamedFunction("setBlockExprASTParent"),
+		args,
+		2,
 		""
 	);
 }

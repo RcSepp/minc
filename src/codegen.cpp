@@ -959,6 +959,9 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 Variable ExprAST::codegen(BlockExprAST* parentBlock)
 {
+	if (!resolvedContext)
+		parentBlock->lookupExpr(this);
+
 	if (resolvedContext)
 	{
 		if (dbuilder)

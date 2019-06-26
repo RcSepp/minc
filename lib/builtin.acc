@@ -236,7 +236,7 @@ stmtdef BaseType $I = $E {
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |
-|                                   AST TYPES                                  |
+|                                  AST TYPES                                   |
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
@@ -418,4 +418,60 @@ castdef<BaseType> $<BuiltinType> {
 		LLVMPointerType(LLVMGetTypeByName("BaseType"), 0),
 		""
 	);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                           FLOW CONTROL STATEMENTS                            |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+stmtdef for(int $I = $E; $E; $E) $B {
+	// Inherent global scope into for block scope
+	$4.parent = parentBlock;
+
+	// Allocate loop variable
+	LLVMValueRef loopVar = LLVMBuildAlloca(LLVMInt32Type(), "");
+	LLVMSetAlignment(loopVar, 4);
+	LLVMBuildStore(codegen($1, parentBlock), loopVar);
+	addToScope($4, $0, int, loopVar);
+
+	// Create basic blocks
+	LLVMBasicBlockRef forBlock = LLVMAppendBasicBlock(function, "forBlock");
+	LLVMBasicBlockRef endForBlock = LLVMAppendBasicBlock(function, "endForBlock");
+
+	// Skip for loop if condition isn't met
+	LLVMValueRef forCond = codegen($2, $4); // Codegen condition in loop block scope
+	LLVMBuildCondBr(forCond, forBlock, endForBlock);
+
+	LLVMPositionBuilder(forBlock);
+	codegen($4, parentBlock); // Codegen loop block in global scope
+	codegen($3, $4); // Codegen update expression in loop block scope
+
+	// Repeat for loop if condition is met
+	forCond = codegen($2, $4);
+	LLVMBuildCondBr(forCond, forBlock, endForBlock);
+
+	LLVMPositionBuilder(endForBlock);
+}
+
+stmtdef while ($<bool>) $B {
+	// Create basic blocks
+	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");
+	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");
+
+	// Skip while loop if condition isn't met
+	LLVMValueRef whileCond = codegen($0, parentBlock);
+	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
+
+	LLVMPositionBuilder(whileBlock);
+	codegen($1, parentBlock); // Codegen loop block
+
+	// Repeat while loop if condition is met
+	whileCond = codegen($0, parentBlock);
+	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
+
+	LLVMPositionBuilder(endWhileBlock);
 }

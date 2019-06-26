@@ -435,14 +435,17 @@ stmtdef for(int $I = $E; $E; $E) $B {
 	// Allocate loop variable
 	LLVMValueRef loopVar = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(loopVar, 4);
-	LLVMBuildStore(codegen($1, parentBlock), loopVar);
+	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), loopVar), 4);
 	addToScope($4, $0, int, loopVar);
 
 	// Create basic blocks
+	LLVMBasicBlockRef forCondBlock = LLVMAppendBasicBlock(function, "forCondBlock");
 	LLVMBasicBlockRef forBlock = LLVMAppendBasicBlock(function, "forBlock");
 	LLVMBasicBlockRef endForBlock = LLVMAppendBasicBlock(function, "endForBlock");
+	LLVMBuildBr(forCondBlock);
 
-	// Skip for loop if condition isn't met
+	// Exit for loop if condition isn't met
+	LLVMPositionBuilder(forCondBlock);
 	LLVMValueRef forCond = codegen($2, $4); // Codegen condition in loop block scope
 	LLVMBuildCondBr(forCond, forBlock, endForBlock);
 
@@ -450,9 +453,8 @@ stmtdef for(int $I = $E; $E; $E) $B {
 	codegen($4, parentBlock); // Codegen loop block in global scope
 	codegen($3, $4); // Codegen update expression in loop block scope
 
-	// Repeat for loop if condition is met
-	forCond = codegen($2, $4);
-	LLVMBuildCondBr(forCond, forBlock, endForBlock);
+	// Repeat for loop
+	LLVMBuildBr(forCondBlock);
 
 	LLVMPositionBuilder(endForBlock);
 }

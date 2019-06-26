@@ -1,12 +1,15 @@
 import <builtin.acc>;
 
-/*exprdef<double> explicitcast($<int>) {
-	return LLVMBuildSIToFP(
-		codegen($0, parentBlock),
-		LLVMDoubleType(),
+exprdef<BuiltinType> $<BuiltinType>.ptr {
+	LLVMValueRef args[1];
+	args[0] = codegen($0, parentBlock);
+	return LLVMBuildCall(
+		LLVMGetNamedFunction("getPointerToBuiltinType"),
+		args,
+		1,
 		""
 	);
-}*/
+}
 
 //double foo = 456.723;
 //int bar = foo;

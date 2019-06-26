@@ -391,6 +391,11 @@ extern "C"
 		return new FuncType(name, (BuiltinType*)resultType, builtinArgTypes, isVarArg);
 	}
 
+	BuiltinType* getPointerToBuiltinType(BuiltinType* type)
+	{
+		return type->Ptr();
+	}
+
 	void AddToScope(BlockExprAST* targetBlock, IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
 	{
 		targetBlock->addToScope(((IdExprAST*)nameAST)->name, type, new XXXValue(unwrap(val)));
@@ -704,7 +709,15 @@ for (Func& func: llvm_c_functions)
 			builder->CreateRet(ConstantInt::get(*context, APInt(32, 0)));
 
 		currentSourcePath = prevSourcePath;
-		XXXModule::finalize();
+//		XXXModule::finalize();
+
+try {
+	XXXModule::finalize();
+}
+catch (CompileError err) {
+	print("error.ll");
+	throw;
+}
 	}
 
 	void run()
@@ -789,6 +802,11 @@ Function::Create(
 Function::Create(
 	FunctionType::get(Types::BaseType->getPointerTo(), { Types::Int8Ptr, Types::Int8, Types::BaseType->getPointerTo(), Types::BaseType->getPointerTo()->getPointerTo(), Types::Int32 }, false),
 	Function::ExternalLinkage, "createFuncType",
+	*module
+);
+Function::Create(
+	FunctionType::get(Types::BuiltinType, { Types::BuiltinType }, false),
+	Function::ExternalLinkage, "getPointerToBuiltinType",
 	*module
 );
 

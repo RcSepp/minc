@@ -80,9 +80,12 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 	defineSymbol(rootBlock, "IntType", builtinTypeVal, intTypeVal);*/
 
 	defineSymbol(rootBlock, "void", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Void));
-	defineSymbol(rootBlock, "int", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int32));
 	defineSymbol(rootBlock, "bool", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int1));
+	defineSymbol(rootBlock, "char", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8));
+	defineSymbol(rootBlock, "int", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int32));
+	defineSymbol(rootBlock, "long", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int64));
 	defineSymbol(rootBlock, "double", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Double));
+	defineSymbol(rootBlock, "doublePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::DoublePtr));
 	defineSymbol(rootBlock, "string", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8Ptr));
 	defineSymbol(rootBlock, "func", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Function));
 	defineSymbol(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));

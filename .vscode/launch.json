@@ -12,7 +12,7 @@
             //"preLaunchTask": "make",
             "program": "${workspaceFolder}/bin/minc",
             "args": [
-                "build",
+                "debug",
                 "../examples/import.acc"
             ],
             "stopAtEntry": false,

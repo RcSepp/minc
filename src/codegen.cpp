@@ -41,10 +41,10 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include "llvm/ExecutionEngine/GenericValue.h"
 
 // LLVM optimization
+#include <llvm/Transforms/Coroutines.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 
 // Local includes
 #include "cparser.h"
@@ -520,14 +520,14 @@ protected:
 	DIFile* const prevDfile;
 	Function* const prevFunc;
 	BasicBlock* const prevBB;
-	const std::string filename;
+	const Location loc;
 
 	std::unique_ptr<Module> module;
 	legacy::FunctionPassManager* jitPassManager;
 
 public:
-	XXXModule(const std::string& moduleName, const std::string& sourcePath, bool outputDebugSymbols, bool optimizeCode)
-		: prevModule(currentModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), filename(sourcePath)
+	XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode)
+		: prevModule(currentModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), loc(loc)
 	{
 		// Create module
 		module = std::make_unique<Module>(moduleName, *context);
@@ -540,8 +540,9 @@ public:
 			currentModule->addModuleFlag(Module::Warning, "Debug Info Version", DEBUG_METADATA_VERSION);
 			dbuilder = new DIBuilder(*currentModule);
 			DIFile* difile = nullptr;
-			if (sourcePath != "-")
+			if (strcmp(loc.filename, "-") != 0)
 			{
+				const std::string sourcePath = loc.filename;
 				size_t slpos = sourcePath.find_last_of("/\\");
 				difile = dbuilder->createFile(sourcePath.substr(slpos + 1), sourcePath.substr(0, slpos));
 			}
@@ -562,10 +563,17 @@ public:
 		{
 			// Create pass manager for module
 			jitPassManager = new legacy::FunctionPassManager(module.get());
-			jitPassManager->add(createInstructionCombiningPass());
-			jitPassManager->add(createReassociatePass());
-			jitPassManager->add(createGVNPass());
-			jitPassManager->add(createCFGSimplificationPass());
+			PassManagerBuilder jitPassManagerBuilder;
+			jitPassManagerBuilder.OptLevel = 3; // -O3
+			jitPassManagerBuilder.SizeLevel = 0;
+			jitPassManagerBuilder.Inliner = createFunctionInliningPass(jitPassManagerBuilder.OptLevel, jitPassManagerBuilder.SizeLevel, false);
+			jitPassManagerBuilder.DisableUnitAtATime = false;
+			jitPassManagerBuilder.DisableUnrollLoops = false;
+			jitPassManagerBuilder.LoopVectorize = true;
+			jitPassManagerBuilder.SLPVectorize = true;
+			jit->getTargetMachine().adjustPassManager(jitPassManagerBuilder);
+			//addCoroutinePassesToExtensionPoints(jitPassManagerBuilder);
+			jitPassManagerBuilder.populateFunctionPassManager(*jitPassManager);
 			jitPassManager->doInitialization();
 		}
 		else
@@ -574,12 +582,34 @@ public:
 
 	virtual void finalize()
 	{
+		// Close main function
+		if (dbuilder)
+		{
+			dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
+			builder->SetCurrentDebugLocation(DebugLoc());
+		}
+
 		if (currentBB != prevBB)
 			builder->SetInsertPoint(currentBB = prevBB);
+
+		std::string errstr;
+		raw_string_ostream errstream(errstr);
+		bool haserr = verifyFunction(*currentFunc, &errstream);
+
+		// Close module
+		if (dbuilder)
+			dbuilder->finalize();
+
+		if (jitPassManager && !haserr)
+			jitPassManager->run(*currentFunc);
+
 		currentFunc = prevFunc; // Switch back to parent function
 		currentModule = prevModule; // Switch back to file module
 		dbuilder = prevDbuilder; // Reenable debug symbol generation
 		dfile = prevDfile;
+
+		if (haserr && errstr[0] != '\0')
+			throw CompileError("error compiling module\n" + errstr, loc);
 	}
 
 	void print(const std::string& outputPath)
@@ -638,7 +668,7 @@ private:
 
 public:
 	FileModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
-		: XXXModule(sourcePath == "-" ? "main" : sourcePath, sourcePath, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
+		: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath.c_str(), 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 	{
 for (Func& func: llvm_c_functions)
 {
@@ -650,7 +680,6 @@ for (Func& func: llvm_c_functions)
 		mainFunc = currentFunc = Function::Create(mainType, Function::ExternalLinkage, "main", currentModule);
 		mainFunc->setDSOLocal(true);
 		mainFunc->addAttribute(AttributeList::FunctionIndex, Attribute::AttrKind::NoInline);
-		mainFunc->addAttribute(AttributeList::FunctionIndex, Attribute::AttrKind::OptimizeNone);
 
 		if (dbuilder)
 		{
@@ -674,22 +703,6 @@ for (Func& func: llvm_c_functions)
 		if (!currentBB->getTerminator())
 			builder->CreateRet(ConstantInt::get(*context, APInt(32, 0)));
 
-		// Close main function
-		if (dbuilder)
-		{
-			dbuilder->finalizeSubprogram(mainFunc->getSubprogram());
-			builder->SetCurrentDebugLocation(DebugLoc());
-		}
-		std::string errstr;
-		raw_string_ostream errstream(errstr);
-		bool haserr = verifyFunction(*mainFunc, &errstream);
-		if (haserr && errstr[0] != '\0')
-			throw CompileError("error compiling module\n" + errstr, { filename.c_str(), 1, 1, 1, 1 });
-
-		// Close module
-		if (dbuilder)
-			dbuilder->finalize();
-
 		currentSourcePath = prevSourcePath;
 		XXXModule::finalize();
 	}
@@ -705,15 +718,13 @@ for (Func& func: llvm_c_functions)
 class JitFunction : public XXXModule
 {
 private:
-	Location loc;
-
 	llvm::orc::VModuleKey jitModuleKey;
 
 public:
 	StructType* closureType;
 
 	JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params)
-		: XXXModule("module", currentSourcePath, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), loc(blockAST->loc), jitModuleKey(0), closureType(StructType::create(*context, "closureType"))
+		: XXXModule("module", blockAST->loc, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), jitModuleKey(0), closureType(StructType::create(*context, "closureType"))
 	{
 		closureType->setBody(ArrayRef<Type*>());
 
@@ -850,10 +861,6 @@ blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 
 	void finalize()
 	{
-	}
-
-	uint64_t compile(const std::string& outputPath)
-	{
 		// Create implicit void-function return
 		if (currentFunc->getReturnType()->isVoidTy())
 			builder->CreateRetVoid();
@@ -866,41 +873,21 @@ for (auto&& [name, var]: capturedScope)
 }
 closureType->setBody(capturedTypes);*/
 
-		// Close currentFunc
-		if (dbuilder)
-		{
-			dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
-			builder->SetCurrentDebugLocation(DebugLoc());
-		}
-		builder->SetInsertPoint(currentBB = prevBB);
-		std::string errstr;
-		raw_string_ostream errstream(errstr);
-		bool haserr = verifyFunction(*currentFunc, &errstream);
-
-		// Close module
-		if (dbuilder)
-			dbuilder->finalize();
-
-		if (jitPassManager && !haserr)
-			jitPassManager->run(*currentFunc);
-
-#ifdef OUTPUT_JIT_CODE
-		if (outputPath[0] != '\0')
-			print(outputPath);
-#endif
-
-		currentFunc = prevFunc; // Switch back to parent function
-		currentModule = prevModule; // Switch back to file module
-		dbuilder = prevDbuilder; // Reenable debug symbol generation
-		dfile = prevDfile;
 		closure = nullptr;
+		XXXModule::finalize();
+	}
 
-//if (haserr) assert(0); //TODO: Raise exception
-		if (haserr)
-		{
-			char* fname = new char[filename.size() + 1];
-			strcpy(fname, filename.c_str());
-			throw CompileError("error compiling module\n" + errstr, loc);
+	uint64_t compile(const std::string& outputPath)
+	{
+		try {
+			finalize();
+		}
+		catch (CompileError err) {
+#ifdef OUTPUT_JIT_CODE
+			if (outputPath[0] != '\0')
+				print(outputPath);
+#endif
+			throw;
 		}
 
 		// Compile module
@@ -946,7 +933,7 @@ extern "C"
 
 IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, BlockExprAST* parentBlock)
 {
-	FileModule* module = new FileModule(sourcePath, moduleBlock, outputDebugSymbols, true);
+	FileModule* module = new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
 	createBuiltinStatements(moduleBlock);
 	moduleBlock->codegen(parentBlock);
 	module->finalize();

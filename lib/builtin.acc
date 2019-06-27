@@ -68,10 +68,7 @@ Depends on: LLVMValueRef $I
 stmtdef LLVMValueRef $I = $<LLVMValueRef> {
 	LLVMValueRef foo;
 	foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), "");
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMValueRef, foo);
 }
 
@@ -148,10 +145,7 @@ Depends on: LLVMBasicBlockRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMBasicBlockRef $I = $<LLVMBasicBlockRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueBasicBlock"), 0), "");
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMBasicBlockRef, foo);
 }
 
@@ -171,10 +165,7 @@ Depends on: LLVMTypeRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMTypeRef $I = $<LLVMTypeRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), "");
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMTypeRef, foo);
 }
 
@@ -226,10 +217,7 @@ Depends on: BaseType $I
 \* ---------------------------------------------------------------------------*/
 stmtdef BaseType $I = $E {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BaseType"), 0), "");
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, BaseType, foo);
 }
 
@@ -240,6 +228,86 @@ stmtdef BaseType $I = $E {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
+
+/* ---------------------------------------------------------------------------*\
+Name: ExprAST declaration
+Template: ExprAST $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef ExprAST $I {
+	addToScope(parentBlock, $0, ExprAST, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: ExprAST declaration with initialization
+Template: ExprAST $I = $E
+Depends on: ExprAST $I
+\* ---------------------------------------------------------------------------*/
+stmtdef ExprAST $I = $<ExprAST> {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0), "");
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, ExprAST, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LiteralExprAST declaration
+Template: LiteralExprAST $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef LiteralExprAST $I {
+	addToScope(parentBlock, $0, LiteralExprAST, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: LiteralExprAST declaration with initialization
+Template: LiteralExprAST $I = $E
+Depends on: LiteralExprAST $I
+\* ---------------------------------------------------------------------------*/
+stmtdef LiteralExprAST $I = $<LiteralExprAST> {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0), "");
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, LiteralExprAST, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: IdExprAST declaration
+Template: IdExprAST $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef IdExprAST $I {
+	addToScope(parentBlock, $0, IdExprAST, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: IdExprAST declaration with initialization
+Template: IdExprAST $I = $E
+Depends on: IdExprAST $I
+\* ---------------------------------------------------------------------------*/
+stmtdef IdExprAST $I = $<IdExprAST> {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0), "");
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, IdExprAST, foo);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BlockExprAST declaration
+Template: BlockExprAST $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef BlockExprAST $I {
+	addToScope(parentBlock, $0, BlockExprAST, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.BlockExprAST"), 0), ""));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BlockExprAST declaration with initialization
+Template: BlockExprAST $I = $E
+Depends on: BlockExprAST $I
+\* ---------------------------------------------------------------------------*/
+stmtdef BlockExprAST $I = $<BlockExprAST> {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.BlockExprAST"), 0), "");
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, BlockExprAST, foo);
+}
 
 exprdef<string> $<LiteralExprAST>.value {
 	LLVMValueRef args[1];
@@ -313,10 +381,7 @@ Depends on: LLVMValueRef $I = $<LLVMValueRef>
 stmtdef int $I = $<int> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(foo, 4);
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, int, foo);
 }
 
@@ -367,10 +432,7 @@ Depends on: LLVMValueRef $I = $<LLVMValueRef>
 stmtdef double $I = $<double> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
 	LLVMSetAlignment(foo, 8);
-	LLVMBuildStore(
-		codegen($1, parentBlock),
-		foo
-	);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, double, foo);
 }
 
@@ -390,6 +452,16 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<double> $<double> * $<double> {
 	return LLVMBuildFMul(codegen($0, parentBlock), codegen($1, parentBlock), "fmul");
+}
+
+exprdef<bool> $<double> == $<double> { //TODO: Untested
+int LLVMRealOEQ = 1; //TODO: Implement LLVM-c enums as constants //TODO: Untested
+	return LLVMBuildFCmp(LLVMRealOEQ, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
+}
+
+exprdef<bool> $<double> != $<double> { //TODO: Untested
+int LLVMRealONE = 6; //TODO: Implement LLVM-c enums as constants //TODO: Untested
+	return LLVMBuildFCmp(LLVMRealONE, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
 }
 
 /* ---------------------------------------------------------------------------*\

@@ -329,6 +329,15 @@ exprdef<int> $<int> + $<int> {
 	return LLVMBuildAdd(codegen($0, parentBlock), codegen($1, parentBlock), "add");
 }
 
+/* ---------------------------------------------------------------------------*\
+Name: Integer multiplication
+Template: $<int> * $<int>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $<int> * $<int> {
+	return LLVMBuildMul(codegen($0, parentBlock), codegen($1, parentBlock), "mul");
+}
+
 exprdef<bool> $<int> == $<int> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
@@ -366,6 +375,24 @@ stmtdef double $I = $<double> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: 64 bit float addition
+Template: $<double> + $<double>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<double> $<double> + $<double> {
+	return LLVMBuildFAdd(codegen($0, parentBlock), codegen($1, parentBlock), "fadd");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: 64 bit float multiplication
+Template: $<double> * $<double>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<double> $<double> * $<double> {
+	return LLVMBuildFMul(codegen($0, parentBlock), codegen($1, parentBlock), "fmul");
+}
+
+/* ---------------------------------------------------------------------------*\
 Cast: int to double
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
@@ -390,6 +417,18 @@ castdef<int> $<double> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Cast: double to long
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<long> $<double> {
+	return LLVMBuildFPToSI(
+		codegen($0, parentBlock),
+		LLVMInt64Type(),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
 Cast: bool to int
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
@@ -397,6 +436,18 @@ castdef<int> $<bool> {
 	return LLVMBuildZExt(
 		codegen($0, parentBlock),
 		LLVMInt32Type(),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: int to long
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<long> $<int> {
+	return LLVMBuildSExt(
+		codegen($0, parentBlock),
+		LLVMInt64Type(),
 		""
 	);
 }

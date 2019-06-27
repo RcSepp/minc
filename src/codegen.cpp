@@ -343,6 +343,24 @@ extern "C"
 		return castExpr;
 	}
 
+	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)
+	{
+		std::string report = "";
+		std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&> candidates;
+		std::vector<ExprAST*> resolvedParams;
+		scope->lookupExprCandidates(expr, candidates);
+		for (auto& candidate: candidates)
+		{
+			const MatchScore score = candidate.first;
+			const std::pair<const ExprAST*, IExprContext*>& context = candidate.second;
+			resolvedParams.clear();
+			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams);
+			BuiltinType* t = (BuiltinType*)context.second->getType(scope, resolvedParams);
+			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + (t ? t->name : "NULL") + ">\n";
+		}
+		return report;
+	}
+
 	BaseType* getBaseType()
 	{
 		return &BASE_TYPE;
@@ -1062,27 +1080,6 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 			return (BaseType*)var->value->getConstantValue();
 		}
 	}
-}
-
-void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
-{
-	if (p1 == '\0')
-	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
-		if (exprType != tpltType)
-		{
-//printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)exprType)->name, ((BuiltinType*)tpltType)->name, expr->loc.filename, expr->loc.begin_line);
-			IExprContext* castContext = block->lookupCast(exprType, tpltType);
-			assert(castContext != nullptr);
-			ExprAST* castExpr = new PlchldExprAST(expr->loc, this->p2);
-			castExpr->resolvedContext = castContext;
-			castExpr->resolvedParams.push_back(expr);
-			params.push_back(castExpr);
-			return;
-		}
-	}
-	params.push_back(expr);
 }
 
 Variable ParamExprAST::codegen(BlockExprAST* parentBlock)

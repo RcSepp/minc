@@ -12,6 +12,8 @@
 
 #include "api.h"
 
+typedef int MatchScore;
+
 struct Location
 {
 	const char* filename;
@@ -79,7 +81,7 @@ public:
 	{
 		return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
 	}
-	virtual bool match(const BlockExprAST* block, const ExprAST* expr) const = 0;
+	virtual bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const = 0;
 	virtual void resolveTypes(BlockExprAST* block);
 	virtual std::string str() const = 0;
@@ -93,7 +95,7 @@ public:
 	ExprListAST(char seperator) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator) {}
 	ExprListAST(char seperator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator), exprs(exprs) {}
 	Variable codegen(BlockExprAST* parentBlock) { assert(0); }
-	bool match(const BlockExprAST* block, const ExprAST* exprs) const;
+	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params) const;
 	void resolveTypes(BlockExprAST* block) { for (auto expr: exprs) expr->resolveTypes(block); }
 	std::string str() const
@@ -156,6 +158,7 @@ public:
 			this->exprreg[i].insert(this->exprreg[i].begin(), stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
 	}
 	const std::pair<const ExprAST*, IExprContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr) const;
+	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const;
 };
 
 class StmtAST : public AST
@@ -233,6 +236,11 @@ public:
 		else
 			return false;
 	}
+	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const
+	{
+		for (const BlockExprAST* block = this; block; block = block->parent)
+			block->stmtreg.lookupExprCandidates(this, expr, candidates);
+	}
 
 	void defineCast(BaseType* fromType, BaseType* toType, IExprContext* context)
 	{
@@ -295,7 +303,7 @@ public:
 	}
 
 	Variable codegen(BlockExprAST* parentBlock);
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
 		return expr->exprtype == this->exprtype;
 	}
@@ -324,7 +332,7 @@ class LiteralExprAST : public ExprAST
 public:
 	const char* value;
 	LiteralExprAST(const Location& loc, const char* value) : ExprAST(loc, ExprAST::ExprType::LITERAL), value(value) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
 		return expr->exprtype == this->exprtype && strcmp(((LiteralExprAST*)expr)->value,  this->value) == 0;
 	}
@@ -337,7 +345,7 @@ class IdExprAST : public ExprAST
 public:
 	const char* name;
 	IdExprAST(const Location& loc, const char* name) : ExprAST(loc, ExprAST::ExprType::ID), name(name) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
 		return expr->exprtype == this->exprtype && strcmp(((IdExprAST*)expr)->name, this->name) == 0;
 	}
@@ -353,32 +361,7 @@ public:
 	PlchldExprAST(const Location& loc, char p1) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), p2("") {}
 	PlchldExprAST(const Location& loc, const char* p2) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1('\0'), p2(p2) {}
 	BaseType* getType(const BlockExprAST* parentBlock) const;
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
-	{
-		if (p1 == 'E')
-			return true;
-
-		if (expr->exprtype == ExprAST::ExprType::PLCHLD)
-			return ((PlchldExprAST*)expr)->p1 == p1 && strcmp(((PlchldExprAST*)expr)->p2, p2) == 0;
-
-		const XXXValue* var;
-		switch(p1)
-		{
-		case 'I': return expr->exprtype == ExprAST::ExprType::ID;
-		case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
-		case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;
-		case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
-		case '\0':
-		{
-			BaseType* exprType = expr->getType(block);
-			BaseType* tpltType = getType(block);
-			if (exprType == tpltType)
-				return true;
-			return block->lookupCast(exprType, tpltType) != nullptr;
-		}
-		default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
-		}
-	}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const;
 	std::string str() const { return '$' + (p1 == '\0' ? std::string(p2) : std::string(1, p1)); }
 };
@@ -392,9 +375,9 @@ public:
 	ParamExprAST(const Location& loc, ExprAST* idx) : ExprAST(loc, ExprAST::ExprType::PARAM), staticIdx(-1), dynamicIdx(idx) {}
 	Variable codegen(BlockExprAST* parentBlock);
 	BaseType* getType(const BlockExprAST* parentBlock) const;
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return staticIdx == this->staticIdx && (dynamicIdx == nullptr || this->dynamicIdx->match(block, dynamicIdx));
+		return staticIdx == this->staticIdx && (dynamicIdx == nullptr || this->dynamicIdx->match(block, dynamicIdx, score));
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -415,9 +398,9 @@ class EllipsisExprAST : public ExprAST
 public:
 	ExprAST* expr;
 	EllipsisExprAST(const Location& loc, ExprAST* expr) : ExprAST(loc, ExprAST::ExprType::ELLIPSIS), expr(expr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr);
+		return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -436,9 +419,9 @@ class AssignExprAST : public ExprAST
 public:
 	ExprAST *var, *val;
 	AssignExprAST(const Location& loc, ExprAST* var, ExprAST* val) : ExprAST(loc, ExprAST::ExprType::ASSIGN), var(var), val(val) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((AssignExprAST*)expr)->var) && val->match(block, ((AssignExprAST*)expr)->val);
+		return expr->exprtype == this->exprtype && var->match(block, ((AssignExprAST*)expr)->var, score) && val->match(block, ((AssignExprAST*)expr)->val, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -460,9 +443,9 @@ public:
 	ExprAST *var;
 	ExprListAST* args;
 	CallExprAST(const Location& loc, ExprAST* var, ExprListAST* args) : ExprAST(loc, ExprAST::ExprType::CALL), var(var), args(args) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((CallExprAST*)expr)->var) && args->match(block, ((CallExprAST*)expr)->args);
+		return expr->exprtype == this->exprtype && var->match(block, ((CallExprAST*)expr)->var, score) && args->match(block, ((CallExprAST*)expr)->args, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -484,9 +467,9 @@ public:
 	ExprAST *var;
 	ExprListAST* idx;
 	SubscrExprAST(const Location& loc, ExprAST* var, ExprListAST* idx) : ExprAST(loc, ExprAST::ExprType::SUBSCR), var(var), idx(idx) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((SubscrExprAST*)expr)->var) && idx->match(block, ((SubscrExprAST*)expr)->idx);
+		return expr->exprtype == this->exprtype && var->match(block, ((SubscrExprAST*)expr)->var, score) && idx->match(block, ((SubscrExprAST*)expr)->idx, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -508,9 +491,9 @@ public:
 	ExprAST *var;
 	ExprListAST* args;
 	TpltExprAST(const Location& loc, ExprAST* var, ExprListAST* args) : ExprAST(loc, ExprAST::ExprType::TPLT), var(var), args(args) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((TpltExprAST*)expr)->var) && args->match(block, ((TpltExprAST*)expr)->args);
+		return expr->exprtype == this->exprtype && var->match(block, ((TpltExprAST*)expr)->var, score) && args->match(block, ((TpltExprAST*)expr)->args, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -531,9 +514,9 @@ class MemberExprAST : public ExprAST
 public:
 	ExprAST *var, *mbr;
 	MemberExprAST(const Location& loc, ExprAST* var, ExprAST* mbr) : ExprAST(loc, ExprAST::ExprType::MEMBER), var(var), mbr(mbr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((MemberExprAST*)expr)->var) && mbr->match(block, ((MemberExprAST*)expr)->mbr);
+		return expr->exprtype == this->exprtype && var->match(block, ((MemberExprAST*)expr)->var, score) && mbr->match(block, ((MemberExprAST*)expr)->mbr, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{
@@ -556,9 +539,9 @@ public:
 	ExprAST *a, *b;
 	const std::string opstr;
 	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b) : ExprAST(loc, ExprAST::ExprType::ADD), op(op), a(a), b(b), opstr(opstr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr) const
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a) && b->match(block, ((BinOpExprAST*)expr)->b);
+		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score) && b->match(block, ((BinOpExprAST*)expr)->b, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 	{

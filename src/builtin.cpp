@@ -132,8 +132,9 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 					if (castExpr == nullptr)
 					{
 						std::string expectedTypeStr = expectedType->name, gotTypeStr = gotType == nullptr ? "NULL" : gotType->name;
+						std::string candidateReport = reportExprCandidates(parentBlock, params[i + 1]);
 						raiseCompileError(
-							("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">").c_str(),
+							("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">\n" + candidateReport).c_str(),
 							params[i + 1]
 						);
 					}

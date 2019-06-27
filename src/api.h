@@ -55,6 +55,7 @@ extern "C"
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);
 	StmtAST* lookupStmt(const BlockExprAST* scope, const std::vector<ExprAST*>& exprs);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
+	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 
 	BaseType* getBaseType();
 

@@ -1,46 +1,84 @@
 import <builtin.acc>;
 
-stmtdef double $I[$L] {
-	// Fixed size array:
-	/*addToScope(
-		parentBlock,
-		$0,
-		LLVMTypeRef,
-		LLVMBuildAlloca(
-			LLVMArrayType(LLVMPointerType(LLVMDoubleType(), 0), atoi($1.value)),
-			""
-		)
-	);*/
+stmtdef double* $I = $<doublePtr> {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), "");
+	LLVMSetAlignment(foo, 8);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, doublePtr, foo);
+}
 
-	// Dynamic array:
-	LLVMValueRef array = LLVMBuildArrayAlloca(
+stmtdef char* $I = $E {
+	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMSetAlignment(foo, 8);
+	LLVMBuildStore(codegen($1, parentBlock), foo);
+	addToScope(parentBlock, $0, string, foo);
+}
+
+exprdef<doublePtr> toDoublePtr($E) {
+	return LLVMBuildBitCast(
+		codegen($0, parentBlock),
 		LLVMPointerType(LLVMDoubleType(), 0),
-		codegen($1, parentBlock),
 		""
 	);
-	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMDoubleType(), 0), 0), "");
-	LLVMBuildStore(
-		array,
-		arrayptr
-	);
-	addToScope(
-		parentBlock,
-		$0,
-		LLVMTypeRef,
-		arrayptr
+}
+exprdef<string> toCharPtr($E) {
+	return LLVMBuildBitCast(
+		codegen($0, parentBlock),
+		LLVMPointerType(LLVMInt8Type(), 0),
+		""
 	);
 }
 
-stmtdef vec $I {
-	addToScope(parentBlock, $0, LLVMTypeRef, LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), ""));
+exprdef<double> $E[$<int>] = $<double> {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+
+	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMBuildStore(expr, gep);
+	return expr;
+}
+exprdef<double> $E[$<int>] {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+	LLVMValueRef val = LLVMBuildLoad(gep, "");
+	LLVMSetAlignment(val, 8);
+	return val;
 }
 
-stmtdef printmat($E) {
-	vec m;
-	m = codegen($0, parentBlock);
-	printf("test\n");
+
+int N = 512;//1024;
+int NN = N*N;
+
+// --j--   --k--   --j--
+// i C | = i A | * k B |
+// -----   -----   -----
+
+double* A = toDoublePtr(malloc(NN * 8));
+double* B = toDoublePtr(malloc(NN * 8));
+double* C = toDoublePtr(malloc(NN * 8));
+for (int i = 0; i != NN; i = i + 1) {
+	A[i] = i;
+}
+for (int i = 0; i != NN; i = i + 1) {
+	B[i] = i;
+}
+for (int i = 0; i != NN; i = i + 1) {
+	C[i] = 0.0;
 }
 
-double A[16];
+for (int i = 0; i != N; i = i + 1) {
+	for (int j = 0; j != N; j = j + 1) {
+		for (int k = 0; k != N; k = k + 1) {
+			C[i * N + j] = C[i * N + j] + A[i * N + k] * B[k * N + j];
+		}
+	}
+}
 
-printmat(A);
+double fresult = C[N] * 0.000000001;
+int result = fresult;
+//free(toCharPtr(ptr));
+return result;

@@ -699,9 +699,8 @@ public:
 		: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath.c_str(), 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 	{
 for (Func& func: llvm_c_functions)
-{
 	moduleBlock->addToScope(func.type.name, &func.type, &func);
-}
+moduleBlock->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 
 		// Generate main function
 		FunctionType *mainType = FunctionType::get(Types::Int32, {}, false);
@@ -766,10 +765,8 @@ public:
 
 //capturedScope.clear();
 
-for (Func& func: llvm_c_functions)
-{
-	blockAST->addToScope(func.type.name, &func.type, &func);
-}
+//for (Func& func: llvm_c_functions)
+//	blockAST->addToScope(func.type.name, &func.type, &func);
 Func* LLVMPositionBuilderFunc = new Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "_LLVMPositionBuilder");
 blockAST->addToScope(LLVMPositionBuilderFunc->type.name, &LLVMPositionBuilderFunc->type, LLVMPositionBuilderFunc);
 Func* LLVMBuildInBoundsGEP1Func = new Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP1");
@@ -841,7 +838,7 @@ Function::Create(
 Func* testFunc = new Func("TestFunc", BuiltinTypes::Void, { }, false);
 blockAST->addToScope(testFunc->type.name, &testFunc->type, testFunc);
 
-blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
+//blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 
 		// Create function
 		std::vector<Type*> argTypes;

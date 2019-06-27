@@ -614,7 +614,12 @@ public:
 		dfile = prevDfile;
 
 		if (haserr && errstr[0] != '\0')
-			throw CompileError("error compiling module\n" + errstr, loc);
+		{
+			char* errFilename = new char[strlen(loc.filename) + 1];
+			strcpy(errFilename, loc.filename);
+			Location* errloc = new Location{errFilename, loc.begin_line, loc.begin_col, loc.end_line, loc.end_col};
+			throw CompileError("error compiling module\n" + errstr, *errloc);
+		}
 	}
 
 	void print(const std::string& outputPath)

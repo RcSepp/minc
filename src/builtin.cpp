@@ -308,24 +308,18 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 
 			// Generate JIT function name
 			std::string jitFuncName = "";
-			if (ExprASTIsId(params[0]) && strcmp(getIdExprASTName((IdExprAST*)params[0]), "DEBUG") == 0)
+			for (auto param: params)
 			{
-				params = std::vector<ExprAST*>(params.begin() + 1, params.end());
-				for (auto param: params)
-				{
-					if (param != params.front())
-						jitFuncName += ' ';
-					jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
-				}
-				//TODO: Escape invalid characters like '/'
-				jitFuncName += ".ll";
+				if (param != params.front())
+					jitFuncName += ' ';
+				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
 			}
 
-			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams);
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineStmt(parentBlock, params, compileJitFunction(jitFunc, jitFuncName.c_str()));
+			defineStmt(parentBlock, params, compileJitFunction(jitFunc));
 			removeJitFunction(jitFunc);
 		}
 	);
@@ -349,10 +343,8 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 // 					jitFuncName += ' ';
 // 				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
 // 			}
-// 			//TODO: Escape invalid characters like '/'
-// 			jitFuncName += ".ll";
 
-// 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams);
+// 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 // 			capturedScope.clear();
 // 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
@@ -360,7 +352,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 // memcpy(paramsCopy, params.data(), params.size() * sizeof(ExprAST*));
 // 			Value* paramsVal = Constant::getIntegerValue(Types::ExprAST->getPointerTo()->getPointerTo(), APInt(64, (uint64_t)paramsCopy, true));
 // 			Value* numParamsVal = ConstantInt::get(*context, APInt(32, params.size()));
-// 			Value* funcPtrVal = ConstantInt::get(*context, APInt(64, compileJitFunction(jitFunc, jitFuncName.c_str()), false));
+// 			Value* funcPtrVal = ConstantInt::get(*context, APInt(64, compileJitFunction(jitFunc), false));
 // 			Value* closure = builder->CreateAlloca(jitFunc.closureType, nullptr, "closure");
 // 			removeJitFunction(jitFunc);
 // 			int i = 0;
@@ -390,10 +382,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 			collectParams(parentBlock, exprAST, exprAST, exprParams);
 
 			// Generate JIT function name
-			/*std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
-			//TODO: Escape invalid characters like '/'
-			jitFuncName += ".ll";*/
-std::string jitFuncName = "";
+			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
 
 			/*const Variable* typeVar = parentBlock->lookupScope(getIdExprASTName(typeAST));
 			if (!typeVar)
@@ -401,11 +390,11 @@ std::string jitFuncName = "";
 			if (typeVar->value)
 				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);*/
 
-			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams);
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineExpr(parentBlock, exprAST, compileJitFunction(jitFunc, jitFuncName.c_str()), exprType);
+			defineExpr(parentBlock, exprAST, compileJitFunction(jitFunc), exprType);
 			removeJitFunction(jitFunc);
 		}
 	);
@@ -422,16 +411,13 @@ std::string jitFuncName = "";
 			std::vector<ExprAST*> castParams(1, params[1]);
 
 			// Generate JIT function name
-			/*std::string jitFuncName("cast " + std::string(((BuiltinType*)fromType)->name) + " -> " + std::string(((BuiltinType*)toType)->name));
-			//TODO: Escape invalid characters like '/'
-			jitFuncName += ".ll";*/
-std::string jitFuncName = "";
+			std::string jitFuncName("cast " + std::string(((BuiltinType*)fromType)->name) + " -> " + std::string(((BuiltinType*)toType)->name));
 
-			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams);
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineCast(parentBlock, fromType, toType, compileJitFunction(jitFunc, jitFuncName.c_str()));
+			defineCast(parentBlock, fromType, toType, compileJitFunction(jitFunc));
 			removeJitFunction(jitFunc);
 		}
 	);
@@ -460,10 +446,7 @@ std::string jitFuncName = "";
 			collectParams(parentBlock, (ExprAST*)nameAST, (ExprAST*)nameAST, typeParams);
 
 			// Generate JIT function name
-			/*std::string jitFuncName = getIdExprASTName(nameAST);
-			//TODO: Escape invalid characters like '/'
-			jitFuncName += ".ll";*/
-std::string jitFuncName = "";
+			std::string jitFuncName = getIdExprASTName(nameAST);
 
 			bool isCaptured;
 			const Variable* typeVar = lookupSymbol(parentBlock, getIdExprASTName(typeAST), isCaptured);
@@ -476,12 +459,12 @@ std::string jitFuncName = "";
 			Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
 			struct ReturnStruct { uint64_t result; Type* resultType; };
 
-			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, new BuiltinType("typedefReturnStructType", wrap(returnStructType), 8), typeParams);
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, new BuiltinType("typedefReturnStructType", wrap(returnStructType), 8), typeParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
 			typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
-			funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc, jitFuncName.c_str()));
+			funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
 			ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
 			removeJitFunctionModule(jitFunc);
 			removeJitFunction(jitFunc);

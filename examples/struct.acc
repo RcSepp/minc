@@ -14,7 +14,7 @@ stmtdef string $I = $E {
 	addToScope(parentBlock, $0, int, foo);
 }
 
-stmtdef DEBUG class $I $B {
+stmtdef class $I $B {
 	string name;
 	name = $0.name;
 	LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), name);

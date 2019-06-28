@@ -66,8 +66,8 @@ extern "C"
 
 	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes);
 
-	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params);
-	uint64_t compileJitFunction(JitFunction* jitFunc, const char* outputPath);
+	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
+	uint64_t compileJitFunction(JitFunction* jitFunc);
 	void removeJitFunctionModule(JitFunction* jitFunc);
 	void removeJitFunction(JitFunction* jitFunc);
 }

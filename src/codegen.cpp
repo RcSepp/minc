@@ -679,12 +679,13 @@ class JitFunction : public XXXModule
 {
 private:
 	llvm::orc::VModuleKey jitModuleKey;
+	const std::string name;
 
 public:
 	StructType* closureType;
 
-	JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params)
-		: XXXModule("module", blockAST->loc, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), jitModuleKey(0), closureType(StructType::create(*context, "closureType"))
+	JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name)
+		: XXXModule("module", blockAST->loc, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), jitModuleKey(0), name(name), closureType(StructType::create(*context, "closureType"))
 	{
 		closureType->setBody(ArrayRef<Type*>());
 
@@ -699,13 +700,13 @@ public:
 		argTypes.push_back(Types::ExprAST->getPointerTo()->getPointerTo());
 		argTypes.push_back(closureType->getPointerTo());
 		FunctionType* funcType = FunctionType::get(returnType, argTypes, false);
-		Function* jitFunction = currentFunc = Function::Create(funcType, Function::ExternalLinkage, "jitFunction", module.get());
+		Function* jitFunction = currentFunc = Function::Create(funcType, Function::ExternalLinkage, name, module.get());
 
 		if (dbuilder)
 		{
 			unsigned ScopeLine = blockAST->loc.begin_line;
 			DISubprogram *SP = dbuilder->createFunction(
-				dfile, "jitFunction", StringRef(), dfile, loc.begin_line,
+				dfile, name, StringRef(), dfile, loc.begin_line,
 				dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(SmallVector<Metadata*, 8>({ }))),
 				ScopeLine, DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
 			;
@@ -765,22 +766,22 @@ closureType->setBody(capturedTypes);*/
 		XXXModule::finalize();
 	}
 
-	uint64_t compile(const std::string& outputPath)
+	uint64_t compile()
 	{
 		try {
 			finalize();
+//print(name + ".ll");
 		}
 		catch (CompileError err) {
 #ifdef OUTPUT_JIT_CODE
-			if (outputPath[0] != '\0')
-				print(outputPath);
+			print("error.ll");
 #endif
 			throw;
 		}
 
 		// Compile module
 		jitModuleKey = jit->addModule(std::move(module));
-		auto jitFunctionSymbol = jit->findSymbol("jitFunction");
+		auto jitFunctionSymbol = jit->findSymbol(name);
 		uint64_t jitFunctionPointer = cantFail(jitFunctionSymbol.getAddress());
 
 		return jitFunctionPointer;
@@ -798,14 +799,14 @@ closureType->setBody(capturedTypes);*/
 
 extern "C"
 {
-	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params)
+	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
 	{
-		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params);
+		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
 	}
 
-	uint64_t compileJitFunction(JitFunction* jitFunc, const char* outputPath)
+	uint64_t compileJitFunction(JitFunction* jitFunc)
 	{
-		return jitFunc->compile(outputPath);
+		return jitFunc->compile();
 	}
 
 	void removeJitFunctionModule(JitFunction* jitFunc)

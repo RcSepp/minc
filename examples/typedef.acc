@@ -4,7 +4,7 @@ import <builtin.acc>;
 	fake_return LLVMGetTypeByName("struct.LLVMOpaqueValue");
 }
 
-stmtdef DEBUG $<int> $I {
+stmtdef $<int> $I {
 	LLVMValueRef foo = LLVMBuildAlloca(myType, "");
 	LLVMSetAlignment(foo, 4);
 	addToScope(parentBlock, $1, int, foo);
@@ -42,7 +42,7 @@ exprdef<int> $<BuiltinType>.align {
 	return align;
 }
 
-stmtdef DEBUG foo $<BuiltinType> $I {
+stmtdef foo $<BuiltinType> $I {
 	/*printf("int ... %lu\n", int);
 	printf("$0 ... %lu\n", $0);
 	printf("codegen($0, parentBlock) ... %lu\n", codegen($0, parentBlock));

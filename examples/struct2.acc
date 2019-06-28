@@ -1,6 +1,6 @@
 import <builtin.acc>;
 
-stmtdef DEBUG class2 $I $B {
+stmtdef class2 $I $B {
 	// Create struct type
 	LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), $0.name);
 	LLVMTypeRef elementTypes[256];

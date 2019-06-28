@@ -19,7 +19,7 @@ exprdef<BuiltinType> $<BuiltinType>.ptr {
 }
 printDouble foo;*/
 
-// stmtdef DEBUG print($<int>) {
+// stmtdef print($<int>) {
 // 	/*// LLVMValueRef foo = ;
 // 	//printf("LLVMGetNamedFunction('printf') = %u\n", getfunc(printf));
 

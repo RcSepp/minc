@@ -17,6 +17,7 @@ class FuncDecl(object):
         self.c_restype = None
         self.name = name
         self.argtypes = argtypes
+        self.c_args = None
         self.c_argtypes = None
         self.modified_name = None
 
@@ -28,7 +29,7 @@ IR_TYPE_REGEX = re.compile(r"(?:%\"[^\"]*\")|%[\w.:]+")
 IR_TYPEDEF_REGEX = re.compile(r"(.*?) = type (.*)")
 IR_FUNCDEF_REGEX = re.compile(r"define (dso_local)? (.*?) @([^(]+)\((.*)\) (?:local_unnamed_addr )?#.*")
 C_TYPE_REGEX = re.compile(r"(.*?)[^\*\s]+$")
-C_FUNCDEF_REGEX = re.compile(r"([\w\*\s]+[\*\s])(\w+)\s*\(([^\)]*)\);")
+C_FUNCDEF_REGEX = re.compile(r"([\w\*\s]+[\*\s])(\w+)\s*\(([^\)]*)\)\s*{")
 
 template_regex = re.compile(r"@(\t*)(\w+)@")
 
@@ -186,21 +187,20 @@ for filename in ['Core.ll', 'CloneModule.ll', 'DebugInfo.ll']:
 # Parse header files
 ################################################################################
 
-for filename in ['Core.h', 'DebugInfo.h']:
+for filename in ['Core.cpp', 'DebugInfo.cpp', 'CloneModule.cpp']:
     with open(filename, 'r') as file:
         for match in C_FUNCDEF_REGEX.finditer(file.read()):
             decl_name = match.group(2)
-            if decl_name == "LLVMBuildBitCast":
-                abc = 0
             try:
                 decl = decls[decl_name]
             except KeyError:
                 missing_decls.add(decl_name)
                 continue
             decl.c_restype = get_c_type(match.group(1))
-            decl.c_argtypes = match.group(3).replace('\n', ' ').replace('\t', ' ')
-            decl.c_argtypes = split_outside_brackets(decl.c_argtypes, ',')
-            decl.c_argtypes = [ get_c_type(argtype) for argtype in decl.c_argtypes ]
+            decl.c_args = match.group(3).replace('\n', ' ').replace('\t', ' ')
+            decl.c_args = split_outside_brackets(decl.c_args, ',')
+            decl.c_args = [ c_arg.strip() for c_arg in decl.c_args ]
+            decl.c_argtypes = [ get_c_type(c_arg) for c_arg in decl.c_args ]
 
 # Report function declarations found in header file but missing from IR file
 if missing_decls:
@@ -217,8 +217,6 @@ for decl in decls.values():
 if missing_decls:
     print(str(len(missing_decls)) + " MISSING DECLS FOUND:")
     for d in missing_decls:
-        if d == "LLVMBuildBitCast":
-            abc = 0
         print(d)
     #raise Exception("Unknown decls found")
     decls = { k: v for k, v in decls.items() if k not in missing_decls }
@@ -260,13 +258,15 @@ print(len(decls))
 ################################################################################
 
 REPLACE_PARAMS = {
-    'LLVMBuilderRef': 'wrap(builder)',
-    'LLVMModuleRef': 'wrap(currentModule)',
-    'LLVMDIBuilderRef': 'wrap(dbuilder)',
+    'LLVMBuilderRef Builder': 'wrap(builder)',
+    'LLVMBuilderRef B': 'wrap(builder)',
+    'LLVMModuleRef Mod': 'wrap(currentModule)',
+    'LLVMModuleRef M': 'wrap(currentModule)',
+    'LLVMDIBuilderRef Builder': 'wrap(dbuilder)',
 }
 for decl in decls.values():
-    for argtype in decl.c_argtypes:
-        if argtype in REPLACE_PARAMS:
+    for c_arg in decl.c_args:
+        if c_arg in REPLACE_PARAMS:
             decl.modified_name = "LLVMEX" + decl.name[4:]
             break
 
@@ -295,7 +295,7 @@ for filename in os.listdir("./templates"):
             for decl in decls.values():
                 try:
                     restype = get_builtin_type(decl.restype)
-                    argtypes = [get_builtin_type(typestr) for typestr, c_typestr in zip(decl.argtypes, decl.c_argtypes) if c_typestr not in REPLACE_PARAMS]
+                    argtypes = [get_builtin_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if c_arg not in REPLACE_PARAMS]
                 except UnknownTypeException as err:
                     unknown_types.add(err.typestr)
                     continue
@@ -371,11 +371,11 @@ for filename in os.listdir("./templates"):
 
                     args = []
                     argvals = []
-                    for i, c_typestr in enumerate(decl.c_argtypes):
-                        argval = REPLACE_PARAMS.get(c_typestr)
+                    for c_arg, c_argtype in zip(decl.c_args, decl.c_argtypes):
+                        argval = REPLACE_PARAMS.get(c_arg)
                         if argval is None:
-                            argval = '_' + str(i)
-                            args.append(c_typestr + ' ' + argval)
+                            argval = c_arg[len(c_argtype):].strip()
+                            args.append(c_arg)
                         argvals.append(argval)
 
                     output.append(

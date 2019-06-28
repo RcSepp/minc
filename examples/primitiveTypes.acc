@@ -37,14 +37,6 @@ printDouble foo;*/
 // 		""
 // 	);*/
 
-// 	/*LLVMValueRef args[0];
-// 	LLVMBuildCall(
-// 		LLVMGetNamedFunction('TestFunc'),
-// 		args,
-// 		0,
-// 		""
-// 	);*/
-
 // 	LLVMValueRef value = codegen($0, parentBlock);
 // 	parentBlock.do printf("%i\n", value);
 // }

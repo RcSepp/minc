@@ -313,7 +313,7 @@ exprdef<string> $<LiteralExprAST>.value {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
-		LLVMGetNamedFunction("getLiteralExprASTValue"),
+		getLiteralExprASTValue,
 		args,
 		1,
 		""
@@ -324,7 +324,7 @@ exprdef<string> $<IdExprAST>.name {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
-		LLVMGetNamedFunction("getIdExprASTName"),
+		getIdExprASTName,
 		args,
 		1,
 		""
@@ -335,7 +335,7 @@ exprdef<BlockExprAST> $<BlockExprAST>.parent {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
-		LLVMGetNamedFunction("getBlockExprASTParent"),
+		getBlockExprASTParent,
 		args,
 		1,
 		""
@@ -347,7 +347,7 @@ exprdef<BlockExprAST> $<BlockExprAST>.parent = $<BlockExprAST> {
 	args[0] = codegen($0, parentBlock);
 	args[1] = codegen($1, parentBlock);
 	return LLVMBuildCall(
-		LLVMGetNamedFunction("setBlockExprASTParent"),
+		setBlockExprASTParent,
 		args,
 		2,
 		""

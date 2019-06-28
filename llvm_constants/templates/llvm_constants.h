@@ -160,7 +160,9 @@ namespace Types
 
 namespace BuiltinTypes
 {
+	extern BuiltinType* Base;
 	extern BuiltinType* Builtin;
+	extern BuiltinType* Value;
 
 	// Primitive types
 	extern BuiltinType* Void;
@@ -207,6 +209,7 @@ namespace BuiltinTypes
 	extern BuiltinType* LiteralExprAST;
 	extern BuiltinType* IdExprAST;
 	extern BuiltinType* BlockExprAST;
+	extern BuiltinType* StmtAST;
 
 	// Misc. types
 	extern BuiltinType* Function;

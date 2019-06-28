@@ -82,9 +82,11 @@ DIFile *dfile;
 // Misc
 DIBasicType* intType;
 Value* closure;
-std::list<Func> llvm_c_functions;
 BlockExprAST* fileBlock = nullptr;
 int foo = 0;
+
+void initBuiltinSymbols();
+void defineBuiltinSymbols(BlockExprAST* block);
 
 struct StaticStmtContext : public IStmtContext
 {
@@ -311,6 +313,11 @@ extern "C"
 		scope->defineCast(fromType, toType, new DynamicExprContext(funcAddr, toType));
 	}
 
+	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock)
+	{
+		scope->defineCast(fromType, toType, new StaticExprContext(codeBlock, toType));
+	}
+
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured)
 	{
 		return scope->lookupScope(name, isCaptured);
@@ -429,18 +436,9 @@ extern "C"
 		targetBlock->defineStatement(std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(funcPtr, closure));
 	}
 
-	void _LLVMPositionBuilder(LLVMBasicBlockRef bb)
+	Value* getValueFunction(XXXValue* value)
 	{
-		builder->SetInsertPoint(currentBB = unwrap(bb));
-	}
-	LLVMValueRef _LLVMBuildInBoundsGEP1(LLVMValueRef Pointer, LLVMValueRef Idx0, const char *Name)
-	{
-		return LLVMBuildInBoundsGEP(wrap(builder), Pointer, &Idx0, 1, Name);
-	}
-	LLVMValueRef _LLVMBuildInBoundsGEP2(LLVMValueRef Pointer, LLVMValueRef Idx0, LLVMValueRef Idx1, const char *Name)
-	{
-		LLVMValueRef Idxs[] = { Idx0, Idx1 };
-		return LLVMBuildInBoundsGEP(wrap(builder), Pointer, Idxs, 2, Name);
+		return value->getFunction(currentModule);
 	}
 }
 
@@ -463,76 +461,8 @@ InitializeNativeTarget();
 	// Declare types
 	Types::create(*context);
 
-
-	// >>> Create builtin types
-
-	BuiltinTypes::Builtin = new BuiltinType("builtinType", wrap(Types::BuiltinType), 8);
-
-	// Primitive types
-	BuiltinTypes::Void = new BuiltinType("void", LLVMVoidType(), 0);
-	BuiltinTypes::VoidPtr = BuiltinTypes::Void->Ptr();
-	BuiltinTypes::Int1 = new BuiltinType("bool", wrap(Types::Int1), 1);
-	BuiltinTypes::Int1Ptr =BuiltinTypes::Int1->Ptr();
-	BuiltinTypes::Int8 = new BuiltinType("char", wrap(Types::Int8), 1);
-	BuiltinTypes::Int8Ptr = new BuiltinType("string", wrap(Types::Int8Ptr), 8);
-	BuiltinTypes::Int16 = new BuiltinType("short", wrap(Types::Int16), 2);
-	BuiltinTypes::Int16Ptr = BuiltinTypes::Int16->Ptr();
-	BuiltinTypes::Int32 = new BuiltinType("int", LLVMInt32Type(), 4);
-	BuiltinTypes::Int32Ptr = BuiltinTypes::Int32->Ptr();
-	BuiltinTypes::Int64 = new BuiltinType("long", wrap(Types::Int64), 8);
-	BuiltinTypes::Int64Ptr = BuiltinTypes::Int64->Ptr();
-	BuiltinTypes::Half = new BuiltinType("half", LLVMHalfType(), 2);
-	BuiltinTypes::HalfPtr = BuiltinTypes::Half->Ptr();
-	BuiltinTypes::Float = new BuiltinType("float", LLVMFloatType(), 4);
-	BuiltinTypes::FloatPtr = BuiltinTypes::Float->Ptr();
-	BuiltinTypes::Double = new BuiltinType("double", LLVMDoubleType(), 8);
-	BuiltinTypes::DoublePtr = BuiltinTypes::Double->Ptr();
-
-	// LLVM types
-	BuiltinTypes::LLVMAttributeRef = new BuiltinType("LLVMAttributeRef", wrap(Types::LLVMOpaqueAttributeRef->getPointerTo()), 8);
-	BuiltinTypes::LLVMBasicBlockRef = new BuiltinType("LLVMBasicBlockRef", wrap(Types::LLVMOpaqueBasicBlock->getPointerTo()), 8);
-	BuiltinTypes::LLVMBuilderRef = new BuiltinType("LLVMBuilderRef", wrap(Types::LLVMOpaqueBuilder->getPointerTo()), 8);
-	BuiltinTypes::LLVMContextRef = new BuiltinType("LLVMContextRef", wrap(Types::LLVMOpaqueContext->getPointerTo()), 8);
-	BuiltinTypes::LLVMDiagnosticInfoRef = new BuiltinType("LLVMDiagnosticInfoRef", wrap(Types::LLVMOpaqueDiagnosticInfo->getPointerTo()), 8);
-	BuiltinTypes::LLVMDIBuilderRef = new BuiltinType("LLVMDIBuilderRef", wrap(Types::LLVMOpaqueDIBuilder->getPointerTo()), 8);
-	BuiltinTypes::LLVMMemoryBufferRef = new BuiltinType("LLVMMemoryBufferRef", wrap(Types::LLVMOpaqueMemoryBuffer->getPointerTo()), 8);
-	BuiltinTypes::LLVMMetadataRef = new BuiltinType("LLVMMetadataRef", wrap(Types::LLVMOpaqueMetadata->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleRef = new BuiltinType("LLVMModuleRef", wrap(Types::LLVMOpaqueModule->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleFlagEntryRef = new BuiltinType("LLVMModuleFlagEntryRef", wrap(Types::LLVMOpaqueModuleFlagEntry->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleProviderRef = new BuiltinType("LLVMModuleProviderRef", wrap(Types::LLVMOpaqueModuleProvider->getPointerTo()), 8);
-	BuiltinTypes::LLVMNamedMDNodeRef = new BuiltinType("LLVMNamedMDNodeRef", wrap(Types::LLVMOpaqueNamedMDNode->getPointerTo()), 8);
-	BuiltinTypes::LLVMPassManagerRef = new BuiltinType("LLVMPassManagerRef", wrap(Types::LLVMOpaquePassManager->getPointerTo()), 8);
-	BuiltinTypes::LLVMPassRegistryRef = new BuiltinType("LLVMPassRegistryRef", wrap(Types::LLVMOpaquePassRegistry->getPointerTo()), 8);
-	BuiltinTypes::LLVMTypeRef = new BuiltinType("LLVMTypeRef", wrap(Types::LLVMOpaqueType->getPointerTo()), 8);
-	BuiltinTypes::LLVMUseRef = new BuiltinType("LLVMUseRef", wrap(Types::LLVMOpaqueUse->getPointerTo()), 8);
-	BuiltinTypes::LLVMValueRef = new BuiltinType("LLVMValueRef", wrap(Types::LLVMOpaqueValue->getPointerTo()), 8);
-	BuiltinTypes::LLVMValueMetadataEntryRef = new BuiltinType("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8);
-
-	// AST types
-	BuiltinTypes::ExprAST = new BuiltinType("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
-	BuiltinTypes::LiteralExprAST = new BuiltinType("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
-	BuiltinTypes::IdExprAST = new BuiltinType("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
-	BuiltinTypes::BlockExprAST = new BuiltinType("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
-
-	// Misc. types
-	BuiltinTypes::Function = new BuiltinType("func", nullptr, 8);
-
-	/*printf("builtinType ...       0x%lx\n", (uint64_t)BuiltinTypes::Builtin);
-	printf("int ...               0x%lx\n", (uint64_t)BuiltinTypes::Int32);
-	printf("double ...            0x%lx\n", (uint64_t)BuiltinTypes::Double);
-	printf("string ...            0x%lx\n", (uint64_t)BuiltinTypes::Int8Ptr);
-	printf("func ...              0x%lx\n", (uint64_t)BuiltinTypes::Function);
-	printf("ExprAST ...           0x%lx\n", (uint64_t)BuiltinTypes::ExprAST);
-	printf("LiteralExprAST ...    0x%lx\n", (uint64_t)BuiltinTypes::LiteralExprAST);
-	printf("IdExprAST ...         0x%lx\n", (uint64_t)BuiltinTypes::IdExprAST);
-	printf("BlockExprAST ...      0x%lx\n", (uint64_t)BuiltinTypes::BlockExprAST);
-	printf("LLVMValueRef ...      0x%lx\n", (uint64_t)BuiltinTypes::LLVMValueRef);
-	printf("LLVMBasicBlockRef ... 0x%lx\n", (uint64_t)BuiltinTypes::LLVMBasicBlockRef);
-	printf("LLVMTypeRef ...       0x%lx\n", (uint64_t)BuiltinTypes::LLVMTypeRef);*/
-
-
-	// Create LLVM-c extern functions
-	create_llvm_c_functions(*context, llvm_c_functions);
+	// Initialize builtin symbols
+	initBuiltinSymbols();
 }
 
 class XXXModule : public IModule
@@ -687,7 +617,6 @@ return true;
 	}
 };
 
-void createBuiltinStatements(BlockExprAST* block);
 class FileModule : public XXXModule
 {
 private:
@@ -698,10 +627,6 @@ public:
 	FileModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
 		: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath.c_str(), 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 	{
-for (Func& func: llvm_c_functions)
-	moduleBlock->addToScope(func.type.name, &func.type, &func);
-moduleBlock->lookupScope("printf")->value->getFunction(module.get()); //DELETE
-
 		// Generate main function
 		FunctionType *mainType = FunctionType::get(Types::Int32, {}, false);
 		mainFunc = currentFunc = Function::Create(mainType, Function::ExternalLinkage, "main", currentModule);
@@ -764,81 +689,6 @@ public:
 		closureType->setBody(ArrayRef<Type*>());
 
 //capturedScope.clear();
-
-//for (Func& func: llvm_c_functions)
-//	blockAST->addToScope(func.type.name, &func.type, &func);
-Func* LLVMPositionBuilderFunc = new Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "_LLVMPositionBuilder");
-blockAST->addToScope(LLVMPositionBuilderFunc->type.name, &LLVMPositionBuilderFunc->type, LLVMPositionBuilderFunc);
-Func* LLVMBuildInBoundsGEP1Func = new Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP1");
-blockAST->addToScope(LLVMBuildInBoundsGEP1Func->type.name, &LLVMBuildInBoundsGEP1Func->type, LLVMBuildInBoundsGEP1Func);
-Func* LLVMBuildInBoundsGEP2Func = new Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "_LLVMBuildInBoundsGEP2");
-blockAST->addToScope(LLVMBuildInBoundsGEP2Func->type.name, &LLVMBuildInBoundsGEP2Func->type, LLVMBuildInBoundsGEP2Func);
-
-Function::Create(
-	FunctionType::get(Types::LLVMOpaqueValue->getPointerTo(), { Types::ExprAST->getPointerTo(), Types::BlockExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "codegenExprValue",
-	*module
-);
-Function::Create(
-	FunctionType::get(Types::Void, { Types::StmtAST->getPointerTo(), Types::BlockExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "codegenStmt",
-	*module
-);
-Function::Create(
-	FunctionType::get(Type::getVoidTy(*context), { Types::BlockExprAST->getPointerTo(), Types::IdExprAST->getPointerTo(), Types::BaseType->getPointerTo(), Types::LLVMOpaqueValue->getPointerTo() }, false),
-	Function::ExternalLinkage, "AddToScope",
-	*module
-);
-Function::Create(
-	FunctionType::get(Type::getVoidTy(*context), { Types::ExprAST->getPointerTo(), Types::BaseType->getPointerTo(), Types::LLVMOpaqueValue->getPointerTo() }, false),
-	Function::ExternalLinkage, "AddToFileScope",
-	*module
-);
-Function::Create(
-	FunctionType::get(Type::getVoidTy(*context), { Types::BlockExprAST->getPointerTo(), Types::ExprAST->getPointerTo()->getPointerTo(), Type::getInt32Ty(*context), Type::getInt64Ty(*context), Type::getInt8PtrTy(*context) }, false),
-	Function::ExternalLinkage, "DefineStatement",
-	*module
-);
-Function::Create(
-	FunctionType::get(Type::getInt8PtrTy(*context), { Types::IdExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "getIdExprASTName",
-	*module
-);
-Function::Create(
-	FunctionType::get(Type::getInt8PtrTy(*context), { Types::LiteralExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "getLiteralExprASTValue",
-	*module
-);
-Function::Create(
-	FunctionType::get(Types::BlockExprAST->getPointerTo(), { Types::BlockExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "getBlockExprASTParent",
-	*module
-);
-Function::Create(
-	FunctionType::get(Types::Void, { Types::BlockExprAST->getPointerTo(), Types::BlockExprAST->getPointerTo() }, false),
-	Function::ExternalLinkage, "setBlockExprASTParent",
-	*module
-);
-Function::Create(
-	FunctionType::get(Types::BaseType->getPointerTo(), { Types::Int8Ptr, Types::Int8, Types::BaseType->getPointerTo(), Types::BaseType->getPointerTo()->getPointerTo(), Types::Int32 }, false),
-	Function::ExternalLinkage, "createFuncType",
-	*module
-);
-Function::Create(
-	FunctionType::get(Types::BuiltinType, { Types::BuiltinType }, false),
-	Function::ExternalLinkage, "getPointerToBuiltinType",
-	*module
-);
-
-/*Function::Create(
-	FunctionType::get(Type::getVoidTy(*context), {}, false),
-	Function::ExternalLinkage, "TestFunc",
-	*module
-);*/
-Func* testFunc = new Func("TestFunc", BuiltinTypes::Void, { }, false);
-blockAST->addToScope(testFunc->type.name, &testFunc->type, testFunc);
-
-//blockAST->lookupScope("printf")->value->getFunction(module.get()); //DELETE
 
 		// Create function
 		std::vector<Type*> argTypes;
@@ -972,7 +822,7 @@ extern "C"
 IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, BlockExprAST* parentBlock)
 {
 	FileModule* module = new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
-	createBuiltinStatements(moduleBlock);
+	defineBuiltinSymbols(moduleBlock);
 	moduleBlock->codegen(parentBlock);
 	module->finalize();
 	return module;

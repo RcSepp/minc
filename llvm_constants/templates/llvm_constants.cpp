@@ -122,7 +122,9 @@ namespace Types
 
 namespace BuiltinTypes
 {
+	BuiltinType* Base;
 	BuiltinType* Builtin;
+	BuiltinType* Value;
 
 	// Primitive types
 	BuiltinType* Void;
@@ -169,6 +171,7 @@ namespace BuiltinTypes
 	BuiltinType* LiteralExprAST;
 	BuiltinType* IdExprAST;
 	BuiltinType* BlockExprAST;
+	BuiltinType* StmtAST;
 
 	// Misc. types
 	BuiltinType* Function;
@@ -189,9 +192,15 @@ llvm_c_functions.push_back(Func("malloc", BuiltinTypes::Int8Ptr, { BuiltinTypes:
 llvm_c_functions.push_back(Func("free", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr }, false));
 
 @	LLVM_EXTERN_FUNC_DEF@
+	llvm_c_functions.push_back(Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "LLVMEXPositionBuilder"));
+	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP1"));
+	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP2"));
 }
 
 extern "C"
 {
 @	MODIFIED_LLVM_EXTERN_FUNC_DEF@
+	void LLVMEXPositionBuilder(LLVMBasicBlockRef bb) { builder->SetInsertPoint(currentBB = unwrap(bb)); }
+	LLVMValueRef LLVMEXBuildInBoundsGEP1(LLVMValueRef Pointer, LLVMValueRef Idx0, const char *Name) { return LLVMBuildInBoundsGEP(wrap(builder), Pointer, &Idx0, 1, Name); }
+	LLVMValueRef LLVMEXBuildInBoundsGEP2(LLVMValueRef Pointer, LLVMValueRef Idx0, LLVMValueRef Idx1, const char *Name) { LLVMValueRef Idxs[] = { Idx0, Idx1 }; return LLVMBuildInBoundsGEP(wrap(builder), Pointer, Idxs, 2, Name); }
 }

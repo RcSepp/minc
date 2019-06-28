@@ -254,6 +254,21 @@ types = { t: tb[1] for t, tb in types.items() if tb[0] }
 print(len(decls))
 
 ################################################################################
+# Filter functions
+################################################################################
+
+SKIP_FUNCS = [
+    'LLVMPositionBuilder',
+    'LLVMBuildInBoundsGEP1',
+    'LLVMBuildInBoundsGEP2',
+]
+for skip_func in SKIP_FUNCS:
+    try:
+        del decls[skip_func]
+    except KeyError:
+        pass
+
+################################################################################
 # Modify functions
 ################################################################################
 

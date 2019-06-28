@@ -22,7 +22,25 @@ extern llvm::DIFile* dfile;
 extern llvm::DIBasicType* intType;
 extern llvm::Value* closure;
 
+std::list<Func> llvm_c_functions;
 std::list<std::pair<std::string, const Variable>> capturedScope;
+
+namespace MincFunctions
+{
+	Func* getIdExprASTName;
+	Func* getLiteralExprASTValue;
+	Func* getBlockExprASTParent;
+	Func* setBlockExprASTParent;
+	Func* getPointerToBuiltinType;
+
+	Func* addToScope;
+	Func* addToFileScope;
+	Func* codegenExprValue;
+	Func* codegenStmt;
+	Func* defineStmt;
+	Func* getValueFunction;
+	Func* createFuncType;
+}
 
 Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 {
@@ -67,8 +85,113 @@ closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
 	return Variable(var->type, varVal);
 }
 
-void createBuiltinStatements(BlockExprAST* rootBlock)
+void initBuiltinSymbols()
 {
+	// >>> Create builtin types
+
+	BuiltinTypes::Base = new BuiltinType("BaseType", wrap(Types::BaseType->getPointerTo()), 8);
+	BuiltinTypes::Builtin = new BuiltinType("BuiltinType", wrap(Types::BuiltinType), 8);
+	BuiltinTypes::Value = new BuiltinType("Value", wrap(Types::Value->getPointerTo()), 8);
+
+	// Primitive types
+	BuiltinTypes::Void = new BuiltinType("void", LLVMVoidType(), 0);
+	BuiltinTypes::VoidPtr = BuiltinTypes::Void->Ptr();
+	BuiltinTypes::Int1 = new BuiltinType("bool", wrap(Types::Int1), 1);
+	BuiltinTypes::Int1Ptr =BuiltinTypes::Int1->Ptr();
+	BuiltinTypes::Int8 = new BuiltinType("char", wrap(Types::Int8), 1);
+	BuiltinTypes::Int8Ptr = new BuiltinType("string", wrap(Types::Int8Ptr), 8);
+	BuiltinTypes::Int16 = new BuiltinType("short", wrap(Types::Int16), 2);
+	BuiltinTypes::Int16Ptr = BuiltinTypes::Int16->Ptr();
+	BuiltinTypes::Int32 = new BuiltinType("int", LLVMInt32Type(), 4);
+	BuiltinTypes::Int32Ptr = BuiltinTypes::Int32->Ptr();
+	BuiltinTypes::Int64 = new BuiltinType("long", wrap(Types::Int64), 8);
+	BuiltinTypes::Int64Ptr = BuiltinTypes::Int64->Ptr();
+	BuiltinTypes::Half = new BuiltinType("half", LLVMHalfType(), 2);
+	BuiltinTypes::HalfPtr = BuiltinTypes::Half->Ptr();
+	BuiltinTypes::Float = new BuiltinType("float", LLVMFloatType(), 4);
+	BuiltinTypes::FloatPtr = BuiltinTypes::Float->Ptr();
+	BuiltinTypes::Double = new BuiltinType("double", LLVMDoubleType(), 8);
+	BuiltinTypes::DoublePtr = BuiltinTypes::Double->Ptr();
+
+	// LLVM types
+	BuiltinTypes::LLVMAttributeRef = new BuiltinType("LLVMAttributeRef", wrap(Types::LLVMOpaqueAttributeRef->getPointerTo()), 8);
+	BuiltinTypes::LLVMBasicBlockRef = new BuiltinType("LLVMBasicBlockRef", wrap(Types::LLVMOpaqueBasicBlock->getPointerTo()), 8);
+	BuiltinTypes::LLVMBuilderRef = new BuiltinType("LLVMBuilderRef", wrap(Types::LLVMOpaqueBuilder->getPointerTo()), 8);
+	BuiltinTypes::LLVMContextRef = new BuiltinType("LLVMContextRef", wrap(Types::LLVMOpaqueContext->getPointerTo()), 8);
+	BuiltinTypes::LLVMDiagnosticInfoRef = new BuiltinType("LLVMDiagnosticInfoRef", wrap(Types::LLVMOpaqueDiagnosticInfo->getPointerTo()), 8);
+	BuiltinTypes::LLVMDIBuilderRef = new BuiltinType("LLVMDIBuilderRef", wrap(Types::LLVMOpaqueDIBuilder->getPointerTo()), 8);
+	BuiltinTypes::LLVMMemoryBufferRef = new BuiltinType("LLVMMemoryBufferRef", wrap(Types::LLVMOpaqueMemoryBuffer->getPointerTo()), 8);
+	BuiltinTypes::LLVMMetadataRef = new BuiltinType("LLVMMetadataRef", wrap(Types::LLVMOpaqueMetadata->getPointerTo()), 8);
+	BuiltinTypes::LLVMModuleRef = new BuiltinType("LLVMModuleRef", wrap(Types::LLVMOpaqueModule->getPointerTo()), 8);
+	BuiltinTypes::LLVMModuleFlagEntryRef = new BuiltinType("LLVMModuleFlagEntryRef", wrap(Types::LLVMOpaqueModuleFlagEntry->getPointerTo()), 8);
+	BuiltinTypes::LLVMModuleProviderRef = new BuiltinType("LLVMModuleProviderRef", wrap(Types::LLVMOpaqueModuleProvider->getPointerTo()), 8);
+	BuiltinTypes::LLVMNamedMDNodeRef = new BuiltinType("LLVMNamedMDNodeRef", wrap(Types::LLVMOpaqueNamedMDNode->getPointerTo()), 8);
+	BuiltinTypes::LLVMPassManagerRef = new BuiltinType("LLVMPassManagerRef", wrap(Types::LLVMOpaquePassManager->getPointerTo()), 8);
+	BuiltinTypes::LLVMPassRegistryRef = new BuiltinType("LLVMPassRegistryRef", wrap(Types::LLVMOpaquePassRegistry->getPointerTo()), 8);
+	BuiltinTypes::LLVMTypeRef = new BuiltinType("LLVMTypeRef", wrap(Types::LLVMOpaqueType->getPointerTo()), 8);
+	BuiltinTypes::LLVMUseRef = new BuiltinType("LLVMUseRef", wrap(Types::LLVMOpaqueUse->getPointerTo()), 8);
+	BuiltinTypes::LLVMValueRef = new BuiltinType("LLVMValueRef", wrap(Types::LLVMOpaqueValue->getPointerTo()), 8);
+	BuiltinTypes::LLVMValueMetadataEntryRef = new BuiltinType("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8);
+
+	// AST types
+	BuiltinTypes::ExprAST = new BuiltinType("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
+	BuiltinTypes::LiteralExprAST = new BuiltinType("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
+	BuiltinTypes::IdExprAST = new BuiltinType("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
+	BuiltinTypes::BlockExprAST = new BuiltinType("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
+	BuiltinTypes::StmtAST = new BuiltinType("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8);
+
+	// Misc. types
+	BuiltinTypes::Function = new BuiltinType("func", nullptr, 8);
+
+	// >>> Create LLVM-c extern functions
+
+	create_llvm_c_functions(*context, llvm_c_functions);
+
+	// >>> Create Minc extern functions
+
+	MincFunctions::getIdExprASTName = new Func("getIdExprASTName", BuiltinTypes::Int8Ptr, { BuiltinTypes::IdExprAST }, false);
+	MincFunctions::getLiteralExprASTValue = new Func("getLiteralExprASTValue", BuiltinTypes::Int8Ptr, { BuiltinTypes::LiteralExprAST }, false);
+	MincFunctions::getBlockExprASTParent = new Func("getBlockExprASTParent", BuiltinTypes::BlockExprAST, { BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::setBlockExprASTParent = new Func("setBlockExprASTParent", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::getPointerToBuiltinType = new Func("getPointerToBuiltinType", BuiltinTypes::Builtin, { BuiltinTypes::Builtin }, false);
+
+	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
+	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::ExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
+	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, BuiltinTypes::Int64, BuiltinTypes::Int8Ptr }, false);
+	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
+	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
+}
+
+void defineBuiltinSymbols(BlockExprAST* rootBlock)
+{
+	// Define LLVM-c extern functions
+	for (Func& func: llvm_c_functions)
+		defineSymbol(rootBlock, func.type.name, &func.type, &func);
+bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFunction(currentModule); //DELETE
+
+	// Define Minc extern functions
+	for (Func* func: {
+		MincFunctions::getIdExprASTName,
+		MincFunctions::getLiteralExprASTValue,
+		MincFunctions::getBlockExprASTParent,
+		MincFunctions::setBlockExprASTParent,
+		MincFunctions::getPointerToBuiltinType
+	})
+	{
+		defineSymbol(rootBlock, func->type.name, &func->type, func);
+		defineCast2(rootBlock, &func->type, BuiltinTypes::LLVMValueRef,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
+				Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+
+				Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
+				Value* resultVal = builder->CreateCall(func, { funcVal });
+				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
+			}
+		);
+	}
+
 	BaseType* baseType = getBaseType();
 	defineSymbol(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType->getPointerTo(), (uint64_t)baseType));
 
@@ -250,7 +373,7 @@ void createBuiltinStatements(BlockExprAST* rootBlock)
 // 				builder->CreateStore(var.value->val, gep)->setAlignment(8);
 // 			}
 // 			closure = builder->CreateBitCast(closure, Type::getInt8PtrTy(*context));
-// 			Function* defineStatementFunc = currentModule->getFunction("DefineStatement");
+// 			Function* defineStatementFunc = MincFunctions::defineStmt->getFunction(currentModule);
 // 			builder->CreateCall(defineStatementFunc, { targetBlockVal, paramsVal, numParamsVal, funcPtrVal, closure });
 // 		}
 // 	);
@@ -386,7 +509,7 @@ std::string jitFuncName = "";
 				raiseCompileError(("undefined statement " + StmtASTToString(stmt)).c_str(), stmtParams[0]); //TODO: loc should spam all params
 			Value* stmtVal = Constant::getIntegerValue(Types::StmtAST->getPointerTo(), APInt(64, (uint64_t)stmt, true));
 
-			Function* func = currentModule->getFunction("codegenStmt");
+			Function* func = MincFunctions::codegenStmt->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(func, { stmtVal, parentBlockVal });
 		}
 	);
@@ -503,7 +626,7 @@ std::string jitFuncName = "";
 			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
 			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
 
-			Function* func = currentModule->getFunction("codegenExprValue");
+			Function* func = MincFunctions::codegenExprValue->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal });
 			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 		},
@@ -518,7 +641,7 @@ std::string jitFuncName = "";
 
 			exprVal = builder->CreateBitCast(exprVal, Types::ExprAST->getPointerTo());
 
-			Function* func = currentModule->getFunction("codegenExprValue");
+			Function* func = MincFunctions::codegenExprValue->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal });
 			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 		},
@@ -550,7 +673,7 @@ std::string jitFuncName = "";
 				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);
 			Value* typeVal = Constant::getIntegerValue(Type::getInt8PtrTy(*context), APInt(64, (uint64_t)typeVar->type, true));*/
 
-			Function* addToScopeFunc = currentModule->getFunction("AddToScope");
+			Function* addToScopeFunc = MincFunctions::addToScope->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(addToScopeFunc, { parentBlockVal, nameVal, typeVal, valVal });
 			return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
 		},
@@ -562,8 +685,7 @@ std::string jitFuncName = "";
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			BaseType* type = getType(params[0], parentBlock);
 BuiltinType* foo = (BuiltinType*)type;
-if (type)
-	printf("gettype(%s) == %s\n", ExprASTToString(params[0]).c_str(), ((BuiltinType*)type)->name);
+printf("gettype(%s) == %s\n", ExprASTToString(params[0]).c_str(), type ? ((BuiltinType*)type)->name : "NULL");
 			//return Variable(nullptr, new XXXValue(Constant::getIntegerValue(Types::BaseType->getPointerTo(), APInt(64, (uint64_t)type))));
 return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Types::BuiltinType, APInt(64, (uint64_t)type))));
 		},
@@ -592,7 +714,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 
 			Value* valVal = codegenExpr(params[2], parentBlock).value->val;
 
-			Function* addToScopeFunc = currentModule->getFunction("AddToFileScope");
+			Function* addToScopeFunc = MincFunctions::addToFileScope->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(addToScopeFunc, { nameVal, typeVal, valVal });
 		}
 	);
@@ -738,7 +860,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			Value* numArgTypesVal = Constant::getIntegerValue(Types::Int32, APInt(32, numArgTypes, true));
 			Value* argTypesVal = builder->CreateConstInBoundsGEP2_64(argTypes, 0, 0);
 
-			Function* func = currentModule->getFunction("createFuncType");
+			Function* func = MincFunctions::createFuncType->getFunction(currentModule);
 			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(builder->CreateCall(func, { nameVal, isVarArgVal, resultTypeVal, argTypesVal, numArgTypesVal })));
 		},
 		BuiltinTypes::LLVMValueRef

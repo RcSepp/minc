@@ -378,36 +378,6 @@ extern "C"
 		throw CompileError(msg, loc->loc);
 	}
 
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc)
-	{
-		std::ifstream file(path);
-		if (!file.good())
-			throw CompileError(std::string(path) + ": No such file or directory\n", loc->loc);
-
-		//TODO: Cache imported symbols, statements and expressions, instead of ignoring already imported files
-		char buf[1024];
-		realpath(path, buf);
-		char* realPath = new char[strlen(buf) + 1];
-		strcpy(realPath, buf);
-		static std::set<std::string> importedPaths;
-		if (importedPaths.find(realPath) != importedPaths.end()) return;
-		importedPaths.insert(realPath);
-
-		// Parse imported file
-		CLexer lexer(file, std::cout);
-		BlockExprAST* importedBlock;
-		yy::CParser parser(lexer, realPath, &importedBlock);
-		if (parser.parse())
-			throw CompileError("error parsing file " + std::string(path), loc->loc);
-
-		// Generate module from parsed file
-		IModule* importedModule = createModule(realPath, importedBlock, dbuilder != nullptr, scope);
-
-		scope->import(importedBlock);
-
-		//TODO: Free importedModule
-	}
-
 	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes)
 	{
 		std::vector<BuiltinType*> builtinArgTypes;
@@ -674,6 +644,41 @@ catch (CompileError err) {
 		outs() << "./minc Result: " << result << "\n";
 	}
 };
+
+extern "C"
+{
+	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc)
+	{
+		std::ifstream file(path);
+		if (!file.good())
+			throw CompileError(std::string(path) + ": No such file or directory\n", loc->loc);
+
+		//TODO: Cache imported symbols, statements and expressions, instead of ignoring already imported files
+		char buf[1024];
+		realpath(path, buf);
+		char* realPath = new char[strlen(buf) + 1];
+		strcpy(realPath, buf);
+		static std::set<std::string> importedPaths;
+		if (importedPaths.find(realPath) != importedPaths.end()) return;
+		importedPaths.insert(realPath);
+
+		// Parse imported file
+		CLexer lexer(file, std::cout);
+		BlockExprAST* importedBlock;
+		yy::CParser parser(lexer, realPath, &importedBlock);
+		if (parser.parse())
+			throw CompileError("error parsing file " + std::string(path), loc->loc);
+
+		// Generate module from parsed file
+		FileModule* importedModule = new FileModule(realPath, importedBlock, dbuilder != nullptr, dbuilder == nullptr);
+		importedBlock->codegen(scope);
+		importedModule->finalize();
+
+		scope->import(importedBlock);
+
+		//TODO: Free importedModule
+	}
+}
 
 class JitFunction : public XXXModule
 {

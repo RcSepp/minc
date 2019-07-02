@@ -1,3 +1,5 @@
+//#define DEBUG_STMTREG
+
 #include <assert.h>
 #include "ast.h"
 
@@ -9,6 +11,10 @@ UndefinedIdentifierException::UndefinedIdentifierException(const IdExprAST* id)
 	: CompileError('`' + id->str() + "` was not declared in this scope", id->loc) {}
 InvalidTypeException::InvalidTypeException(const PlchldExprAST* plchld)
 	: CompileError('`' + std::string(plchld->p2) + "` is not a type", plchld->loc) {}
+
+#ifdef DEBUG_STMTREG
+std::string indent;
+#endif
 
 bool matchStatement(const BlockExprAST* block, std::vector<ExprAST*>::const_iterator tplt, const std::vector<ExprAST*>::const_iterator tpltEnd, std::vector<ExprAST*>::const_iterator expr, const std::vector<ExprAST*>::const_iterator exprEnd, MatchScore& score)
 {
@@ -131,42 +137,83 @@ void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::
 
 const std::pair<const ExprListAST*, IStmtContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const StmtAST* stmt) const
 {
+#ifdef DEBUG_STMTREG
+	printf("%slookupStmt(%s)\n", indent.c_str(), stmt->str().c_str());
+	indent += '\t';
+#endif
 	MatchScore currentScore, bestScore = -2147483648;
 	const std::pair<const ExprListAST*, IStmtContext*>* bestStmt = nullptr;
 	for (const std::pair<const ExprListAST*, IStmtContext*>& iter: stmtreg)
 	{
+#ifdef DEBUG_STMTREG
+		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+#endif
 		currentScore = 0;
 		if (iter.first->match(block, stmt->exprs, currentScore) && currentScore > bestScore)
 		{
 			bestScore = currentScore;
 			bestStmt = &iter;
+#ifdef DEBUG_STMTREG
+			printf(" MATCH(score=%i)", currentScore);
+#endif
 		}
+#ifdef DEBUG_STMTREG
+		printf("\n");
+#endif
 	}
+#ifdef DEBUG_STMTREG
+	indent = indent.substr(0, indent.size() - 1);
+#endif
 	return bestStmt;
 }
 
 const std::pair<const ExprAST*, IExprContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr) const
 {
+#ifdef DEBUG_STMTREG
+	printf("%slookupExpr(%s)\n", indent.c_str(), expr->str().c_str());
+	indent += '\t';
+#endif
 	MatchScore currentScore, bestScore = -2147483648;
 	const std::pair<const ExprAST*, IExprContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
+#ifdef DEBUG_STMTREG
+		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+#endif
 		currentScore = 0;
 		if (iter.first->match(block, expr, currentScore) && currentScore > bestScore)
 		{
 			bestScore = currentScore;
 			bestStmt = &iter;
+#ifdef DEBUG_STMTREG
+			printf(" MATCH(score=%i)", currentScore);
+#endif
 		}
+#ifdef DEBUG_STMTREG
+		printf("\n");
+#endif
 	}
 	for (auto& iter: exprreg[ExprAST::PLCHLD])
 	{
+#ifdef DEBUG_STMTREG
+		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+#endif
 		currentScore = 0;
 		if (iter.first->match(block, expr, currentScore) && currentScore > bestScore)
 		{
 			bestScore = currentScore;
 			bestStmt = &iter;
+#ifdef DEBUG_STMTREG
+			printf(" MATCH(score=%i)", currentScore);
+#endif
 		}
+#ifdef DEBUG_STMTREG
+		printf("\n");
+#endif
 	}
+#ifdef DEBUG_STMTREG
+	indent = indent.substr(0, indent.size() - 1);
+#endif
 	return bestStmt;
 }
 

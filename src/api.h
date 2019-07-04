@@ -45,12 +45,12 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, uint64_t funcAddr, void* closure = nullptr);
+	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock);
-	void defineExpr(BlockExprAST* scope, ExprAST* tplt, uint64_t funcAddr, BaseType* type);
+	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock);
-	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, uint64_t funcAddr);
+	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);
@@ -67,7 +67,6 @@ extern "C"
 	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
-	uint64_t compileJitFunction(JitFunction* jitFunc);
 	void removeJitFunctionModule(JitFunction* jitFunc);
 	void removeJitFunction(JitFunction* jitFunc);
 }

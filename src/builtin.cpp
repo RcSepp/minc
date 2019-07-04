@@ -37,7 +37,7 @@ namespace MincFunctions
 	Func* addToFileScope;
 	Func* codegenExprValue;
 	Func* codegenStmt;
-	Func* defineStmt;
+	//Func* defineStmt;
 	Func* getValueFunction;
 	Func* createFuncType;
 }
@@ -159,7 +159,7 @@ void initBuiltinSymbols()
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::ExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
-	MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, BuiltinTypes::Int64, BuiltinTypes::Int8Ptr }, false);
+	//MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, TODO, BuiltinTypes::Int8Ptr }, false);
 	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
 	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
 }
@@ -319,7 +319,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineStmt(parentBlock, params, compileJitFunction(jitFunc));
+			defineStmt(parentBlock, params, jitFunc);
 			removeJitFunction(jitFunc);
 		}
 	);
@@ -352,7 +352,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 // memcpy(paramsCopy, params.data(), params.size() * sizeof(ExprAST*));
 // 			Value* paramsVal = Constant::getIntegerValue(Types::ExprAST->getPointerTo()->getPointerTo(), APInt(64, (uint64_t)paramsCopy, true));
 // 			Value* numParamsVal = ConstantInt::get(*context, APInt(32, params.size()));
-// 			Value* funcPtrVal = ConstantInt::get(*context, APInt(64, compileJitFunction(jitFunc), false));
+// 			Value* jitFuncVal = Constant::getIntegerValue(TODO, APInt(64, (uint64_t)jitFunc, true));
 // 			Value* closure = builder->CreateAlloca(jitFunc.closureType, nullptr, "closure");
 // 			removeJitFunction(jitFunc);
 // 			int i = 0;
@@ -366,7 +366,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 // 			}
 // 			closure = builder->CreateBitCast(closure, Type::getInt8PtrTy(*context));
 // 			Function* defineStatementFunc = MincFunctions::defineStmt->getFunction(currentModule);
-// 			builder->CreateCall(defineStatementFunc, { targetBlockVal, paramsVal, numParamsVal, funcPtrVal, closure });
+// 			builder->CreateCall(defineStatementFunc, { targetBlockVal, paramsVal, numParamsVal, jitFuncVal, closure });
 // 		}
 // 	);
 
@@ -394,7 +394,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineExpr(parentBlock, exprAST, compileJitFunction(jitFunc), exprType);
+			defineExpr(parentBlock, exprAST, jitFunc, exprType);
 			removeJitFunction(jitFunc);
 		}
 	);
@@ -417,68 +417,68 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			defineCast(parentBlock, fromType, toType, compileJitFunction(jitFunc));
+			defineCast(parentBlock, fromType, toType, jitFunc);
 			removeJitFunction(jitFunc);
 		}
 	);
 
-	// Define `typedef`
-	defineStmt2(rootBlock, "typedef<$I> $I $B",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-			IdExprAST* typeAST = (IdExprAST*)params.front();
-			IdExprAST* nameAST = (IdExprAST*)params[1];
-			BlockExprAST* blockAST = (BlockExprAST*)params.back();
+	// // Define `typedef`
+	// defineStmt2(rootBlock, "typedef<$I> $I $B",
+	// 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+	// 		IdExprAST* typeAST = (IdExprAST*)params.front();
+	// 		IdExprAST* nameAST = (IdExprAST*)params[1];
+	// 		BlockExprAST* blockAST = (BlockExprAST*)params.back();
+ 
+	// 		// Define `return`
+	// 		Type* returnType = nullptr;
+	// 		defineStmt2(blockAST, "fake_return $E",
+	// 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+	// 				Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
+	// 				Value* resultVal = codegenExpr(params[0], parentBlock).value->val;
+	// 				Value* resultTypeVal = Constant::getIntegerValue(Types::LLVMOpaqueType->getPointerTo(), APInt(64, (uint64_t)resultVal->getType()));
+	// 				Value* returnStruct = builder->CreateInsertValue(UndefValue::get(returnStructType), builder->CreatePtrToInt(resultVal, Types::Int64), { 0 });
+	// 				returnStruct = builder->CreateInsertValue(returnStruct, resultTypeVal, { 1 });
+	// 				builder->CreateRet(returnStruct);
+	// 			}
+	// 		);
 
-			// Define `return`
-			Type* returnType = nullptr;
-			defineStmt2(blockAST, "fake_return $E",
-				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-					Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-					Value* resultVal = codegenExpr(params[0], parentBlock).value->val;
-					Value* resultTypeVal = Constant::getIntegerValue(Types::LLVMOpaqueType->getPointerTo(), APInt(64, (uint64_t)resultVal->getType()));
-					Value* returnStruct = builder->CreateInsertValue(UndefValue::get(returnStructType), builder->CreatePtrToInt(resultVal, Types::Int64), { 0 });
-					returnStruct = builder->CreateInsertValue(returnStruct, resultTypeVal, { 1 });
-					builder->CreateRet(returnStruct);
-				}
-			);
+	// 		std::vector<ExprAST*> typeParams;
+	// 		collectParams(parentBlock, (ExprAST*)nameAST, (ExprAST*)nameAST, typeParams);
 
-			std::vector<ExprAST*> typeParams;
-			collectParams(parentBlock, (ExprAST*)nameAST, (ExprAST*)nameAST, typeParams);
+	// 		// Generate JIT function name
+	// 		std::string jitFuncName = getIdExprASTName(nameAST);
 
-			// Generate JIT function name
-			std::string jitFuncName = getIdExprASTName(nameAST);
+	// 		bool isCaptured;
+	// 		const Variable* typeVar = lookupSymbol(parentBlock, getIdExprASTName(typeAST), isCaptured);
+	// 		if (!typeVar)
+	// 			raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
+	// 		if (typeVar->value)
+	// 			raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);
+	// 		//Type* returnType = typeVar->value->type->getPointerTo();
 
-			bool isCaptured;
-			const Variable* typeVar = lookupSymbol(parentBlock, getIdExprASTName(typeAST), isCaptured);
-			if (!typeVar)
-				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
-			if (typeVar->value)
-				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);
-			//Type* returnType = typeVar->value->type->getPointerTo();
+	// 		Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
+	// 		struct ReturnStruct { uint64_t result; Type* resultType; };
 
-			Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-			struct ReturnStruct { uint64_t result; Type* resultType; };
+	// 		JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, new BuiltinType("typedefReturnStructType", wrap(returnStructType), 8), typeParams, jitFuncName);
+	// 		capturedScope.clear();
+	// 		codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, new BuiltinType("typedefReturnStructType", wrap(returnStructType), 8), typeParams, jitFuncName);
-			capturedScope.clear();
-			codegenExpr((ExprAST*)blockAST, parentBlock);
+	// 		typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
+	// 		funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
+	// 		ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
+	// 		removeJitFunctionModule(jitFunc);
+	// 		removeJitFunction(jitFunc);
 
-			typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
-			funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
-			ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
-			removeJitFunctionModule(jitFunc);
-			removeJitFunction(jitFunc);
+	// 		Value* typeVal = Constant::getIntegerValue(type.resultType, APInt(64, type.result));
+	// 		//Value* val = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
 
-			Value* typeVal = Constant::getIntegerValue(type.resultType, APInt(64, type.result));
-			//Value* val = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
+	// 		/*AllocaInst* typeValPtr = builder->CreateAlloca(returnType, nullptr);
+	// 		typeValPtr->setAlignment(8);
+	// 		builder->CreateStore(typeVal, typeValPtr)->setAlignment(8);*/
 
-			/*AllocaInst* typeValPtr = builder->CreateAlloca(returnType, nullptr);
-			typeValPtr->setAlignment(8);
-			builder->CreateStore(typeVal, typeValPtr)->setAlignment(8);*/
-
-			defineSymbol(parentBlock, getIdExprASTName(nameAST), typeVar->type, new XXXValue(typeVal));
-		}
-	);
+	// 		defineSymbol(parentBlock, getIdExprASTName(nameAST), typeVar->type, new XXXValue(typeVal));
+	// 	}
+	// );
 
 	// Define `do`
 	defineStmt2(rootBlock, "$E.do $E ...",

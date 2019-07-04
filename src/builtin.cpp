@@ -560,46 +560,88 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	);
 
 	// Define function definition
-	defineStmt2(rootBlock, "$I $I($E, ...) $B",
+	defineStmt2(rootBlock, "$<BuiltinType> $I($<BuiltinType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-			IdExprAST* typeAST = (IdExprAST*)params[0];
-			IdExprAST* funcAST = (IdExprAST*)params[1];
+			BuiltinType* returnType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
 			BlockExprAST* blockAST = (BlockExprAST*)params.back();
-			
-			FunctionType *funcType = FunctionType::get(Type::getVoidTy(*context), {}, false);
-			Function* parentFunc = currentFunc;
-			currentFunc = Function::Create(funcType, Function::ExternalLinkage, getIdExprASTName(funcAST), parentFunc->getParent());
-			currentFunc->setDSOLocal(true);
 
-			/*if (dbuilder)
+			size_t numArgs = (params.size() - 3) / 2;
+			std::vector<BuiltinType*> argTypes; argTypes.reserve(numArgs);
+			std::vector<const char*> argNames; argNames.reserve(numArgs);
+			for (size_t i = 0; i < numArgs; ++i)
 			{
-				DIScope *FContext = dfile;
-				unsigned LineNo = typeAST->loc.begin_line;
-				unsigned ScopeLine = blockAST->loc.begin_line;
-				DISubprogram *SP = dbuilder->createFunction(
-					parentFunc->getSubprogram(), getIdExprASTName(funcAST), StringRef(), dfile, LineNo,
-					dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(SmallVector<Metadata*, 8>({ }))),
-					ScopeLine, DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
-				;
-				currentFunc->setSubprogram(SP);
-			}*/
-
-			defineSymbol(parentBlock, getIdExprASTName(funcAST), nullptr, new XXXValue(currentFunc));
+				argTypes.push_back((BuiltinType*)codegenExpr(params[i * 2 + 2], parentBlock).value->getConstantValue());
+				argNames.push_back(getIdExprASTName((IdExprAST*)params[i * 2 + 3]));
+			}
+			
+			Func *func = new Func(funcName, returnType, argTypes, false);
+			Function* parentFunc = currentFunc;
+			currentFunc = func->getFunction(currentModule);
+			currentFunc->setDSOLocal(true);
 
 			// Create entry BB in currentFunc
 			BasicBlock *parentBB = currentBB;
 			builder->SetInsertPoint(currentBB = BasicBlock::Create(*context, "entry", currentFunc));
 
+			if (dbuilder)
+			{
+				DIScope *FContext = dfile;
+				DISubprogram *subprogram = dbuilder->createFunction(
+					parentFunc->getSubprogram(), funcName, "", dfile, getExprLine(params[1]),
+					dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray({})), //TODO: Replace {} with array of argument types
+					getExprLine((ExprAST*)blockAST), DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
+				;
+				currentFunc->setSubprogram(subprogram);
+
+				for (size_t i = 0; i < numArgs; ++i)
+				{
+					ExprAST* argNameAST = params[i * 2 + 3];
+					DILocalVariable *D = dbuilder->createParameterVariable(
+						currentFunc->getSubprogram(),
+						argNames[i],
+						i,
+						dfile,
+						getExprLine(argNameAST),
+						intType, //TODO: Replace with argTypes[i].ditype
+						true
+					);
+					dbuilder->insertDeclare(
+						currentFunc->args().begin() + i, D, dbuilder->createExpression(),
+						DebugLoc::get(getExprLine(argNameAST), getExprColumn(argNameAST), currentFunc->getSubprogram()),
+						builder->GetInsertBlock()
+					);
+				}
+			}
+
+			// Define argument symbols in function scope
+			for (size_t i = 0; i < numArgs; ++i)
+			{
+				AllocaInst* argPtr = builder->CreateAlloca(unwrap(argTypes[i]->Ptr()->llvmtype), nullptr, argNames[i]);
+				argPtr->setAlignment(8);
+				builder->CreateStore(currentFunc->args().begin() + i, argPtr)->setAlignment(8);
+				defineSymbol(blockAST, argNames[i], argTypes[i], new XXXValue(argPtr));
+			}
+
+			// Codegen function body
 			codegenExpr((ExprAST*)blockAST, parentBlock).value;
 
 			if (currentFunc->getReturnType()->isVoidTy()) // If currentFunc is void function
 				builder->CreateRetVoid(); // Add implicit `return;`
 
-			// Close currentFunc
+			// Close function
+			if (dbuilder)
+			{
+				dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
+				builder->SetCurrentDebugLocation(DebugLoc());
+			}
 			bool haserr = verifyFunction(*currentFunc, &outs());
 			builder->SetInsertPoint(currentBB = parentBB);
 			currentFunc = parentFunc;
-			if (haserr) assert(0); //TODO: Raise exception
+//			if (haserr) assert(0); //TODO: Raise exception
+
+			// Define function symbol in parent scope
+			defineSymbol(parentBlock, funcName, &func->type, func);
 		}
 	);
 

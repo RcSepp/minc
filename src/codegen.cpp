@@ -81,6 +81,7 @@ DIFile *dfile;
 
 // Misc
 Value* closure;
+BlockExprAST* rootBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
 int foo = 0;
 
@@ -274,6 +275,11 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr)
 	{
 		return expr->loc.begin_col;
+	}
+
+	BlockExprAST* getRootScope()
+	{
+		return rootBlock;
 	}
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
@@ -522,7 +528,10 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	parent = parentBlock;
 
 	if (fileBlock == nullptr)
+	{
+		rootBlock = this;
 		fileBlock = this;
+	}
 
 	for (auto stmt: *stmts)
 		stmt->codegen(this);
@@ -531,7 +540,10 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		builder->SetCurrentDebugLocation(DebugLoc());
 
 	if (fileBlock == this)
+	{
+		rootBlock = nullptr;
 		fileBlock = nullptr;
+	}
 
 	//parent = nullptr;
 	return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));

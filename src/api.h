@@ -46,6 +46,7 @@ extern "C"
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
 	unsigned getExprLine(const ExprAST* expr);
 	unsigned getExprColumn(const ExprAST* expr);
+	BlockExprAST* getRootScope();
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure = nullptr);

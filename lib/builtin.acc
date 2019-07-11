@@ -567,6 +567,16 @@ castdef<long> $<int> {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
+exprdef<bool> $<BuiltinType> == $<BuiltinType> {
+int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+exprdef<bool> $<BuiltinType> != $<BuiltinType> {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
 /* ---------------------------------------------------------------------------*\
 Cast: BuiltinType to BaseType
 Depends on: return $E

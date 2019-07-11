@@ -197,6 +197,7 @@ llvm_c_functions.push_back(Func("printf", BuiltinTypes::Int32, { BuiltinTypes::I
 llvm_c_functions.push_back(Func("atoi", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
 llvm_c_functions.push_back(Func("malloc", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false));
 llvm_c_functions.push_back(Func("free", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr }, false));
+llvm_c_functions.push_back(Func("strlen", BuiltinTypes::Int64, { BuiltinTypes::Int8Ptr }, false));
 
 @	LLVM_EXTERN_FUNC_DEF@
 	llvm_c_functions.push_back(Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "LLVMEXPositionBuilder"));

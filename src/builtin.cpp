@@ -940,7 +940,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			if (strchr(value, '.'))
 			{
 				double doubleValue = std::stod(value);
-				return Variable(BuiltinTypes::Int32, new XXXValue(unwrap(LLVMConstReal(LLVMDoubleType(), doubleValue))));
+				return Variable(BuiltinTypes::Double, new XXXValue(unwrap(LLVMConstReal(LLVMDoubleType(), doubleValue))));
 			}
 
 			int intValue;
@@ -956,6 +956,8 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
 			if (value[0] == '"' || value[0] == '\'')
 				return BuiltinTypes::Int8Ptr;
+			if (strchr(value, '.'))
+				return BuiltinTypes::Double;
 			return BuiltinTypes::Int32;
 		}
 	);

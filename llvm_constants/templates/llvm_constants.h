@@ -65,6 +65,7 @@ namespace BuiltinTypes
 {
 	extern BuiltinType* Base;
 	extern BuiltinType* Builtin;
+	extern BuiltinType* BuiltinValue;
 	extern BuiltinType* Value;
 
 	// Primitive types

@@ -136,6 +136,21 @@ public:
 		return typecbk(parentBlock, params);
 	}
 };
+struct OpaqueExprContext : public IExprContext
+{
+private:
+	BaseType* const type;
+public:
+	OpaqueExprContext(BaseType* type) : type(type) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		return Variable(type, params[0]->codegen(parentBlock).value);
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return type;
+	}
+};
 
 
 struct DynamicStmtContext : public IStmtContext
@@ -323,6 +338,11 @@ extern "C"
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock)
 	{
 		scope->defineCast(fromType, toType, new StaticExprContext(codeBlock, toType));
+	}
+
+	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	{
+		scope->defineCast(fromType, toType, new OpaqueExprContext(toType));
 	}
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured)

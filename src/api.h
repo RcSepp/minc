@@ -55,6 +55,7 @@ extern "C"
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock);
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock);
+	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);
 	StmtAST* lookupStmt(const BlockExprAST* scope, const std::vector<ExprAST*>& exprs);

@@ -65,7 +65,7 @@ class ExprAST : public AST
 {
 public:
 	enum ExprType {
-		LIST, LITERAL, ID, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
+		LIST, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -351,6 +351,19 @@ public:
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const {}
 	std::string str() const { return name; }
+};
+
+class CastExprAST : public ExprAST
+{
+public:
+	CastExprAST(const Location& loc) : ExprAST(loc, ExprAST::ExprType::CAST) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		assert(0);
+		return false;
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const { assert(0); }
+	std::string str() const { assert(0); return ""; }
 };
 
 class PlchldExprAST : public ExprAST

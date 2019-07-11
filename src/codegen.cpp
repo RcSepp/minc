@@ -218,6 +218,10 @@ extern "C"
 	{
 		return expr->exprtype == ExprAST::ExprType::ID;
 	}
+	bool ExprASTIsCast(const ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::CAST;
+	}
 	bool ExprASTIsParam(const ExprAST* expr)
 	{
 		return expr->exprtype == ExprAST::ExprType::PARAM;
@@ -242,6 +246,10 @@ extern "C"
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent)
 	{
 		expr->parent = parent;
+	}
+	ExprAST* getCastExprASTSource(const CastExprAST* expr)
+	{
+		return expr->resolvedParams[0];
 	}
 
 	unsigned getExprLine(const ExprAST* expr)
@@ -343,7 +351,7 @@ extern "C"
 		if (castContext == nullptr)
 			return nullptr;
 
-		ExprAST* castExpr = new PlchldExprAST({0}, ""); //TODO: Create CastExprAST class
+		ExprAST* castExpr = new CastExprAST(expr->loc);
 		castExpr->resolvedContext = castContext;
 		castExpr->resolvedParams.push_back(expr);
 		return castExpr;

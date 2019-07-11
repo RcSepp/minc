@@ -137,6 +137,7 @@ void initBuiltinSymbols()
 	BuiltinTypes::ExprAST = new BuiltinType("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
 	BuiltinTypes::LiteralExprAST = new BuiltinType("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
 	BuiltinTypes::IdExprAST = new BuiltinType("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
+	BuiltinTypes::CastExprAST = new BuiltinType("CastExprAST", wrap(Types::CastExprAST->getPointerTo()), 8);
 	BuiltinTypes::BlockExprAST = new BuiltinType("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
 	BuiltinTypes::StmtAST = new BuiltinType("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8);
 
@@ -214,6 +215,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineSymbol(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));
 	defineSymbol(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LiteralExprAST));
 	defineSymbol(rootBlock, "IdExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::IdExprAST));
+	defineSymbol(rootBlock, "CastExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::CastExprAST));
 	defineSymbol(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BlockExprAST));
 	defineSymbol(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef));
 	defineSymbol(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef->Ptr()));

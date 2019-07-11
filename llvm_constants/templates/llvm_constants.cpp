@@ -50,6 +50,7 @@ namespace Types
 	StructType* ExprAST;
 	StructType* LiteralExprAST;
 	StructType* IdExprAST;
+	StructType* CastExprAST;
 	StructType* BlockExprAST;
 	StructType* StmtAST;
 
@@ -115,6 +116,9 @@ namespace Types
 			ExprAST,
 			Type::getInt8PtrTy(c)
 		);
+		CastExprAST = StructType::create("class.CastExprAST",
+			ExprAST
+		);
 		BlockExprAST = StructType::create(c, "class.BlockExprAST");
 		StmtAST = StructType::create(c, "class.StmtAST");
 	}
@@ -170,6 +174,7 @@ namespace BuiltinTypes
 	BuiltinType* ExprAST;
 	BuiltinType* LiteralExprAST;
 	BuiltinType* IdExprAST;
+	BuiltinType* CastExprAST;
 	BuiltinType* BlockExprAST;
 	BuiltinType* StmtAST;
 

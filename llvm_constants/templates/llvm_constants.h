@@ -152,6 +152,7 @@ namespace Types
 	extern StructType* ExprAST;
 	extern StructType* LiteralExprAST;
 	extern StructType* IdExprAST;
+	extern StructType* CastExprAST;
 	extern StructType* BlockExprAST;
 	extern StructType* StmtAST;
 
@@ -208,6 +209,7 @@ namespace BuiltinTypes
 	extern BuiltinType* ExprAST;
 	extern BuiltinType* LiteralExprAST;
 	extern BuiltinType* IdExprAST;
+	extern BuiltinType* CastExprAST;
 	extern BuiltinType* BlockExprAST;
 	extern BuiltinType* StmtAST;
 

@@ -280,7 +280,7 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 //printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)exprType)->name, ((BuiltinType*)tpltType)->name, expr->loc.filename, expr->loc.begin_line);
 			IExprContext* castContext = block->lookupCast(exprType, tpltType);
 			assert(castContext != nullptr);
-			ExprAST* castExpr = new PlchldExprAST(expr->loc, this->p2);
+			ExprAST* castExpr = new CastExprAST(expr->loc);
 			castExpr->resolvedContext = castContext;
 			castExpr->resolvedParams.push_back(expr);
 			params.push_back(castExpr);

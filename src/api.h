@@ -7,6 +7,7 @@ class JitFunction;
 
 class ExprAST;
 class IdExprAST;
+class CastExprAST;
 class LiteralExprAST;
 class PlchldExprAST;
 class ExprListAST;
@@ -35,12 +36,14 @@ extern "C"
 	std::string ExprASTToString(const ExprAST* expr);
 	std::string StmtASTToString(const StmtAST* stmt);
 	bool ExprASTIsId(const ExprAST* expr);
+	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
+	ExprAST* getCastExprASTSource(const CastExprAST* expr);
 	unsigned getExprLine(const ExprAST* expr);
 	unsigned getExprColumn(const ExprAST* expr);
 

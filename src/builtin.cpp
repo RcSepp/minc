@@ -248,6 +248,8 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 
+defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(Types::LLVMOpaqueMetadata->getPointerTo(), (uint64_t)intType));
+
 	// Define single-expr statement
 	defineStmt2(rootBlock, "$E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
@@ -613,19 +615,32 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 			{
 				DIScope *FContext = dfile;
 				DISubprogram *subprogram = dbuilder->createFunction(
-					parentFunc->getSubprogram(), funcName, "", dfile, getExprLine(params[1]),
-					dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray({})), //TODO: Replace {} with array of argument types
+					parentFunc->getSubprogram(), funcName, funcName, dfile, getExprLine(params[1]),
+					dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(std::vector<Metadata*>(numArgs, intType))), //TODO: Replace {} with array of argument types
 					getExprLine((ExprAST*)blockAST), DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
 				;
 				currentFunc->setSubprogram(subprogram);
+				builder->SetCurrentDebugLocation(DebugLoc());
+			}
 
+			// Define argument symbols in function scope
+			for (size_t i = 0; i < numArgs; ++i)
+			{
+				AllocaInst* arg = builder->CreateAlloca(unwrap(argTypes[i]->llvmtype), nullptr, argNames[i]);
+				arg->setAlignment(argTypes[i]->align);
+				builder->CreateStore(currentFunc->args().begin() + i, arg)->setAlignment(argTypes[i]->align);
+				defineSymbol(blockAST, argNames[i], argTypes[i], new XXXValue(arg));
+			}
+
+			if (dbuilder)
+			{
 				for (size_t i = 0; i < numArgs; ++i)
 				{
 					ExprAST* argNameAST = params[i * 2 + 3];
 					DILocalVariable *D = dbuilder->createParameterVariable(
 						currentFunc->getSubprogram(),
 						argNames[i],
-						i,
+						i + 1,
 						dfile,
 						getExprLine(argNameAST),
 						intType, //TODO: Replace with argTypes[i].ditype
@@ -637,15 +652,6 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 						builder->GetInsertBlock()
 					);
 				}
-			}
-
-			// Define argument symbols in function scope
-			for (size_t i = 0; i < numArgs; ++i)
-			{
-				AllocaInst* argPtr = builder->CreateAlloca(unwrap(argTypes[i]->Ptr()->llvmtype), nullptr, argNames[i]);
-				argPtr->setAlignment(8);
-				builder->CreateStore(currentFunc->args().begin() + i, argPtr)->setAlignment(8);
-				defineSymbol(blockAST, argNames[i], argTypes[i], new XXXValue(argPtr));
 			}
 
 			// Codegen function body
@@ -660,10 +666,25 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 				dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
 				builder->SetCurrentDebugLocation(DebugLoc());
 			}
-			bool haserr = verifyFunction(*currentFunc, &outs());
 			builder->SetInsertPoint(currentBB = parentBB);
-			currentFunc = parentFunc;
-//			if (haserr) assert(0); //TODO: Raise exception
+
+			std::string errstr;
+			raw_string_ostream errstream(errstr);
+			bool haserr = verifyFunction(*currentFunc, &errstream);
+
+//			currentFunc = parentFunc;
+
+			if (haserr && errstr[0] != '\0')
+			{
+				std::error_code ec;
+				raw_fd_ostream ostream("error.ll", ec);
+				currentModule->print(ostream, nullptr);
+				ostream.close();
+//				raiseCompileError(("error compiling module\n" + errstr).c_str(), (ExprAST*)parentBlock);
+verifyFunction(*currentFunc, &outs());
+			}
+
+currentFunc = parentFunc;
 
 			// Define function symbol in parent scope
 			defineSymbol(parentBlock, funcName, &func->type, func);

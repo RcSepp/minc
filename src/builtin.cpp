@@ -31,12 +31,17 @@ namespace MincFunctions
 	Func* getLiteralExprASTValue;
 	Func* getBlockExprASTParent;
 	Func* setBlockExprASTParent;
+	Func* getCastExprASTSource;
+	Func* getExprLine;
+	Func* getExprColumn;
 	Func* getPointerToBuiltinType;
 
 	Func* addToScope;
 	Func* addToFileScope;
 	Func* codegenExprValue;
+	Func* codegenExprConstant;
 	Func* codegenStmt;
+	Func* getType;
 	//Func* defineStmt;
 	Func* getValueFunction;
 	Func* createFuncType;
@@ -155,12 +160,17 @@ void initBuiltinSymbols()
 	MincFunctions::getLiteralExprASTValue = new Func("getLiteralExprASTValue", BuiltinTypes::Int8Ptr, { BuiltinTypes::LiteralExprAST }, false);
 	MincFunctions::getBlockExprASTParent = new Func("getBlockExprASTParent", BuiltinTypes::BlockExprAST, { BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::setBlockExprASTParent = new Func("setBlockExprASTParent", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::getCastExprASTSource = new Func("getCastExprASTSource", BuiltinTypes::ExprAST, { BuiltinTypes::CastExprAST }, false);
+	MincFunctions::getExprLine = new Func("getExprLine", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
+	MincFunctions::getExprColumn = new Func("getExprColumn", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getPointerToBuiltinType = new Func("getPointerToBuiltinType", BuiltinTypes::Builtin, { BuiltinTypes::Builtin }, false);
 
 	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::ExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
+	MincFunctions::getType = new Func("getType", BuiltinTypes::Base, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	//MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, TODO, BuiltinTypes::Int8Ptr }, false);
 	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
 	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
@@ -179,7 +189,9 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 		MincFunctions::getLiteralExprASTValue,
 		MincFunctions::getBlockExprASTParent,
 		MincFunctions::setBlockExprASTParent,
-		MincFunctions::getPointerToBuiltinType
+		MincFunctions::getPointerToBuiltinType,
+		MincFunctions::getExprLine,
+		MincFunctions::getExprColumn,
 	})
 	{
 		defineSymbol(rootBlock, func->type.name, &func->type, func);
@@ -702,6 +714,51 @@ currentFunc = parentFunc;
 			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 		},
 		BuiltinTypes::LLVMValueRef
+	);
+
+	// Define getconst($<ExprAST>, $E)
+	defineExpr3(rootBlock, "getconst($<ExprAST>, $E)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
+			assert(ExprASTIsCast(params[0]));
+			ExprAST* exprAST = getCastExprASTSource((CastExprAST*)params[0]);
+			Variable expr = codegenExpr(exprAST, parentBlock);
+			const TpltType* exprType = dynamic_cast<const TpltType*>((const BuiltinType*)expr.type);
+			assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
+			Value* exprVal = expr.value->val;
+			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
+
+			Function* func = MincFunctions::codegenExprConstant->getFunction(currentModule);
+			Value* int64ConstantVal = builder->CreateCall(func, { exprVal, parentBlockVal });
+			Value* resultVal = builder->CreateBitCast(int64ConstantVal, unwrap(exprType->tpltType->llvmtype));
+			return Variable(exprType->tpltType, new XXXValue(resultVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) -> BaseType* {
+			assert(ExprASTIsCast(params[0]));
+			ExprAST* exprAST = getCastExprASTSource((CastExprAST*)params[0]);
+			const TpltType* exprType = dynamic_cast<const TpltType*>((const BuiltinType*)getType(exprAST, parentBlock));
+			assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
+			return exprType->tpltType;
+		}
+	);
+
+	// Define gettype($<ExprAST>, $E)
+	defineExpr3(rootBlock, "gettype($<ExprAST>, $E)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
+			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
+			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
+
+			exprVal = builder->CreateBitCast(exprVal, Types::CastExprAST->getPointerTo()); // exprVal = (CastExprAST*)exprVal
+			Function* func = MincFunctions::getCastExprASTSource->getFunction(currentModule);
+			exprVal = builder->CreateCall(func, { exprVal }); // exprVal = getCastExprASTSource(exprVal)
+
+			func = MincFunctions::getType->getFunction(currentModule);
+			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal }); // resultVal = getCastExprASTSource(exprVal, parentBlockVal)
+			resultVal = builder->CreateBitCast(resultVal, Types::BuiltinType); // resultVal = (BuiltinType*)resultVal //TODO: Return BaseType instead of BuiltinType
+			return Variable(BuiltinTypes::/*Base*/Builtin, new XXXValue(resultVal)); //TODO: Return BaseType instead of BuiltinType
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) -> BaseType* {
+			return BuiltinTypes::/*Base*/Builtin; //TODO: Return BaseType instead of BuiltinType
+		}
 	);
 
 	/*// Define codegen($<LiteralExprAST>, $E) //TODO: This should be implemented with casting LiteralExprAST -> ExprAST

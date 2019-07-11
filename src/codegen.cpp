@@ -205,6 +205,11 @@ extern "C"
 		return wrap(expr->codegen(scope).value->val);
 	}
 
+	uint64_t codegenExprConstant(ExprAST* expr, BlockExprAST* scope)
+	{
+		return expr->codegen(scope).value->getConstantValue();
+	}
+
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope)
 	{
 		stmt->codegen(scope);
@@ -659,10 +664,13 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 				case 'L': return Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo())));
 				case 'I': return Variable(BuiltinTypes::IdExprAST, new XXXValue(builder->CreateBitCast(param, Types::IdExprAST->getPointerTo())));
 				case 'B': return Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo())));
-				/*case '\0':
+				case '\0':
 					var = parentBlock->lookupScope(blockParamPlchldExpr->p2);
 					if (var != nullptr)
-						return Variable(var->type, new XXXValue(builder->CreateBitCast(param, var->value->type)));*/
+					{
+						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+						return Variable(TpltType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, (BuiltinType*)codegenType), new XXXValue(param));
+					}
 				}
 			}
 			else
@@ -699,6 +707,7 @@ BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 				case 'I': return BuiltinTypes::IdExprAST;
 				case 'B': return BuiltinTypes::BlockExprAST;
 				}*/
+				const Variable* var;
 				switch(blockParamPlchldExpr->p1)
 				{
 				case 'L': return BuiltinTypes::LiteralExprAST;
@@ -706,8 +715,12 @@ BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 				case 'B': return BuiltinTypes::BlockExprAST;
 				case '\0':
 					{
-						BaseType* codegenType = (BaseType*)parentBlock->lookupScope(blockParamPlchldExpr->p2)->value->getConstantValue();
-						//return TpltType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, (BuiltinType*)codegenType);
+						var = parentBlock->lookupScope(blockParamPlchldExpr->p2);
+						if (var != nullptr)
+						{
+							BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+							return TpltType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, (BuiltinType*)codegenType);
+						}
 					}
 				}
 			}

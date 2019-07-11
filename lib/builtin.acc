@@ -368,9 +368,27 @@ Template: int $I
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef int $I {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
-	LLVMSetAlignment(foo, 4);
-	addToScope(parentBlock, $0, int, foo);
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt32Type(), "");
+	LLVMSetAlignment(storage, 4);
+	addToScope(parentBlock, $0, int, storage);
+
+	LLVMDIBuilderInsertDeclareAtEnd(
+		storage,
+		LLVMDIBuilderCreateAutoVariable(
+			LLVMGetSubprogram(function),
+			$0.name,
+			strlen($0.name),
+			dfile,
+			getExprLine($0),
+			intType,
+			1,
+			0,
+			0
+		),
+		LLVMDIBuilderCreateExpression(),
+		LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
+		LLVMGetInsertBlock()
+	);
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -379,10 +397,28 @@ Template: int $I = $<int>
 Depends on: LLVMValueRef $I = $<LLVMValueRef>
 \* ---------------------------------------------------------------------------*/
 stmtdef int $I = $<int> {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMInt32Type(), "");
-	LLVMSetAlignment(foo, 4);
-	LLVMBuildStore(codegen($1, parentBlock), foo);
-	addToScope(parentBlock, $0, int, foo);
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt32Type(), "");
+	LLVMSetAlignment(storage, 4);
+	LLVMBuildStore(codegen($1, parentBlock), storage);
+	addToScope(parentBlock, $0, int, storage);
+
+	// LLVMDIBuilderInsertDeclareAtEnd(
+	// 	storage,
+	// 	LLVMDIBuilderCreateAutoVariable(
+	// 		LLVMGetSubprogram(function),
+	// 		$0.name,
+	// 		strlen($0.name),
+	// 		dfile,
+	// 		getExprLine($0),
+	// 		intType,
+	// 		1,
+	// 		0,
+	// 		0
+	// 	),
+	// 	LLVMDIBuilderCreateExpression(),
+	// 	LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
+	// 	LLVMGetInsertBlock()
+	// );
 }
 
 /* ---------------------------------------------------------------------------*\

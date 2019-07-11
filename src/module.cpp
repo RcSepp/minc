@@ -273,6 +273,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 		Types::LLVMOpaqueModule->getPointerTo(),
 		Types::LLVMOpaqueValue->getPointerTo(),
 		Types::BlockExprAST->getPointerTo(),
+		Types::LLVMOpaqueMetadata->getPointerTo(),
 		Types::ExprAST->getPointerTo()->getPointerTo(),
 		closureType->getPointerTo()
 	}, false);
@@ -316,11 +317,16 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 	builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(8);
 	blockAST->addToScope("parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
 
-	Value* paramsVal = currentFunc->args().begin() + 4;
+	AllocaInst* dfilePtr = builder->CreateAlloca(Types::LLVMOpaqueMetadata->getPointerTo(), nullptr, "dfile");
+	dfilePtr->setAlignment(8);
+	builder->CreateStore(currentFunc->args().begin() + 4, dfilePtr)->setAlignment(8);
+	blockAST->addToScope("dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
+
+	Value* paramsVal = currentFunc->args().begin() + 5;
 	paramsVal->setName("params");
 	blockAST->setBlockParams(params, new XXXValue(paramsVal));
 
-	closure = currentFunc->args().begin() + 5;
+	closure = currentFunc->args().begin() + 6;
 	closure->setName("closure");
 }
 

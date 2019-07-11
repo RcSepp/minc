@@ -157,7 +157,7 @@ public:
 struct DynamicStmtContext : public IStmtContext
 {
 private:
-	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params, void* closure);
+	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* closure);
 	funcPtr cbk;
 	void* closure;
 public:
@@ -165,7 +165,7 @@ public:
 	void codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//BasicBlock* _currentBB = currentBB;
-		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, params.data(), closure);
+		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), closure);
 		//if (currentBB != _currentBB)
 		//	builder->SetInsertPoint(currentBB = _currentBB);
 	}
@@ -174,7 +174,7 @@ public:
 struct DynamicExprContext : public IExprContext
 {
 private:
-	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
+	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
 	funcPtr const cbk;
 	BaseType* const type;
 public:
@@ -182,7 +182,7 @@ public:
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//BasicBlock* _currentBB = currentBB;
-		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, params.data());
+		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
 		//if (currentBB != _currentBB)
 		//	builder->SetInsertPoint(currentBB = _currentBB);
 		return Variable(type, new XXXValue(foo));

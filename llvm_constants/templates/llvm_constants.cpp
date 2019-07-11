@@ -86,7 +86,8 @@ namespace Types
 			Value->getPointerTo()
 		);
 		BuiltinType = StructType::create("BuiltinType",
-			Type::getInt8PtrTy(c),
+			FunctionType::get(Type::getInt32Ty(c), true)->getPointerTo()->getPointerTo(),
+			VoidPtr,
 			Type::getInt8PtrTy(c),
 			LLVMOpaqueType->getPointerTo(),
 			Type::getInt32Ty(c)

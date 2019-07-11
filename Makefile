@@ -5,7 +5,7 @@ BIN_DIR = bin/
 
 YACC = bison
 CPPFLAGS = -g
-OBJS = minc.o stmtreg.o builtin.o codegen.o module.o llvm_constants.o cparser.o cparser.yy.o pyparser.o pyparser.yy.o
+OBJS = minc.o stmtreg.o builtin.o codegen.o module.o llvm_constants.o types.o cparser.o cparser.yy.o pyparser.o pyparser.yy.o
 LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -fexceptions -rdynamic
 
 OBJPATHS = $(addprefix ${TEMP_DIR}, ${OBJS})

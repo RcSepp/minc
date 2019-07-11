@@ -278,6 +278,7 @@ REPLACE_PARAMS = {
     'LLVMModuleRef Mod': 'wrap(currentModule)',
     'LLVMModuleRef M': 'wrap(currentModule)',
     'LLVMDIBuilderRef Builder': 'wrap(dbuilder)',
+    'LLVMContextRef Ctx': 'LLVMGetGlobalContext()',
 }
 for decl in decls.values():
     for c_arg in decl.c_args:

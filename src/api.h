@@ -62,6 +62,7 @@ extern "C"
 	StmtAST* lookupStmt(const BlockExprAST* scope, const std::vector<ExprAST*>& exprs);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
+	std::string reportCasts(const BlockExprAST* scope);
 
 	BaseType* getBaseType();
 

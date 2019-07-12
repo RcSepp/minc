@@ -406,6 +406,20 @@ extern "C"
 		return report;
 	}
 
+	std::string reportCasts(const BlockExprAST* scope)
+	{
+		std::string report = "";
+		std::list<std::pair<BaseType*, BaseType*>> casts;
+		scope->listAllCasts(casts);
+		for (auto& cast: casts)
+		{
+			BuiltinType* fromType = (BuiltinType*)cast.first;
+			BuiltinType* toType = (BuiltinType*)cast.second;
+			report += "\t" +  std::string(fromType->name) + " -> " + std::string(toType->name) + "\n";
+		}
+		return report;
+	}
+
 	BaseType* getBaseType()
 	{
 		return &BASE_TYPE;

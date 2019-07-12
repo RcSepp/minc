@@ -254,6 +254,12 @@ public:
 				return cast->second;
 		return nullptr;
 	}
+	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
+	{
+		for (const BlockExprAST* block = this; block; block = block->parent)
+			for (const std::pair<std::pair<BaseType*, BaseType*>, IExprContext*> cast: block->casts)
+				casts.push_back(cast.first);
+	}
 
 	void import(BlockExprAST* block)
 	{

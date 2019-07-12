@@ -38,7 +38,6 @@ printDouble foo;*/
 // 	);*/
 
 // 	LLVMValueRef value = codegen($0, parentBlock);
-// 	parentBlock.do printf("%i\n", value);
 // }
 
 return 123;

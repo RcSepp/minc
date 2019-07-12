@@ -519,23 +519,6 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 	// 	}
 	// );
 
-	// Define `do`
-	defineStmt2(rootBlock, "$E.do $E ...",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-			Value* parentBlockVal = codegenExpr(params[0], parentBlock).value->val;
-			//Value* parentBlockVal = Constant::getIntegerValue(Types::BlockExprAST->getPointerTo(), APInt(64, (uint64_t)parentBlock, true));
-			std::vector<ExprAST*> stmtParams(params.begin() + 1, params.end());
-
-			StmtAST* stmt = lookupStmt(parentBlock, stmtParams);
-			if (!stmt)
-				raiseCompileError(("undefined statement " + StmtASTToString(stmt)).c_str(), stmtParams[0]); //TODO: loc should spam all params
-			Value* stmtVal = Constant::getIntegerValue(Types::StmtAST->getPointerTo(), APInt(64, (uint64_t)stmt, true));
-
-			Function* func = MincFunctions::codegenStmt->getFunction(currentModule);
-			Value* resultVal = builder->CreateCall(func, { stmtVal, parentBlockVal });
-		}
-	);
-
 	// Define variable declaration
 	defineStmt2(rootBlock, "int_ref $I",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {

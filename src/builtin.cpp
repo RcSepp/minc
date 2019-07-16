@@ -147,9 +147,6 @@ void initBuiltinSymbols()
 	BuiltinTypes::BlockExprAST = BuiltinType::get("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
 	BuiltinTypes::StmtAST = BuiltinType::get("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8);
 
-	// Misc. types
-	BuiltinTypes::Function = BuiltinType::get("func", nullptr, 8);
-
 	// >>> Create LLVM-c extern functions
 
 	create_llvm_c_functions(*context, llvm_c_functions);
@@ -224,7 +221,6 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineSymbol(rootBlock, "double", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Double));
 	defineSymbol(rootBlock, "doublePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::DoublePtr));
 	defineSymbol(rootBlock, "string", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8Ptr));
-	defineSymbol(rootBlock, "func", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Function));
 	defineSymbol(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));
 	defineSymbol(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LiteralExprAST));
 	defineSymbol(rootBlock, "IdExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::IdExprAST));
@@ -246,7 +242,6 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineOpaqueCast(rootBlock, BuiltinTypes::Double, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinValue);
-	defineOpaqueCast(rootBlock, BuiltinTypes::Function, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LiteralExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::IdExprAST, BuiltinTypes::BuiltinValue);

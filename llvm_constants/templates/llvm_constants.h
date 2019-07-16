@@ -115,9 +115,6 @@ namespace BuiltinTypes
 	extern BuiltinType* CastExprAST;
 	extern BuiltinType* BlockExprAST;
 	extern BuiltinType* StmtAST;
-
-	// Misc. types
-	extern BuiltinType* Function;
 };
 
 void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm_c_constants);

@@ -681,8 +681,8 @@ currentFunc = parentFunc;
 		}
 	);
 
-	// Define codegen($<ExprAST>, $E)
-	defineExpr2(rootBlock, "codegen($<ExprAST>, $E)",
+	// Define codegen($<ExprAST>, $<BlockExprAST>)
+	defineExpr2(rootBlock, "codegen($<ExprAST>, $<BlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
 			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
@@ -694,8 +694,8 @@ currentFunc = parentFunc;
 		BuiltinTypes::LLVMValueRef
 	);
 
-	// Define getconst($<ExprAST>, $E)
-	defineExpr3(rootBlock, "getconst($<ExprAST>, $E)",
+	// Define getconst($<ExprAST>, $<BlockExprAST>)
+	defineExpr3(rootBlock, "getconst($<ExprAST>, $<BlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			assert(ExprASTIsCast(params[0]));
 			ExprAST* exprAST = getCastExprASTSource((CastExprAST*)params[0]);
@@ -719,8 +719,8 @@ currentFunc = parentFunc;
 		}
 	);
 
-	// Define gettype($<ExprAST>, $E)
-	defineExpr3(rootBlock, "gettype($<ExprAST>, $E)",
+	// Define gettype($<ExprAST>, $<BlockExprAST>)
+	defineExpr3(rootBlock, "gettype($<ExprAST>, $<BlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
 			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
@@ -739,23 +739,8 @@ currentFunc = parentFunc;
 		}
 	);
 
-	/*// Define codegen($<LiteralExprAST>, $E) //TODO: This should be implemented with casting LiteralExprAST -> ExprAST
-	defineExpr2(rootBlock, "codegen($<LiteralExprAST>, $E)",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
-			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
-			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
-
-			exprVal = builder->CreateBitCast(exprVal, Types::ExprAST->getPointerTo());
-
-			Function* func = MincFunctions::codegenExprValue->getFunction(currentModule);
-			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal });
-			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
-		},
-		BuiltinTypes::LLVMValueRef
-	);*/
-
 	// Define addToScope()
-	defineExpr2(rootBlock, "addToScope($E, $E, $E, $E)",
+	defineExpr2(rootBlock, "addToScope($<BlockExprAST>, $<IdExprAST>, $E, $E)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			Value* parentBlockVal = codegenExpr(params[0], parentBlock).value->val;
 			Value* nameVal; //= codegenExpr(params[1], parentBlock).value->val;

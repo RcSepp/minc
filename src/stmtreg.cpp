@@ -254,7 +254,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 		return false;
 }
 
-bool BlockExprAST::lookupStatement(ExprASTIter& exprs, Stmt& stmt) const
+bool BlockExprAST::lookupStatement(ExprASTIter& exprs, Stmt* stmt) const
 {
 //TODO: Figure out logic for looking up expressions ahead of looking up statements
 for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
@@ -267,8 +267,12 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	printf("%slookupStmt(%s)\n", indent.c_str(), ExprListAST('\0', _exprs).str().c_str());
 	indent += '\t';
 #endif
-	stmt.begin = exprs;
-	stmt.params.clear();
+
+	if (stmt)
+	{
+		stmt->begin = exprs;
+		stmt->params.clear();
+	}
 
 	// Lookup statement in current block and all parents
 	// Get context of best match
@@ -290,29 +294,34 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	indent = indent.substr(0, indent.size() - 1);
 #endif
 
+	// Advance exprs parameter to beginning of next statement
 	if (context)
-	{
-		stmt.end = stmtEnd;
-		stmt.context = context->second;
-		collectStatement(this, context->first.cbegin(), context->first.cend(), exprs, stmtEnd, stmt.params);
-	}
+		exprs = stmtEnd;
 	else
 	{
-		stmt.end = stmt.begin;
-		while (stmt.end != this->exprs->cend() && (*stmt.end)->exprtype != ExprAST::ExprType::STOP && (*stmt.end)->exprtype != ExprAST::ExprType::BLOCK)
-			++stmt.end;
-		stmt.context = nullptr;
+		while (exprs != this->exprs->cend() && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs)->exprtype != ExprAST::ExprType::BLOCK)
+			++exprs;
 	}
 
-	stmt.loc = Location{
-		stmt.begin[0]->loc.filename,
-		stmt.begin[0]->loc.begin_line,
-		stmt.begin[0]->loc.begin_col,
-		stmt.end[-1]->loc.end_line,
-		stmt.end[-1]->loc.end_col
-	};
+	if (stmt)
+	{
+		stmt->end = exprs;
+		if (context)
+		{
+			stmt->context = context->second;
+			collectStatement(this, context->first.cbegin(), context->first.cend(), stmt->begin, stmt->end, stmt->params);
+		}
+		else
+			stmt->context = nullptr;
+		stmt->loc = Location{
+			stmt->begin[0]->loc.filename,
+			stmt->begin[0]->loc.begin_line,
+			stmt->begin[0]->loc.begin_col,
+			stmt->end[-1]->loc.end_line,
+			stmt->end[-1]->loc.end_col
+		};
+	}
 
-	exprs = stmt.end; // Advance exprs parameter to beginning of next statement
 	return context != nullptr;
 }
 

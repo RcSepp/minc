@@ -218,7 +218,7 @@ public:
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(tplt, stmt);
 	}
-	bool lookupStatement(ExprASTIter& exprs, Stmt& stmt) const;
+	bool lookupStatement(ExprASTIter& exprs, Stmt* stmt=nullptr) const;
 
 	void defineExpr(ExprAST* tplt, IExprContext* expr)
 	{

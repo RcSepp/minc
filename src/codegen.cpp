@@ -562,7 +562,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	Stmt stmt;
 	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
 	{
-		if (lookupStatement(iter, stmt))
+		if (lookupStatement(iter, &stmt))
 		{
 			stmt.codegen(this);
 		}

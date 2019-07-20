@@ -210,7 +210,7 @@ extern "C"
 		return expr->codegen(scope).value->getConstantValue();
 	}
 
-	void codegenStmt(StmtAST* stmt, BlockExprAST* scope)
+	void codegenStmt(Stmt* stmt, BlockExprAST* scope)
 	{
 		stmt->codegen(scope);
 	}
@@ -294,20 +294,38 @@ extern "C"
 
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure)
 	{
-		scope->defineStatement(tplt, new DynamicStmtContext(func, closure));
+		if (tplt.empty())
+			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
+		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		{
+			std::vector<ExprAST*> stoppedTplt(tplt);
+			stoppedTplt.push_back(new StopExprAST(Location{}));
+			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, closure));
+		}
+		else
+			scope->defineStatement(tplt, new DynamicStmtContext(func, closure));
 	}
 
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock)
 	{
+		// Append STOP expr to make tpltStr a valid statement
 		std::stringstream ss(tpltStr);
 		ss << tpltStr << ';';
+
+		// Parse tpltStr into tpltBlock
 		CLexer lexer(ss, std::cout);
 		BlockExprAST* tpltBlock;
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
+		if (parser.parse() || tpltBlock->exprs->size() < 2)
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		ExprListAST* tplt = tpltBlock->stmts->front()->exprs;
-		scope->defineStatement(tplt, new StaticStmtContext(codeBlock));
+
+		// Remove appended STOP expr if last expr is $B
+		assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
+		const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+		if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
+			tpltBlock->exprs->pop_back();
+	
+		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock));
 	}
 
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
@@ -324,7 +342,7 @@ extern "C"
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		ExprAST* tplt = tpltBlock->stmts->front()->exprs->at(0);
+		ExprAST* tplt = tpltBlock->exprs->at(0);
 		scope->defineExpr(tplt, new StaticExprContext(codeBlock, type));
 	}
 
@@ -337,7 +355,7 @@ extern "C"
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		ExprAST* tplt = tpltBlock->stmts->front()->exprs->at(0);
+		ExprAST* tplt = tpltBlock->exprs->at(0);
 		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock));
 	}
 
@@ -359,17 +377,6 @@ extern "C"
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured)
 	{
 		return scope->lookupScope(name, isCaptured);
-	}
-
-	StmtAST* lookupStmt(const BlockExprAST* scope, const std::vector<ExprAST*>& exprs)
-	{
-		StmtAST* stmt = new StmtAST({0}, new ExprListAST('\0', exprs));
-		if (!scope->lookupStatement(stmt))
-		{
-			delete stmt;
-			return nullptr;
-		}
-		return stmt;
 	}
 
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
@@ -552,8 +559,16 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		fileBlock = this;
 	}
 
-	for (auto stmt: *stmts)
-		stmt->codegen(this);
+	Stmt stmt;
+	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
+	{
+		if (lookupStatement(iter, stmt))
+		{
+			stmt.codegen(this);
+		}
+		else
+			throw UndefinedStmtException(&stmt);
+	}
 
 	if (dbuilder)
 		builder->SetCurrentDebugLocation(DebugLoc());
@@ -593,36 +608,12 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		throw UndefinedExprException{this};
 }
 
-/*void StmtAST::codegen(BlockExprAST* parentBlock)
+Variable Stmt::codegen(BlockExprAST* parentBlock)
 {
-	exprs->resolveTypes(parentBlock);
-
-	std::vector<std::pair<ExprAST*, IExprContext*>> casts;
-	if (parentBlock->lookupStatement(this, casts))
-	{
-		if (dbuilder)
-			builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-
-		for (auto cast: casts)
-			cast.second->codegen(parentBlock, cast.first->resolvedParams);
-
-		resolvedContext->codegen(parentBlock, resolvedParams);
-	}
-	else
-		throw UndefinedStmtException{this};
-}*/
-void StmtAST::codegen(BlockExprAST* parentBlock)
-{
-	exprs->resolveTypes(parentBlock);
-
-	if (parentBlock->lookupStatement(this))
-	{
-		if (dbuilder)
-			builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-		resolvedContext->codegen(parentBlock, resolvedParams);
-	}
-	else
-		throw UndefinedStmtException{this};
+	if (dbuilder)
+		builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
+	context->codegen(parentBlock, params);
+	return Variable(BuiltinTypes::Void, new XXXValue(nullptr));
 }
 
 void ExprAST::resolveTypes(BlockExprAST* block)

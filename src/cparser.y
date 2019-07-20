@@ -14,7 +14,6 @@
 }
 
 %{
-#include <list>
 #include <vector>
 #include <stdlib.h>
 #include "../src/cparser.h"
@@ -31,8 +30,7 @@
 %token<char> PLCHLD1
 %token<int> PARAM
 %type<BlockExprAST*> block
-%type<std::list<StmtAST*>*> stmt_string
-%type<StmtAST*> stmt
+%type<std::vector<ExprAST*>*> stmt_string
 %type<ExprListAST*> expr_string expr_list expr_lists
 %type<ExprAST*> id_or_plchld expr
 
@@ -55,13 +53,9 @@ block
 ;
 
 stmt_string
-	: %empty { $$ = new std::list<StmtAST*>(); }
-	| stmt_string stmt { ($$ = $1)->push_back($2); }
-;
-
-stmt
-	: expr_string ';' { $$ = new StmtAST(getloc(@1, @2), $1); }
-	| expr_string '{' block '}' { $1->exprs.push_back($3); $$ = new StmtAST(getloc(@1, @4), $1); }
+	: %empty { $$ = new std::vector<ExprAST*>(); }
+	| stmt_string expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
+	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
 ;
 
 expr_string

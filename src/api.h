@@ -12,6 +12,7 @@ class LiteralExprAST;
 class PlchldExprAST;
 class ExprListAST;
 class StmtAST;
+class Stmt;
 class BlockExprAST;
 
 struct Variable
@@ -30,7 +31,7 @@ typedef BaseType* (*ExprTypeBlock)(const BlockExprAST*, const std::vector<ExprAS
 extern "C"
 {
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
-	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
+	void codegenStmt(Stmt* stmt, BlockExprAST* scope);
 	BaseType* getType(ExprAST* expr, const BlockExprAST* scope);
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params);
 	std::string ExprASTToString(const ExprAST* expr);
@@ -59,7 +60,6 @@ extern "C"
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);
-	StmtAST* lookupStmt(const BlockExprAST* scope, const std::vector<ExprAST*>& exprs);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);

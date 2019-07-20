@@ -12,6 +12,7 @@
 
 #include "api.h"
 
+typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
 typedef int MatchScore;
 
 struct Location
@@ -29,7 +30,7 @@ struct CompileError
 };
 struct UndefinedStmtException : public CompileError
 {
-	UndefinedStmtException(const StmtAST* stmt);
+	UndefinedStmtException(const Stmt* stmt);
 };
 struct UndefinedExprException : public CompileError
 {
@@ -61,11 +62,17 @@ public:
 	AST(const Location& loc) : loc(loc) {}
 };
 
+class Expr
+{
+	virtual Variable codegen(BlockExprAST* parentBlock) = 0;
+	virtual std::string str() const = 0;
+};
+
 class ExprAST : public AST
 {
 public:
 	enum ExprType {
-		LIST, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
+		LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -137,19 +144,15 @@ std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
 class StatementRegister
 {
 private:
-	std::list<std::pair<const ExprListAST*, IStmtContext*>> stmtreg;
+	std::list<std::pair<const std::vector<ExprAST*>, IStmtContext*>> stmtreg;
 	std::array<std::list<std::pair<const ExprAST*, IExprContext*>>, ExprAST::NUM_EXPR_TYPES> exprreg;
 public:
-	void defineStatement(const ExprListAST* tplt, IStmtContext* stmt) { stmtreg.push_front({tplt, stmt}); }
+	void defineStatement(const std::vector<ExprAST*>& tplt, IStmtContext* stmt) { stmtreg.push_front({tplt, stmt}); }
 	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(this->stmtreg.begin(), stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
-	const std::pair<const ExprListAST*, IStmtContext*>* lookupStatement(const BlockExprAST* block, const StmtAST* stmt) const;
+	const std::pair<const std::vector<ExprAST*>, IStmtContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& score, ExprASTIter& stmtEnd) const;
 
 	void defineExpr(const ExprAST* tplt, IExprContext* expr)
 	{
-		if (tplt->exprtype == ExprAST::ExprType::PLCHLD)
-		{
-			int abc = 0;
-		}
 		exprreg[tplt->exprtype].push_front({tplt, expr});
 	}
 	void importExprs(StatementRegister& stmtreg)
@@ -175,6 +178,26 @@ public:
 	std::string str() const { return exprs->str(); }
 };
 
+class Stmt : public Expr
+{
+public:
+	Location loc;
+	ExprASTIter begin, end;
+	IStmtContext* context;
+	std::vector<ExprAST*> params;
+
+	Variable codegen(BlockExprAST* parentBlock);
+	std::string str() const
+	{
+		if (begin == end)
+			return "";
+		std::string result = (*begin)->str();
+		for (ExprASTIter expr = begin; ++expr != end;)
+			result += ' ' + (*expr)->str();
+		return result;
+	}
+};
+
 class BlockExprAST : public ExprAST
 {
 private:
@@ -185,57 +208,24 @@ private:
 	XXXValue* blockParamsVal;
 public:
 	BlockExprAST* parent;
-	std::list<StmtAST*>* stmts;
-	BlockExprAST(const Location& loc, std::list<StmtAST*>* stmts)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), stmts(stmts), blockParams(nullptr), blockParamsVal(nullptr) {}
+	std::vector<ExprAST*>* exprs;
+	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs), blockParams(nullptr), blockParamsVal(nullptr) {}
 
-	void defineStatement(ExprListAST* tplt, IStmtContext* stmt)
-	{
-		tplt->resolveTypes(this);
-		stmtreg.defineStatement(tplt, stmt);
-	}
 	void defineStatement(const std::vector<ExprAST*>& tplt, IStmtContext* stmt)
 	{
 		for (ExprAST* tpltExpr: tplt)
 			tpltExpr->resolveTypes(this);
-		stmtreg.defineStatement(new ExprListAST('\0', tplt), stmt);
+		stmtreg.defineStatement(tplt, stmt);
 	}
-	bool lookupStatement(StmtAST* stmt) const
-	{
-		stmt->resolvedParams.clear();
-		const std::pair<const ExprListAST*, IStmtContext*>* context = nullptr;
-		for (const BlockExprAST* block = this; block && !context; block = block->parent)
-			context = block->stmtreg.lookupStatement(this, stmt);
-		if (context)
-		{
-			context->first->collectParams(this, stmt->exprs, stmt->resolvedParams);
-			stmt->resolvedContext = context->second;
-			return true;
-		}
-		else
-			return false;
-	}
+	bool lookupStatement(ExprASTIter& exprs, Stmt& stmt) const;
 
 	void defineExpr(ExprAST* tplt, IExprContext* expr)
 	{
 		tplt->resolveTypes(this);
 		stmtreg.defineExpr(tplt, expr);
 	}
-	bool lookupExpr(ExprAST* expr) const
-	{
-		expr->resolvedParams.clear();
-		const std::pair<const ExprAST*, IExprContext*>* context = nullptr;
-		for (const BlockExprAST* block = this; block && !context; block = block->parent)
-			context = block->stmtreg.lookupExpr(this, expr);
-		if (context)
-		{
-			context->first->collectParams(this, expr, expr->resolvedParams);
-			expr->resolvedContext = context->second;
-			return true;
-		}
-		else
-			return false;
-	}
+	bool lookupExpr(ExprAST* expr) const;
 	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
@@ -316,21 +306,42 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const {}
 	std::string str() const
 	{
-		if (stmts->empty())
+		if (exprs->empty())
 			return "{}";
 
-		std::string result = "{";
-		for (auto stmt: *stmts)
-			result += "\n" + stmt->str();
+		std::string result = "{\n";
+		for (auto expr: *exprs)
+		{
+			if (expr->exprtype == ExprAST::ExprType::STOP)
+			{
+				if (expr->exprtype == ExprAST::ExprType::STOP)
+					result.pop_back(); // Remove ' ' before STOP string
+				result += expr->str() + '\n';
+			}
+			else
+				result += expr->str() + ' ';
+		}
 
 		size_t start_pos = 0;
-		while((start_pos = result.find("\n", start_pos)) != std::string::npos) {
+		while((start_pos = result.find("\n", start_pos)) != std::string::npos && start_pos + 1 != result.size()) {
 			result.replace(start_pos, 1, "\n\t");
 			start_pos += 2;
 		}
 
-		return result + "\n}";
+		return result + '}';
 	}
+};
+
+class StopExprAST : public ExprAST
+{
+public:
+	StopExprAST(const Location& loc) : ExprAST(loc, ExprAST::ExprType::STOP) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype;
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const {}
+	std::string str() const { return ";"; }
 };
 
 class LiteralExprAST : public ExprAST

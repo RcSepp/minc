@@ -14,7 +14,6 @@
 }
 
 %{
-#include <list>
 #include <vector>
 #include <stdlib.h>
 #include "../src/pyparser.h"
@@ -32,8 +31,7 @@
 %token<char> PLCHLD1
 %token<int> PARAM
 %type<BlockExprAST*> block
-%type<std::list<StmtAST*>*> stmt_string
-%type<StmtAST*> stmt
+%type<std::vector<ExprAST*>*> stmt_string
 %type<ExprListAST*> expr_string expr_list expr_lists
 %type<ExprAST*> id_or_plchld expr
 
@@ -56,13 +54,10 @@ block
 ;
 
 stmt_string
-	: stmt { $$ = new std::list<StmtAST*>(1, $1); }
-	| stmt_string stmt { ($$ = $1)->push_back($2); }
-;
-
-stmt
-	: expr_string NEWLINE { $$ = new StmtAST(getloc(@1, @1), $1); }
-	| expr_string ':' NEWLINE INDENT block OUTDENT { $1->exprs.push_back($5); $$ = new StmtAST(getloc(@1, @5), $1); }
+	: expr_string NEWLINE { $$ = new std::vector<ExprAST*>($1->cbegin(), $1->cend()); $$->push_back(new StopExprAST(getloc(@2, @2))); }
+	| expr_string ':' NEWLINE INDENT block OUTDENT { $$ = new std::vector<ExprAST*>($1->cbegin(), $1->cend()); $$->push_back($5); }
+	| stmt_string expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
+	| stmt_string expr_string ':' NEWLINE INDENT block OUTDENT { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($6); }
 ;
 
 expr_string
@@ -96,6 +91,7 @@ expr
 	| id_or_plchld { $$ = $1; }
 	| id_or_plchld '(' ')' %prec CALL { $$ = new CallExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| id_or_plchld '(' expr_lists ')' %prec CALL { $$ = new CallExprAST(getloc(@1, @4), $1, $3); }
+	| '{' block '}' { $$ = $2; }
 	| expr '[' ']' %prec SUBSCRIPT { $$ = new SubscrExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| expr '[' expr_lists ']' %prec SUBSCRIPT { $$ = new SubscrExprAST(getloc(@1, @4), $1, $3); }
 	| id_or_plchld '<' '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }

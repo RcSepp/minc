@@ -597,6 +597,49 @@ castdef<BaseType> $<BuiltinType> {
 \* ---------------------------------------------------------------------------*/
 
 
+/* ---------------------------------------------------------------------------*\
+Name: If statement
+Template: if($<bool>) $S
+Depends on: LLVMValueRef $I = $<LLVMValueRef>
+            LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+\* ---------------------------------------------------------------------------*/
+stmtdef if($<bool>) $S {
+	LLVMValueRef ifCond = codegen($0, parentBlock);
+	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
+	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
+	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
+
+	LLVMPositionBuilder(ifBlock);
+	codegen($1, parentBlock);
+	LLVMBuildBr(elseBlock);
+
+	LLVMPositionBuilder(elseBlock);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: If-else statement
+Template: if($<bool>) $S else $S
+Depends on: LLVMValueRef $I = $<LLVMValueRef>
+            LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+\* ---------------------------------------------------------------------------*/
+stmtdef if($<bool>) $S else $S {
+	LLVMValueRef ifCond = codegen($0, parentBlock);
+	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
+	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
+	LLVMBasicBlockRef endIfBlock = LLVMAppendBasicBlock(function, "endIfBlock");
+	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
+
+	LLVMPositionBuilder(ifBlock);
+	codegen($1, parentBlock);
+	LLVMBuildBr(endIfBlock);
+
+	LLVMPositionBuilder(elseBlock);
+	codegen($2, parentBlock);
+	LLVMBuildBr(endIfBlock);
+
+	LLVMPositionBuilder(endIfBlock);
+}
+
 stmtdef for(int $I = $E; $E; $E) $B {
 	// Inherent global scope into for block scope
 	$4.parent = parentBlock;

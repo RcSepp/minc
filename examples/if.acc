@@ -2,39 +2,8 @@ import <builtin.acc>;
 
 int a = 3;
 
-stmtdef if($E) $S {
-	LLVMValueRef ifCond = codegen($0, parentBlock);
-	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
-	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
-	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
-
-	LLVMPositionBuilder(ifBlock);
-	codegen($1, parentBlock);
-	LLVMBuildBr(elseBlock);
-
-	LLVMPositionBuilder(elseBlock);
-}
-
 if (a != 0) printf("`if($E) $S` works\n");
 if (a != 0) { printf("`if($E) $B` works\n"); }
-
-stmtdef if($E) $S else $S {
-	LLVMValueRef ifCond = codegen($0, parentBlock);
-	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
-	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
-	LLVMBasicBlockRef endIfBlock = LLVMAppendBasicBlock(function, "endIfBlock");
-	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
-
-	LLVMPositionBuilder(ifBlock);
-	codegen($1, parentBlock);
-	LLVMBuildBr(endIfBlock);
-
-	LLVMPositionBuilder(elseBlock);
-	codegen($2, parentBlock);
-	LLVMBuildBr(endIfBlock);
-
-	LLVMPositionBuilder(endIfBlock);
-}
 
 if (a == 3) printf("If branch of `if($E) $S else $S` works\n"); else printf("If branch of `if($E) $S else $S` DOESN'T WORK\n");
 if (a != 3) printf("Else branch of `if($E) $S else $S` DOESN'T WORK\n"); else printf("Else branch of `if($E) $S else $S` works\n");

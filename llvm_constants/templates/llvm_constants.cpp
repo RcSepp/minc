@@ -46,7 +46,6 @@ namespace Types
 
 	// AST types
 	StructType* Location;
-	StructType* AST;
 	StructType* ExprAST;
 	StructType* LiteralExprAST;
 	StructType* IdExprAST;
@@ -100,12 +99,9 @@ namespace Types
 			Type::getInt32Ty(c),
 			Type::getInt32Ty(c)
 		);
-		AST = StructType::create("class.AST",
-			Location
-		);
 		ExprAST = StructType::create("class.ExprAST",
 			FunctionType::get(Type::getInt32Ty(c), true)->getPointerTo()->getPointerTo(),
-			AST,
+			Location,
 			Type::getInt32Ty(c),
 			Value->getPointerTo()
 		);

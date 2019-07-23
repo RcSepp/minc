@@ -51,22 +51,16 @@ struct CodegenContext
 	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
 };
 
-class AST
-{
-public:
-	const Location loc;
-	AST(const Location& loc) : loc(loc) {}
-};
-
 class Expr
 {
 	virtual Variable codegen(BlockExprAST* parentBlock) = 0;
 	virtual std::string str() const = 0;
 };
 
-class ExprAST : public AST
+class ExprAST
 {
 public:
+	const Location loc;
 	enum ExprType {
 		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
 		NUM_EXPR_TYPES
@@ -77,7 +71,7 @@ public:
 	CodegenContext* resolvedContext;
 	std::vector<ExprAST*> resolvedParams;
 
-	ExprAST(const Location& loc, ExprType exprtype) : AST(loc), exprtype(exprtype), resolvedContext(nullptr) {}
+	ExprAST(const Location& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedContext(nullptr) {}
 	virtual ~ExprAST() {}
 	virtual Variable codegen(BlockExprAST* parentBlock);
 	virtual BaseType* getType(const BlockExprAST* parentBlock) const

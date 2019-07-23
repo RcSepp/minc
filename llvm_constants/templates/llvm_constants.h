@@ -50,7 +50,6 @@ namespace Types
 
 	// AST types
 	extern StructType* Location;
-	extern StructType* AST;
 	extern StructType* ExprAST;
 	extern StructType* LiteralExprAST;
 	extern StructType* IdExprAST;

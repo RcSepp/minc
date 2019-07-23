@@ -12,7 +12,6 @@ class LiteralExprAST;
 class PlchldExprAST;
 class ExprListAST;
 class StmtAST;
-class Stmt;
 class BlockExprAST;
 
 struct Variable
@@ -31,7 +30,7 @@ typedef BaseType* (*ExprTypeBlock)(const BlockExprAST*, const std::vector<ExprAS
 extern "C"
 {
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
-	void codegenStmt(Stmt* stmt, BlockExprAST* scope);
+	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
 	BaseType* getType(ExprAST* expr, const BlockExprAST* scope);
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params);
 	std::string ExprASTToString(const ExprAST* expr);

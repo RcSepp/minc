@@ -30,7 +30,7 @@ struct CompileError
 };
 struct UndefinedStmtException : public CompileError
 {
-	UndefinedStmtException(const Stmt* stmt);
+	UndefinedStmtException(const StmtAST* stmt);
 };
 struct UndefinedExprException : public CompileError
 {
@@ -45,11 +45,7 @@ struct InvalidTypeException : public CompileError
 	InvalidTypeException(const PlchldExprAST* plchld);
 };
 
-struct IStmtContext
-{
-	virtual void codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
-};
-struct IExprContext
+struct CodegenContext
 {
 	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
 	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
@@ -72,13 +68,13 @@ class ExprAST : public AST
 {
 public:
 	enum ExprType {
-		LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
 
 	// Resolved state
-	IExprContext* resolvedContext;
+	CodegenContext* resolvedContext;
 	std::vector<ExprAST*> resolvedParams;
 
 	ExprAST(const Location& loc, ExprType exprtype) : AST(loc), exprtype(exprtype), resolvedContext(nullptr) {}
@@ -144,14 +140,14 @@ std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
 class StatementRegister
 {
 private:
-	std::list<std::pair<const std::vector<ExprAST*>, IStmtContext*>> stmtreg;
-	std::array<std::list<std::pair<const ExprAST*, IExprContext*>>, ExprAST::NUM_EXPR_TYPES> exprreg;
+	std::list<std::pair<const std::vector<ExprAST*>, CodegenContext*>> stmtreg;
+	std::array<std::list<std::pair<const ExprAST*, CodegenContext*>>, ExprAST::NUM_EXPR_TYPES> exprreg;
 public:
-	void defineStatement(const std::vector<ExprAST*>& tplt, IStmtContext* stmt) { stmtreg.push_front({tplt, stmt}); }
+	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg.push_front({tplt, stmt}); }
 	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(this->stmtreg.begin(), stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
-	const std::pair<const std::vector<ExprAST*>, IStmtContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& score, ExprASTIter& stmtEnd) const;
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& score, ExprASTIter& stmtEnd) const;
 
-	void defineExpr(const ExprAST* tplt, IExprContext* expr)
+	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	{
 		exprreg[tplt->exprtype].push_front({tplt, expr});
 	}
@@ -160,33 +156,21 @@ public:
 		for (size_t i = 0; i < exprreg.size(); ++i)
 			this->exprreg[i].insert(this->exprreg[i].begin(), stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
 	}
-	const std::pair<const ExprAST*, IExprContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr) const;
-	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const;
+	const std::pair<const ExprAST*, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr) const;
+	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const;
 };
 
-class StmtAST : public AST
+class StmtAST : public ExprAST
 {
 public:
-	ExprListAST* exprs;
-
-	// Resolved state
-	IStmtContext* resolvedContext;
-	std::vector<ExprAST*> resolvedParams;
-
-	StmtAST(const Location& loc, ExprListAST* exprs) : AST(loc), exprs(exprs) {}
-	void codegen(BlockExprAST* parentBlock);
-	std::string str() const { return exprs->str(); }
-};
-
-class Stmt : public Expr
-{
-public:
-	Location loc;
 	ExprASTIter begin, end;
-	IStmtContext* context;
-	std::vector<ExprAST*> params;
 
+	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
+	void collectParams(const BlockExprAST* block, const std::vector<ExprAST*> tplt);
 	Variable codegen(BlockExprAST* parentBlock);
+bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); }
+void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const { assert(0); }
+void resolveTypes(BlockExprAST* block) { assert(0); }
 	std::string str() const
 	{
 		if (begin == end)
@@ -203,7 +187,7 @@ class BlockExprAST : public ExprAST
 private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
-	std::map<std::pair<BaseType*, BaseType*>, IExprContext*> casts;
+	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
 	std::vector<ExprAST*>* blockParams;
 	XXXValue* blockParamsVal;
 public:
@@ -212,33 +196,33 @@ public:
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
 		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs), blockParams(nullptr), blockParamsVal(nullptr) {}
 
-	void defineStatement(const std::vector<ExprAST*>& tplt, IStmtContext* stmt)
+	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
 		for (ExprAST* tpltExpr: tplt)
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(tplt, stmt);
 	}
-	bool lookupStatement(ExprASTIter& exprs, Stmt* stmt=nullptr) const;
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(ExprASTIter& exprs) const;
 
-	void defineExpr(ExprAST* tplt, IExprContext* expr)
+	void defineExpr(ExprAST* tplt, CodegenContext* expr)
 	{
 		tplt->resolveTypes(this);
 		stmtreg.defineExpr(tplt, expr);
 	}
 	bool lookupExpr(ExprAST* expr) const;
-	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const
+	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 			block->stmtreg.lookupExprCandidates(this, expr, candidates);
 	}
 
-	void defineCast(BaseType* fromType, BaseType* toType, IExprContext* context)
+	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 	{
 		casts[{fromType, toType}] = context;
 	}
-	IExprContext* lookupCast(BaseType* fromType, BaseType* toType) const
+	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const
 	{
-		std::map<std::pair<BaseType*, BaseType*>, IExprContext*>::const_iterator cast;
+		std::map<std::pair<BaseType*, BaseType*>, CodegenContext*>::const_iterator cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 			if ((cast = block->casts.find({fromType, toType})) != block->casts.end())
 				return cast->second;
@@ -247,7 +231,7 @@ public:
 	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
-			for (const std::pair<std::pair<BaseType*, BaseType*>, IExprContext*> cast: block->casts)
+			for (const std::pair<std::pair<BaseType*, BaseType*>, CodegenContext*> cast: block->casts)
 				casts.push_back(cast.first);
 	}
 

@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "ast.h"
 
-UndefinedStmtException::UndefinedStmtException(const Stmt* stmt)
+UndefinedStmtException::UndefinedStmtException(const StmtAST* stmt)
 	: CompileError("undefined statement " + stmt->str(), stmt->loc) {}
 UndefinedExprException::UndefinedExprException(const ExprAST* expr)
 	: CompileError("undefined expression " + expr->str(), expr->loc) {}
@@ -52,6 +52,15 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 					}
 				}
 			}
+		}
+		else if (tplt[0]->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt[0])->p1 == 'S')
+		{
+			++tplt; // Eat $S
+
+			if (!block->lookupStatement(expr))
+				return false;
+
+			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
 		}
 		else
 		{
@@ -113,6 +122,20 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 				}
 			}
 		}
+		else if (tplt[0]->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt[0])->p1 == 'S')
+		{
+			++tplt; // Eat $S
+
+			const ExprASTIter beginExpr = expr;
+			const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = block->lookupStatement(expr);
+			const ExprASTIter endExpr = expr;
+			assert(stmtContext);
+			StmtAST* stmt = new StmtAST(beginExpr, endExpr, stmtContext->second);
+			stmt->collectParams(block, stmtContext->first);
+			params.push_back(stmt);
+
+			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
+		}
 		else
 		{
 			// Collect non-ellipsis expression
@@ -141,12 +164,17 @@ void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::
 	collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)exprs)->exprs.cbegin(), ((ExprListAST*)exprs)->exprs.cend(), params);
 }
 
-const std::pair<const std::vector<ExprAST*>, IStmtContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& bestScore, ExprASTIter& bestStmtEnd) const
+void StmtAST::collectParams(const BlockExprAST* block, const std::vector<ExprAST*> tplt)
+{
+	collectStatement(block, tplt.cbegin(), tplt.cend(), begin, end, resolvedParams);
+}
+
+const std::pair<const std::vector<ExprAST*>, CodegenContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& bestScore, ExprASTIter& bestStmtEnd) const
 {
 	MatchScore currentScore;
 	ExprASTIter currentStmtEnd;
-	const std::pair<const std::vector<ExprAST*>, IStmtContext*>* bestStmt = nullptr;
-	for (const std::pair<const std::vector<ExprAST*>, IStmtContext*>& iter: stmtreg)
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* bestStmt = nullptr;
+	for (const std::pair<const std::vector<ExprAST*>, CodegenContext*>& iter: stmtreg)
 	{
 #ifdef DEBUG_STMTREG
 auto foo = ExprListAST('\0', iter.first).str();
@@ -169,10 +197,10 @@ auto foo = ExprListAST('\0', iter.first).str();
 	return bestStmt;
 }
 
-const std::pair<const ExprAST*, IExprContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr) const
+const std::pair<const ExprAST*, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr) const
 {
 	MatchScore currentScore, bestScore = -2147483648;
-	const std::pair<const ExprAST*, IExprContext*>* bestStmt = nullptr;
+	const std::pair<const ExprAST*, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
@@ -212,10 +240,10 @@ const std::pair<const ExprAST*, IExprContext*>* StatementRegister::lookupExpr(co
 	return bestStmt;
 }
 
-void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&>& candidates) const
+void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
 {
 	MatchScore score;
-	const std::pair<const ExprAST*, IExprContext*>* bestStmt = nullptr;
+	const std::pair<const ExprAST*, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 		score = 0;
@@ -237,7 +265,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	indent += '\t';
 #endif
 	expr->resolvedParams.clear();
-	const std::pair<const ExprAST*, IExprContext*>* context = nullptr;
+	const std::pair<const ExprAST*, CodegenContext*>* context = nullptr;
 	for (const BlockExprAST* block = this; block && !context; block = block->parent)
 		context = block->stmtreg.lookupExpr(this, expr);
 #ifdef DEBUG_STMTREG
@@ -254,7 +282,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 		return false;
 }
 
-bool BlockExprAST::lookupStatement(ExprASTIter& exprs, Stmt* stmt) const
+const std::pair<const std::vector<ExprAST*>, CodegenContext*>* BlockExprAST::lookupStatement(ExprASTIter& exprs) const
 {
 //TODO: Figure out logic for looking up expressions ahead of looking up statements
 for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
@@ -268,17 +296,11 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	indent += '\t';
 #endif
 
-	if (stmt)
-	{
-		stmt->begin = exprs;
-		stmt->params.clear();
-	}
-
 	// Lookup statement in current block and all parents
 	// Get context of best match
 	MatchScore currentScore, score = -2147483648;
 	ExprASTIter currentStmtEnd, stmtEnd;
-	const std::pair<const std::vector<ExprAST*>, IStmtContext*> *currentContext, *context = nullptr;
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*> *currentContext, *context = nullptr;
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -298,31 +320,9 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	if (context)
 		exprs = stmtEnd;
 	else
-	{
-		while (exprs != this->exprs->cend() && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs)->exprtype != ExprAST::ExprType::BLOCK)
-			++exprs;
-	}
+		while (exprs != this->exprs->cend() && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs++)->exprtype != ExprAST::ExprType::BLOCK) {}
 
-	if (stmt)
-	{
-		stmt->end = exprs;
-		if (context)
-		{
-			stmt->context = context->second;
-			collectStatement(this, context->first.cbegin(), context->first.cend(), stmt->begin, stmt->end, stmt->params);
-		}
-		else
-			stmt->context = nullptr;
-		stmt->loc = Location{
-			stmt->begin[0]->loc.filename,
-			stmt->begin[0]->loc.begin_line,
-			stmt->begin[0]->loc.begin_col,
-			stmt->end[-1]->loc.end_line,
-			stmt->end[-1]->loc.end_col
-		};
-	}
-
-	return context != nullptr;
+	return context;
 }
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
@@ -365,7 +365,7 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 		if (exprType != tpltType)
 		{
 //printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)exprType)->name, ((BuiltinType*)tpltType)->name, expr->loc.filename, expr->loc.begin_line);
-			IExprContext* castContext = block->lookupCast(exprType, tpltType);
+			CodegenContext* castContext = block->lookupCast(exprType, tpltType);
 			assert(castContext != nullptr);
 			ExprAST* castExpr = new CastExprAST(expr->loc);
 			castExpr->resolvedContext = castContext;

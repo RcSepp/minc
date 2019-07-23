@@ -88,20 +88,25 @@ int foo = 0;
 void initBuiltinSymbols();
 void defineBuiltinSymbols(BlockExprAST* block);
 
-struct StaticStmtContext : public IStmtContext
+struct StaticStmtContext : public CodegenContext
 {
 private:
 	StmtBlock cbk;
 public:
 	StaticStmtContext(StmtBlock cbk) : cbk(cbk) {}
-	void codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//if (dbuilder)
 		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		cbk(parentBlock, params);
+		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return nullptr;
 	}
 };
-struct StaticExprContext : public IExprContext
+struct StaticExprContext : public CodegenContext
 {
 private:
 	ExprBlock cbk;
@@ -119,7 +124,7 @@ public:
 		return type;
 	}
 };
-struct StaticExprContext2 : public IExprContext
+struct StaticExprContext2 : public CodegenContext
 {
 private:
 	ExprBlock cbk;
@@ -137,7 +142,7 @@ public:
 		return typecbk(parentBlock, params);
 	}
 };
-struct OpaqueExprContext : public IExprContext
+struct OpaqueExprContext : public CodegenContext
 {
 private:
 	BaseType* const type;
@@ -154,7 +159,7 @@ public:
 };
 
 
-struct DynamicStmtContext : public IStmtContext
+struct DynamicStmtContext : public CodegenContext
 {
 private:
 	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* closure);
@@ -162,16 +167,21 @@ private:
 	void* closure;
 public:
 	DynamicStmtContext(JitFunction* func, void* closure = nullptr) : cbk(reinterpret_cast<funcPtr>(func->compile())), closure(closure) {}
-	void codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//BasicBlock* _currentBB = currentBB;
 		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), closure);
 		//if (currentBB != _currentBB)
 		//	builder->SetInsertPoint(currentBB = _currentBB);
+		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return nullptr;
 	}
 };
 
-struct DynamicExprContext : public IExprContext
+struct DynamicExprContext : public CodegenContext
 {
 private:
 	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
@@ -210,7 +220,7 @@ extern "C"
 		return expr->codegen(scope).value->getConstantValue();
 	}
 
-	void codegenStmt(Stmt* stmt, BlockExprAST* scope)
+	void codegenStmt(StmtAST* stmt, BlockExprAST* scope)
 	{
 		stmt->codegen(scope);
 	}
@@ -385,7 +395,7 @@ extern "C"
 		if (fromType == toType)
 			return expr;
 
-		IExprContext* castContext = scope->lookupCast(fromType, toType);
+		CodegenContext* castContext = scope->lookupCast(fromType, toType);
 		if (castContext == nullptr)
 			return nullptr;
 
@@ -398,13 +408,13 @@ extern "C"
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)
 	{
 		std::string report = "";
-		std::multimap<MatchScore, const std::pair<const ExprAST*, IExprContext*>&> candidates;
+		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&> candidates;
 		std::vector<ExprAST*> resolvedParams;
 		scope->lookupExprCandidates(expr, candidates);
 		for (auto& candidate: candidates)
 		{
 			const MatchScore score = candidate.first;
-			const std::pair<const ExprAST*, IExprContext*>& context = candidate.second;
+			const std::pair<const ExprAST*, CodegenContext*>& context = candidate.second;
 			resolvedParams.clear();
 			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams);
 			BuiltinType* t = (BuiltinType*)context.second->getType(scope, resolvedParams);
@@ -549,6 +559,13 @@ IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, 
 	return module;
 }
 
+StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context)
+	: ExprAST(Location{ exprBegin[0]->loc.filename, exprBegin[0]->loc.begin_line, exprBegin[0]->loc.begin_col, exprEnd[-1]->loc.end_line, exprEnd[-1]->loc.end_col }, ExprAST::ExprType::STMT),
+	begin(exprBegin), end(exprEnd)
+{
+	resolvedContext = context;
+}
+
 Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
 	parent = parentBlock;
@@ -559,11 +576,17 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		fileBlock = this;
 	}
 
-	Stmt stmt;
 	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
 	{
-		if (lookupStatement(iter, &stmt))
+		const ExprASTIter beginExpr = iter;
+		const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = lookupStatement(iter);
+		const ExprASTIter endExpr = iter;
+
+		StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
+
+		if (stmtContext)
 		{
+			stmt.collectParams(this, stmtContext->first);
 			stmt.codegen(this);
 		}
 		else
@@ -608,11 +631,11 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		throw UndefinedExprException{this};
 }
 
-Variable Stmt::codegen(BlockExprAST* parentBlock)
+Variable StmtAST::codegen(BlockExprAST* parentBlock)
 {
 	if (dbuilder)
 		builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-	context->codegen(parentBlock, params);
+	resolvedContext->codegen(parentBlock, resolvedParams);
 	return Variable(BuiltinTypes::Void, new XXXValue(nullptr));
 }
 

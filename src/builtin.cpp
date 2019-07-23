@@ -651,6 +651,21 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				}
 			}
 
+			// Define return statement with incorrect type in function scope
+			defineStmt2(blockAST, "return $E",
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+					BuiltinType* returnType = (BuiltinType*)getType(params[0], parentBlock);
+					raiseCompileError(("invalid return type `" + std::string(returnType->name) + "`").c_str(), params[0]);
+				}
+			);
+
+			// Define return statement with correct type in function scope
+			defineStmt2(blockAST, ("return $<" + std::string(returnType->name) + ">").c_str(),
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+					builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
+				}
+			);
+
 			// Codegen function body
 			codegenExpr((ExprAST*)blockAST, parentBlock).value;
 

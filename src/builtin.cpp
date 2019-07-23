@@ -264,6 +264,13 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		}
 	);
 
+	// Define context-free block statement
+	defineStmt2(rootBlock, "$B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+			codegenExpr(params[0], parentBlock).value;
+		}
+	);
+
 	// Define function call
 	defineExpr3(rootBlock, "$I($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {

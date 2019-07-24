@@ -431,12 +431,30 @@ exprdef<int> $<int> + $<int> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: Integer subtraction
+Template: $<int> - $<int>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $<int> - $<int> {
+	return LLVMBuildSub(codegen($0, parentBlock), codegen($1, parentBlock), "sub");
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: Integer multiplication
 Template: $<int> * $<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<int> $<int> * $<int> {
 	return LLVMBuildMul(codegen($0, parentBlock), codegen($1, parentBlock), "mul");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Integer division
+Template: $<int> / $<int>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $<int> / $<int> {
+	return LLVMBuildSDiv(codegen($0, parentBlock), codegen($1, parentBlock), "div");
 }
 
 exprdef<bool> $<int> == $<int> {

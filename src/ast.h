@@ -62,7 +62,7 @@ class ExprAST
 public:
 	const Location loc;
 	enum ExprType {
-		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, ADD, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, BINOP, PREOP, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -546,7 +546,7 @@ public:
 	int op;
 	ExprAST *a, *b;
 	const std::string opstr;
-	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b) : ExprAST(loc, ExprAST::ExprType::ADD), op(op), a(a), b(b), opstr(opstr) {}
+	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b) : ExprAST(loc, ExprAST::ExprType::BINOP), op(op), a(a), b(b), opstr(opstr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
 		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score) && b->match(block, ((BinOpExprAST*)expr)->b, score);
@@ -563,6 +563,29 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return a->str() + " " + opstr + " " + b->str(); }
+};
+
+class PrefixExprAST : public ExprAST
+{
+public:
+	int op;
+	ExprAST *a;
+	const std::string opstr;
+	PrefixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a) : ExprAST(loc, ExprAST::ExprType::PREOP), op(op), a(a), opstr(opstr) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score);
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
+	{
+		a->collectParams(block, ((BinOpExprAST*)expr)->a, params);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		a->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+	}
+	std::string str() const { return opstr + a->str(); }
 };
 
 #endif

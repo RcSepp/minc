@@ -463,63 +463,46 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		}
 	);
 
-	// // Define `typedef`
-	// defineStmt2(rootBlock, "typedef<$I> $I $B",
-	// 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-	// 		IdExprAST* typeAST = (IdExprAST*)params.front();
-	// 		IdExprAST* nameAST = (IdExprAST*)params[1];
-	// 		BlockExprAST* blockAST = (BlockExprAST*)params.back();
+	// Define `typedef`
+	defineStmt2(rootBlock, "typedef<$I> $I $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+			BuiltinType* metaType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			IdExprAST* nameAST = (IdExprAST*)params[1];
+			BlockExprAST* blockAST = (BlockExprAST*)params.back();
  
-	// 		// Define `return`
-	// 		Type* returnType = nullptr;
-	// 		defineStmt2(blockAST, "fake_return $E",
-	// 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-	// 				Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-	// 				Value* resultVal = codegenExpr(params[0], parentBlock).value->val;
-	// 				Value* resultTypeVal = Constant::getIntegerValue(Types::LLVMOpaqueType->getPointerTo(), APInt(64, (uint64_t)resultVal->getType()));
-	// 				Value* returnStruct = builder->CreateInsertValue(UndefValue::get(returnStructType), builder->CreatePtrToInt(resultVal, Types::Int64), { 0 });
-	// 				returnStruct = builder->CreateInsertValue(returnStruct, resultTypeVal, { 1 });
-	// 				builder->CreateRet(returnStruct);
-	// 			}
-	// 		);
+			// Define `return`
+			Type* returnType = nullptr;
+			defineStmt2(blockAST, "return $E",
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+					Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
+					Value* resultVal = codegenExpr(params[0], parentBlock).value->val;
+					Value* resultTypeVal = Constant::getIntegerValue(Types::LLVMOpaqueType->getPointerTo(), APInt(64, (uint64_t)resultVal->getType()));
+					Value* returnStruct = builder->CreateInsertValue(UndefValue::get(returnStructType), builder->CreatePtrToInt(resultVal, Types::Int64), { 0 });
+					returnStruct = builder->CreateInsertValue(returnStruct, resultTypeVal, { 1 });
+					builder->CreateRet(returnStruct);
+				}
+			);
 
-	// 		std::vector<ExprAST*> typeParams;
-	// 		collectParams(parentBlock, (ExprAST*)nameAST, (ExprAST*)nameAST, typeParams);
+			// Generate JIT function name
+			std::string jitFuncName("typedef " + std::string(getIdExprASTName(nameAST)));
 
-	// 		// Generate JIT function name
-	// 		std::string jitFuncName = getIdExprASTName(nameAST);
+			Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
+			struct ReturnStruct { uint64_t result; Type* resultType; };
 
-	// 		bool isCaptured;
-	// 		const Variable* typeVar = lookupSymbol(parentBlock, getIdExprASTName(typeAST), isCaptured);
-	// 		if (!typeVar)
-	// 			raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
-	// 		if (typeVar->value)
-	// 			raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);
-	// 		//Type* returnType = typeVar->value->type->getPointerTo();
+			std::vector<ExprAST*> typeParams;
+			JitFunction* jitFunc = createJitFunction2(parentBlock, blockAST, returnStructType, typeParams, jitFuncName);
+			capturedScope.clear();
+			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-	// 		Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-	// 		struct ReturnStruct { uint64_t result; Type* resultType; };
+			typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
+			funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
+			ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
+			removeJitFunctionModule(jitFunc);
+			removeJitFunction(jitFunc);
 
-	// 		JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinType::get("typedefReturnStructType", wrap(returnStructType), 8), typeParams, jitFuncName);
-	// 		capturedScope.clear();
-	// 		codegenExpr((ExprAST*)blockAST, parentBlock);
-
-	// 		typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
-	// 		funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
-	// 		ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
-	// 		removeJitFunctionModule(jitFunc);
-	// 		removeJitFunction(jitFunc);
-
-	// 		Value* typeVal = Constant::getIntegerValue(type.resultType, APInt(64, type.result));
-	// 		//Value* val = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
-
-	// 		/*AllocaInst* typeValPtr = builder->CreateAlloca(returnType, nullptr);
-	// 		typeValPtr->setAlignment(8);
-	// 		builder->CreateStore(typeVal, typeValPtr)->setAlignment(8);*/
-
-	// 		defineSymbol(parentBlock, getIdExprASTName(nameAST), typeVar->type, new XXXValue(typeVal));
-	// 	}
-	// );
+			defineSymbol(parentBlock, getIdExprASTName(nameAST), metaType, new XXXValue(type.resultType, (uint64_t)type.result));
+		}
+	);
 
 	// Define variable declaration
 	defineStmt2(rootBlock, "int_ref $I",
@@ -913,11 +896,11 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 				);
 				valueGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
 				valueGlobal->setAlignment(1);
-					Constant *zero_32 = Constant::getNullValue(IntegerType::getInt32Ty(*context));
-					std::vector<Value *>gep_params = {
-						zero_32,
-						zero_32
-					};
+				Constant *zero_64 = Constant::getNullValue(IntegerType::getInt64Ty(*context));
+				std::vector<Value *> gep_params = {
+					zero_64,
+					zero_64
+				};
 				//return Variable(Type::getInt8PtrTy(*context), new XXXValue(builder->CreateGEP(valueConstant->getType(), valueGlobal, gep_params)));
 				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(builder->CreateGEP(valueConstant->getType(), valueGlobal, gep_params)));
 			}

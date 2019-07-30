@@ -72,10 +72,11 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 	}
 
 	// Eat unused trailing ellipses and lists only consisting of ellises
+	ExprASTIter listExprEnd;
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, expr, score)
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, exprEnd, score, &listExprEnd) && listExprEnd == exprEnd
 		)) ++tplt;
 
 	if (stmtEnd)
@@ -148,7 +149,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, expr, score)
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, exprEnd, score)
 		)) ++tplt;
 
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
@@ -156,7 +157,8 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 
 bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
-	return expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score);
+	ExprASTIter listExprEnd;
+	return expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score, &listExprEnd) && listExprEnd == ((ExprListAST*)expr)->exprs.cend();
 }
 
 void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params) const

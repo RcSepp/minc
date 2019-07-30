@@ -195,6 +195,8 @@ llvm_c_functions.push_back(Func("strlen", BuiltinTypes::Int64, { BuiltinTypes::I
 	llvm_c_functions.push_back(Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "LLVMEXPositionBuilder"));
 	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP1"));
 	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP2"));
+	llvm_c_functions.push_back(Func("LLVMConstInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef }, false, "LLVMEXConstInBoundsGEP1"));
+	llvm_c_functions.push_back(Func("LLVMConstInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef }, false, "LLVMEXConstInBoundsGEP2"));
 	llvm_c_functions.push_back(Func("LLVMDIBuilderCreateExpression", BuiltinTypes::LLVMMetadataRef, { }, false, "LLVMEXDIBuilderCreateExpression"));
 	llvm_c_functions.push_back(Func("LLVMDIBuilderCreateDebugLocation", BuiltinTypes::LLVMMetadataRef, { BuiltinTypes::Int32, BuiltinTypes::Int32, BuiltinTypes::LLVMMetadataRef }, false, "LLVMEXDIBuilderCreateDebugLocation"));
 }
@@ -205,6 +207,8 @@ extern "C"
 	void LLVMEXPositionBuilder(LLVMBasicBlockRef bb) { builder->SetInsertPoint(currentBB = unwrap(bb)); }
 	LLVMValueRef LLVMEXBuildInBoundsGEP1(LLVMValueRef Pointer, LLVMValueRef Idx0, const char *Name) { return LLVMBuildInBoundsGEP(wrap(builder), Pointer, &Idx0, 1, Name); }
 	LLVMValueRef LLVMEXBuildInBoundsGEP2(LLVMValueRef Pointer, LLVMValueRef Idx0, LLVMValueRef Idx1, const char *Name) { LLVMValueRef Idxs[] = { Idx0, Idx1 }; return LLVMBuildInBoundsGEP(wrap(builder), Pointer, Idxs, 2, Name); }
+	LLVMValueRef LLVMEXConstInBoundsGEP1(LLVMValueRef ConstantVal, LLVMValueRef Idx0) { return LLVMConstInBoundsGEP(ConstantVal, &Idx0, 1); }
+	LLVMValueRef LLVMEXConstInBoundsGEP2(LLVMValueRef ConstantVal, LLVMValueRef Idx0, LLVMValueRef Idx1) { LLVMValueRef Idxs[] = { Idx0, Idx1 }; return LLVMConstInBoundsGEP(ConstantVal, Idxs, 2); }
 	LLVMMetadataRef LLVMEXDIBuilderCreateExpression() { return LLVMDIBuilderCreateExpression(wrap(dbuilder), nullptr, 0); }
 	LLVMMetadataRef LLVMEXDIBuilderCreateDebugLocation(unsigned Line, unsigned Column, LLVMMetadataRef Scope) { return LLVMDIBuilderCreateDebugLocation(LLVMGetGlobalContext(), Line, Column, Scope, nullptr); }
 }

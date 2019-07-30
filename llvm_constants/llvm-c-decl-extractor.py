@@ -261,6 +261,8 @@ SKIP_FUNCS = [
     'LLVMPositionBuilder',
     'LLVMBuildInBoundsGEP1',
     'LLVMBuildInBoundsGEP2',
+    'LLVMConstInBoundsGEP1',
+    'LLVMConstInBoundsGEP2',
     'LLVMDIBuilderCreateExpression',
     'LLVMDIBuilderCreateDebugLocation',
 ]

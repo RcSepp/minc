@@ -23,7 +23,7 @@ BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_
 	std::string hash = std::string(name);
 	auto t = builtinTypes.find(hash);
 	if (t == builtinTypes.end())
-		t = builtinTypes.insert({ hash, new BuiltinType(name, llvmtype, align) }).first;
+		t = builtinTypes.insert({ name, new BuiltinType(llvmtype, align) }).first;
 	return t->second;
 }
 
@@ -31,17 +31,18 @@ BuiltinType* BuiltinType::Ptr()
 {
 	if (ptr == nullptr)
 	{
-		size_t nameLen = strlen(name);
-		char* ptrName = new char[nameLen + 3];
-		strcpy(ptrName, name);
-		strcpy(ptrName + nameLen, "Ptr");
-		ptr = new BuiltinType(ptrName, LLVMPointerType(llvmtype, 0), 8);
+		const std::string& name = getTypeName(this);
+		char* ptrName = new char[name.size() + 3];
+		strcpy(ptrName, name.c_str());
+		strcpy(ptrName + name.size(), "Ptr");
+		ptr = new BuiltinType(LLVMPointerType(llvmtype, 0), 8);
+		defineType(nullptr, ptrName, this, new XXXValue(unwrap(ptr->llvmtype), (uint64_t)ptr));
 	}
 	return ptr;
 }
 
 FuncType::FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg)
-		: BuiltinType(name, nullptr, 8), resultType(resultType), argTypes(argTypes)
+		: BuiltinType(nullptr, 8), resultType(resultType), argTypes(argTypes), name(name)
 {
 	std::vector<llvm::Type*> argLlvmTypes;
 	for (BuiltinType* argType: argTypes)
@@ -49,16 +50,13 @@ FuncType::FuncType(const char* name, BuiltinType* resultType, std::vector<Builti
 	llvmtype = wrap(FunctionType::get(unwrap(resultType->llvmtype), argLlvmTypes, isVarArg));
 }
 
-TpltType* TpltType::get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, BuiltinType* tpltType)
+TpltType* TpltType::get(std::string name, BuiltinType* baseType, BaseType* tpltType)
 {
-	std::string hash = std::string(name) + '<' + std::string(tpltType->name) + '>';
-	auto t = tpltTypes.find(hash);
+	auto t = tpltTypes.find(name);
 	if (t == tpltTypes.end())
 	{
-		char* tpltName = new char[hash.size() + 1];
-		strcpy(tpltName, hash.c_str());
-		t = tpltTypes.insert({ hash, new TpltType(tpltName, llvmtype, align, tpltType) }).first;
-		defineOpaqueCast(getRootScope(), t->second, BuiltinType::get(name, llvmtype, align));
+		t = tpltTypes.insert({ name, new TpltType(baseType, tpltType) }).first;
+		defineOpaqueCast(getRootScope(), t->second, baseType);
 	}
 	return t->second;
 }

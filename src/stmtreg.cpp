@@ -366,7 +366,7 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 		BaseType* tpltType = getType(block);
 		if (exprType != tpltType)
 		{
-//printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)exprType)->name, ((BuiltinType*)tpltType)->name, expr->loc.filename, expr->loc.begin_line);
+//printf("implicit cast from %s to %s in %s:%i\n", getTypeName(exprType), getTypeName(tpltType), expr->loc.filename, expr->loc.begin_line);
 			CodegenContext* castContext = block->lookupCast(exprType, tpltType);
 			assert(castContext != nullptr);
 			ExprAST* castExpr = new CastExprAST(expr->loc);

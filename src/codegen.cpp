@@ -7,6 +7,7 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include <vector>
 #include <stack>
 #include <set>
+#include <map>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -82,7 +83,9 @@ DIFile *dfile;
 Value* closure;
 BlockExprAST* rootBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
-int foo = 0;
+std::map<const BaseType*, TypeDescription> typereg;
+const std::string NULL_TYPE = "NULL";
+const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
 void initBuiltinSymbols();
 void defineBuiltinSymbols(BlockExprAST* block);
@@ -296,9 +299,27 @@ extern "C"
 		return rootBlock;
 	}
 
+	const std::string& getTypeName(const BaseType* type)
+	{
+		if (type == nullptr)
+			return NULL_TYPE;
+		const auto typeDesc = typereg.find(type);
+		if (typeDesc == typereg.cend())
+			return UNKNOWN_TYPE;
+		else
+			return typeDesc->second.name;
+	}
+
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
 	{
 		scope->addToScope(name, type, value);
+	}
+
+	void defineType(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
+	{
+		typereg[(BaseType*)value->getConstantValue()] = TypeDescription{name};
+		if (scope)
+			scope->addToScope(name, type, value);
 	}
 
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure)
@@ -416,8 +437,8 @@ extern "C"
 			const std::pair<const ExprAST*, CodegenContext*>& context = candidate.second;
 			resolvedParams.clear();
 			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams);
-			BuiltinType* t = (BuiltinType*)context.second->getType(scope, resolvedParams);
-			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + (t ? t->name : "NULL") + ">\n";
+			const std::string& typeName = getTypeName(context.second->getType(scope, resolvedParams));
+			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + typeName + ">\n";
 		}
 		return report;
 	}
@@ -428,11 +449,7 @@ extern "C"
 		std::list<std::pair<BaseType*, BaseType*>> casts;
 		scope->listAllCasts(casts);
 		for (auto& cast: casts)
-		{
-			BuiltinType* fromType = (BuiltinType*)cast.first;
-			BuiltinType* toType = (BuiltinType*)cast.second;
-			report += "\t" +  std::string(fromType->name) + " -> " + std::string(toType->name) + "\n";
-		}
+			report += "\t" +  getTypeName(cast.first) + " -> " + getTypeName(cast.second) + "\n";
 		return report;
 	}
 
@@ -446,19 +463,14 @@ extern "C"
 		throw CompileError(msg, loc->loc);
 	}
 
-	BuiltinType* getPointerToBuiltinType(BuiltinType* type)
-	{
-		return type->Ptr();
-	}
-
 	void AddToScope(BlockExprAST* targetBlock, IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
 	{
-		targetBlock->addToScope(((IdExprAST*)nameAST)->name, type, new XXXValue(unwrap(val)));
+		targetBlock->addToScope(nameAST->name, type, new XXXValue(unwrap(val)));
 	}
 
-	void AddToFileScope(ExprAST* nameAST, BaseType* type, LLVMValueRef val)
+	void AddToFileScope(IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
 	{
-		fileBlock->addToScope(((IdExprAST*)nameAST)->name, type, new XXXValue(unwrap(val)));
+		fileBlock->addToScope(nameAST->name, type, new XXXValue(unwrap(val)));
 	}
 
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
@@ -503,17 +515,18 @@ extern "C"
 		//TODO: Free importedModule
 	}
 
-	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes)
-	{
-		std::vector<BuiltinType*> builtinArgTypes;
-		for (int i = 0; i < numArgTypes; ++i)
-			builtinArgTypes.push_back((BuiltinType*)argTypes[i]);
-		return new FuncType(name, (BuiltinType*)resultType, builtinArgTypes, isVarArg);
-	}
-
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
 	{
 		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
+	}
+	JitFunction* createJitFunction2(BlockExprAST* scope, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name)
+	{
+		return new JitFunction(scope, blockAST, returnType, params, name);
+	}
+
+	uint64_t compileJitFunction(JitFunction* jitFunc)
+	{
+		return jitFunc->compile();
 	}
 
 	void removeJitFunctionModule(JitFunction* jitFunc)
@@ -615,12 +628,11 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		if (dbuilder)
 			builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		const Variable var = resolvedContext->codegen(parentBlock, resolvedParams);
-		const BuiltinType *expectedType = (BuiltinType*)resolvedContext->getType(parentBlock, resolvedParams), *gotType = (BuiltinType*)var.type;
+		const BaseType *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
 		{
-			std::string expectedTypeStr = expectedType == nullptr ? "NULL" : expectedType->name, gotTypeStr = gotType == nullptr ? "NULL" : gotType->name;
 			throw CompileError(
-				("invalid expression return type: " + ExprASTToString(this) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">").c_str(),
+				("invalid expression return type: " + ExprASTToString(this) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">").c_str(),
 				this->loc
 			);
 		}
@@ -696,7 +708,7 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 					if (var != nullptr)
 					{
 						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
-						return Variable(TpltType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, (BuiltinType*)codegenType), new XXXValue(param));
+						return Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
 					}
 				}
 			}
@@ -746,7 +758,7 @@ BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 						if (var != nullptr)
 						{
 							BaseType* codegenType = (BaseType*)var->value->getConstantValue();
-							return TpltType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, (BuiltinType*)codegenType);
+							return TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
 						}
 					}
 				}

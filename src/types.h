@@ -14,11 +14,10 @@ private:
 	BuiltinType* ptr;
 
 protected:
-	BuiltinType(const char* name, LLVMOpaqueType* llvmtype, int32_t align)
-		: ptr(nullptr), name(name), llvmtype(llvmtype), align(align) {}
+	BuiltinType(LLVMOpaqueType* llvmtype, int32_t align)
+		: ptr(nullptr), llvmtype(llvmtype), align(align) {}
 
 public:
-	const char* name;
 	LLVMOpaqueType* llvmtype;
 	int32_t align;
 	virtual ~BuiltinType() {};
@@ -32,6 +31,7 @@ struct FuncType : public BuiltinType
 {
 	BuiltinType* resultType;
 	std::vector<BuiltinType*> argTypes;
+	const char* name;
 
 	FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg);
 	virtual ~FuncType() {};
@@ -44,13 +44,13 @@ private:
 	virtual ~TpltType() {};
 
 protected:
-	TpltType(const char* name, LLVMOpaqueType* llvmtype, int32_t align, BuiltinType* tpltType)
-		: BuiltinType(name, llvmtype, align), tpltType(tpltType) {}
+	TpltType(BuiltinType* baseType, BaseType* tpltType)
+		: BuiltinType(baseType->llvmtype, baseType->align), tpltType(tpltType) {}
 
 public:
-	BuiltinType* tpltType;
+	BaseType* tpltType;
 
-	static TpltType* get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, BuiltinType* tpltType);
+	static TpltType* get(std::string name, BuiltinType* baseType, BaseType* tpltType);
 };
 
 struct XXXValue

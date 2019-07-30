@@ -47,6 +47,22 @@ namespace MincFunctions
 	Func* createFuncType;
 }
 
+extern "C"
+{
+	BuiltinType* getPointerToBuiltinType(BuiltinType* type)
+	{
+		return type->Ptr();
+	}
+
+	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes)
+	{
+		std::vector<BuiltinType*> builtinArgTypes;
+		for (int i = 0; i < numArgTypes; ++i)
+			builtinArgTypes.push_back((BuiltinType*)argTypes[i]);
+		return new FuncType(name, (BuiltinType*)resultType, builtinArgTypes, isVarArg);
+	}
+}
+
 Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 {
 	bool isCaptured;
@@ -88,6 +104,24 @@ closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
 	}
 
 	return Variable(var->type, varVal);
+}
+
+void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType)
+{
+	// Define return statement with incorrect type in function scope
+	defineStmt2(scope, "return $E",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+			BaseType* returnType = getType(params[0], parentBlock);
+			raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
+		}
+	);
+
+	// Define return statement with correct type in function scope
+	defineStmt2(scope, ("return $<" + getTypeName(returnType) + ">").c_str(),
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
+			builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
+		}
+	);
 }
 
 void initBuiltinSymbols()
@@ -163,7 +197,7 @@ void initBuiltinSymbols()
 	MincFunctions::getPointerToBuiltinType = new Func("getPointerToBuiltinType", BuiltinTypes::Builtin, { BuiltinTypes::Builtin }, false);
 
 	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
-	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::ExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
+	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
@@ -189,6 +223,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 		MincFunctions::getPointerToBuiltinType,
 		MincFunctions::getExprLine,
 		MincFunctions::getExprColumn,
+		new Func("malloc", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false), //DELETE
 	})
 	{
 		defineSymbol(rootBlock, func->type.name, &func->type, func);
@@ -204,37 +239,38 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	}
 
 	BaseType* baseType = getBaseType();
-	defineSymbol(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType->getPointerTo(), (uint64_t)baseType));
+	defineType(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType->getPointerTo(), (uint64_t)baseType));
 
 	XXXValue* builtinTypeVal = new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Builtin);
-	defineSymbol(rootBlock, "BuiltinType", BuiltinTypes::Builtin, builtinTypeVal);
+	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, builtinTypeVal);
+	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Builtin->Ptr()));
 
 	/*
 	XXXValue* intTypeVal = new XXXValue(Types::BuiltinType, (uint64_t)Int32);
-	defineSymbol(rootBlock, "IntType", builtinTypeVal, intTypeVal);*/
+	defineType(rootBlock, "IntType", builtinTypeVal, intTypeVal);*/
 
-	defineSymbol(rootBlock, "void", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Void));
-	defineSymbol(rootBlock, "bool", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int1));
-	defineSymbol(rootBlock, "char", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8));
-	defineSymbol(rootBlock, "int", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int32));
-	defineSymbol(rootBlock, "long", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int64));
-	defineSymbol(rootBlock, "double", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Double));
-	defineSymbol(rootBlock, "doublePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::DoublePtr));
-	defineSymbol(rootBlock, "string", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8Ptr));
-	defineSymbol(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));
-	defineSymbol(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LiteralExprAST));
-	defineSymbol(rootBlock, "IdExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::IdExprAST));
-	defineSymbol(rootBlock, "CastExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::CastExprAST));
-	defineSymbol(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BlockExprAST));
-	defineSymbol(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef));
-	defineSymbol(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef->Ptr()));
-	defineSymbol(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMBasicBlockRef));
-	defineSymbol(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef));
-	defineSymbol(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef->Ptr()));
-	defineSymbol(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef));
-	defineSymbol(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef->Ptr()));
+	defineType(rootBlock, "void", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Void));
+	defineType(rootBlock, "bool", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int1));
+	defineType(rootBlock, "char", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8));
+	defineType(rootBlock, "int", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int32));
+	defineType(rootBlock, "long", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int64));
+	defineType(rootBlock, "double", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Double));
+	defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::DoublePtr));
+	defineType(rootBlock, "string", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8Ptr));
+	defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));
+	defineType(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LiteralExprAST));
+	defineType(rootBlock, "IdExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::IdExprAST));
+	defineType(rootBlock, "CastExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::CastExprAST));
+	defineType(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BlockExprAST));
+	defineType(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef));
+	defineType(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef->Ptr()));
+	defineType(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMBasicBlockRef));
+	defineType(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef));
+	defineType(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef->Ptr()));
+	defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef));
+	defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef->Ptr()));
 
-	defineSymbol(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BuiltinValue));
+	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BuiltinValue));
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int1, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int32, BuiltinTypes::BuiltinValue);
@@ -287,18 +323,17 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			
 			for (size_t i = 0; i < func->arg_size(); ++i)
 			{
-				BuiltinType *expectedType = funcType->argTypes[i], *gotType = (BuiltinType*)getType(params[i + 1], parentBlock);
+				BaseType *expectedType = funcType->argTypes[i], *gotType = getType(params[i + 1], parentBlock);
 
 				if (expectedType != gotType)
 				{
-//printf("implicit cast from %s to %s in %s:%i\n", ((BuiltinType*)expectedType)->name, ((BuiltinType*)gotType)->name, expr->loc.filename, expr->loc.begin_line);
+//printf("implicit cast from %s to %s in %s:%i\n", getTypeName(expectedType).c_str(), getTypeName(gotType).c_str(), expr->loc.filename, expr->loc.begin_line);
 					ExprAST* castExpr = lookupCast(parentBlock, params[i + 1], expectedType);
 					if (castExpr == nullptr)
 					{
-						std::string expectedTypeStr = expectedType->name, gotTypeStr = gotType == nullptr ? "NULL" : gotType->name;
 						std::string candidateReport = reportExprCandidates(parentBlock, params[i + 1]);
 						raiseCompileError(
-							("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + gotTypeStr + ">, expected: <" + expectedTypeStr + ">\n" + candidateReport).c_str(),
+							("invalid function argument type: " + ExprASTToString(params[i + 1]) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
 							params[i + 1]
 						);
 					}
@@ -313,8 +348,9 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			return Variable(funcType->resultType, new XXXValue(builder->CreateCall(func, argValues)));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) -> BaseType* {
 			FuncType* funcType = (FuncType*)getType(params[0], parentBlock);
-			//TODO: Check errors
-			return funcType == nullptr ? nullptr : funcType->resultType;
+			if (funcType == nullptr)
+				raiseCompileError(("function `" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
+			return funcType->resultType;
 		}
 	);
 
@@ -356,6 +392,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
 			}
 
+			defineReturnStmt(blockAST, BuiltinTypes::Void);
+
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
@@ -384,6 +422,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 // 					jitFuncName += ' ';
 // 				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
 // 			}
+
+//			defineReturnStmt(blockAST, BuiltinTypes::Void);
 
 // 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 // 			capturedScope.clear();
@@ -431,6 +471,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			if (typeVar->value)
 				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);*/
 
+			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
+
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
@@ -452,7 +494,9 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			std::vector<ExprAST*> castParams(1, params[1]);
 
 			// Generate JIT function name
-			std::string jitFuncName("cast " + std::string(((BuiltinType*)fromType)->name) + " -> " + std::string(((BuiltinType*)toType)->name));
+			std::string jitFuncName("cast " + getTypeName(fromType) + " -> " + getTypeName(toType));
+
+			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
 			capturedScope.clear();
@@ -500,7 +544,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			removeJitFunctionModule(jitFunc);
 			removeJitFunction(jitFunc);
 
-			defineSymbol(parentBlock, getIdExprASTName(nameAST), metaType, new XXXValue(type.resultType, (uint64_t)type.result));
+			defineType(parentBlock, getIdExprASTName(nameAST), metaType, new XXXValue(type.resultType, (uint64_t)type.result));
 		}
 	);
 
@@ -634,20 +678,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				}
 			}
 
-			// Define return statement with incorrect type in function scope
-			defineStmt2(blockAST, "return $E",
-				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-					BuiltinType* returnType = (BuiltinType*)getType(params[0], parentBlock);
-					raiseCompileError(("invalid return type `" + std::string(returnType->name) + "`").c_str(), params[0]);
-				}
-			);
-
-			// Define return statement with correct type in function scope
-			defineStmt2(blockAST, ("return $<" + std::string(returnType->name) + ">").c_str(),
-				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) {
-					builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
-				}
-			);
+			defineReturnStmt(blockAST, returnType);
 
 			// Codegen function body
 			codegenExpr((ExprAST*)blockAST, parentBlock).value;
@@ -698,6 +729,33 @@ currentFunc = parentFunc;
 		},
 		BuiltinTypes::LLVMValueRef
 	);
+	// Define codegen() with invalid parameters
+	defineExpr2(rootBlock, "codegen($E, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
+			if (params.size() != 2)
+				raiseCompileError("invalid number of function arguments", params[0]);
+
+			BaseType* const expectedTypes[] = { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST };
+			for (size_t i = 0; i < 2; ++i)
+			{
+				BaseType *expectedType = expectedTypes[i], *gotType = getType(params[i], parentBlock);
+				if (expectedType != gotType)
+				{
+					ExprAST* castExpr = lookupCast(parentBlock, params[i], expectedType);
+					if (castExpr == nullptr)
+					{
+						std::string candidateReport = reportExprCandidates(parentBlock, params[i]);
+						raiseCompileError(
+							("invalid function argument type: " + ExprASTToString(params[i]) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
+							params[i]
+						);
+					}
+					params[i] = castExpr;
+				}
+			}
+		},
+		BuiltinTypes::LLVMValueRef
+	);
 
 	// Define getconst($<ExprAST>, $<BlockExprAST>)
 	defineExpr3(rootBlock, "getconst($<ExprAST>, $<BlockExprAST>)",
@@ -712,7 +770,7 @@ currentFunc = parentFunc;
 
 			Function* func = MincFunctions::codegenExprConstant->getFunction(currentModule);
 			Value* int64ConstantVal = builder->CreateCall(func, { exprVal, parentBlockVal });
-			Value* resultVal = builder->CreateBitCast(int64ConstantVal, unwrap(exprType->tpltType->llvmtype));
+			Value* resultVal = builder->CreateBitCast(int64ConstantVal, unwrap(((BuiltinType*)exprType->tpltType)->llvmtype));
 			return Variable(exprType->tpltType, new XXXValue(resultVal));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) -> BaseType* {
@@ -780,8 +838,8 @@ currentFunc = parentFunc;
 	defineExpr2(rootBlock, "gettype($E)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params) -> Variable {
 			BaseType* type = getType(params[0], parentBlock);
-BuiltinType* foo = (BuiltinType*)type;
-printf("gettype(%s) == %s\n", ExprASTToString(params[0]).c_str(), type ? ((BuiltinType*)type)->name : "NULL");
+auto foo = getTypeName(type);
+printf("gettype(%s) == %s\n", ExprASTToString(params[0]).c_str(), getTypeName(type).c_str());
 			//return Variable(nullptr, new XXXValue(Constant::getIntegerValue(Types::BaseType->getPointerTo(), APInt(64, (uint64_t)type))));
 return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Types::BuiltinType, APInt(64, (uint64_t)type))));
 		},
@@ -890,12 +948,13 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 				//Constant *valueConstant = ConstantDataArray::getString(*context, std::string(value + 1, strlen(value) - 2));
 				Constant *valueConstant = (Constant*)unwrap(LLVMConstString(value + 1, strlen(value) - 2, 0));
 				GlobalVariable* valueGlobal = new GlobalVariable(*currentFunc->getParent(), valueConstant->getType(), true,
-					GlobalValue::PrivateLinkage, valueConstant, "",
+					GlobalValue::ExternalLinkage, valueConstant, "MY_CONSTANT",
 					nullptr, GlobalVariable::NotThreadLocal,
 					0
 				);
 				valueGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
 				valueGlobal->setAlignment(1);
+//valueGlobal->setExternallyInitialized(true);
 				Constant *zero_64 = Constant::getNullValue(IntegerType::getInt64Ty(*context));
 				std::vector<Value *> gep_params = {
 					zero_64,

@@ -45,6 +45,11 @@ struct InvalidTypeException : public CompileError
 	InvalidTypeException(const PlchldExprAST* plchld);
 };
 
+struct TypeDescription
+{
+	std::string name;
+};
+
 struct CodegenContext
 {
 	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;

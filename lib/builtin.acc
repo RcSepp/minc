@@ -3,7 +3,7 @@ Name: Return statement
 Template: return $E
 Depends on: none
 \* ---------------------------------------------------------------------------*/
-stmtdef return $E {
+stmtdef return $<int> {
 	LLVMBuildRet(codegen($0, parentBlock));
 }
 

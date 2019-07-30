@@ -60,7 +60,7 @@ extern Module* currentModule;
 extern Function* currentFunc;
 extern BasicBlock* currentBB;
 extern DIBuilder* dbuilder;
-extern KaleidoscopeJIT* jit;
+KaleidoscopeJIT* jit;
 extern DIFile* dfile;
 extern Value* closure;
 
@@ -361,9 +361,26 @@ uint64_t JitFunction::compile()
 		throw;
 	}
 
+/*for(GlobalVariable& g: module->globals())
+{
+new GlobalVariable(
+	*currentModule,
+	g.getType(),
+	g.isConstant(),
+	GlobalValue::PrivateLinkage,
+	nullptr,
+	"",
+	nullptr,
+	GlobalVariable::NotThreadLocal,
+	0
+);
+}*/
+
 	// Compile module
 	jitModuleKey = jit->addModule(std::move(module));
 	auto jitFunctionSymbol = jit->findSymbol(name);
+//auto foo = cantFail(jit->findSymbol("MY_CONSTANT").getAddress());
+//TODO: Implement https://lists.llvm.org/pipermail/llvm-dev/2011-May/040236.html -> possibility 2
 	uint64_t jitFunctionPointer = cantFail(jitFunctionSymbol.getAddress());
 
 	return jitFunctionPointer;

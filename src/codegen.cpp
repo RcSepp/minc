@@ -69,7 +69,6 @@ extern Value* closure;
 // Singletons
 LLVMContext* context;
 IRBuilder<> *builder;
-KaleidoscopeJIT* jit;
 BaseType BASE_TYPE;
 
 // Current state

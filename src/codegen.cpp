@@ -94,13 +94,14 @@ struct StaticStmtContext : public CodegenContext
 {
 private:
 	StmtBlock cbk;
+	void* stmtArgs;
 public:
-	StaticStmtContext(StmtBlock cbk) : cbk(cbk) {}
+	StaticStmtContext(StmtBlock cbk, void* stmtArgs = nullptr) : cbk(cbk), stmtArgs(stmtArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//if (dbuilder)
 		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-		cbk(parentBlock, params);
+		cbk(parentBlock, params, stmtArgs);
 		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
@@ -113,13 +114,14 @@ struct StaticExprContext : public CodegenContext
 private:
 	ExprBlock cbk;
 	BaseType* const type;
+	void* exprArgs;
 public:
-	StaticExprContext(ExprBlock cbk, BaseType* type) : cbk(cbk), type(type) {}
+	StaticExprContext(ExprBlock cbk, BaseType* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//if (dbuilder)
 		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-		return cbk(parentBlock, params);
+		return cbk(parentBlock, params, exprArgs);
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
@@ -131,17 +133,18 @@ struct StaticExprContext2 : public CodegenContext
 private:
 	ExprBlock cbk;
 	ExprTypeBlock typecbk;
+	void* exprArgs;
 public:
-	StaticExprContext2(ExprBlock cbk, ExprTypeBlock typecbk) : cbk(cbk), typecbk(typecbk) {}
+	StaticExprContext2(ExprBlock cbk, ExprTypeBlock typecbk, void* exprArgs = nullptr) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//if (dbuilder)
 		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
-		return cbk(parentBlock, params);
+		return cbk(parentBlock, params, exprArgs);
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
-		return typecbk(parentBlock, params);
+		return typecbk(parentBlock, params, exprArgs);
 	}
 };
 struct OpaqueExprContext : public CodegenContext
@@ -164,15 +167,15 @@ public:
 struct DynamicStmtContext : public CodegenContext
 {
 private:
-	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* closure);
+	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* stmtArgs);
 	funcPtr cbk;
-	void* closure;
+	void* stmtArgs;
 public:
-	DynamicStmtContext(JitFunction* func, void* closure = nullptr) : cbk(reinterpret_cast<funcPtr>(func->compile())), closure(closure) {}
+	DynamicStmtContext(JitFunction* func, void* stmtArgs = nullptr) : cbk(reinterpret_cast<funcPtr>(func->compile())), stmtArgs(stmtArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		//BasicBlock* _currentBB = currentBB;
-		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), closure);
+		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), stmtArgs);
 		//if (currentBB != _currentBB)
 		//	builder->SetInsertPoint(currentBB = _currentBB);
 		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
@@ -322,7 +325,7 @@ extern "C"
 			scope->addToScope(name, type, value);
 	}
 
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure)
+	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
 	{
 		if (tplt.empty())
 			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
@@ -330,13 +333,13 @@ extern "C"
 		{
 			std::vector<ExprAST*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new StopExprAST(Location{}));
-			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, closure));
+			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, stmtArgs));
 		}
 		else
-			scope->defineStatement(tplt, new DynamicStmtContext(func, closure));
+			scope->defineStatement(tplt, new DynamicStmtContext(func, stmtArgs));
 	}
 
-	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock)
+	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs)
 	{
 		// Append STOP expr to make tpltStr a valid statement
 		std::stringstream ss(tpltStr);
@@ -355,7 +358,7 @@ extern "C"
 		if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
 			tpltBlock->exprs->pop_back();
 	
-		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock));
+		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
@@ -363,7 +366,7 @@ extern "C"
 		scope->defineExpr(tplt, new DynamicExprContext(func, type));
 	}
 
-	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type)
+	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
 	{
 		std::stringstream ss(tpltStr);
 		ss << tpltStr << ';';
@@ -373,10 +376,10 @@ extern "C"
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
 		ExprAST* tplt = tpltBlock->exprs->at(0);
-		scope->defineExpr(tplt, new StaticExprContext(codeBlock, type));
+		scope->defineExpr(tplt, new StaticExprContext(codeBlock, type, exprArgs));
 	}
 
-	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock)
+	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs)
 	{
 		std::stringstream ss(tpltStr);
 		ss << tpltStr << ';';
@@ -386,7 +389,7 @@ extern "C"
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
 		ExprAST* tplt = tpltBlock->exprs->at(0);
-		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock));
+		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock, exprArgs));
 	}
 
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
@@ -394,9 +397,9 @@ extern "C"
 		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
 	}
 
-	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock)
+	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
 	{
-		scope->defineCast(fromType, toType, new StaticExprContext(codeBlock, toType));
+		scope->defineCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs));
 	}
 
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)

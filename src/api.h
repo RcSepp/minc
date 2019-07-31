@@ -27,9 +27,9 @@ namespace llvm {
 	class Type;
 }
 
-typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params);
-typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params);
-typedef BaseType* (*ExprTypeBlock)(const BlockExprAST*, const std::vector<ExprAST*>&);
+typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
+typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
+typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
 
 extern "C"
 {
@@ -55,13 +55,13 @@ extern "C"
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
 	void defineType(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* closure = nullptr);
-	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock);
+	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
+	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
-	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type);
-	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock);
+	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
+	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
-	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock);
+	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);

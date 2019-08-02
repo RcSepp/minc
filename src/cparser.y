@@ -25,7 +25,7 @@
 %}
 
 %token PARAMS ELLIPSIS
-%token EQ NE LEQ GEQ
+%token EQ NE LEQ GEQ NEW
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
@@ -40,6 +40,7 @@
 %left '<' LEQ '>' GEQ
 %left '+' '-'
 %left '*' '/' '%'
+%left NEW
 %left '.' CALL SUBSCRIPT TPLT
 
 %%
@@ -93,9 +94,10 @@ expr
 	| expr '[' expr_lists ']' %prec SUBSCRIPT { $$ = new SubscrExprAST(getloc(@1, @4), $1, $3); }
 	| id_or_plchld '<' '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| id_or_plchld '<' expr_lists '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @4), $1, $3); }
+
+	// Binary operators
 	| expr '=' expr { $$ = new AssignExprAST(getloc(@1, @3), $1, $3); }
 	| expr '.' id_or_plchld { $$ = new MemberExprAST(getloc(@1, @3), $1, $3); }
-
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }
@@ -104,6 +106,10 @@ expr
 	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
 	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
 	| expr GEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
+
+	// Unary operators
+	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
+	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
 ;
 
 %%

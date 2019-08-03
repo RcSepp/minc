@@ -1,6 +1,6 @@
 import <builtin.acc>;
 
-exprdef<BuiltinType> $<BuiltinType>.ptr {
+exprdef<BuiltinType> $E<BuiltinType>.ptr {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
@@ -14,12 +14,12 @@ exprdef<BuiltinType> $<BuiltinType>.ptr {
 //double foo = 456.723;
 //int bar = foo;
 
-/*stmtdef printDouble $<double> {
+/*stmtdef printDouble $E<double> {
 	printf("%f\n", codegen($0, parentBlock));
 }
 printDouble foo;*/
 
-// stmtdef print($<int>) {
+// stmtdef print($E<int>) {
 // 	/*// LLVMValueRef foo = ;
 // 	//printf("LLVMGetNamedFunction('printf') = %u\n", getfunc(printf));
 

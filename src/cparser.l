@@ -20,7 +20,7 @@ using token = yy::CParser::token;
 LITERAL		([0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]*\'[^\'\n]*\')
 ID			([a-zA-Z_][0-9a-zA-Z_]*)|$#
 PLCHLD1		$[A-Z]
-PLCHLD2		$<[a-zA-Z_][0-9a-zA-Z_]*>
+PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*>
 PARAMS		\$
 PARAM		$0|($[1-9][0-9]*)
 ELLIPSIS	\.\.\.
@@ -80,7 +80,8 @@ DM			->
 {PLCHLD2}						{
 									int len = strlen(yytext) - 3;
 									char* value = new char[len + 1];
-									memcpy(value, yytext + 2, len);
+									value[0] = yytext[1];
+									memcpy(value + 1, yytext + 3, len);
 									value[len] = '\0';
 									lval->build<const char*>(value);
 									return token::PLCHLD2;

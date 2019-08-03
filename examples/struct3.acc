@@ -1,20 +1,20 @@
 import <builtin.acc>;
 
-exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype {
+exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
 	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
 	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
 	LLVMSetAlignment(llvmtype, 8);
 	return llvmtype;
 }
 
-exprdef<int> $<BuiltinType>.align {
+exprdef<int> $E<BuiltinType>.align {
 	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
 	align = LLVMBuildLoad(align, "align");
 	LLVMSetAlignment(align, 4);
 	return align;
 }
 
-stmtdef define $<BuiltinType> $I {
+stmtdef define $E<BuiltinType> $I {
 	int align = getconst($0, parentBlock).align;
 	LLVMTypeRef llvmtype = getconst($0, parentBlock).llvmtype;
 

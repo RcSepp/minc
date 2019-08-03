@@ -662,13 +662,14 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	switch(p1)
 	{
-	case 'E': return nullptr;
+	default: assert(0); return nullptr; //TODO: Throw exception
 	case 'L': return BuiltinTypes::LiteralExprAST;
 	case 'I': return BuiltinTypes::IdExprAST;
 	case 'B': return BuiltinTypes::BlockExprAST;
-	dafault: assert(0); return nullptr; //TODO: Throw exception
-	case '\0':
+	case 'E':
 		{
+			if (p2 == nullptr)
+				return nullptr;
 			const Variable* var = parentBlock->lookupScope(p2);
 			if (var == nullptr)
 				throw UndefinedIdentifierException(new IdExprAST(loc, p2));
@@ -700,15 +701,17 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 			if (blockParamExpr->exprtype == ExprAST::ExprType::PLCHLD)
 			{
 				PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamExpr;
-				const Variable* var;
 				switch (blockParamPlchldExpr->p1)
 				{
+				default: assert(0); //TODO: Throw exception
 				case 'L': return Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo())));
 				case 'I': return Variable(BuiltinTypes::IdExprAST, new XXXValue(builder->CreateBitCast(param, Types::IdExprAST->getPointerTo())));
 				case 'B': return Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo())));
-				case '\0':
-					var = parentBlock->lookupScope(blockParamPlchldExpr->p2);
-					if (var != nullptr)
+				case 'S': return Variable(BuiltinTypes::ExprAST, new XXXValue(param));
+				case 'E':
+					if (blockParamPlchldExpr->p2 == nullptr)
+						break;
+					if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
 					{
 						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
 						return Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
@@ -749,20 +752,20 @@ BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 				case 'I': return BuiltinTypes::IdExprAST;
 				case 'B': return BuiltinTypes::BlockExprAST;
 				}*/
-				const Variable* var;
 				switch(blockParamPlchldExpr->p1)
 				{
+				default: assert(0); //TODO: Throw exception
 				case 'L': return BuiltinTypes::LiteralExprAST;
 				case 'I': return BuiltinTypes::IdExprAST;
 				case 'B': return BuiltinTypes::BlockExprAST;
-				case '\0':
+				case 'S': return BuiltinTypes::ExprAST;
+				case 'E':
+					if (blockParamPlchldExpr->p2 == nullptr)
+						break;
+					if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
 					{
-						var = parentBlock->lookupScope(blockParamPlchldExpr->p2);
-						if (var != nullptr)
-						{
-							BaseType* codegenType = (BaseType*)var->value->getConstantValue();
-							return TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
-						}
+						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+						return TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
 					}
 				}
 			}

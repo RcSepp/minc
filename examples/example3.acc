@@ -26,7 +26,7 @@ int abc = foo;*/
 	//return 111;
 }*/
 
-//define int $I = $<int>, ...
+//define int $I = $E<int>, ...
 
 //typedef int LLVMInt32Type();
 

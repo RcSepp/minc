@@ -3,7 +3,7 @@ Name: Return statement
 Template: return $E
 Depends on: none
 \* ---------------------------------------------------------------------------*/
-stmtdef return $<int> {
+stmtdef return $E<int> {
 	LLVMBuildRet(codegen($0, parentBlock));
 }
 
@@ -11,7 +11,7 @@ stmtdef return $<int> {
 Cast: LiteralExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $<LiteralExprAST> {
+castdef<ExprAST> $E<LiteralExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -23,7 +23,7 @@ castdef<ExprAST> $<LiteralExprAST> {
 Cast: IdExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $<IdExprAST> {
+castdef<ExprAST> $E<IdExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -35,7 +35,7 @@ castdef<ExprAST> $<IdExprAST> {
 Cast: BlockExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $<BlockExprAST> {
+castdef<ExprAST> $E<BlockExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -62,10 +62,10 @@ stmtdef LLVMValueRef $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: LLVMValueRef declaration with initialization
-Template: LLVMValueRef $I = $<LLVMValueRef>
+Template: LLVMValueRef $I = $E<LLVMValueRef>
 Depends on: LLVMValueRef $I
 \* ---------------------------------------------------------------------------*/
-stmtdef LLVMValueRef $I = $<LLVMValueRef> {
+stmtdef LLVMValueRef $I = $E<LLVMValueRef> {
 	LLVMValueRef foo;
 	foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
@@ -103,8 +103,8 @@ stmtdef LLVMValueRef $I[$L] {
 	);
 }
 
-//TODO: Generalize to `exprdef<gettype($2, parentBlock)> $E[$<int>] = $E {`
-exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] = $<LLVMValueRef> {
+//TODO: Generalize to `exprdef<gettype($2, parentBlock)> $E[$E<int>] = $E {`
+exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] = $E<LLVMValueRef> {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 
@@ -119,7 +119,7 @@ exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] = $<LLVMValueRef> {
 }
 
 //TODO: Untested
-exprdef<LLVMValueRef> $<LLVMValueRefPtr>[$<int>] {
+exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 
@@ -140,10 +140,10 @@ stmtdef LLVMBasicBlockRef $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: LLVMBasicBlockRef declaration with initialization
-Template: LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+Template: LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef>
 Depends on: LLVMBasicBlockRef $I
 \* ---------------------------------------------------------------------------*/
-stmtdef LLVMBasicBlockRef $I = $<LLVMBasicBlockRef> {
+stmtdef LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueBasicBlock"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMBasicBlockRef, foo);
@@ -160,10 +160,10 @@ stmtdef LLVMTypeRef $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: LLVMTypeRef declaration with initialization
-Template: LLVMTypeRef $I = $<LLVMTypeRef>
+Template: LLVMTypeRef $I = $E<LLVMTypeRef>
 Depends on: LLVMTypeRef $I
 \* ---------------------------------------------------------------------------*/
-stmtdef LLVMTypeRef $I = $<LLVMTypeRef> {
+stmtdef LLVMTypeRef $I = $E<LLVMTypeRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMTypeRef, foo);
@@ -212,7 +212,7 @@ stmtdef BaseType $I {
 /* ---------------------------------------------------------------------------*\
 Name: BaseType declaration with initialization
 Template: BaseType $I = $E
-TODO: Should be $I = $<BaseType>
+TODO: Should be $I = $E<BaseType>
 Depends on: BaseType $I
 \* ---------------------------------------------------------------------------*/
 stmtdef BaseType $I = $E {
@@ -243,7 +243,7 @@ Name: ExprAST declaration with initialization
 Template: ExprAST $I = $E
 Depends on: ExprAST $I
 \* ---------------------------------------------------------------------------*/
-stmtdef ExprAST $I = $<ExprAST> {
+stmtdef ExprAST $I = $E<ExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, ExprAST, foo);
@@ -263,7 +263,7 @@ Name: LiteralExprAST declaration with initialization
 Template: LiteralExprAST $I = $E
 Depends on: LiteralExprAST $I
 \* ---------------------------------------------------------------------------*/
-stmtdef LiteralExprAST $I = $<LiteralExprAST> {
+stmtdef LiteralExprAST $I = $E<LiteralExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, LiteralExprAST, foo);
@@ -283,7 +283,7 @@ Name: IdExprAST declaration with initialization
 Template: IdExprAST $I = $E
 Depends on: IdExprAST $I
 \* ---------------------------------------------------------------------------*/
-stmtdef IdExprAST $I = $<IdExprAST> {
+stmtdef IdExprAST $I = $E<IdExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, IdExprAST, foo);
@@ -303,13 +303,13 @@ Name: BlockExprAST declaration with initialization
 Template: BlockExprAST $I = $E
 Depends on: BlockExprAST $I
 \* ---------------------------------------------------------------------------*/
-stmtdef BlockExprAST $I = $<BlockExprAST> {
+stmtdef BlockExprAST $I = $E<BlockExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.BlockExprAST"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, BlockExprAST, foo);
 }
 
-exprdef<string> $<LiteralExprAST>.value {
+exprdef<string> $E<LiteralExprAST>.value {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
@@ -320,7 +320,7 @@ exprdef<string> $<LiteralExprAST>.value {
 	);
 }
 
-exprdef<string> $<IdExprAST>.name {
+exprdef<string> $E<IdExprAST>.name {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
@@ -331,7 +331,7 @@ exprdef<string> $<IdExprAST>.name {
 	);
 }
 
-exprdef<BlockExprAST> $<BlockExprAST>.parent {
+exprdef<BlockExprAST> $E<BlockExprAST>.parent {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	return LLVMBuildCall(
@@ -342,7 +342,7 @@ exprdef<BlockExprAST> $<BlockExprAST>.parent {
 	);
 }
 
-exprdef<BlockExprAST> $<BlockExprAST>.parent = $<BlockExprAST> {
+exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	args[1] = codegen($1, parentBlock);
@@ -393,10 +393,10 @@ stmtdef int $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: 32 bit signed integer declaration with initialization
-Template: int $I = $<int>
-Depends on: LLVMValueRef $I = $<LLVMValueRef>
+Template: int $I = $E<int>
+Depends on: LLVMValueRef $I = $E<LLVMValueRef>
 \* ---------------------------------------------------------------------------*/
-stmtdef int $I = $<int> {
+stmtdef int $I = $E<int> {
 	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(storage, 4);
 	LLVMBuildStore(codegen($1, parentBlock), storage);
@@ -423,46 +423,46 @@ stmtdef int $I = $<int> {
 
 /* ---------------------------------------------------------------------------*\
 Name: Integer addition
-Template: $<int> + $<int>
+Template: $E<int> + $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<int> $<int> + $<int> {
+exprdef<int> $E<int> + $E<int> {
 	return LLVMBuildAdd(codegen($0, parentBlock), codegen($1, parentBlock), "add");
 }
 
 /* ---------------------------------------------------------------------------*\
 Name: Integer subtraction
-Template: $<int> - $<int>
+Template: $E<int> - $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<int> $<int> - $<int> {
+exprdef<int> $E<int> - $E<int> {
 	return LLVMBuildSub(codegen($0, parentBlock), codegen($1, parentBlock), "sub");
 }
 
 /* ---------------------------------------------------------------------------*\
 Name: Integer multiplication
-Template: $<int> * $<int>
+Template: $E<int> * $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<int> $<int> * $<int> {
+exprdef<int> $E<int> * $E<int> {
 	return LLVMBuildMul(codegen($0, parentBlock), codegen($1, parentBlock), "mul");
 }
 
 /* ---------------------------------------------------------------------------*\
 Name: Integer division
-Template: $<int> / $<int>
+Template: $E<int> / $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<int> $<int> / $<int> {
+exprdef<int> $E<int> / $E<int> {
 	return LLVMBuildSDiv(codegen($0, parentBlock), codegen($1, parentBlock), "div");
 }
 
-exprdef<bool> $<int> == $<int> {
+exprdef<bool> $E<int> == $E<int> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
-exprdef<bool> $<int> != $<int> {
+exprdef<bool> $E<int> != $E<int> {
 int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
@@ -480,10 +480,10 @@ stmtdef double $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: 64 bit float declaration with initialization
-Template: int $I = $<double>
-Depends on: LLVMValueRef $I = $<LLVMValueRef>
+Template: int $I = $E<double>
+Depends on: LLVMValueRef $I = $E<LLVMValueRef>
 \* ---------------------------------------------------------------------------*/
-stmtdef double $I = $<double> {
+stmtdef double $I = $E<double> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
 	LLVMSetAlignment(foo, 8);
 	LLVMBuildStore(codegen($1, parentBlock), foo);
@@ -492,28 +492,28 @@ stmtdef double $I = $<double> {
 
 /* ---------------------------------------------------------------------------*\
 Name: 64 bit float addition
-Template: $<double> + $<double>
+Template: $E<double> + $E<double>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<double> $<double> + $<double> {
+exprdef<double> $E<double> + $E<double> {
 	return LLVMBuildFAdd(codegen($0, parentBlock), codegen($1, parentBlock), "fadd");
 }
 
 /* ---------------------------------------------------------------------------*\
 Name: 64 bit float multiplication
-Template: $<double> * $<double>
+Template: $E<double> * $E<double>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-exprdef<double> $<double> * $<double> {
+exprdef<double> $E<double> * $E<double> {
 	return LLVMBuildFMul(codegen($0, parentBlock), codegen($1, parentBlock), "fmul");
 }
 
-exprdef<bool> $<double> == $<double> { //TODO: Untested
+exprdef<bool> $E<double> == $E<double> { //TODO: Untested
 int LLVMRealOEQ = 1; //TODO: Implement LLVM-c enums as constants //TODO: Untested
 	return LLVMBuildFCmp(LLVMRealOEQ, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
 }
 
-exprdef<bool> $<double> != $<double> { //TODO: Untested
+exprdef<bool> $E<double> != $E<double> { //TODO: Untested
 int LLVMRealONE = 6; //TODO: Implement LLVM-c enums as constants //TODO: Untested
 	return LLVMBuildFCmp(LLVMRealONE, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
 }
@@ -522,7 +522,7 @@ int LLVMRealONE = 6; //TODO: Implement LLVM-c enums as constants //TODO: Unteste
 Cast: int to double
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<double> $<int> {
+castdef<double> $E<int> {
 	return LLVMBuildSIToFP(
 		codegen($0, parentBlock),
 		LLVMDoubleType(),
@@ -534,7 +534,7 @@ castdef<double> $<int> {
 Cast: double to int
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<int> $<double> {
+castdef<int> $E<double> {
 	return LLVMBuildFPToSI(
 		codegen($0, parentBlock),
 		LLVMInt32Type(),
@@ -546,7 +546,7 @@ castdef<int> $<double> {
 Cast: double to long
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<long> $<double> {
+castdef<long> $E<double> {
 	return LLVMBuildFPToSI(
 		codegen($0, parentBlock),
 		LLVMInt64Type(),
@@ -558,7 +558,7 @@ castdef<long> $<double> {
 Cast: bool to int
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<int> $<bool> {
+castdef<int> $E<bool> {
 	return LLVMBuildZExt(
 		codegen($0, parentBlock),
 		LLVMInt32Type(),
@@ -570,7 +570,7 @@ castdef<int> $<bool> {
 Cast: int to long
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<long> $<int> {
+castdef<long> $E<int> {
 	return LLVMBuildSExt(
 		codegen($0, parentBlock),
 		LLVMInt64Type(),
@@ -585,12 +585,12 @@ castdef<long> $<int> {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
-exprdef<bool> $<BuiltinType> == $<BuiltinType> {
+exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
-exprdef<bool> $<BuiltinType> != $<BuiltinType> {
+exprdef<bool> $E<BuiltinType> != $E<BuiltinType> {
 int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
@@ -599,7 +599,7 @@ int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 Cast: BuiltinType to BaseType
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<BaseType> $<BuiltinType> {
+castdef<BaseType> $E<BuiltinType> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("BaseType"), 0),
@@ -617,11 +617,11 @@ castdef<BaseType> $<BuiltinType> {
 
 /* ---------------------------------------------------------------------------*\
 Name: If statement
-Template: if($<bool>) $S
-Depends on: LLVMValueRef $I = $<LLVMValueRef>
-            LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+Template: if($E<bool>) $S
+Depends on: LLVMValueRef $I = $E<LLVMValueRef>
+            LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef>
 \* ---------------------------------------------------------------------------*/
-stmtdef if($<bool>) $S {
+stmtdef if($E<bool>) $S {
 	LLVMValueRef ifCond = codegen($0, parentBlock);
 	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
 	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
@@ -636,11 +636,11 @@ stmtdef if($<bool>) $S {
 
 /* ---------------------------------------------------------------------------*\
 Name: If-else statement
-Template: if($<bool>) $S else $S
-Depends on: LLVMValueRef $I = $<LLVMValueRef>
-            LLVMBasicBlockRef $I = $<LLVMBasicBlockRef>
+Template: if($E<bool>) $S else $S
+Depends on: LLVMValueRef $I = $E<LLVMValueRef>
+            LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef>
 \* ---------------------------------------------------------------------------*/
-stmtdef if($<bool>) $S else $S {
+stmtdef if($E<bool>) $S else $S {
 	LLVMValueRef ifCond = codegen($0, parentBlock);
 	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
 	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
@@ -689,7 +689,7 @@ stmtdef for(int $I = $E; $E; $E) $B {
 	LLVMPositionBuilder(endForBlock);
 }
 
-stmtdef while ($<bool>) $B {
+stmtdef while ($E<bool>) $B {
 	// Create basic blocks
 	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");
 	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");

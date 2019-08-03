@@ -329,12 +329,6 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
-	if (p1 == 'E')
-	{
-		score -= 1; // Penalize vague template
-		return true;
-	}
-
 	const XXXValue* var;
 	switch(p1)
 	{
@@ -342,25 +336,31 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
 	case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;
 	case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
-	case '\0':
-	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
-		if (exprType == tpltType)
+	case 'E':
+		if (p2 == nullptr)
 		{
-			score += 1; // Reward exact match
+			score -= 1; // Penalize vague template
 			return true;
 		}
-		score -= 1; // Penalize implicit cast
-		return block->lookupCast(exprType, tpltType) != nullptr;
-	}
+		else
+		{
+			BaseType* exprType = expr->getType(block);
+			BaseType* tpltType = getType(block);
+			if (exprType == tpltType)
+			{
+				score += 1; // Reward exact match
+				return true;
+			}
+			score -= 1; // Penalize implicit cast
+			return block->lookupCast(exprType, tpltType) != nullptr;
+		}
 	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
 	}
 }
 
 void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
 {
-	if (p1 == '\0')
+	if (p2 != nullptr)
 	{
 		BaseType* exprType = expr->getType(block);
 		BaseType* tpltType = getType(block);

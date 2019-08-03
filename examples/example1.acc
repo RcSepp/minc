@@ -38,7 +38,7 @@ typedef<mySuperType> myType {
 	//     -> How do we do static type checking with LLVMValueRef's?!?
 }
 
-stmtdef $<mySuperType> $I {
+stmtdef $E<mySuperType> $I {
 	LLVMValueRef foo = LLVMBuildAlloca($0.type, "");
 	LLVMSetAlignment(foo, $0.align);
 	addToScope(parentBlock, $1, mySuperType, foo);
@@ -59,7 +59,7 @@ myType = MyType{LLVMInt32Type(), 4}
 
 // No need for castdef
 // Use exprdef:
-exprdef<mySuperType> $<myType> {
+exprdef<mySuperType> $E<myType> {
 	return $0;
 }
 
@@ -68,7 +68,7 @@ exprdef<mySuperType> $<myType> {
 // * This works with simple bit-casts (`return $0`) and arbitrarily complex tasks
 // * Two way casting (i.e. int <-> float) no problem
 
-stmtdef $<mySuperType> $I {
+stmtdef $E<mySuperType> $I {
 	LLVMValueRef foo = LLVMBuildAlloca($0.type, "");
 	LLVMSetAlignment(foo, $0.align);
 	addToScope(parentBlock, $1, $0, foo); // old

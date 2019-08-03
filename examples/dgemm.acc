@@ -1,6 +1,6 @@
 import <builtin.acc>;
 
-stmtdef double* $I = $<doublePtr> {
+stmtdef double* $I = $E<doublePtr> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), "");
 	LLVMSetAlignment(foo, 8);
 	LLVMBuildStore(codegen($1, parentBlock), foo);
@@ -29,7 +29,7 @@ exprdef<string> toCharPtr($E) {
 	);
 }
 
-exprdef<double> $E[$<int>] = $<double> {
+exprdef<double> $E[$E<int>] = $E<double> {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 
@@ -39,7 +39,7 @@ exprdef<double> $E[$<int>] = $<double> {
 	LLVMBuildStore(expr, gep);
 	return expr;
 }
-exprdef<double> $E[$<int>] {
+exprdef<double> $E[$E<int>] {
 	LLVMValueRef var = codegen($0, parentBlock);
 	LLVMValueRef idx = codegen($1, parentBlock);
 

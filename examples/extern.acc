@@ -1,6 +1,6 @@
 import <builtin.acc>;
 
-stmtdef extern $<BaseType> $I {
+stmtdef extern $E<BaseType> $I {
 	BaseType putsType = FuncType("puts", 0, int, string);
 
 	LLVMTypeRef funcArgTypes[1];

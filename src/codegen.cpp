@@ -288,14 +288,11 @@ extern "C"
 		return expr->resolvedParams[0];
 	}
 
-	unsigned getExprLine(const ExprAST* expr)
-	{
-		return expr->loc.begin_line;
-	}
-	unsigned getExprColumn(const ExprAST* expr)
-	{
-		return expr->loc.begin_col;
-	}
+	const char* getExprFilename(const ExprAST* expr) { return expr->loc.filename; }
+	unsigned getExprLine(const ExprAST* expr) { return expr->loc.begin_line; }
+	unsigned getExprColumn(const ExprAST* expr) { return expr->loc.begin_col; }
+	unsigned getExprEndLine(const ExprAST* expr) { return expr->loc.end_line; }
+	unsigned getExprEndColumn(const ExprAST* expr) { return expr->loc.end_col; }
 
 	BlockExprAST* getRootScope()
 	{

@@ -48,6 +48,7 @@ namespace MincFunctions
 	Func* getValueFunction;
 	Func* createFuncType;
 	Func* cppNew;
+	Func* raiseCompileError;
 }
 
 extern "C"
@@ -370,6 +371,7 @@ void initBuiltinSymbols()
 	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
 	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
 	MincFunctions::cppNew = new Func("_Znwm", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
+	MincFunctions::raiseCompileError = new Func("raiseCompileError", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr, BuiltinTypes::ExprAST }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
 }
 
 void defineBuiltinSymbols(BlockExprAST* rootBlock)
@@ -1230,6 +1232,79 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 
 			Function* addToScopeFunc = MincFunctions::addToFileScope->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(addToScopeFunc, { nameVal, typeVal, valVal });
+		}
+	);
+
+	// Define symdef
+	defineStmt2(rootBlock, "throw $E<string>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			Value* msgVal = codegenExpr(params[0], parentBlock).value->val;
+
+			// Allocate expr = ExprAST*
+			Value* locExprVal = builder->CreateAlloca(Types::ExprAST);
+
+			// Set expr->loc.filename
+			Constant* filenameVal = ConstantDataArray::getString(*context, getExprFilename(params[0]));
+			GlobalVariable* filenameGlobal = new GlobalVariable(
+				*currentFunc->getParent(), filenameVal->getType(), true, GlobalValue::PrivateLinkage,
+				filenameVal, "", nullptr, GlobalVariable::NotThreadLocal, 0
+			);
+			filenameGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+			filenameGlobal->setAlignment(1);
+			builder->CreateStore(
+				builder->CreateInBoundsGEP(filenameVal->getType(), filenameGlobal, {
+					ConstantInt::getNullValue(Types::Int64),
+					ConstantInt::getNullValue(Types::Int64),
+				}),
+				builder->CreateInBoundsGEP(locExprVal, {
+					ConstantInt::get(Types::Int64, 0),
+					ConstantInt::get(Types::Int32, 1),
+					ConstantInt::get(Types::Int32, 0),
+				}, "gep")
+			)->setAlignment(8);
+
+			// Set expr->loc.begin_line
+			builder->CreateStore(
+				ConstantInt::get(Types::Int32, getExprLine(params[0])),
+				builder->CreateInBoundsGEP(locExprVal, {
+					ConstantInt::get(Types::Int64, 0),
+					ConstantInt::get(Types::Int32, 1),
+					ConstantInt::get(Types::Int32, 1),
+				}, "gep")
+			)->setAlignment(8);
+
+			// Set expr->loc.begin_col
+			builder->CreateStore(
+				ConstantInt::get(Types::Int32, getExprColumn(params[0])),
+				builder->CreateInBoundsGEP(locExprVal, {
+					ConstantInt::get(Types::Int64, 0),
+					ConstantInt::get(Types::Int32, 1),
+					ConstantInt::get(Types::Int32, 2),
+				}, "gep")
+			)->setAlignment(8);
+
+			// Set expr->loc.end_line
+			builder->CreateStore(
+				ConstantInt::get(Types::Int32, getExprEndLine(params[0])),
+				builder->CreateInBoundsGEP(locExprVal, {
+					ConstantInt::get(Types::Int64, 0),
+					ConstantInt::get(Types::Int32, 1),
+					ConstantInt::get(Types::Int32, 3),
+				}, "gep")
+			)->setAlignment(8);
+
+			// Set expr->loc.end_col
+			builder->CreateStore(
+				ConstantInt::get(Types::Int32, getExprEndColumn(params[0])),
+				builder->CreateInBoundsGEP(locExprVal, {
+					ConstantInt::get(Types::Int64, 0),
+					ConstantInt::get(Types::Int32, 1),
+					ConstantInt::get(Types::Int32, 4),
+				}, "gep")
+			)->setAlignment(8);
+
+			Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
+			builder->CreateCall(raiseCompileErrorFunc, { msgVal, locExprVal });
 		}
 	);
 

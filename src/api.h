@@ -48,8 +48,11 @@ extern "C"
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
+	const char* getExprFilename(const ExprAST* expr);
 	unsigned getExprLine(const ExprAST* expr);
 	unsigned getExprColumn(const ExprAST* expr);
+	unsigned getExprEndLine(const ExprAST* expr);
+	unsigned getExprEndColumn(const ExprAST* expr);
 	BlockExprAST* getRootScope();
 	const std::string& getTypeName(const BaseType* type);
 

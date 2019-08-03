@@ -1,0 +1,37 @@
+import <builtin.acc>;
+
+stmtdef runCompileTimeTests() {
+	void assert(bool condition)
+	{
+		if (condition == 0)
+			throw "assertion thrown";
+	}
+
+	int a = 0;
+	int b = 0;
+
+	// Test if statement
+	a = 0;
+	if (1) a = 1; assert(a == 1);
+	if (0) a = 2; assert(a == 1);
+	if (1) { a = 3; } assert(a == 3);
+	if (0) { a = 4; } assert(a == 3);
+
+	// Test if/else statement
+	if (1) a = 5; else a = 6; assert(a == 5);
+	if (0) a = 7; else a = 8; assert(a == 8);
+	if (1) { a = 9; } else { a = 10; } assert(a == 9);
+	if (0) { a = 11; } else { a = 12; } assert(a == 12);
+	if (1) a = 13; else { a = 14; } assert(a == 13);
+	if (0) a = 15; else { a = 16; } assert(a == 16);
+	if (1) { a = 17; } else a = 18; assert(a == 17);
+	if (0) { a = 19; } else a = 20; assert(a == 20);
+
+	// Test while loop
+	a = 0; while (a != 3) a = a + 1; assert(a == 3);
+	a = 0; b = 5; while (a != 3) { a = a + 1; b = b - 1; } assert(b == 2);
+
+	// Test arithmetic
+	assert(11 + 7 / 3 * 5 == 21);
+}
+runCompileTimeTests();

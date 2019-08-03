@@ -689,7 +689,7 @@ stmtdef for(int $I = $E; $E; $E) $B {
 	LLVMPositionBuilder(endForBlock);
 }
 
-stmtdef while ($E<bool>) $B {
+stmtdef while ($E<bool>) $S {
 	// Create basic blocks
 	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");
 	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");

@@ -103,7 +103,8 @@ XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool ou
 	if (optimizeCode)
 	{
 		// Create pass manager for module
-		jitPassManager = new legacy::FunctionPassManager(module.get());
+		jitFunctionPassManager = new legacy::FunctionPassManager(module.get());
+		jitModulePassManager = new legacy::PassManager();
 		PassManagerBuilder jitPassManagerBuilder;
 		jitPassManagerBuilder.OptLevel = 3; // -O3
 		jitPassManagerBuilder.SizeLevel = 0;
@@ -114,11 +115,15 @@ XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool ou
 		jitPassManagerBuilder.SLPVectorize = true;
 		jit->getTargetMachine().adjustPassManager(jitPassManagerBuilder);
 		//addCoroutinePassesToExtensionPoints(jitPassManagerBuilder);
-		jitPassManagerBuilder.populateFunctionPassManager(*jitPassManager);
-		jitPassManager->doInitialization();
+		jitPassManagerBuilder.populateFunctionPassManager(*jitFunctionPassManager);
+		jitPassManagerBuilder.populateModulePassManager(*jitModulePassManager);
+		jitFunctionPassManager->doInitialization();
 	}
 	else
-		jitPassManager = nullptr;
+	{
+		jitFunctionPassManager = nullptr;
+		jitModulePassManager = nullptr;
+	}
 }
 
 void XXXModule::finalize()
@@ -141,8 +146,14 @@ void XXXModule::finalize()
 	if (dbuilder)
 		dbuilder->finalize();
 
-	if (jitPassManager && !haserr)
-		jitPassManager->run(*currentFunc);
+	if (jitFunctionPassManager && !haserr)
+	{
+		jitFunctionPassManager->run(*currentFunc);
+		jitFunctionPassManager->doFinalization();
+	}
+
+	if (jitModulePassManager && !haserr)
+		jitModulePassManager->run(*currentModule);
 
 	currentFunc = prevFunc; // Switch back to parent function
 	currentModule = prevModule; // Switch back to file module

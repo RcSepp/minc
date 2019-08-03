@@ -14,7 +14,8 @@ protected:
 	const Location loc;
 
 	std::unique_ptr<Module> module;
-	legacy::FunctionPassManager* jitPassManager;
+	legacy::FunctionPassManager* jitFunctionPassManager;
+	legacy::PassManager* jitModulePassManager;
 
 public:
 	XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode);

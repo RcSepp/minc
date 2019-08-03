@@ -29,10 +29,12 @@ NE			!=
 GEQ			>=
 LEQ			<=
 NEW			new
+DM			->
 
 %%
 
 {NEW}							return token::NEW;
+{DM}							return token::DM;
 {LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];

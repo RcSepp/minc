@@ -25,7 +25,7 @@
 %}
 
 %token PARAMS ELLIPSIS
-%token EQ NE LEQ GEQ NEW
+%token EQ NE LEQ GEQ NEW DM
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
@@ -41,7 +41,7 @@
 %left '+' '-'
 %left '*' '/' '%'
 %left NEW
-%left '.' CALL SUBSCRIPT TPLT
+%left '.' CALL SUBSCRIPT TPLT DM
 
 %%
 
@@ -98,6 +98,7 @@ expr
 	// Binary operators
 	| expr '=' expr { $$ = new AssignExprAST(getloc(@1, @3), $1, $3); }
 	| expr '.' id_or_plchld { $$ = new MemberExprAST(getloc(@1, @3), $1, $3); }
+	| expr DM id_or_plchld { $$ = new DerefMemberExprAST(getloc(@1, @3), $1, $3); }
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }

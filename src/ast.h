@@ -256,7 +256,7 @@ public:
 		for (const BlockExprAST* block = this; block; block = block->parent)
 			if ((var = block->scope.find(name)) != block->scope.end())
 			{
-				isCaptured = block != this;
+				isCaptured = false; //block != this; //TODO: Fix and re-enable closure
 				return &var->second;
 			}
 		isCaptured = false;

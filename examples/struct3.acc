@@ -1,0 +1,39 @@
+import <builtin.acc>;
+
+exprdef<LLVMTypeRef> $<BuiltinType>.llvmtype {
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
+	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
+	LLVMSetAlignment(llvmtype, 8);
+	return llvmtype;
+}
+
+exprdef<int> $<BuiltinType>.align {
+	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
+	align = LLVMBuildLoad(align, "align");
+	LLVMSetAlignment(align, 4);
+	return align;
+}
+
+stmtdef define $<BuiltinType> $I {
+	int align = getconst($0, parentBlock).align;
+	LLVMTypeRef llvmtype = getconst($0, parentBlock).llvmtype;
+
+	LLVMValueRef foo = LLVMBuildAlloca(llvmtype, "");
+	LLVMSetAlignment(foo, align);
+	addToScope(parentBlock, $1, getconst($0, parentBlock), foo);
+}
+
+struct MyBuiltinType {
+	public BuiltinTypePtr ptr;
+	public LLVMValueRef llvmtype;
+	public int align;
+
+	public MyBuiltinType(int align) {
+	}
+}
+
+new MyBuiltinType(789);
+
+define MyBuiltinType foo;
+foo.align = 456;
+return foo.align;

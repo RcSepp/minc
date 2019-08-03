@@ -15,6 +15,8 @@
 
 using namespace llvm;
 
+extern LLVMContext* context;
+
 std::map<std::string, BuiltinType*> BuiltinType::builtinTypes;
 std::map<std::string, TpltType*> TpltType::tpltTypes;
 
@@ -35,20 +37,23 @@ BuiltinType* BuiltinType::Ptr()
 		char* ptrName = new char[name.size() + 3];
 		strcpy(ptrName, name.c_str());
 		strcpy(ptrName + name.size(), "Ptr");
-		ptr = new BuiltinType(LLVMPointerType(llvmtype, 0), 8);
-		defineType(nullptr, ptrName, this, new XXXValue(unwrap(ptr->llvmtype), (uint64_t)ptr));
+		ptr = new BuiltinType(llvmtype == nullptr ? nullptr : LLVMPointerType(llvmtype, 0), 8);
+//		defineType(nullptr, ptrName, BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)ptr));
 	}
 	return ptr;
 }
 
-FuncType::FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg)
-		: BuiltinType(nullptr, 8), resultType(resultType), argTypes(argTypes), name(name)
+FuncType::FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*>& argTypes, bool isVarArg)
+	: BuiltinType(nullptr, 8), resultType(resultType), argTypes(argTypes), name(name)
 {
 	std::vector<llvm::Type*> argLlvmTypes;
 	for (BuiltinType* argType: argTypes)
 		argLlvmTypes.push_back(unwrap(argType->llvmtype));
 	llvmtype = wrap(FunctionType::get(unwrap(resultType->llvmtype), argLlvmTypes, isVarArg));
 }
+
+ClassType::ClassType()
+	: BuiltinType(wrap(StructType::create(*context)), 4) {}
 
 TpltType* TpltType::get(std::string name, BuiltinType* baseType, BaseType* tpltType)
 {

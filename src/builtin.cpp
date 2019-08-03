@@ -1,3 +1,5 @@
+#include <sstream>
+
 // LLVM-C //DELETE
 #include <llvm-c/Core.h> //DELETE
 
@@ -45,6 +47,7 @@ namespace MincFunctions
 	//Func* defineStmt;
 	Func* getValueFunction;
 	Func* createFuncType;
+	Func* cppNew;
 }
 
 extern "C"
@@ -63,6 +66,26 @@ extern "C"
 	}
 }
 
+std::string mangle(const std::string& className, const std::string& funcName, BuiltinType* returnType, std::vector<BuiltinType*>& argTypes)
+{
+	const std::map<BuiltinType*, const char*> TYPE_CODES = {
+		{ BuiltinTypes::Void, "v" },
+	};
+
+	std::stringstream mangled;
+	mangled << "_Z";
+	mangled << className.size() << className;
+	if (funcName == className) mangled << "C2"; // Constructor
+	mangled << "E";
+	mangled << TYPE_CODES.at(returnType);
+	return mangled.str();
+}
+
+void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BuiltinType* type)
+{
+	defineType(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
+}
+
 Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 {
 	bool isCaptured;
@@ -72,7 +95,7 @@ Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 auto foo = getIdExprASTName(id);
 	XXXValue* varVal = var->value;
 	if (!varVal) raiseCompileError(("invalid use of type `" + std::string(getIdExprASTName(id)) + "` as expression").c_str(), (ExprAST*)id);
-	if (varVal->isFunction() || isa<Constant>(varVal->val))
+	if (varVal->isFunction() || varVal->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
 		return *var;
 
 	if (isCaptured //)
@@ -106,22 +129,161 @@ closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
 	return Variable(var->type, varVal);
 }
 
-void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType)
+void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr)
 {
-	// Define return statement with incorrect type in function scope
-	defineStmt2(scope, "return $E",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			BaseType* returnType = getType(params[0], parentBlock);
-			raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
-		}
-	);
+	if (returnType == BuiltinTypes::Void)
+	{
+		// Define return statement with incorrect type in function scope
+		defineStmt2(scope, "return $E",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				const char* funcName = (const char*)stmtArgs;
+				BaseType* returnType = getType(params[0], parentBlock);
+				if (funcName)
+					raiseCompileError(("void function '" + std::string(funcName) + "' should not return a value").c_str(), params[0]);
+				else
+					raiseCompileError("void function should not return a value", params[0]);
+			},
+			(void*)funcName
+		);
 
-	// Define return statement with correct type in function scope
-	defineStmt2(scope, ("return $<" + getTypeName(returnType) + ">").c_str(),
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
-		}
-	);
+		// Define return statement without type in function scope
+		defineStmt2(scope, "return",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				builder->CreateRetVoid();
+			}
+		);
+	}
+	else
+	{
+		// Define return statement with incorrect type in function scope
+		defineStmt2(scope, "return $E",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BaseType* returnType = getType(params[0], parentBlock);
+				raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
+			}
+		);
+
+		// Define return statement with correct type in function scope
+		defineStmt2(scope, ("return $<" + getTypeName(returnType) + ">").c_str(),
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
+			}
+		);
+
+		// Define return statement without type in function scope
+		defineStmt2(scope, "return",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				const char* funcName = (const char*)stmtArgs;
+				if (funcName)
+					raiseCompileError(("non-void function '" + std::string(funcName) + "' should return a value").c_str(), params[0]);
+				else
+					raiseCompileError("non-void function should return a value", params[0]);
+			},
+			(void*)funcName
+		);
+	}
+}
+
+Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* funcName, BuiltinType* returnType, BuiltinType* classType, std::vector<BuiltinType*>& argTypes, std::vector<IdExprAST*>& argNames, bool isVarArg)
+{
+	Func* func = new Func(funcName, returnType, argTypes, false);
+	Function* parentFunc = currentFunc;
+	currentFunc = func->getFunction(currentModule);
+	currentFunc->setDSOLocal(true);
+
+	size_t numArgs = argTypes.size();
+	assert(argNames.size() == numArgs);
+
+	// Create entry BB in currentFunc
+	BasicBlock *parentBB = currentBB;
+	builder->SetInsertPoint(currentBB = BasicBlock::Create(*context, "entry", currentFunc));
+
+	if (dbuilder)
+	{
+		DIScope *FContext = dfile;
+		DISubprogram *subprogram = dbuilder->createFunction(
+			parentFunc->getSubprogram(), funcName, funcName, dfile, getExprLine((ExprAST*)funcBlock),
+			dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(std::vector<Metadata*>(numArgs, intType))), //TODO: Replace {} with array of argument types
+			getExprLine((ExprAST*)funcBlock), DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
+		;
+		currentFunc->setSubprogram(subprogram);
+		builder->SetCurrentDebugLocation(DebugLoc());
+	}
+
+	// Define argument symbols in function scope
+	for (size_t i = 0; i < numArgs; ++i)
+	{
+		AllocaInst* arg = builder->CreateAlloca(unwrap(argTypes[i]->llvmtype), nullptr, argNames[i] ? getIdExprASTName(argNames[i]) : "");
+		arg->setAlignment(argTypes[i]->align);
+		builder->CreateStore(currentFunc->args().begin() + i, arg)->setAlignment(argTypes[i]->align);
+		defineSymbol(funcBlock, argNames[i] ? getIdExprASTName(argNames[i]) : "", argTypes[i], new XXXValue(arg));
+	}
+
+	if (dbuilder)
+	{
+		for (size_t i = 0; i < numArgs; ++i)
+			if (argNames[i] != nullptr)
+			{
+				DILocalVariable *D = dbuilder->createParameterVariable(
+					currentFunc->getSubprogram(),
+					getIdExprASTName(argNames[i]),
+					i + 1,
+					dfile,
+					getExprLine((ExprAST*)argNames[i]),
+					intType, //TODO: Replace with argTypes[i].ditype
+					true
+				);
+				dbuilder->insertDeclare(
+					currentFunc->args().begin() + i, D, dbuilder->createExpression(),
+					DebugLoc::get(getExprLine((ExprAST*)argNames[i]), getExprColumn((ExprAST*)argNames[i]), currentFunc->getSubprogram()),
+					builder->GetInsertBlock()
+				);
+			}
+	}
+
+	defineReturnStmt(funcBlock, returnType, funcName);
+
+	if (classType != nullptr)
+	{
+		AllocaInst* thisPtr = builder->CreateAlloca(unwrap(classType->Ptr()->llvmtype), nullptr, "this");
+		thisPtr->setAlignment(8);
+		builder->CreateStore(currentFunc->args().begin(), thisPtr)->setAlignment(8);
+		defineSymbol(funcBlock, "this", classType->Ptr(), new XXXValue(thisPtr));
+	}
+
+	// Codegen function body
+	codegenExpr((ExprAST*)funcBlock, scope).value;
+
+	if (currentFunc->getReturnType()->isVoidTy()) // If currentFunc is void function
+		builder->CreateRetVoid(); // Add implicit `return;`
+
+	// Close function
+	if (dbuilder)
+	{
+		dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
+		builder->SetCurrentDebugLocation(DebugLoc());
+	}
+	builder->SetInsertPoint(currentBB = parentBB);
+
+	std::string errstr;
+	raw_string_ostream errstream(errstr);
+	bool haserr = verifyFunction(*currentFunc, &errstream);
+
+//	currentFunc = parentFunc;
+
+	if (haserr && errstr[0] != '\0')
+	{
+		std::error_code ec;
+		raw_fd_ostream ostream("error.ll", ec);
+		currentModule->print(ostream, nullptr);
+		ostream.close();
+//				raiseCompileError(("error compiling module\n" + errstr).c_str(), (ExprAST*)scope);
+verifyFunction(*currentFunc, &outs());
+	}
+
+currentFunc = parentFunc;
+
+	return func;
 }
 
 void initBuiltinSymbols()
@@ -131,6 +293,8 @@ void initBuiltinSymbols()
 	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8);
 	BuiltinTypes::Builtin = BuiltinType::get("BuiltinType", wrap(Types::BuiltinType), 8);
 	BuiltinTypes::BuiltinValue = BuiltinType::get("BuiltinValue", nullptr, 0);
+	BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0);
+	BuiltinTypes::BuiltinInstance = BuiltinType::get("BuiltinInstance", nullptr, 0);
 	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8);
 
 	// Primitive types
@@ -205,6 +369,7 @@ void initBuiltinSymbols()
 	//MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, TODO, BuiltinTypes::Int8Ptr }, false);
 	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
 	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
+	MincFunctions::cppNew = new Func("_Znwm", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
 }
 
 void defineBuiltinSymbols(BlockExprAST* rootBlock)
@@ -239,38 +404,33 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	}
 
 	BaseType* baseType = getBaseType();
-	defineType(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType->getPointerTo(), (uint64_t)baseType));
+	defineType(rootBlock, "BaseType", baseType, new XXXValue(StructType::get(*context, "BaseType"), (uint64_t)baseType));
 
-	XXXValue* builtinTypeVal = new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Builtin);
-	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, builtinTypeVal);
-	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Builtin->Ptr()));
+	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, BuiltinTypes::Builtin);
+	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr());
 
-	/*
-	XXXValue* intTypeVal = new XXXValue(Types::BuiltinType, (uint64_t)Int32);
-	defineType(rootBlock, "IntType", builtinTypeVal, intTypeVal);*/
+	defineType(rootBlock, "void", BuiltinTypes::Builtin, BuiltinTypes::Void);
+	defineType(rootBlock, "bool", BuiltinTypes::Builtin, BuiltinTypes::Int1);
+	defineType(rootBlock, "char", BuiltinTypes::Builtin, BuiltinTypes::Int8);
+	defineType(rootBlock, "int", BuiltinTypes::Builtin, BuiltinTypes::Int32);
+	defineType(rootBlock, "long", BuiltinTypes::Builtin, BuiltinTypes::Int64);
+	defineType(rootBlock, "double", BuiltinTypes::Builtin, BuiltinTypes::Double);
+	defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, BuiltinTypes::DoublePtr);
+	defineType(rootBlock, "string", BuiltinTypes::Builtin, BuiltinTypes::Int8Ptr);
+	defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, BuiltinTypes::ExprAST);
+	defineType(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, BuiltinTypes::LiteralExprAST);
+	defineType(rootBlock, "IdExprAST", BuiltinTypes::Builtin, BuiltinTypes::IdExprAST);
+	defineType(rootBlock, "CastExprAST", BuiltinTypes::Builtin, BuiltinTypes::CastExprAST);
+	defineType(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, BuiltinTypes::BlockExprAST);
+	defineType(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMValueRef);
+	defineType(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMValueRef->Ptr());
+	defineType(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMBasicBlockRef);
+	defineType(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMTypeRef);
+	defineType(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMTypeRef->Ptr());
+	defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef);
+	defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef->Ptr());
 
-	defineType(rootBlock, "void", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Void));
-	defineType(rootBlock, "bool", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int1));
-	defineType(rootBlock, "char", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8));
-	defineType(rootBlock, "int", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int32));
-	defineType(rootBlock, "long", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int64));
-	defineType(rootBlock, "double", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Double));
-	defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::DoublePtr));
-	defineType(rootBlock, "string", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::Int8Ptr));
-	defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::ExprAST));
-	defineType(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LiteralExprAST));
-	defineType(rootBlock, "IdExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::IdExprAST));
-	defineType(rootBlock, "CastExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::CastExprAST));
-	defineType(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BlockExprAST));
-	defineType(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef));
-	defineType(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMValueRef->Ptr()));
-	defineType(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMBasicBlockRef));
-	defineType(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef));
-	defineType(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMTypeRef->Ptr()));
-	defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef));
-	defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::LLVMMetadataRef->Ptr()));
-
-	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, new XXXValue(Types::BuiltinType, (uint64_t)BuiltinTypes::BuiltinValue));
+	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, new XXXValue(nullptr, (uint64_t)BuiltinTypes::BuiltinValue));
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int1, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int32, BuiltinTypes::BuiltinValue);
@@ -290,6 +450,11 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
+
+	defineType(rootBlock, "BuiltinClass", BuiltinTypes::Builtin, BuiltinTypes::BuiltinClass);
+	defineOpaqueCast(rootBlock, BuiltinTypes::BuiltinClass, BuiltinTypes::Builtin);
+	defineType(rootBlock, "BuiltinInstance", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance);
+//	defineType(rootBlock, "BuiltinInstancePtr", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance->Ptr());
 
 defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(Types::LLVMOpaqueMetadata->getPointerTo(), (uint64_t)intType));
 
@@ -315,7 +480,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			Function* func = funcVar.value->getFunction(currentModule);
 			FuncType* funcType = (FuncType*)funcVar.type;
 			if (funcType == nullptr)
-				raiseCompileError(('`' + ExprASTToString(funcAST) + "` doesn't have a type").c_str(), funcAST);
+				raiseCompileError(("function `" + std::string(getIdExprASTName((IdExprAST*)funcAST)) + "` was not declared in this scope").c_str(), funcAST);
 
 			if ((func->isVarArg() && func->arg_size() > params.size() - 1) ||
 				(!func->isVarArg() && func->arg_size() != params.size() - 1))
@@ -348,9 +513,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			return Variable(funcType->resultType, new XXXValue(builder->CreateCall(func, argValues)));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			FuncType* funcType = (FuncType*)getType(params[0], parentBlock);
-			if (funcType == nullptr)
-				raiseCompileError(("function `" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
-			return funcType->resultType;
+			return funcType == nullptr ? nullptr : funcType->resultType;
 		}
 	);
 
@@ -619,103 +782,300 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 
 			size_t numArgs = (params.size() - 3) / 2;
 			std::vector<BuiltinType*> argTypes; argTypes.reserve(numArgs);
-			std::vector<const char*> argNames; argNames.reserve(numArgs);
+			std::vector<IdExprAST*> argNames; argNames.reserve(numArgs);
 			for (size_t i = 0; i < numArgs; ++i)
 			{
 				argTypes.push_back((BuiltinType*)codegenExpr(params[i * 2 + 2], parentBlock).value->getConstantValue());
-				argNames.push_back(getIdExprASTName((IdExprAST*)params[i * 2 + 3]));
+				argNames.push_back((IdExprAST*)params[i * 2 + 3]);
 			}
 			
-			Func *func = new Func(funcName, returnType, argTypes, false);
-			Function* parentFunc = currentFunc;
-			currentFunc = func->getFunction(currentModule);
-			currentFunc->setDSOLocal(true);
-
-			// Create entry BB in currentFunc
-			BasicBlock *parentBB = currentBB;
-			builder->SetInsertPoint(currentBB = BasicBlock::Create(*context, "entry", currentFunc));
-
-			if (dbuilder)
-			{
-				DIScope *FContext = dfile;
-				DISubprogram *subprogram = dbuilder->createFunction(
-					parentFunc->getSubprogram(), funcName, funcName, dfile, getExprLine(params[1]),
-					dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(std::vector<Metadata*>(numArgs, intType))), //TODO: Replace {} with array of argument types
-					getExprLine((ExprAST*)blockAST), DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
-				;
-				currentFunc->setSubprogram(subprogram);
-				builder->SetCurrentDebugLocation(DebugLoc());
-			}
-
-			// Define argument symbols in function scope
-			for (size_t i = 0; i < numArgs; ++i)
-			{
-				AllocaInst* arg = builder->CreateAlloca(unwrap(argTypes[i]->llvmtype), nullptr, argNames[i]);
-				arg->setAlignment(argTypes[i]->align);
-				builder->CreateStore(currentFunc->args().begin() + i, arg)->setAlignment(argTypes[i]->align);
-				defineSymbol(blockAST, argNames[i], argTypes[i], new XXXValue(arg));
-			}
-
-			if (dbuilder)
-			{
-				for (size_t i = 0; i < numArgs; ++i)
-				{
-					ExprAST* argNameAST = params[i * 2 + 3];
-					DILocalVariable *D = dbuilder->createParameterVariable(
-						currentFunc->getSubprogram(),
-						argNames[i],
-						i + 1,
-						dfile,
-						getExprLine(argNameAST),
-						intType, //TODO: Replace with argTypes[i].ditype
-						true
-					);
-					dbuilder->insertDeclare(
-						currentFunc->args().begin() + i, D, dbuilder->createExpression(),
-						DebugLoc::get(getExprLine(argNameAST), getExprColumn(argNameAST), currentFunc->getSubprogram()),
-						builder->GetInsertBlock()
-					);
-				}
-			}
-
-			defineReturnStmt(blockAST, returnType);
-
-			// Codegen function body
-			codegenExpr((ExprAST*)blockAST, parentBlock).value;
-
-			if (currentFunc->getReturnType()->isVoidTy()) // If currentFunc is void function
-				builder->CreateRetVoid(); // Add implicit `return;`
-
-			// Close function
-			if (dbuilder)
-			{
-				dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
-				builder->SetCurrentDebugLocation(DebugLoc());
-			}
-			builder->SetInsertPoint(currentBB = parentBB);
-
-			std::string errstr;
-			raw_string_ostream errstream(errstr);
-			bool haserr = verifyFunction(*currentFunc, &errstream);
-
-//			currentFunc = parentFunc;
-
-			if (haserr && errstr[0] != '\0')
-			{
-				std::error_code ec;
-				raw_fd_ostream ostream("error.ll", ec);
-				currentModule->print(ostream, nullptr);
-				ostream.close();
-//				raiseCompileError(("error compiling module\n" + errstr).c_str(), (ExprAST*)parentBlock);
-verifyFunction(*currentFunc, &outs());
-			}
-
-currentFunc = parentFunc;
+			Func* func = defineFunction(parentBlock, blockAST, funcName, returnType, nullptr, argTypes, argNames, false);
 
 			// Define function symbol in parent scope
 			defineSymbol(parentBlock, funcName, &func->type, func);
 		}
 	);
+
+	// Define struct definition
+	defineStmt2(rootBlock, "struct $I $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			IdExprAST* nameAST = (IdExprAST*)params.front();
+			const char* name = getIdExprASTName(nameAST);
+			BlockExprAST* blockAST = (BlockExprAST*)params.back();
+
+			// Define struct type in parent scope
+			ClassType* structType = new ClassType();
+			defineType(parentBlock, getIdExprASTName(nameAST), BuiltinTypes::BuiltinClass, structType);
+			defineOpaqueCast(parentBlock, structType, BuiltinTypes::BuiltinInstance);
+
+			// Define struct variable definition
+			defineStmt2(blockAST, "public $<BuiltinType> $I",
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+					ClassType* structType = (ClassType*)stmtArgs;
+					BuiltinType* memberType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+					const char* memberName = getIdExprASTName((IdExprAST*)params[1]);
+					unsigned int memberIndex = structType->variables.size();
+					structType->variables[memberName] = ClassVariable{PUBLIC, memberType, memberIndex};
+				},
+				structType
+			);
+
+			// Define struct constructor
+			defineStmt2(blockAST, ("public " + std::string(name) + "($<BuiltinType> $I, ...) $B").c_str(),
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+					ClassType* structType = (ClassType*)stmtArgs;
+					BlockExprAST* blockAST = (BlockExprAST*)params.back();
+
+					size_t numArgs = (params.size() - 1) / 2;
+					std::vector<BuiltinType*> argTypes; argTypes.reserve(numArgs + 1);
+					std::vector<IdExprAST*> argNames; argNames.reserve(numArgs + 1);
+					argTypes.push_back(structType->Ptr());
+					argNames.push_back(nullptr);
+					for (size_t i = 0; i < numArgs; ++i)
+					{
+						argTypes.push_back((BuiltinType*)codegenExpr(params[i * 2 + 0], parentBlock).value->getConstantValue());
+						argNames.push_back((IdExprAST*)params[i * 2 + 1]);
+					}
+
+					// Mangle function name
+					const std::string& structName = getTypeName(structType);
+					std::string funcName = mangle(structName, structName, BuiltinTypes::Void, argTypes);
+					char* _funcName = new char[funcName.size() + 1];
+					strcpy(_funcName, funcName.c_str());
+
+					Func* func = defineFunction(parentBlock, blockAST, _funcName, BuiltinTypes::Void, structType, argTypes, argNames, false);
+
+					structType->constructors.push_back(ClassMethod{PUBLIC, func});
+				},
+				structType
+			);
+
+			// Codegen struct body
+			codegenExpr((ExprAST*)blockAST, parentBlock);
+
+			// Define default constructor if no custom constructors are defined
+			if (structType->constructors.empty())
+			{
+				std::vector<BuiltinType*> argTypes;
+				argTypes.push_back(structType->Ptr());
+
+				// Mangle function name
+				std::string funcName = mangle(name, name, BuiltinTypes::Void, argTypes);
+				char* _funcName = new char[funcName.size() + 1];
+				strcpy(_funcName, funcName.c_str());
+				
+				Func* func = new Func(_funcName, BuiltinTypes::Void, argTypes, false, "");
+				structType->constructors.push_back(ClassMethod{PUBLIC, func});
+			}
+
+			// Prepend "struct." to structType->llvmtype
+			const size_t nameLen = strlen(name);
+			char* structLLVMTypeName = new char[nameLen + 8];
+			strcpy(structLLVMTypeName, "struct.");
+			strcpy(structLLVMTypeName + 7, name);
+			((StructType*)unwrap(structType->llvmtype))->setName(structLLVMTypeName);
+
+			// Set structType->llvmtype body to array of llvmtype's of structType->variables
+			std::vector<llvm::Type*> memberLlvmTypes;
+			memberLlvmTypes.resize(structType->variables.size());
+			for (std::pair<std::string, ClassVariable> variable: structType->variables)
+				memberLlvmTypes[variable.second.index] = unwrap(variable.second.type->llvmtype);
+			((StructType*)unwrap(structType->llvmtype))->setBody(memberLlvmTypes);
+		}
+	);
+
+	// Define struct member getter
+	defineExpr3(rootBlock, "$<BuiltinInstance>.$I",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			Variable structVar = codegenExpr(structAST, parentBlock);
+			ClassType* structType = (ClassType*)structVar.type;
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto variable = structType->variables.find(memberName);
+			if (variable == structType->variables.end())
+			{
+				if (structType->methods.find(memberName) != structType->methods.end())
+					raiseCompileError(("method '" + memberName + "' in '" + getTypeName(structType) + "' must be called").c_str(), params[1]);
+				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
+			}
+
+			Value* gep = builder->CreateStructGEP(structVar.value->val, variable->second.index, "gep");
+			LoadInst* memberVal = builder->CreateLoad(gep);
+			memberVal->setAlignment(variable->second.type->align);
+			return Variable(variable->second.type, new XXXValue(memberVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			ClassType* structType = (ClassType*)getType(structAST, parentBlock);
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto variable = structType->variables.find(memberName);
+			return variable == structType->variables.end() ? nullptr : variable->second.type;
+		}
+	);
+
+	// Define struct member setter
+	defineExpr3(rootBlock, "$<BuiltinInstance>.$I = $<BuiltinValue>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			Variable structVar = codegenExpr(structAST, parentBlock);
+			ClassType* structType = (ClassType*)structVar.type;
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto variable = structType->variables.find(memberName);
+			if (variable == structType->variables.end())
+			{
+				if (structType->methods.find(memberName) != structType->methods.end())
+					raiseCompileError(("method '" + memberName + "' in '" + getTypeName(structType) + "' must be called").c_str(), params[1]);
+				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
+			}
+
+			ExprAST* varExpr = params[2];
+			if (ExprASTIsCast(varExpr))
+				varExpr = getCastExprASTSource((CastExprAST*)varExpr);
+			BaseType *memberType = variable->second.type, *valueType = getType(varExpr, parentBlock);
+			if (memberType != valueType)
+			{
+				ExprAST* castExpr = lookupCast(parentBlock, varExpr, memberType);
+				if (castExpr == nullptr)
+				{
+					std::string candidateReport = reportExprCandidates(parentBlock, varExpr);
+					raiseCompileError(
+						("cannot assign <" + getTypeName(valueType) + "> to <" + getTypeName(memberType) + ">\n" + candidateReport).c_str(),
+						varExpr
+					);
+				}
+				varExpr = castExpr;
+			}
+			Variable valVar = codegenExpr(varExpr, parentBlock);
+
+			Value* gep = builder->CreateStructGEP(structVar.value->val, variable->second.index, "gep");
+			builder->CreateStore(valVar.value->val, gep)->setAlignment(variable->second.type->align);
+			LoadInst* memberVal = builder->CreateLoad(gep);
+			memberVal->setAlignment(variable->second.type->align);
+			return Variable(variable->second.type, new XXXValue(memberVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			ClassType* structType = (ClassType*)getType(structAST, parentBlock);
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto variable = structType->variables.find(memberName);
+			return variable == structType->variables.end() ? nullptr : variable->second.type;
+		}
+	);
+
+	// Define new struct
+	defineExpr3(rootBlock, "new $<BuiltinClass>($E, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ClassType* structType = (ClassType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			size_t numArgs = params.size() - 1;
+
+			for (ClassMethod& constructor: structType->constructors)
+			{
+				FuncType& constructorType = constructor.func->type;
+				if (constructorType.argTypes.size() - 1 != numArgs)
+					continue;
+
+				for (size_t i = 0; i < numArgs; ++i)
+				{
+					BaseType *expectedType = constructorType.argTypes[i + 1], *gotType = getType(params[i + 1], parentBlock);
+
+					if (expectedType != gotType)
+					{
+						ExprAST* castExpr = lookupCast(parentBlock, params[i + 1], expectedType);
+						if (castExpr == nullptr)
+						{
+							//TODO: Continue instead of throwing errors!
+							std::string candidateReport = reportExprCandidates(parentBlock, params[i + 1]);
+							raiseCompileError(
+								("invalid constructor argument type: " + ExprASTToString(params[i + 1]) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
+								params[i + 1]
+							);
+						}
+						params[i + 1] = castExpr;
+					}
+				}
+
+				// Allocate memory using C++ new operator
+				Value* const structSize = ConstantInt::get(*context, APInt(64, DataLayout(currentModule).getTypeAllocSize(unwrap(structType->llvmtype)), true));
+				Function* func = MincFunctions::cppNew->getFunction(currentModule);
+				Value* valMem = builder->CreateCall(func, { (Value*)structSize });
+				Value* val = builder->CreateBitCast(valMem, unwrap(structType->Ptr()->llvmtype));
+
+				if (constructor.func->symName[0] == '\0') // If constructor is default constructor
+				{
+					// Memset struct body to zero
+					builder->CreateMemSet(valMem, Constant::getNullValue(Types::Int8), structSize, 8);
+				}
+				else
+				{
+					// Call constructor
+					std::vector<Value*> argValues(1, val);
+					for (auto arg = params.begin() + 1; arg != params.end(); ++arg)
+						argValues.push_back(codegenExpr(*arg, parentBlock).value->val);
+					val = builder->CreateCall(constructor.func->getFunction(currentModule), argValues);
+				}
+		
+				return Variable(structType->Ptr(), new XXXValue(val));
+			}
+			raiseCompileError("TODO: no constructor found that takes numArgs arguments", params[0]);
+
+			// auto member = structType->members.find(memberName);
+			// if (member == structType->members.end())
+			// 	raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
+
+			// assert(0); //TODO: Not implemented below this
+			// Value* gep = builder->CreateStructGEP(structVar.value->val, member->second.index, "gep");
+			// LoadInst* memberVal = builder->CreateLoad(gep);
+			// memberVal->setAlignment(member->second.type->align);
+			// return Variable(member->second.type, new XXXValue(memberVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			return ((ClassType*)codegenExpr(params[0], const_cast<BlockExprAST*>(parentBlock)).value->getConstantValue())->Ptr();
+		}
+	);
+
+	/*// Define struct method call
+	defineExpr3(rootBlock, "$<BuiltinInstance>.$I($E, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			Variable structVar = codegenExpr(structAST, parentBlock);
+			ClassType* structType = (ClassType*)structVar.type;
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto member = structType->members.find(memberName);
+			if (member == structType->members.end())
+				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
+
+			assert(0); //TODO: Not implemented below this
+			Value* gep = builder->CreateStructGEP(structVar.value->val, member->second.index, "gep");
+			LoadInst* memberVal = builder->CreateLoad(gep);
+			memberVal->setAlignment(member->second.type->align);
+			return Variable(member->second.type, new XXXValue(memberVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			ExprAST* structAST = params[0];
+			if (ExprASTIsCast(structAST))
+				structAST = getCastExprASTSource((CastExprAST*)structAST);
+			ClassType* structType = (ClassType*)getType(structAST, parentBlock);
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto member = structType->members.find(memberName);
+			return member == structType->members.end() || !member->second.isMethod() ? nullptr : ((FuncType*)member->second.type)->resultType;
+		}
+	);*/
 
 	// Define codegen($<ExprAST>, $<BlockExprAST>)
 	defineExpr2(rootBlock, "codegen($<ExprAST>, $<BlockExprAST>)",
@@ -813,7 +1173,7 @@ currentFunc = parentFunc;
 			if (ExprASTIsParam(params[1]))
 				nameVal = codegenExpr(params[1], parentBlock).value->val;
 			else if (ExprASTIsId(params[1]))
-				nameVal = builder->CreateBitCast(Constant::getIntegerValue(Types::IdExprAST->getPointerTo(), APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
+				nameVal = builder->CreateBitCast(ConstantInt::get(*context, APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
 			else
 				assert(0);
 
@@ -924,7 +1284,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineExpr3(rootBlock, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			if (var.value->isFunction() || isa<Constant>(var.value->val))
+			if (var.value->isFunction() || var.value->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
 				return var;
 
 			LoadInst* loadVal = builder->CreateLoad(var.value->val, getIdExprASTName((IdExprAST*)params[0]));

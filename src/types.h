@@ -1,11 +1,17 @@
 namespace llvm {
 	class Value;
+	class Constant;
 	class Function;
 }
 
+struct Func;
 struct LLVMOpaqueType;
 
 struct BaseType {};
+
+enum Visibility {
+	PRIVATE, PUBLIC, PROTECTED
+};
 
 struct BuiltinType : public BaseType
 {
@@ -33,8 +39,32 @@ struct FuncType : public BuiltinType
 	std::vector<BuiltinType*> argTypes;
 	const char* name;
 
-	FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg);
+	FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*>& argTypes, bool isVarArg);
 	virtual ~FuncType() {};
+};
+
+struct ClassMethod
+{
+	Visibility visibility;
+	Func* func;
+};
+
+struct ClassVariable
+{
+	Visibility visibility;
+	BuiltinType* type;
+	unsigned int index;
+};
+
+struct ClassType : public BuiltinType
+{
+	BuiltinType* resultType;
+	std::multimap<std::string, ClassMethod> methods;
+	std::map<std::string, ClassVariable> variables;
+	std::vector<ClassMethod> constructors;
+
+	ClassType();
+	virtual ~ClassType() {};
 };
 
 struct TpltType : public BuiltinType
@@ -64,7 +94,7 @@ public:
 	XXXValue(llvm::Value* val)
 		: val(val), constantValue(0) {}
 	XXXValue(llvm::Type* type, uint64_t value)
-		: val(llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
+		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
 
 	uint64_t getConstantValue()
 	{
@@ -79,6 +109,11 @@ public:
 	virtual bool isFunction()
 	{
 		return false;
+	}
+
+	bool isConstant()
+	{
+		return constantValue != 0;//llvm::isa<llvm::Constant>(val);
 	}
 };
 

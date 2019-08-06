@@ -67,7 +67,7 @@ class ExprAST
 public:
 	const Location loc;
 	enum ExprType {
-		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ASSIGN, CALL, SUBSCR, TPLT, MEMBER, DEREFMEMBER, BINOP, PREOP, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, CALL, SUBSCR, TPLT, BINOP, PREOP, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -427,29 +427,6 @@ public:
 	std::string str() const { return "..."; }
 };
 
-class AssignExprAST : public ExprAST
-{
-public:
-	ExprAST *var, *val;
-	AssignExprAST(const Location& loc, ExprAST* var, ExprAST* val) : ExprAST(loc, ExprAST::ExprType::ASSIGN), var(var), val(val) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && var->match(block, ((AssignExprAST*)expr)->var, score) && val->match(block, ((AssignExprAST*)expr)->val, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
-	{
-		var->collectParams(block, ((AssignExprAST*)expr)->var, params);
-		val->collectParams(block, ((AssignExprAST*)expr)->val, params);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		var->resolveTypes(block);
-		val->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return var->str() + " = " + val->str(); }
-};
-
 class CallExprAST : public ExprAST
 {
 public:
@@ -520,52 +497,6 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return var->str() + "<" + args->str() + ">"; }
-};
-
-class MemberExprAST : public ExprAST
-{
-public:
-	ExprAST *var, *mbr;
-	MemberExprAST(const Location& loc, ExprAST* var, ExprAST* mbr) : ExprAST(loc, ExprAST::ExprType::MEMBER), var(var), mbr(mbr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && var->match(block, ((MemberExprAST*)expr)->var, score) && mbr->match(block, ((MemberExprAST*)expr)->mbr, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
-	{
-		var->collectParams(block, ((MemberExprAST*)expr)->var, params);
-		mbr->collectParams(block, ((MemberExprAST*)expr)->mbr, params);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		var->resolveTypes(block);
-		mbr->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return var->str() + "." + mbr->str(); }
-};
-
-class DerefMemberExprAST : public ExprAST
-{
-public:
-	ExprAST *var, *mbr;
-	DerefMemberExprAST(const Location& loc, ExprAST* var, ExprAST* mbr) : ExprAST(loc, ExprAST::ExprType::DEREFMEMBER), var(var), mbr(mbr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && var->match(block, ((DerefMemberExprAST*)expr)->var, score) && mbr->match(block, ((DerefMemberExprAST*)expr)->mbr, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
-	{
-		var->collectParams(block, ((DerefMemberExprAST*)expr)->var, params);
-		mbr->collectParams(block, ((DerefMemberExprAST*)expr)->mbr, params);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		var->resolveTypes(block);
-		mbr->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return var->str() + "->" + mbr->str(); }
 };
 
 class BinOpExprAST : public ExprAST

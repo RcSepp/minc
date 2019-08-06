@@ -96,9 +96,9 @@ expr
 	| id_or_plchld '<' expr_lists '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @4), $1, $3); }
 
 	// Binary operators
-	| expr '=' expr { $$ = new AssignExprAST(getloc(@1, @3), $1, $3); }
-	| expr '.' id_or_plchld { $$ = new MemberExprAST(getloc(@1, @3), $1, $3); }
-	| expr DM id_or_plchld { $$ = new DerefMemberExprAST(getloc(@1, @3), $1, $3); }
+	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
+	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
+	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }

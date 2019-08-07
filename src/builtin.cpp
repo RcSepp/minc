@@ -678,38 +678,24 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			BuiltinType* metaType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
 			IdExprAST* nameAST = (IdExprAST*)params[1];
 			BlockExprAST* blockAST = (BlockExprAST*)params.back();
- 
-			// Define `return`
-			Type* returnType = nullptr;
-			defineStmt2(blockAST, "return $E",
-				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-					Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-					Value* resultVal = codegenExpr(params[0], parentBlock).value->val;
-					Value* resultTypeVal = Constant::getIntegerValue(Types::LLVMOpaqueType->getPointerTo(), APInt(64, (uint64_t)resultVal->getType()));
-					Value* returnStruct = builder->CreateInsertValue(UndefValue::get(returnStructType), builder->CreatePtrToInt(resultVal, Types::Int64), { 0 });
-					returnStruct = builder->CreateInsertValue(returnStruct, resultTypeVal, { 1 });
-					builder->CreateRet(returnStruct);
-				}
-			);
 
 			// Generate JIT function name
 			std::string jitFuncName("typedef " + std::string(getIdExprASTName(nameAST)));
 
-			Type* returnStructType = StructType::get(Types::Int64, Types::LLVMOpaqueType->getPointerTo());
-			struct ReturnStruct { uint64_t result; Type* resultType; };
+			defineReturnStmt(blockAST, metaType);
 
 			std::vector<ExprAST*> typeParams;
-			JitFunction* jitFunc = createJitFunction2(parentBlock, blockAST, returnStructType, typeParams, jitFuncName);
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, metaType, typeParams, jitFuncName);
 			capturedScope.clear();
 			codegenExpr((ExprAST*)blockAST, parentBlock);
 
-			typedef ReturnStruct (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
+			typedef BuiltinType* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, ExprAST** params);
 			funcPtr jitFunctionPtr = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
-			ReturnStruct type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
+			BuiltinType* type = jitFunctionPtr(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, {});
 			removeJitFunctionModule(jitFunc);
 			removeJitFunction(jitFunc);
 
-			defineType(parentBlock, getIdExprASTName(nameAST), metaType, new XXXValue(type.resultType, (uint64_t)type.result));
+			defineType(parentBlock, getIdExprASTName(nameAST), metaType, type);
 		}
 	);
 

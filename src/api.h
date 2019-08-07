@@ -23,10 +23,6 @@ struct Variable
 	Variable(BaseType* type, XXXValue* value) : type(type), value(value) {}
 };
 
-namespace llvm {
-	class Type;
-}
-
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
@@ -79,7 +75,6 @@ extern "C"
 	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
-	JitFunction* createJitFunction2(BlockExprAST* scope, BlockExprAST* blockAST, llvm::Type *returnType, std::vector<ExprAST*>& params, std::string& name);
 	uint64_t compileJitFunction(JitFunction* jitFunc);
 	void removeJitFunctionModule(JitFunction* jitFunc);
 	void removeJitFunction(JitFunction* jitFunc);

@@ -519,10 +519,6 @@ extern "C"
 	{
 		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
 	}
-	JitFunction* createJitFunction2(BlockExprAST* scope, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name)
-	{
-		return new JitFunction(scope, blockAST, returnType, params, name);
-	}
 
 	uint64_t compileJitFunction(JitFunction* jitFunc)
 	{

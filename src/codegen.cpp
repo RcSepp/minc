@@ -315,11 +315,9 @@ extern "C"
 		scope->addToScope(name, type, value);
 	}
 
-	void defineType(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
+	void defineType(BlockExprAST* scope, const char* name, BaseType* type)
 	{
-		typereg[(BaseType*)value->getConstantValue()] = TypeDescription{name};
-		if (scope)
-			scope->addToScope(name, type, value);
+		typereg[type] = TypeDescription{name};
 	}
 
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)

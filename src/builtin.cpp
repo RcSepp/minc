@@ -84,7 +84,8 @@ std::string mangle(const std::string& className, const std::string& funcName, Bu
 
 void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BuiltinType* type)
 {
-	defineType(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
+	defineType(scope, name, type);
+	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
 }
 
 Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
@@ -406,7 +407,8 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	}
 
 	BaseType* baseType = getBaseType();
-	defineType(rootBlock, "BaseType", baseType, new XXXValue(StructType::get(*context, "BaseType"), (uint64_t)baseType));
+	defineType(rootBlock, "BaseType", baseType);
+	defineSymbol(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType, (uint64_t)baseType));
 
 	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, BuiltinTypes::Builtin);
 	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr());
@@ -432,7 +434,7 @@ bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFuncti
 	defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef);
 	defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef->Ptr());
 
-	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, new XXXValue(nullptr, (uint64_t)BuiltinTypes::BuiltinValue));
+	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int1, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int32, BuiltinTypes::BuiltinValue);

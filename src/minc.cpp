@@ -9,6 +9,7 @@
 #include "cparser.h"
 #include "pyparser.h"
 #include "codegen.h"
+#include "paws.h"
 
 const std::string APP_NAME = "minc";
 const std::string HELP_MESSAGE = "AsyncC compiler\n";
@@ -18,85 +19,6 @@ const std::map<std::string, std::string> COMMANDS = {
 	{"parse", "compile to LLVM IR"},
 	{"debug", "compile LLVM IR and binary"},
 };
-
-std::pair<BlockExprAST*, IModule*> compile(std::string sourcePath, std::string outputPath, bool outputDebugSymbols, BlockExprAST* parentBlock = nullptr)
-{
-	std::istream* in = sourcePath != "-" ? new std::ifstream(sourcePath) : &std::cin;
-	if (!in->good())
-	{
-		std::cerr << "\033[31merror:\033[0m " << sourcePath << ": No such file or directory\n";
-		return {nullptr, nullptr};
-	}
-
-	char buf[1024];
-	const char* realPath = sourcePath == "-" ? nullptr : realpath(sourcePath.c_str(), buf);
-
-	// >>> Parse source code from file or stdin into AST
-
-	BlockExprAST* rootBlock;
-	const std::string PY_EXT = ".py";
-	if (sourcePath.length() >= PY_EXT.length() && sourcePath.compare(sourcePath.length() - PY_EXT.length(), PY_EXT.length(), PY_EXT) == 0)
-	{
-		PyLexer lexer(in, &std::cout);
-		yy::PyParser parser(lexer, realPath, &rootBlock);
-		if (parser.parse())
-		{
-			if (realPath != "-") ((std::ifstream*)in)->close();
-			return {nullptr, nullptr};
-		}
-	}
-	else
-	{
-		CLexer lexer(in, &std::cout);
-		yy::CParser parser(lexer, realPath, &rootBlock);
-		if (parser.parse())
-		{
-			if (realPath != "-") ((std::ifstream*)in)->close();
-			return {nullptr, nullptr};
-		}
-	}
-
-	// >>> Print AST
-
-	//printf("%s\n", rootBlock->str().c_str());
-
-	// >>> Generate LLVM IR from AST
-
-	IModule* module;
-	try {
-		module = createModule(realPath, rootBlock, outputDebugSymbols, parentBlock);
-	} catch (CompileError err) {
-std::cerr << std::endl;
-		if (err.loc.filename != nullptr)
-			std::cerr << err.loc.filename << ':';
-		std::cerr << err.loc.begin_line << ':';
-		std::cerr << err.loc.begin_col << ':';
-		std::cerr << " \033[31merror:\033[0m ";
-		std::cerr << err.msg << std::endl;
-		if (err.loc.filename != nullptr && err.loc.begin_line == err.loc.end_line && err.loc.begin_col > err.loc.end_col) //TODO: Cleanup
-		{
-			in->seekg(0, in->beg);
-			char c;
-			for (int lineno = 1; lineno < err.loc.begin_line; in->read(&c, 1))
-				if (c == '\n')
-					++lineno;
-			char linebuf[0x1000]; //TODO: Read line without fixed buffer size
-			linebuf[0] = c;
-			in->getline(linebuf + 1, 0x1000);
-			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
-			std::cerr << "\033[31m" << std::string(linebuf + err.loc.begin_col - 1, linebuf + err.loc.end_col - 1) << "\033[0m";
-			std::cerr << std::string(linebuf + err.loc.end_col - 1) << std::endl;
-			for (int i = 0; i < err.loc.begin_col; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
-			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
-			std::cerr << "\033[31m" << std::string(1, '^') << std::string(err.loc.end_col - err.loc.begin_col - 1, '~') << "\033[0m" << std::endl;
-		}
-		if (sourcePath != "-") ((std::ifstream*)in)->close();
-		return {nullptr, nullptr};
-	}
-	if (sourcePath != "-") ((std::ifstream*)in)->close();
-
-	return {rootBlock, module};
-}
 
 int main(int argc, char **argv)
 {
@@ -124,34 +46,117 @@ int main(int argc, char **argv)
 	if (dt != std::string::npos) outputPath = outputPath.substr(0, dt);
 	bool outputDebugSymbols = true;
 
-	init();
+	const std::string PAWS_EXT = ".mpw";
+	const bool sourceIsPaws = sourcePath.length() >= PAWS_EXT.length() && sourcePath.compare(sourcePath.length() - PAWS_EXT.length(), PAWS_EXT.length(), PAWS_EXT) == 0;
+	const std::string PY_EXT = ".py";
+	const bool sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.compare(sourcePath.length() - PY_EXT.length(), PY_EXT.length(), PY_EXT) == 0;
+	
+	if (!sourceIsPaws)
+		init();
 
-	std::pair<BlockExprAST*, IModule*> output = compile(sourcePath, outputPath, outputDebugSymbols);
-	BlockExprAST* main = output.first;
-	IModule* module = output.second;
-	if (!main)
+	// Open source file
+	std::istream* in = sourcePath != "-" ? new std::ifstream(sourcePath) : &std::cin;
+	if (!in->good())
+	{
+		std::cerr << "\033[31merror:\033[0m " << sourcePath << ": No such file or directory\n";
 		return -1;
-
-	if (command == "parse" || command == "debug")
-	{
-		if (outputPath == "-")
-			module->print();
-		else
-			module->print(outputPath + ".ll");
-		
 	}
-	if (command == "build")
+
+	// Get absolute path to source file
+	char buf[1024];
+	const char* realPath = sourcePath == "-" ? nullptr : realpath(sourcePath.c_str(), buf);
+
+	// >>> Parse source code from file or stdin into AST
+
+	BlockExprAST* rootBlock;
+	if (sourceIsPython)
 	{
-		std::string errstr;
-		if (!module->compile(outputPath + ".o", errstr))
+		PyLexer lexer(in, &std::cout);
+		yy::PyParser parser(lexer, realPath, &rootBlock);
+		if (parser.parse())
 		{
-			std::cerr << errstr;
+			if (realPath != "-") ((std::ifstream*)in)->close();
 			return -1;
 		}
 	}
-	if (command == "run" || command == "debug")
+	else
 	{
-		module->run();
+		CLexer lexer(in, &std::cout);
+		yy::CParser parser(lexer, realPath, &rootBlock);
+		if (parser.parse())
+		{
+			if (realPath != "-") ((std::ifstream*)in)->close();
+			return -1;
+		}
+	}
+
+	// >>> Print AST
+
+	//printf("%s\n", rootBlock->str().c_str());
+
+	// >>> Compile AST
+
+	IModule* module;
+	try {
+		if (sourceIsPaws)
+			PAWRun(rootBlock);
+		else
+			module = createModule(realPath, rootBlock, outputDebugSymbols, nullptr);
+	} catch (CompileError err) {
+std::cerr << std::endl;
+		if (err.loc.filename != nullptr)
+			std::cerr << err.loc.filename << ':';
+		std::cerr << err.loc.begin_line << ':';
+		std::cerr << err.loc.begin_col << ':';
+		std::cerr << " \033[31merror:\033[0m ";
+		std::cerr << err.msg << std::endl;
+		if (err.loc.filename != nullptr && err.loc.begin_line == err.loc.end_line && err.loc.begin_col > err.loc.end_col) //TODO: Cleanup
+		{
+			in->seekg(0, in->beg);
+			char c;
+			for (int lineno = 1; lineno < err.loc.begin_line; in->read(&c, 1))
+				if (c == '\n')
+					++lineno;
+			char linebuf[0x1000]; //TODO: Read line without fixed buffer size
+			linebuf[0] = c;
+			in->getline(linebuf + 1, 0x1000);
+			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
+			std::cerr << "\033[31m" << std::string(linebuf + err.loc.begin_col - 1, linebuf + err.loc.end_col - 1) << "\033[0m";
+			std::cerr << std::string(linebuf + err.loc.end_col - 1) << std::endl;
+			for (int i = 0; i < err.loc.begin_col; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
+			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
+			std::cerr << "\033[31m" << std::string(1, '^') << std::string(err.loc.end_col - err.loc.begin_col - 1, '~') << "\033[0m" << std::endl;
+		}
+		if (sourcePath != "-") ((std::ifstream*)in)->close();
+		return -1;
+	}
+	if (sourcePath != "-") ((std::ifstream*)in)->close();
+
+	// >>> Execute command
+
+	if (!sourceIsPaws)
+	{
+		if (command == "parse" || command == "debug")
+		{
+			if (outputPath == "-")
+				module->print();
+			else
+				module->print(outputPath + ".ll");
+			
+		}
+		if (command == "build")
+		{
+			std::string errstr;
+			if (!module->compile(outputPath + ".o", errstr))
+			{
+				std::cerr << errstr;
+				return -1;
+			}
+		}
+		if (command == "run" || command == "debug")
+		{
+			module->run();
+		}
 	}
 
 	return 0;

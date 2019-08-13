@@ -188,7 +188,7 @@ private:
 	std::map<std::string, Variable> scope;
 	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
 	std::vector<ExprAST*>* blockParams;
-	XXXValue* blockParamsVal;
+	BaseValue* blockParamsVal;
 public:
 	BlockExprAST* parent;
 	std::vector<ExprAST*>* exprs;
@@ -241,7 +241,7 @@ public:
 		this->casts.insert(block->casts.begin(), block->casts.end());
 	}
 
-	void addToScope(std::string name, BaseType* type, XXXValue* var) { scope[name] = Variable(type, var); }
+	void addToScope(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
 	const Variable* lookupScope(const std::string& name) const
 	{
 		std::map<std::string, Variable>::const_iterator var;
@@ -263,7 +263,7 @@ public:
 		return nullptr;
 	}
 
-	void setBlockParams(std::vector<ExprAST*>& params, XXXValue* paramsVal) { blockParams = new std::vector<ExprAST*>(params); blockParamsVal = paramsVal; }
+	void setBlockParams(std::vector<ExprAST*>& params, BaseValue* paramsVal) { blockParams = new std::vector<ExprAST*>(params); blockParamsVal = paramsVal; }
 	std::vector<ExprAST*>* getBlockParams() const
 	{
 		std::vector<ExprAST*>* params;
@@ -272,9 +272,9 @@ public:
 				return params;
 		return nullptr;
 	}
-	XXXValue* getBlockParamsVal()
+	BaseValue* getBlockParamsVal()
 	{
-		XXXValue* paramsVal;
+		BaseValue* paramsVal;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 			if ((paramsVal = block->blockParamsVal) != nullptr)
 				return paramsVal;
@@ -376,7 +376,7 @@ public:
 	BaseType* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const;
-	std::string str() const { return '$' + (p1 == '\0' ? std::string(p2) : std::string(1, p1)); }
+	std::string str() const { return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + '>'); }
 };
 
 class ParamExprAST : public ExprAST

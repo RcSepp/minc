@@ -95,7 +95,7 @@ Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 	if (var == nullptr)
 		raiseCompileError(("`" + std::string(getIdExprASTName(id)) + "` was not declared in this scope").c_str(), (ExprAST*)id);
 auto foo = getIdExprASTName(id);
-	XXXValue* varVal = var->value;
+	XXXValue* varVal = (XXXValue*)var->value;
 	if (!varVal) raiseCompileError(("invalid use of type `" + std::string(getIdExprASTName(id)) + "` as expression").c_str(), (ExprAST*)id);
 	if (varVal->isFunction() || varVal->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
 		return *var;
@@ -168,7 +168,7 @@ void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const cha
 		// Define return statement with correct type in function scope
 		defineStmt2(scope, ("return $E<" + getTypeName(returnType) + ">").c_str(),
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				builder->CreateRet(codegenExpr(params[0], parentBlock).value->val);
+				builder->CreateRet(((XXXValue*)codegenExpr(params[0], parentBlock).value)->val);
 			}
 		);
 
@@ -380,7 +380,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	// Define LLVM-c extern functions
 	for (Func& func: llvm_c_functions)
 		defineSymbol(rootBlock, func.type.name, &func.type, &func);
-bool isCaptured; lookupSymbol(rootBlock, "printf", isCaptured)->value->getFunction(currentModule); //DELETE
+bool isCaptured; ((XXXValue*)lookupSymbol(rootBlock, "printf", isCaptured)->value)->getFunction(currentModule); //DELETE
 
 	// Define Minc extern functions
 	for (Func* func: {
@@ -465,14 +465,14 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 	// Define single-expr statement
 	defineStmt2(rootBlock, "$E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			codegenExpr(params[0], parentBlock).value;
+			codegenExpr(params[0], parentBlock);
 		}
 	);
 
 	// Define context-free block statement
 	defineStmt2(rootBlock, "$B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			codegenExpr(params[0], parentBlock).value;
+			codegenExpr(params[0], parentBlock);
 		}
 	);
 
@@ -481,7 +481,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* funcAST = params[0];
 			Variable funcVar = codegenExpr(funcAST, parentBlock);
-			Function* func = funcVar.value->getFunction(currentModule);
+			Function* func = ((XXXValue*)funcVar.value)->getFunction(currentModule);
 			FuncType* funcType = (FuncType*)funcVar.type;
 			if (funcType == nullptr)
 				raiseCompileError(("function `" + std::string(getIdExprASTName((IdExprAST*)funcAST)) + "` was not declared in this scope").c_str(), funcAST);
@@ -512,7 +512,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 
 			std::vector<Value*> argValues;
 			for (auto arg = params.begin() + 1; arg != params.end(); ++arg)
-				argValues.push_back(codegenExpr(*arg, parentBlock).value->val);
+				argValues.push_back(((XXXValue*)codegenExpr(*arg, parentBlock).value)->val);
 	
 			return Variable(funcType->resultType, new XXXValue(builder->CreateCall(func, argValues)));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -744,7 +744,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				);
 			}
 
-			XXXValue* val = codegenExpr(valAST, parentBlock).value;
+			XXXValue* val = (XXXValue*)codegenExpr(valAST, parentBlock).value;
 			builder->CreateStore(val->val, var)->setAlignment(4);
 
 			defineSymbol(parentBlock, getIdExprASTName(varAST), BuiltinTypes::Int32, new XXXValue(var));
@@ -756,7 +756,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			IdExprAST* varAST = (IdExprAST*)params[0];
 			ExprAST* valAST = (ExprAST*)params[1];
-			XXXValue* val = codegenExpr(valAST, parentBlock).value;
+			XXXValue* val = (XXXValue*)codegenExpr(valAST, parentBlock).value;
 
 			val->val->setName(getIdExprASTName(varAST));
 			defineSymbol(parentBlock, getIdExprASTName(varAST), nullptr, val);
@@ -892,7 +892,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
 			}
 
-			Value* gep = builder->CreateStructGEP(structVar.value->val, variable->second.index, "gep");
+			Value* gep = builder->CreateStructGEP(((XXXValue*)structVar.value)->val, variable->second.index, "gep");
 			LoadInst* memberVal = builder->CreateLoad(gep);
 			memberVal->setAlignment(variable->second.type->align);
 			return Variable(variable->second.type, new XXXValue(memberVal));
@@ -944,10 +944,10 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 				}
 				varExpr = castExpr;
 			}
-			Variable valVar = codegenExpr(varExpr, parentBlock);
+			XXXValue* valVal = (XXXValue*)codegenExpr(varExpr, parentBlock).value;
 
-			Value* gep = builder->CreateStructGEP(structVar.value->val, variable->second.index, "gep");
-			builder->CreateStore(valVar.value->val, gep)->setAlignment(variable->second.type->align);
+			Value* gep = builder->CreateStructGEP(((XXXValue*)structVar.value)->val, variable->second.index, "gep");
+			builder->CreateStore(valVal->val, gep)->setAlignment(variable->second.type->align);
 			LoadInst* memberVal = builder->CreateLoad(gep);
 			memberVal->setAlignment(variable->second.type->align);
 			return Variable(variable->second.type, new XXXValue(memberVal));
@@ -1012,7 +1012,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 					// Call constructor
 					std::vector<Value*> argValues(1, val);
 					for (auto arg = params.begin() + 1; arg != params.end(); ++arg)
-						argValues.push_back(codegenExpr(*arg, parentBlock).value->val);
+						argValues.push_back(((XXXValue*)codegenExpr(*arg, parentBlock).value)->val);
 					val = builder->CreateCall(constructor.func->getFunction(currentModule), argValues);
 				}
 		
@@ -1070,11 +1070,11 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 	// Define codegen($E<ExprAST>, $E<BlockExprAST>)
 	defineExpr2(rootBlock, "codegen($E<ExprAST>, $E<BlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
-			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
+			XXXValue* exprVal = (XXXValue*)codegenExpr(params[0], parentBlock).value;
+			XXXValue* parentBlockVal = (XXXValue*)codegenExpr(params[1], parentBlock).value;
 
 			Function* func = MincFunctions::codegenExprValue->getFunction(currentModule);
-			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal });
+			Value* resultVal = builder->CreateCall(func, { exprVal->val, parentBlockVal->val });
 			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 		},
 		BuiltinTypes::LLVMValueRef
@@ -1115,8 +1115,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			Variable expr = codegenExpr(exprAST, parentBlock);
 			const TpltType* exprType = dynamic_cast<const TpltType*>((const BuiltinType*)expr.type);
 			assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
-			Value* exprVal = expr.value->val;
-			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
+			Value* exprVal = ((XXXValue*)expr.value)->val;
+			Value* parentBlockVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
 
 			Function* func = MincFunctions::codegenExprConstant->getFunction(currentModule);
 			Value* int64ConstantVal = builder->CreateCall(func, { exprVal, parentBlockVal });
@@ -1135,8 +1135,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 	// Define gettype($E<ExprAST>, $E<BlockExprAST>)
 	defineExpr3(rootBlock, "gettype($E<ExprAST>, $E<BlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* exprVal = codegenExpr(params[0], parentBlock).value->val;
-			Value* parentBlockVal = codegenExpr(params[1], parentBlock).value->val;
+			Value* exprVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
+			Value* parentBlockVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
 
 			exprVal = builder->CreateBitCast(exprVal, Types::CastExprAST->getPointerTo()); // exprVal = (CastExprAST*)exprVal
 			Function* func = MincFunctions::getCastExprASTSource->getFunction(currentModule);
@@ -1155,13 +1155,13 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 	// Define addToScope()
 	defineExpr2(rootBlock, "addToScope($E<BlockExprAST>, $E<IdExprAST>, $E, $E)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* parentBlockVal = codegenExpr(params[0], parentBlock).value->val;
-			Value* nameVal; //= codegenExpr(params[1], parentBlock).value->val;
-			Value* typeVal = codegenExpr(params[2], parentBlock).value->val;
-			Value* valVal = codegenExpr(params[3], parentBlock).value->val;
+			Value* parentBlockVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
+			Value* nameVal; //= ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
+			Value* typeVal = ((XXXValue*)codegenExpr(params[2], parentBlock).value)->val;
+			Value* valVal = ((XXXValue*)codegenExpr(params[3], parentBlock).value)->val;
 
 			if (ExprASTIsParam(params[1]))
-				nameVal = codegenExpr(params[1], parentBlock).value->val;
+				nameVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
 			else if (ExprASTIsId(params[1]))
 				nameVal = builder->CreateBitCast(ConstantInt::get(*context, APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
 			else
@@ -1210,13 +1210,13 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 
 			Value* nameVal;
 			if (ExprASTIsParam(params[1]))
-				nameVal = codegenExpr(params[1], parentBlock).value->val;
+				nameVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
 			else if (ExprASTIsId(params[1]))
 				nameVal = builder->CreateBitCast(Constant::getIntegerValue(Types::IdExprAST->getPointerTo(), APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
 			else
 				assert(0);
 
-			Value* valVal = codegenExpr(params[2], parentBlock).value->val;
+			Value* valVal = ((XXXValue*)codegenExpr(params[2], parentBlock).value)->val;
 
 			Function* addToScopeFunc = MincFunctions::addToFileScope->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(addToScopeFunc, { nameVal, typeVal, valVal });
@@ -1226,7 +1226,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	// Define symdef
 	defineStmt2(rootBlock, "throw $E<string>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			Value* msgVal = codegenExpr(params[0], parentBlock).value->val;
+			Value* msgVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
 
 			// Allocate expr = ExprAST*
 			Value* locExprVal = builder->CreateAlloca(Types::ExprAST);
@@ -1334,7 +1334,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	// Define $E<LiteralExprAST>.value_ref
 	defineExpr2(rootBlock, "$E<LiteralExprAST>.value_ref",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* varVal = codegenExpr(params[0], parentBlock).value->val;
+			Value* varVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
 			varVal = builder->CreateBitCast(varVal, Types::LiteralExprAST->getPointerTo());
 
 			Function* getLiteralExprASTValueFunc = currentModule->getFunction("getLiteralExprASTValue");
@@ -1347,10 +1347,10 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineExpr3(rootBlock, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			if (var.value->isFunction() || var.value->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
+			if (((XXXValue*)var.value)->isFunction() || ((XXXValue*)var.value)->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
 				return var;
 
-			LoadInst* loadVal = builder->CreateLoad(var.value->val, getIdExprASTName((IdExprAST*)params[0]));
+			LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var.value)->val, getIdExprASTName((IdExprAST*)params[0]));
 			loadVal->setAlignment(4);
 			return Variable(var.type, new XXXValue(loadVal));
 		},
@@ -1418,7 +1418,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
 			Variable expr = codegenExpr(params[1], parentBlock);
 
-			builder->CreateStore(expr.value->val, var.value->val);
+			builder->CreateStore(((XXXValue*)expr.value)->val, ((XXXValue*)var.value)->val);
 			return expr;
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -1428,15 +1428,15 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 
 	defineExpr2(rootBlock, "FuncType($E<string>, $E<int>, $E<BaseType>, $E<BaseType>, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* nameVal = codegenExpr(params[0], parentBlock).value->val;
-			Value* isVarArgVal = builder->CreateBitCast(codegenExpr(params[1], parentBlock).value->val, Types::Int8);
-			Value* resultTypeVal = codegenExpr(params[2], parentBlock).value->val;
+			Value* nameVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
+			Value* isVarArgVal = builder->CreateBitCast(((XXXValue*)codegenExpr(params[1], parentBlock).value)->val, Types::Int8);
+			Value* resultTypeVal = ((XXXValue*)codegenExpr(params[2], parentBlock).value)->val;
 
 			size_t numArgTypes = params.size() - 3;
 			AllocaInst* argTypes = builder->CreateAlloca(ArrayType::get(Types::BaseType->getPointerTo(), numArgTypes), nullptr, "argTypes");
 			argTypes->setAlignment(8);
 			for (size_t i = 0; i < numArgTypes; ++i)
-				builder->CreateStore(codegenExpr(params[3 + i], parentBlock).value->val, builder->CreateConstInBoundsGEP2_64(argTypes, 0, i));
+				builder->CreateStore(((XXXValue*)codegenExpr(params[3 + i], parentBlock).value)->val, builder->CreateConstInBoundsGEP2_64(argTypes, 0, i));
 			Value* numArgTypesVal = Constant::getIntegerValue(Types::Int32, APInt(32, numArgTypes, true));
 			Value* argTypesVal = builder->CreateConstInBoundsGEP2_64(argTypes, 0, 0);
 
@@ -1458,7 +1458,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 defineExpr2(rootBlock, "getfunc($E)",
 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 		Variable expr = codegenExpr(params[0], parentBlock);
-		LLVMValueRef func = wrap(expr.value->getFunction(currentModule));
+		LLVMValueRef func = wrap(((XXXValue*)expr.value)->getFunction(currentModule));
 
 		return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(Constant::getIntegerValue(Types::LLVMOpaqueValue->getPointerTo(), APInt(64, (uint64_t)func))));
 	},

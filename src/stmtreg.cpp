@@ -329,7 +329,6 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
-	const XXXValue* var;
 	switch(p1)
 	{
 	case 'I': return expr->exprtype == ExprAST::ExprType::ID;

@@ -8,6 +8,10 @@ struct Func;
 struct LLVMOpaqueType;
 
 struct BaseType {};
+struct BaseValue
+{
+	virtual uint64_t getConstantValue() = 0;
+};
 
 enum Visibility {
 	PRIVATE, PUBLIC, PROTECTED
@@ -83,7 +87,7 @@ public:
 	static TpltType* get(std::string name, BuiltinType* baseType, BaseType* tpltType);
 };
 
-struct XXXValue
+struct XXXValue : BaseValue
 {
 private:
 	uint64_t constantValue;

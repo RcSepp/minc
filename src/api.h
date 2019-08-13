@@ -2,7 +2,7 @@
 #include <vector>
 
 struct BaseType;
-struct XXXValue;
+struct BaseValue;
 class JitFunction;
 
 class ExprAST;
@@ -17,10 +17,10 @@ class BlockExprAST;
 struct Variable
 {
 	BaseType* type;
-	XXXValue* value;
+	BaseValue* value;
 	Variable() = default;
 	Variable(const Variable& v) = default;
-	Variable(BaseType* type, XXXValue* value) : type(type), value(value) {}
+	Variable(BaseType* type, BaseValue* value) : type(type), value(value) {}
 };
 
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
@@ -52,7 +52,7 @@ extern "C"
 	BlockExprAST* getRootScope();
 	const std::string& getTypeName(const BaseType* type);
 
-	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value);
+	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
 	void defineType(BlockExprAST* scope, const char* name, BaseType* type);
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);

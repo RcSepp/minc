@@ -217,7 +217,7 @@ extern "C"
 
 	LLVMValueRef codegenExprValue(ExprAST* expr, BlockExprAST* scope)
 	{
-		return wrap(expr->codegen(scope).value->val);
+		return wrap(((XXXValue*)expr->codegen(scope).value)->val);
 	}
 
 	uint64_t codegenExprConstant(ExprAST* expr, BlockExprAST* scope)
@@ -310,7 +310,7 @@ extern "C"
 			return typeDesc->second.name;
 	}
 
-	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, XXXValue* value)
+	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value)
 	{
 		scope->addToScope(name, type, value);
 	}
@@ -671,10 +671,10 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 
 Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 {
-	Value* params = parentBlock->getBlockParamsVal()->val;
+	Value* params = ((XXXValue*)parentBlock->getBlockParamsVal())->val;
 
 	Value* idxVal = dynamicIdx ?
-		dynamicIdx->codegen(parentBlock).value->val :
+		((XXXValue*)dynamicIdx->codegen(parentBlock).value)->val :
 		Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, staticIdx, true))
 	;
 

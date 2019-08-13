@@ -51,6 +51,7 @@ file
 
 block
 	: stmt_string { $$ = new BlockExprAST(getloc(@1, @1), $1); }
+	| stmt_string expr_string { $1->insert($1->end(), $2->cbegin(), $2->cend()); $1->push_back(new StopExprAST(getloc(@2, @2))); $$ = new BlockExprAST(getloc(@1, @1), $1); }
 ;
 
 stmt_string

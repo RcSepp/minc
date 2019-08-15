@@ -203,9 +203,9 @@ auto foo = ExprListAST('\0', iter.first).str();
 	return bestStmt;
 }
 
-const std::pair<const ExprAST*, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr) const
+const std::pair<const ExprAST*, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
 {
-	MatchScore currentScore, bestScore = -2147483648;
+	MatchScore currentScore;
 	const std::pair<const ExprAST*, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
@@ -271,9 +271,18 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	indent += '\t';
 #endif
 	expr->resolvedParams.clear();
-	const std::pair<const ExprAST*, CodegenContext*>* context = nullptr;
+	MatchScore currentScore, score = -2147483648;
+	const std::pair<const ExprAST*, CodegenContext*> *currentContext, *context = nullptr;
 	for (const BlockExprAST* block = this; block && !context; block = block->parent)
-		context = block->stmtreg.lookupExpr(this, expr);
+	{
+		currentScore = score;
+		currentContext = block->stmtreg.lookupExpr(this, expr, currentScore);
+		if (currentScore > score)
+		{
+			context = currentContext;
+			score = currentScore;
+		}
+	}
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
 #endif

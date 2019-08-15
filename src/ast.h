@@ -155,7 +155,7 @@ public:
 		for (size_t i = 0; i < exprreg.size(); ++i)
 			this->exprreg[i].insert(this->exprreg[i].begin(), stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
 	}
-	const std::pair<const ExprAST*, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr) const;
+	const std::pair<const ExprAST*, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const;
 };
 

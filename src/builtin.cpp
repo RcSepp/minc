@@ -763,6 +763,62 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		}
 	);
 
+	// Define function declaration
+	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType> $I, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			BuiltinType* returnType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
+
+			size_t numArgs = (params.size() - 2) / 2;
+			std::vector<BuiltinType*> argTypes; argTypes.reserve(numArgs);
+			for (size_t i = 0; i < numArgs; ++i)
+				argTypes.push_back((BuiltinType*)codegenExpr(params[i * 2 + 2], parentBlock).value->getConstantValue());
+			
+			Func* func = new Func(funcName, returnType, argTypes, false);
+
+			// Define function symbol in parent scope
+			defineSymbol(parentBlock, funcName, &func->type, func);
+			defineCast2(parentBlock, &func->type, BuiltinTypes::LLVMValueRef,
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+					Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+
+					Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
+					Value* resultVal = builder->CreateCall(func, { funcVal });
+					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
+				}
+			);
+		}
+	);
+	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType>, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			BuiltinType* returnType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
+
+			size_t numArgs = params.size() - 2;
+			std::vector<BuiltinType*> argTypes; argTypes.reserve(numArgs);
+			for (size_t i = 0; i < numArgs; ++i)
+				argTypes.push_back((BuiltinType*)codegenExpr(params[i + 2], parentBlock).value->getConstantValue());
+
+			// Handle $E<BuiltinType> $I(void)
+			if (numArgs == 1 && argTypes[0] == BuiltinTypes::Void)
+				argTypes.pop_back();
+			
+			Func* func = new Func(funcName, returnType, argTypes, false);
+
+			// Define function symbol in parent scope
+			defineSymbol(parentBlock, funcName, &func->type, func);
+			defineCast2(parentBlock, &func->type, BuiltinTypes::LLVMValueRef,
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+					Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+
+					Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
+					Value* resultVal = builder->CreateCall(func, { funcVal });
+					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
+				}
+			);
+		}
+	);
+
 	// Define function definition
 	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {

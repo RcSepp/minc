@@ -158,7 +158,11 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	ExprASTIter listExprEnd;
-	return expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score, &listExprEnd) && listExprEnd == ((ExprListAST*)expr)->exprs.cend();
+	if (expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score, &listExprEnd) && listExprEnd == ((ExprListAST*)expr)->exprs.cend())
+		return true;
+	if (this->exprs.size() == 1)
+		return this->exprs[0]->match(block, expr, score);
+	return false;
 }
 
 void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params) const
@@ -335,6 +339,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
 	case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;
 	case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
+	case 'V': return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
 		if (p2 == nullptr)
 		{

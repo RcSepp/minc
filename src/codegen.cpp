@@ -651,22 +651,12 @@ void ExprAST::resolveTypes(BlockExprAST* block)
 
 BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
-	switch(p1)
-	{
-	default: assert(0); return nullptr; //TODO: Throw exception
-	case 'L': return BuiltinTypes::LiteralExprAST;
-	case 'I': return BuiltinTypes::IdExprAST;
-	case 'B': return BuiltinTypes::BlockExprAST;
-	case 'E':
-		{
-			if (p2 == nullptr)
-				return nullptr;
-			const Variable* var = parentBlock->lookupScope(p2);
-			if (var == nullptr)
-				throw UndefinedIdentifierException(new IdExprAST(loc, p2));
-			return (BaseType*)var->value->getConstantValue();
-		}
-	}
+	if (p2 == nullptr)
+		return nullptr;
+	const Variable* var = parentBlock->lookupScope(p2);
+	if (var == nullptr)
+		throw UndefinedIdentifierException(new IdExprAST(loc, p2));
+	return (BaseType*)var->value->getConstantValue();
 }
 
 Variable ParamExprAST::codegen(BlockExprAST* parentBlock)

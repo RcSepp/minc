@@ -340,34 +340,44 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	return context;
 }
 
+bool IdExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+{
+	score += 1; // Reward exact match (score is disregarded on mismatch)
+	return expr->exprtype == this->exprtype && strcmp(((IdExprAST*)expr)->name, this->name) == 0;
+}
+
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	switch(p1)
 	{
-	case 'I': return expr->exprtype == ExprAST::ExprType::ID;
+	case 'I': if (expr->exprtype == ExprAST::ExprType::ID) return false;
+		break;
 	case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
 	case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;
 	case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
 	case 'V': return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
-		if (p2 == nullptr)
+		score -= 1; // Penalize vague expression type
+		break;
+	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
+	}
+
+	if (p2 == nullptr)
+	{
+		score -= 1; // Penalize vague expression template
+		return true;
+	}
+	else
+	{
+		BaseType* exprType = expr->getType(block);
+		BaseType* tpltType = getType(block);
+		if (exprType == tpltType)
 		{
-			score -= 1; // Penalize vague template
+			score += 1; // Reward exact match
 			return true;
 		}
-		else
-		{
-			BaseType* exprType = expr->getType(block);
-			BaseType* tpltType = getType(block);
-			if (exprType == tpltType)
-			{
-				score += 1; // Reward exact match
-				return true;
-			}
-			score -= 1; // Penalize implicit cast
-			return block->lookupCast(exprType, tpltType) != nullptr;
-		}
-	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
+		score -= 1; // Penalize implicit cast
+		return block->lookupCast(exprType, tpltType) != nullptr;
 	}
 }
 

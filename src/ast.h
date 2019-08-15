@@ -345,10 +345,7 @@ class IdExprAST : public ExprAST
 public:
 	const char* name;
 	IdExprAST(const Location& loc, const char* name) : ExprAST(loc, ExprAST::ExprType::ID), name(name) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && strcmp(((IdExprAST*)expr)->name, this->name) == 0;
-	}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const {}
 	std::string str() const { return name; }
 };

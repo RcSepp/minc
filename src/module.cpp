@@ -335,7 +335,41 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 
 	Value* paramsVal = currentFunc->args().begin() + 5;
 	paramsVal->setName("params");
-	blockAST->setBlockParams(params, new XXXValue(paramsVal));
+	blockAST->blockParams.clear();
+	int i = 0;
+	for (ExprAST* blockParamExpr: params)
+	{
+		Value* gep = builder->CreateInBoundsGEP(paramsVal, { Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, i++, true)) });
+		LoadInst* param = builder->CreateLoad(gep);
+		param->setAlignment(8);
+
+		Variable paramVar = Variable(BuiltinTypes::ExprAST, new XXXValue(param));
+		if (blockParamExpr->exprtype == ExprAST::ExprType::PLCHLD)
+		{
+			PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamExpr;
+			switch(blockParamPlchldExpr->p1)
+			{
+			default: assert(0); //TODO: Throw exception
+			case 'L': paramVar = Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo()))); break;
+			case 'I': paramVar = Variable(BuiltinTypes::IdExprAST, new XXXValue(builder->CreateBitCast(param, Types::IdExprAST->getPointerTo()))); break;
+			case 'B': paramVar = Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo()))); break;
+			case 'S': break;
+			case 'E':
+				if (blockParamPlchldExpr->p2 == nullptr)
+					break;
+				if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
+				{
+					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+					paramVar = Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
+					break;
+				}
+			}
+		}
+		else
+			assert(0);
+
+		blockAST->blockParams.push_back(paramVar);
+	}
 
 	closure = currentFunc->args().begin() + 6;
 	closure->setName("closure");

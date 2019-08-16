@@ -661,98 +661,18 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 
 Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 {
-	Value* params = ((XXXValue*)parentBlock->getBlockParamsVal())->val;
-
-	Value* idxVal = dynamicIdx ?
-		((XXXValue*)dynamicIdx->codegen(parentBlock).value)->val :
-		Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, staticIdx, true))
-	;
-
-	// param = params[idxVal]
-	Value* gep = builder->CreateInBoundsGEP(params, { idxVal });
-	LoadInst* param = builder->CreateLoad(gep);
-	param->setAlignment(8);
-
-	if (!dynamicIdx)
-	{
-		std::vector<ExprAST*>* blockParams = parentBlock->getBlockParams();
-		if (blockParams != nullptr && staticIdx < blockParams->size())
-		{
-			ExprAST* blockParamExpr = blockParams->at(staticIdx);
-			if (blockParamExpr->exprtype == ExprAST::ExprType::PLCHLD)
-			{
-				PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamExpr;
-				switch (blockParamPlchldExpr->p1)
-				{
-				default: assert(0); //TODO: Throw exception
-				case 'L': return Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo())));
-				case 'I': return Variable(BuiltinTypes::IdExprAST, new XXXValue(builder->CreateBitCast(param, Types::IdExprAST->getPointerTo())));
-				case 'B': return Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo())));
-				case 'S': return Variable(BuiltinTypes::ExprAST, new XXXValue(param));
-				case 'E':
-					if (blockParamPlchldExpr->p2 == nullptr)
-						break;
-					if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
-					{
-						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
-						return Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
-					}
-				}
-			}
-			else
-				assert(0); //TODO: In what scenarios do we hit this? How should it be handled?
-		}
-	}
-
-	return Variable(BuiltinTypes::ExprAST, new XXXValue(param));
+	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
+	if (blockParams == nullptr)
+		throw CompileError("invalid use of parameter expression in parameterless scope", loc);
+	if (staticIdx >= blockParams->size())
+		throw CompileError("parameter index out of bounds", loc);
+	return blockParams->at(staticIdx);
 }
 
 BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 {
-	/*if (!dynamicIdx)
-	{
-		std::vector<ExprAST*>* blockParams = parentBlock->getBlockParams();
-		if (blockParams != nullptr && staticIdx < blockParams->size())
-			return blockParams->at(staticIdx)->getType(parentBlock);
-	}
-	return nullptr;*/
-
-	if (!dynamicIdx)
-	{
-		std::vector<ExprAST*>* blockParams = parentBlock->getBlockParams();
-		if (blockParams != nullptr && staticIdx < blockParams->size())
-		{
-			ExprAST* blockParamExpr = blockParams->at(staticIdx);
-			if (blockParamExpr->exprtype == ExprAST::ExprType::PLCHLD)
-			{
-				PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamExpr;
-				//return blockParamExpr->getType(parentBlock);
-				/*switch (blockParamPlchldExpr->p1)
-				{
-				case 'L': return BuiltinTypes::LiteralExprAST;
-				case 'I': return BuiltinTypes::IdExprAST;
-				case 'B': return BuiltinTypes::BlockExprAST;
-				}*/
-				switch(blockParamPlchldExpr->p1)
-				{
-				default: assert(0); //TODO: Throw exception
-				case 'L': return BuiltinTypes::LiteralExprAST;
-				case 'I': return BuiltinTypes::IdExprAST;
-				case 'B': return BuiltinTypes::BlockExprAST;
-				case 'S': return BuiltinTypes::ExprAST;
-				case 'E':
-					if (blockParamPlchldExpr->p2 == nullptr)
-						break;
-					if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
-					{
-						BaseType* codegenType = (BaseType*)var->value->getConstantValue();
-						return TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
-					}
-				}
-			}
-			else
-				assert(0); //TODO: In what scenarios do we hit this? How should it be handled?
-		}
-	}
-	return BuiltinTypes::ExprAST;
+	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
+	if (blockParams == nullptr || staticIdx >= blockParams->size())
+		return nullptr;
+	return blockParams->at(staticIdx).type;
 }

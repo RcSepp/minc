@@ -350,7 +350,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 {
 	switch(p1)
 	{
-	case 'I': if (expr->exprtype == ExprAST::ExprType::ID) return false;
+	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;
 		break;
 	case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
 	case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;

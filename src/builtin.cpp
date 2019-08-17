@@ -97,7 +97,7 @@ Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
 auto foo = getIdExprASTName(id);
 	XXXValue* varVal = (XXXValue*)var->value;
 	if (!varVal) raiseCompileError(("invalid use of type `" + std::string(getIdExprASTName(id)) + "` as expression").c_str(), (ExprAST*)id);
-	if (varVal->isFunction() || varVal->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
+	if (varVal->isFunction() || varVal->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
 		return *var;
 
 	if (isCaptured //)
@@ -1403,7 +1403,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineExpr3(rootBlock, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			if (((XXXValue*)var.value)->isFunction() || ((XXXValue*)var.value)->isConstant() || dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
+			if (((XXXValue*)var.value)->isFunction() || ((XXXValue*)var.value)->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
 				return var;
 
 			LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var.value)->val, getIdExprASTName((IdExprAST*)params[0]));

@@ -39,6 +39,7 @@ extern "C"
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
+	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);

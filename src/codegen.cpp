@@ -237,7 +237,8 @@ extern "C"
 
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params)
 	{
-		tplt->collectParams(scope, expr, params);
+		size_t paramIdx = params.size();
+		tplt->collectParams(scope, expr, params, paramIdx);
 	}
 
 	std::string ExprASTToString(const ExprAST* expr)
@@ -267,6 +268,10 @@ extern "C"
 		return expr->exprtype == ExprAST::ExprType::BLOCK;
 	}
 
+	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr)
+	{
+		return expr->exprs;
+	}
 	const char* getIdExprASTName(const IdExprAST* expr)
 	{
 		return expr->name;
@@ -433,8 +438,9 @@ extern "C"
 		{
 			const MatchScore score = candidate.first;
 			const std::pair<const ExprAST*, CodegenContext*>& context = candidate.second;
+			size_t paramIdx = 0;
 			resolvedParams.clear();
-			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams);
+			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams, paramIdx);
 			const std::string& typeName = getTypeName(context.second->getType(scope, resolvedParams));
 			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + typeName + ">\n";
 		}

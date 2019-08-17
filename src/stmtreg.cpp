@@ -16,6 +16,18 @@ InvalidTypeException::InvalidTypeException(const PlchldExprAST* plchld)
 std::string indent;
 #endif
 
+void storeParam(ExprAST* param, std::vector<ExprAST*>& params, size_t paramIdx)
+{
+	if (paramIdx >= params.size())
+		params.push_back(param);
+	else
+	{
+		if (params[paramIdx]->exprtype != ExprAST::ExprType::LIST)
+			params[paramIdx] = new ExprListAST('\0', { params[paramIdx] });
+		((ExprListAST*)params[paramIdx])->exprs.push_back(param);
+	}
+}
+
 bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, ExprASTIter expr, const ExprASTIter exprEnd, MatchScore& score, ExprASTIter* stmtEnd=nullptr)
 {
 	while (tplt != tpltEnd && expr != exprEnd)
@@ -84,7 +96,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 	return tplt == tpltEnd; // We have a match if tplt has been fully traversed
 }
 
-void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, ExprASTIter expr, const ExprASTIter exprEnd, std::vector<ExprAST*>& params)
+void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, ExprASTIter expr, const ExprASTIter exprEnd, std::vector<ExprAST*>& params, size_t& paramIdx)
 {
 	MatchScore score;
 	while (tplt != tpltEnd && expr != exprEnd)
@@ -97,12 +109,14 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 			while (tplt != tpltEnd && tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS) ++tplt;
 
 			const ExprAST* ellipsis = tplt[-1];
+			size_t ellipsisBegin = paramIdx;
 
 			if (tplt == tpltEnd) // If ellipsis is last template expression
 			{
 				while (expr != exprEnd && ellipsis->match(block, expr[0], score))
 				{
-					ellipsis->collectParams(block, expr[0], params);
+					paramIdx = ellipsisBegin;
+					ellipsis->collectParams(block, expr[0], params, paramIdx);
 					++expr; // Match while ellipsis expression matches
 				}
 			}
@@ -112,16 +126,39 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 				const ExprAST* ellipsisTerminator = tplt[0];
 				while (expr != exprEnd && ellipsis->match(block, expr[0], score))
 				{
-					ellipsis->collectParams(block, expr[0], params);
-					if (ellipsisTerminator->match(block, (expr++)[0], score)
+					if (ellipsisTerminator->match(block, expr[0], score)
 						// At this point both ellipsis and terminator match. Both cases must be handled
 						// 1) We handle ellipsis match by continuing the loop
 						// 2) We handle terminator match calling matchStatement() starting after the terminator match
 						// If case 2 succeeds, continue collecting after the terminator match
-						&& matchStatement(block, tplt + 1, tpltEnd, expr, exprEnd, score))
-						return collectStatement(block, tplt + 1, tpltEnd, expr, exprEnd, params);
+						&& matchStatement(block, tplt + 1, tpltEnd, expr + 1, exprEnd, score))
+					{
+						// If ellipsisTerminator == $V, collect the ellipsis expression as part of the template ellipsis
+						if (expr[0]->exprtype == ExprAST::ExprType::ELLIPSIS)
+							ellipsis->collectParams(block, expr[0], params, paramIdx);
+
+						// Replace all non-list parameters that are part of this ellipsis with single-element lists,
+						// because ellipsis parameters are expected to always be lists
+						for (size_t i = ellipsisBegin; i < paramIdx; ++i)
+							if (params[i]->exprtype != ExprAST::ExprType::LIST)
+								params[i] = new ExprListAST('\0', { params[i] });
+
+						ellipsisTerminator->collectParams(block, expr[0], params, paramIdx);
+						return collectStatement(block, tplt + 1, tpltEnd, expr + 1, exprEnd, params, paramIdx);
+					}
+					else
+					{
+						paramIdx = ellipsisBegin;
+						ellipsis->collectParams(block, (expr++)[0], params, paramIdx);
+					}
 				}
 			}
+
+			// Replace all non-list parameters that are part of this ellipsis with single-element lists,
+			// because ellipsis parameters are expected to always be lists
+			for (size_t i = ellipsisBegin; i < paramIdx; ++i)
+				if (params[i]->exprtype != ExprAST::ExprType::LIST)
+					params[i] = new ExprListAST('\0', { params[i] });
 		}
 		else if (tplt[0]->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt[0])->p1 == 'S')
 		{
@@ -133,24 +170,35 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 			assert(stmtContext);
 			StmtAST* stmt = new StmtAST(beginExpr, endExpr, stmtContext->second);
 			stmt->collectParams(block, stmtContext->first);
-			params.push_back(stmt);
+			storeParam(stmt, params, paramIdx++);
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
 		}
 		else
 		{
 			// Collect non-ellipsis expression
-			tplt[0]->collectParams(block, expr[0], params);
+			tplt[0]->collectParams(block, expr[0], params, paramIdx);
 			++tplt, ++expr;
 		}
 	}
 
 	// Eat unused trailing ellipses and lists only consisting of ellises
+	size_t trailingEllipsesBegin = paramIdx;
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
 			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, exprEnd, score)
-		)) ++tplt;
+		))
+	{
+		// Match ellipsis expression against itself
+		// This will append all trailing template placeholders to params
+		ExprAST* ellipsisExpr = ((EllipsisExprAST*)(tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ? tplt[0] : ((ExprListAST*)tplt[0])->exprs[0]))->expr;
+		ellipsisExpr->collectParams(block, ellipsisExpr, params, paramIdx);
+		++tplt;
+	}
+	// Replace trailing placeholders with empty lists
+	for (size_t i = trailingEllipsesBegin; i < paramIdx; ++i)
+		params[i] = new ExprListAST('\0');
 
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
@@ -165,14 +213,18 @@ bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchSco
 	return false;
 }
 
-void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params) const
+void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const
 {
-	collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)exprs)->exprs.cbegin(), ((ExprListAST*)exprs)->exprs.cend(), params);
+	if (exprs->exprtype == ExprAST::ExprType::LIST)
+		collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)exprs)->exprs.cbegin(), ((ExprListAST*)exprs)->exprs.cend(), params, paramIdx);
+	else
+		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
 }
 
 void StmtAST::collectParams(const BlockExprAST* block, const std::vector<ExprAST*> tplt)
 {
-	collectStatement(block, tplt.cbegin(), tplt.cend(), begin, end, resolvedParams);
+	size_t paramIdx = 0;
+	collectStatement(block, tplt.cbegin(), tplt.cend(), begin, end, resolvedParams, paramIdx);
 }
 
 const std::pair<const std::vector<ExprAST*>, CodegenContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& bestScore, ExprASTIter& bestStmtEnd) const
@@ -289,7 +341,8 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 
 	if (context)
 	{
-		context->first->collectParams(this, expr, expr->resolvedParams);
+		size_t paramIdx = 0;
+		context->first->collectParams(this, expr, expr->resolvedParams, paramIdx);
 		expr->resolvedContext = context->second;
 		return true;
 	}
@@ -381,7 +434,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	}
 }
 
-void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params) const
+void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 {
 	if (p2 != nullptr)
 	{
@@ -395,11 +448,11 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 			ExprAST* castExpr = new CastExprAST(expr->loc);
 			castExpr->resolvedContext = castContext;
 			castExpr->resolvedParams.push_back(expr);
-			params.push_back(castExpr);
+			storeParam(castExpr, params, paramIdx++);
 			return;
 		}
 	}
-	params.push_back(expr);
+	storeParam(expr, params, paramIdx++);
 }
 
 std::vector<ExprAST*>::iterator begin(ExprListAST& exprs) { return exprs.begin(); }

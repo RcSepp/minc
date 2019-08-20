@@ -72,7 +72,7 @@ stmtdef LLVMValueRef $I = $E<LLVMValueRef> {
 	addToScope(parentBlock, $0, LLVMValueRef, foo);
 }
 
-stmtdef LLVMValueRef $I[$L] {
+stmtdef LLVMValueRef $I[$E<int>] {
 	// Fixed size array:
 	/*addToScope(
 		parentBlock,
@@ -169,7 +169,7 @@ stmtdef LLVMTypeRef $I = $E<LLVMTypeRef> {
 	addToScope(parentBlock, $0, LLVMTypeRef, foo);
 }
 
-stmtdef LLVMTypeRef $I[$L] {
+stmtdef LLVMTypeRef $I[$E<int>] {
 	// Fixed size array:
 	/*addToScope(
 		parentBlock,
@@ -309,49 +309,35 @@ stmtdef BlockExprAST $I = $E<BlockExprAST> {
 	addToScope(parentBlock, $0, BlockExprAST, foo);
 }
 
+exprdef<long> $E<ExprListAST>.size {
+	LLVMValueRef args[1];
+	args[0] = codegen($0, parentBlock);
+	return LLVMBuildCall(getExprListASTSize, args, 1, "");
+}
+
 exprdef<string> $E<LiteralExprAST>.value {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
-	return LLVMBuildCall(
-		getLiteralExprASTValue,
-		args,
-		1,
-		""
-	);
+	return LLVMBuildCall(getLiteralExprASTValue, args, 1, "");
 }
 
 exprdef<string> $E<IdExprAST>.name {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
-	return LLVMBuildCall(
-		getIdExprASTName,
-		args,
-		1,
-		""
-	);
+	return LLVMBuildCall(getIdExprASTName, args, 1, "");
 }
 
 exprdef<BlockExprAST> $E<BlockExprAST>.parent {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
-	return LLVMBuildCall(
-		getBlockExprASTParent,
-		args,
-		1,
-		""
-	);
+	return LLVMBuildCall(getBlockExprASTParent, args, 1, "");
 }
 
 exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
 	args[1] = codegen($1, parentBlock);
-	return LLVMBuildCall(
-		setBlockExprASTParent,
-		args,
-		2,
-		""
-	);
+	return LLVMBuildCall(setBlockExprASTParent, args, 2, "");
 }
 
 
@@ -468,6 +454,43 @@ int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: 64 bit signed integer declaration
+Template: long $I
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef long $I {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt64Type(), "");
+	LLVMSetAlignment(storage, 4);
+	addToScope(parentBlock, $0, long, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: 64 bit signed integer declaration with initialization
+Template: long $I = $E<long>
+Depends on: LLVMValueRef $I = $E<LLVMValueRef>
+\* ---------------------------------------------------------------------------*/
+stmtdef long $I = $E<long> {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt64Type(), "");
+	LLVMSetAlignment(storage, 4);
+	LLVMBuildStore(codegen($1, parentBlock), storage);
+	addToScope(parentBlock, $0, long, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Long bitwise AND
+Template: $E<long> & $E<long>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<long> $E<long> & $E<long> {
+	return LLVMBuildAnd(codegen($0, parentBlock), codegen($1, parentBlock), "and");
+}
+
+exprdef<bool> $E<long> != $E<long> {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: 64 bit float declaration
 Template: double $I
 Depends on: none
@@ -567,6 +590,18 @@ castdef<int> $E<bool> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Cast: long to int
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<int> $E<long> {
+	return LLVMBuildTrunc(
+		codegen($0, parentBlock),
+		LLVMInt32Type(),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
 Cast: int to bool
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
@@ -587,9 +622,93 @@ castdef<long> $E<int> {
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |
+|                                 STRING TYPES                                 |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+/* ---------------------------------------------------------------------------*\
+Name: String declaration
+Template: string $I
+\* ---------------------------------------------------------------------------*/
+stmtdef string $I {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMSetAlignment(storage, 1);
+	addToScope(parentBlock, $0, string, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: String declaration with initialization
+Template: string $I = $E<string>
+\* ---------------------------------------------------------------------------*/
+stmtdef string $I = $E<string> {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMSetAlignment(storage, 1);
+	LLVMBuildStore(codegen($1, parentBlock), storage);
+	addToScope(parentBlock, $0, string, storage);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
 |                                  MISC TYPES                                  |
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
+
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType declaration
+Template: BuiltinType $I
+\* ---------------------------------------------------------------------------*/
+stmtdef BuiltinType $I {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
+	LLVMSetAlignment(storage, 8);
+	addToScope(parentBlock, $0, BuiltinType, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType declaration with initialization
+Template: BuiltinType $I = $E<BuiltinType>
+\* ---------------------------------------------------------------------------*/
+stmtdef BuiltinType $I = $E<BuiltinType> {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
+	LLVMSetAlignment(storage, 8);
+	LLVMBuildStore(codegen($1, parentBlock), storage);
+	addToScope(parentBlock, $0, BuiltinType, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType array declaration
+Template: BuiltinType $I[$E<int>]
+\* ---------------------------------------------------------------------------*/
+stmtdef BuiltinType $I[$E<int>] {
+	LLVMValueRef array = LLVMBuildArrayAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), codegen($1, parentBlock), "");
+	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), 0), "");
+	LLVMBuildStore(array, arrayptr);
+	addToScope(parentBlock, $0, BuiltinTypePtr, arrayptr);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType array element setter
+Template: $E<BuiltinTypePtr>[$E<int>] = $E<BuiltinType>
+\* ---------------------------------------------------------------------------*/
+exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] = $E<BuiltinType> {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+
+	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMBuildStore(expr, gep);
+	return expr;
+}
+
+exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
+	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
+	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
+	LLVMSetAlignment(llvmtype, 8);
+	return llvmtype;
+}
 
 exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
@@ -712,4 +831,48 @@ stmtdef while ($E<bool>) $S {
 	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
 
 	LLVMPositionBuilder(endWhileBlock);
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                               MISC STATEMENTS                                |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+/* ---------------------------------------------------------------------------*\
+Name: Extern function declaration
+Template: extern $E<BuiltinType> $I($E<BuiltinType> $I, ...)
+\* ---------------------------------------------------------------------------*/
+stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ...) {
+	BuiltinType returnType = getconst($0, parentBlock);
+	string funcName = $1.name;
+	int numArgs = $2.size;
+
+	BuiltinType argTypes[numArgs];
+	for (int i = 0; i != numArgs; i = i + 1)
+	{
+		argTypes[i] = getconst($2[i], parentBlock);
+	}
+
+	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 0);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Variable argument extern function declaration
+Template: extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V)
+\* ---------------------------------------------------------------------------*/
+stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
+	BuiltinType returnType = getconst($0, parentBlock);
+	string funcName = $1.name;
+	int numArgs = $2.size;
+
+	BuiltinType argTypes[numArgs];
+	for (int i = 0; i != numArgs; i = i + 1)
+	{
+		argTypes[i] = getconst($2[i], parentBlock);
+	}
+
+	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 1);
 }

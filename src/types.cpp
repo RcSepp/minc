@@ -43,7 +43,7 @@ BuiltinType* BuiltinType::Ptr()
 	return ptr;
 }
 
-FuncType::FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*>& argTypes, bool isVarArg)
+FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg)
 	: BuiltinType(nullptr, 8), resultType(resultType), argTypes(argTypes), name(name)
 {
 	std::vector<llvm::Type*> argLlvmTypes;

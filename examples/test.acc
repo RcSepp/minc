@@ -31,7 +31,18 @@ stmtdef runCompileTimeTests() {
 	a = 0; while (a != 3) a = a + 1; assert(a == 3);
 	a = 0; b = 5; while (a != 3) { a = a + 1; b = b - 1; } assert(b == 2);
 
+	// Test for loop
+	b = 5; for (int c = 0; c != 3; c = c + 1) { b = b - 1; } assert(b == 2);
+
 	// Test arithmetic
 	assert(11 + 7 / 3 * 5 == 21);
+
+	// Test extern function declaration
+	extern int atoi(string str); assert(atoi("123") == 123);
+	int printf(string format, ...); assert(printf("\r\r\r\r\r") == 5);
+
+
+	printf("all tests passed\n");
+	LLVMBuildRet(LLVMConstInt(LLVMInt32Type(), 1, 1));
 }
 runCompileTimeTests();

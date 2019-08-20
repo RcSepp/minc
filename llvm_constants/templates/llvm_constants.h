@@ -51,6 +51,7 @@ namespace Types
 	// AST types
 	extern StructType* Location;
 	extern StructType* ExprAST;
+	extern StructType* ExprListAST;
 	extern StructType* LiteralExprAST;
 	extern StructType* IdExprAST;
 	extern StructType* CastExprAST;
@@ -111,6 +112,7 @@ namespace BuiltinTypes
 
 	// AST types
 	extern BuiltinType* ExprAST;
+	extern BuiltinType* ExprListAST;
 	extern BuiltinType* LiteralExprAST;
 	extern BuiltinType* IdExprAST;
 	extern BuiltinType* CastExprAST;

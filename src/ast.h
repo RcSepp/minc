@@ -187,13 +187,12 @@ private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
 	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
-	std::vector<ExprAST*>* blockParams;
-	BaseValue* blockParamsVal;
 public:
 	BlockExprAST* parent;
 	std::vector<ExprAST*>* exprs;
+	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs), blockParams(nullptr), blockParamsVal(nullptr) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
@@ -263,21 +262,12 @@ public:
 		return nullptr;
 	}
 
-	void setBlockParams(std::vector<ExprAST*>& params, BaseValue* paramsVal) { blockParams = new std::vector<ExprAST*>(params); blockParamsVal = paramsVal; }
-	std::vector<ExprAST*>* getBlockParams() const
+	const std::vector<Variable>* getBlockParams() const
 	{
-		std::vector<ExprAST*>* params;
+		std::vector<Variable>* params;
 		for (const BlockExprAST* block = this; block; block = block->parent)
-			if ((params = block->blockParams) != nullptr)
-				return params;
-		return nullptr;
-	}
-	BaseValue* getBlockParamsVal()
-	{
-		BaseValue* paramsVal;
-		for (const BlockExprAST* block = this; block; block = block->parent)
-			if ((paramsVal = block->blockParamsVal) != nullptr)
-				return paramsVal;
+			if (block->blockParams.size())
+				return &block->blockParams;
 		return nullptr;
 	}
 

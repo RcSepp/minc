@@ -1,5 +1,7 @@
 import <builtin.acc>;
 
+extern int printf(string format, ...);
+
 int func1(int a, int b)
 {
 	printf("func1\n");

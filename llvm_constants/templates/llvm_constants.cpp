@@ -47,6 +47,7 @@ namespace Types
 	// AST types
 	StructType* Location;
 	StructType* ExprAST;
+	StructType* ExprListAST;
 	StructType* LiteralExprAST;
 	StructType* IdExprAST;
 	StructType* CastExprAST;
@@ -104,6 +105,7 @@ namespace Types
 			Type::getInt32Ty(c),
 			Value->getPointerTo()
 		);
+		ExprListAST = StructType::create(c, "class.ExprListAST");
 		LiteralExprAST = StructType::create("class.LiteralExprAST",
 			ExprAST,
 			Type::getInt8PtrTy(c)
@@ -171,6 +173,7 @@ namespace BuiltinTypes
 
 	// AST types
 	BuiltinType* ExprAST;
+	BuiltinType* ExprListAST;
 	BuiltinType* LiteralExprAST;
 	BuiltinType* IdExprAST;
 	BuiltinType* CastExprAST;
@@ -186,13 +189,6 @@ void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm
 
 void create_llvm_c_functions(LLVMContext& c, std::list<Func>& llvm_c_functions)
 {
-llvm_c_functions.push_back(Func("puts", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
-llvm_c_functions.push_back(Func("printf", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, true));
-llvm_c_functions.push_back(Func("atoi", BuiltinTypes::Int32, { BuiltinTypes::Int8Ptr }, false));
-llvm_c_functions.push_back(Func("malloc", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false));
-llvm_c_functions.push_back(Func("free", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr }, false));
-llvm_c_functions.push_back(Func("strlen", BuiltinTypes::Int64, { BuiltinTypes::Int8Ptr }, false));
-
 @	LLVM_EXTERN_FUNC_DEF@
 	llvm_c_functions.push_back(Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "LLVMEXPositionBuilder"));
 	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP1"));

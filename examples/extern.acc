@@ -1,22 +1,12 @@
 import <builtin.acc>;
 
-stmtdef extern $E<BaseType> $I {
-	BaseType putsType = FuncType("puts", 0, int, string);
-
-	LLVMTypeRef funcArgTypes[1];
-	funcArgTypes[0] = LLVMPointerType(LLVMInt8Type(), 0);
-	LLVMTypeRef funcType = LLVMFunctionType(LLVMInt32Type(), funcArgTypes, 1, 0);
-	LLVMValueRef func = LLVMAddFunction($1.name, funcType);
-	addToScope(parentBlock, $1, putsType, func);
-}
-
-extern int puts;
-
+extern int atoi(string str);
+extern void free(string ptr);
+extern string malloc(long size);
+extern int puts(string str);
+extern int printf(string format, ...);
+extern long strlen(string str);
 puts("foo\n");
-
-/*double d = 456.789;
-int a = d;
-printf("%f\n", d);*/
-
-
-return 123;
+printf("%i %s %li\n", atoi("123"), "abc", strlen("spam"));
+string mem = malloc(16);
+free(mem);

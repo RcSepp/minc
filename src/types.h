@@ -1,3 +1,6 @@
+#ifndef __INCLUDE_H
+#define __INCLUDE_H
+
 namespace llvm {
 	class Value;
 	class Constant;
@@ -43,7 +46,7 @@ struct FuncType : public BuiltinType
 	std::vector<BuiltinType*> argTypes;
 	const char* name;
 
-	FuncType(const char* name, BuiltinType* resultType, std::vector<BuiltinType*>& argTypes, bool isVarArg);
+	FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg);
 	virtual ~FuncType() {};
 };
 
@@ -137,3 +140,5 @@ public:
 		return true;
 	}	
 };
+
+#endif

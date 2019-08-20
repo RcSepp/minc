@@ -396,6 +396,41 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 				}
 			}
 		}
+		else if (blockParamExpr->exprtype == ExprAST::ExprType::LIST)
+		{
+			ExprListAST* blockParamListExpr = (ExprListAST*)blockParamExpr;
+			assert(blockParamListExpr->exprs.size());
+
+			BuiltinType* exprType = BuiltinTypes::ExprAST;
+			PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamListExpr->exprs.front();
+			switch(blockParamPlchldExpr->p1)
+			{
+			default: assert(0); //TODO: Throw exception
+			case 'L': exprType = BuiltinTypes::LiteralExprAST;
+			case 'I': exprType = BuiltinTypes::IdExprAST;
+			case 'B': exprType = BuiltinTypes::BlockExprAST;
+			case 'S': break;
+			case 'E':
+				if (blockParamPlchldExpr->p2 == nullptr)
+					break;
+				if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
+				{
+					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+					exprType = TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
+					break;
+				}
+			}
+
+			paramVar = Variable(
+				TpltType::get("ExprListAST<" + getTypeName(exprType) + ">", BuiltinTypes::ExprListAST, exprType),
+				new XXXValue(builder->CreateBitCast(param, Types::ExprListAST->getPointerTo()))
+			);
+		}
+		else if (blockParamExpr->exprtype == ExprAST::ExprType::ELLIPSIS)
+		{
+			paramVar = Variable(BuiltinTypes::ExprAST, new XXXValue(Constant::getNullValue((Types::ExprAST->getPointerTo())))); break;
+			continue;
+		}
 		else
 			assert(0);
 

@@ -29,6 +29,8 @@ std::list<std::pair<std::string, const Variable>> capturedScope;
 
 namespace MincFunctions
 {
+	Func* getExprListASTExpression;
+	Func* getExprListASTSize;
 	Func* getIdExprASTName;
 	Func* getLiteralExprASTValue;
 	Func* getBlockExprASTParent;
@@ -40,6 +42,7 @@ namespace MincFunctions
 
 	Func* addToScope;
 	Func* addToFileScope;
+	Func* lookupScope;
 	Func* codegenExprValue;
 	Func* codegenExprConstant;
 	Func* codegenStmt;
@@ -49,6 +52,7 @@ namespace MincFunctions
 	Func* createFuncType;
 	Func* cppNew;
 	Func* raiseCompileError;
+	Func* defineFunction;
 }
 
 extern "C"
@@ -65,6 +69,33 @@ extern "C"
 			builtinArgTypes.push_back((BuiltinType*)argTypes[i]);
 		return new FuncType(name, (BuiltinType*)resultType, builtinArgTypes, isVarArg);
 	}
+
+	Func* defineFunction(BlockExprAST* scope, const char* name, BuiltinType* resultType, BuiltinType** argTypes, size_t numArgTypes, bool isVarArg)
+	{
+		Func* func = new Func(name, resultType, std::vector<BuiltinType*>(argTypes, argTypes + numArgTypes), isVarArg);
+		defineSymbol(scope, func->type.name, &func->type, func);
+		defineCast2(scope, &func->type, BuiltinTypes::LLVMValueRef,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+				Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+
+				Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
+				Value* resultVal = builder->CreateCall(func, { funcVal });
+				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
+			}
+		);
+	}
+}
+
+Value* createStringConstant(StringRef str, const Twine& name)
+{
+	Constant* val = ConstantDataArray::getString(*context, str);
+	GlobalVariable* filenameGlobal = new GlobalVariable(
+		*currentFunc->getParent(), val->getType(), true, GlobalValue::PrivateLinkage,
+		val, name, nullptr, GlobalVariable::NotThreadLocal, 0
+	);
+	filenameGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+	filenameGlobal->setAlignment(1);
+	return builder->CreateInBoundsGEP(val->getType(), filenameGlobal, { ConstantInt::getNullValue(Types::Int64), ConstantInt::getNullValue(Types::Int64) });
 }
 
 std::string mangle(const std::string& className, const std::string& funcName, BuiltinType* returnType, std::vector<BuiltinType*>& argTypes)
@@ -341,6 +372,7 @@ void initBuiltinSymbols()
 
 	// AST types
 	BuiltinTypes::ExprAST = BuiltinType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
+	BuiltinTypes::ExprListAST = BuiltinType::get("ExprListAST", wrap(Types::ExprListAST->getPointerTo()), 8);
 	BuiltinTypes::LiteralExprAST = BuiltinType::get("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
 	BuiltinTypes::IdExprAST = BuiltinType::get("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
 	BuiltinTypes::CastExprAST = BuiltinType::get("CastExprAST", wrap(Types::CastExprAST->getPointerTo()), 8);
@@ -353,6 +385,8 @@ void initBuiltinSymbols()
 
 	// >>> Create Minc extern functions
 
+	MincFunctions::getExprListASTExpression = new Func("getExprListASTExpression", BuiltinTypes::ExprAST, { BuiltinTypes::ExprListAST, BuiltinTypes::Int64 }, false);
+	MincFunctions::getExprListASTSize = new Func("getExprListASTSize", BuiltinTypes::Int64, { BuiltinTypes::ExprListAST }, false);
 	MincFunctions::getIdExprASTName = new Func("getIdExprASTName", BuiltinTypes::Int8Ptr, { BuiltinTypes::IdExprAST }, false);
 	MincFunctions::getLiteralExprASTValue = new Func("getLiteralExprASTValue", BuiltinTypes::Int8Ptr, { BuiltinTypes::LiteralExprAST }, false);
 	MincFunctions::getBlockExprASTParent = new Func("getBlockExprASTParent", BuiltinTypes::BlockExprAST, { BuiltinTypes::BlockExprAST }, false);
@@ -364,6 +398,7 @@ void initBuiltinSymbols()
 
 	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
+	MincFunctions::lookupScope = new Func("LookupScope", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
@@ -372,7 +407,8 @@ void initBuiltinSymbols()
 	MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
 	MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
 	MincFunctions::cppNew = new Func("_Znwm", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
-	MincFunctions::raiseCompileError = new Func("raiseCompileError", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr, BuiltinTypes::ExprAST }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
+	MincFunctions::raiseCompileError = new Func("raiseCompileError", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr, BuiltinTypes::ExprAST }, false);
+	MincFunctions::defineFunction = new Func("defineFunction", BuiltinTypes::Builtin, { BuiltinTypes::BlockExprAST, BuiltinTypes::Int8Ptr, BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr(), BuiltinTypes::Int64, BuiltinTypes::Int1 }, false);
 }
 
 void defineBuiltinSymbols(BlockExprAST* rootBlock)
@@ -380,10 +416,10 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	// Define LLVM-c extern functions
 	for (Func& func: llvm_c_functions)
 		defineSymbol(rootBlock, func.type.name, &func.type, &func);
-bool isCaptured; ((XXXValue*)lookupSymbol(rootBlock, "printf", isCaptured)->value)->getFunction(currentModule); //DELETE
 
 	// Define Minc extern functions
 	for (Func* func: {
+		MincFunctions::getExprListASTSize,
 		MincFunctions::getIdExprASTName,
 		MincFunctions::getLiteralExprASTValue,
 		MincFunctions::getBlockExprASTParent,
@@ -391,7 +427,8 @@ bool isCaptured; ((XXXValue*)lookupSymbol(rootBlock, "printf", isCaptured)->valu
 		MincFunctions::getPointerToBuiltinType,
 		MincFunctions::getExprLine,
 		MincFunctions::getExprColumn,
-		new Func("malloc", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false), //DELETE
+		MincFunctions::lookupScope,
+		MincFunctions::defineFunction,
 	})
 	{
 		defineSymbol(rootBlock, func->type.name, &func->type, func);
@@ -422,6 +459,8 @@ bool isCaptured; ((XXXValue*)lookupSymbol(rootBlock, "printf", isCaptured)->valu
 	defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, BuiltinTypes::DoublePtr);
 	defineType(rootBlock, "string", BuiltinTypes::Builtin, BuiltinTypes::Int8Ptr);
 	defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, BuiltinTypes::ExprAST);
+	defineType(rootBlock, "ExprASTPtr", BuiltinTypes::Builtin, BuiltinTypes::ExprAST->Ptr());
+	defineType(rootBlock, "ExprListAST", BuiltinTypes::Builtin, BuiltinTypes::ExprListAST);
 	defineType(rootBlock, "LiteralExprAST", BuiltinTypes::Builtin, BuiltinTypes::LiteralExprAST);
 	defineType(rootBlock, "IdExprAST", BuiltinTypes::Builtin, BuiltinTypes::IdExprAST);
 	defineType(rootBlock, "CastExprAST", BuiltinTypes::Builtin, BuiltinTypes::CastExprAST);
@@ -443,6 +482,7 @@ bool isCaptured; ((XXXValue*)lookupSymbol(rootBlock, "printf", isCaptured)->valu
 	defineOpaqueCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinValue);
+	defineOpaqueCast(rootBlock, BuiltinTypes::ExprListAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LiteralExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::IdExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::CastExprAST, BuiltinTypes::BuiltinValue);
@@ -1318,18 +1358,8 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			Value* locExprVal = builder->CreateAlloca(Types::ExprAST);
 
 			// Set expr->loc.filename
-			Constant* filenameVal = ConstantDataArray::getString(*context, getExprFilename(params[0]));
-			GlobalVariable* filenameGlobal = new GlobalVariable(
-				*currentFunc->getParent(), filenameVal->getType(), true, GlobalValue::PrivateLinkage,
-				filenameVal, "", nullptr, GlobalVariable::NotThreadLocal, 0
-			);
-			filenameGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
-			filenameGlobal->setAlignment(1);
 			builder->CreateStore(
-				builder->CreateInBoundsGEP(filenameVal->getType(), filenameGlobal, {
-					ConstantInt::getNullValue(Types::Int64),
-					ConstantInt::getNullValue(Types::Int64),
-				}),
+				createStringConstant(getExprFilename(params[0]), ""),
 				builder->CreateInBoundsGEP(locExprVal, {
 					ConstantInt::get(Types::Int64, 0),
 					ConstantInt::get(Types::Int32, 1),
@@ -1453,25 +1483,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
 
 			if (value[0] == '"' || value[0] == '\'')
-			{
-				//Constant *valueConstant = ConstantDataArray::getString(*context, std::string(value + 1, strlen(value) - 2));
-				Constant *valueConstant = (Constant*)unwrap(LLVMConstString(value + 1, strlen(value) - 2, 0));
-				GlobalVariable* valueGlobal = new GlobalVariable(*currentFunc->getParent(), valueConstant->getType(), true,
-					GlobalValue::ExternalLinkage, valueConstant, "MY_CONSTANT",
-					nullptr, GlobalVariable::NotThreadLocal,
-					0
-				);
-				valueGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
-				valueGlobal->setAlignment(1);
-//valueGlobal->setExternallyInitialized(true);
-				Constant *zero_64 = Constant::getNullValue(IntegerType::getInt64Ty(*context));
-				std::vector<Value *> gep_params = {
-					zero_64,
-					zero_64
-				};
-				//return Variable(Type::getInt8PtrTy(*context), new XXXValue(builder->CreateGEP(valueConstant->getType(), valueGlobal, gep_params)));
-				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(builder->CreateGEP(valueConstant->getType(), valueGlobal, gep_params)));
-			}
+				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(StringRef(value + 1, strlen(value) - 2), "MY_CONSTANT")));
 
 			if (strchr(value, '.'))
 			{
@@ -1551,4 +1563,38 @@ defineExpr2(rootBlock, "getfunc($E)",
 	},
 	BuiltinTypes::LLVMValueRef
 );
+
+	defineExpr3(rootBlock, "$E<ExprListAST>[$E<long>]",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable listVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			TpltType* listType = dynamic_cast<TpltType*>((BuiltinType*)listVar.type);
+			Variable idxVar = codegenExpr(params[1], parentBlock);
+
+			Function* getExprListASTSizeFunc = MincFunctions::getExprListASTSize->getFunction(currentModule);
+			Value* listSizeVal = builder->CreateCall(getExprListASTSizeFunc, { ((XXXValue*)listVar.value)->val });
+
+			Value* ifCondVal = builder->CreateICmpUGE(((XXXValue*)idxVar.value)->val, listSizeVal);
+
+			BasicBlock *ifBlock = BasicBlock::Create(*context, "", currentFunc);
+			BasicBlock *elseBlock = BasicBlock::Create(*context, "", currentFunc);
+			builder->CreateCondBr(ifCondVal, ifBlock, elseBlock);
+
+			builder->SetInsertPoint(currentBB = ifBlock);
+			Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
+			builder->CreateCall(raiseCompileErrorFunc, { createStringConstant("list index out of range", ""), builder->CreateBitCast(((XXXValue*)listVar.value)->val, Types::ExprAST->getPointerTo()) });
+			builder->CreateBr(elseBlock);
+
+			builder->SetInsertPoint(currentBB = elseBlock);
+			Function* getExprListASTExprFunc = MincFunctions::getExprListASTExpression->getFunction(currentModule);
+			Value* resultVal = builder->CreateCall(getExprListASTExprFunc, { ((XXXValue*)listVar.value)->val, ((XXXValue*)idxVar.value)->val });
+			return Variable(listType->tpltType, new XXXValue(resultVal));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			assert(ExprASTIsCast(params[0]));
+			ExprAST* arrAST = getCastExprASTSource((CastExprAST*)params[0]);
+			TpltType* listType = dynamic_cast<TpltType*>((BuiltinType*)getType(arrAST, parentBlock));
+			assert(listType);
+			return listType->tpltType;
+		}
+	);
 }

@@ -270,6 +270,14 @@ extern "C"
 	{
 		return expr->exprs;
 	}
+	ExprAST* getExprListASTExpression(ExprListAST* expr, size_t index)
+	{
+		return expr->exprs[index];
+	}
+	size_t getExprListASTSize(ExprListAST* expr)
+	{
+		return expr->exprs.size();
+	}
 	const char* getIdExprASTName(const IdExprAST* expr)
 	{
 		return expr->name;
@@ -478,6 +486,12 @@ extern "C"
 	void AddToFileScope(IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
 	{
 		fileBlock->addToScope(nameAST->name, type, new XXXValue(unwrap(val)));
+	}
+
+	LLVMValueRef LookupScope(BlockExprAST* scope, IdExprAST* nameAST)
+	{
+		const Variable* var = scope->lookupScope(nameAST->name);
+		return wrap(((XXXValue*)var->value)->val); //TODO: Check for errors
 	}
 
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)

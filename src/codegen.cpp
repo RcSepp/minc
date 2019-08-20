@@ -71,6 +71,7 @@ extern Value* closure;
 LLVMContext* context;
 IRBuilder<> *builder;
 BaseType BASE_TYPE;
+Variable VOID;
 
 // Current state
 Module* currentModule;
@@ -175,7 +176,7 @@ public:
 		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), stmtArgs);
 		//if (currentBB != _currentBB)
 		//	builder->SetInsertPoint(currentBB = _currentBB);
-		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
+		return VOID;
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
@@ -459,6 +460,11 @@ extern "C"
 		return &BASE_TYPE;
 	}
 
+	BaseType* getVoidType()
+	{
+		return VOID.type;
+	}
+
 	void raiseCompileError(const char* msg, const ExprAST* loc)
 	{
 		throw CompileError(msg, loc->loc);
@@ -526,6 +532,8 @@ void init()
 
 	// Declare types
 	Types::create(*context);
+	VOID.type = BuiltinType::get("void", LLVMVoidType(), 0);
+	VOID.value = new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)));
 }
 
 IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
@@ -577,7 +585,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	}
 
 	//parent = nullptr;
-	return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
+	return VOID;
 }
 
 Variable ExprAST::codegen(BlockExprAST* parentBlock)

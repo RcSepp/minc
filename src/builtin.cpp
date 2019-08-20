@@ -300,7 +300,7 @@ void initBuiltinSymbols()
 	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8);
 
 	// Primitive types
-	BuiltinTypes::Void = BuiltinType::get("void", LLVMVoidType(), 0);
+	BuiltinTypes::Void = (BuiltinType*)getVoidType();
 	BuiltinTypes::VoidPtr = BuiltinTypes::Void->Ptr();
 	BuiltinTypes::Int1 = BuiltinType::get("bool", wrap(Types::Int1), 1);
 	BuiltinTypes::Int1Ptr =BuiltinTypes::Int1->Ptr();

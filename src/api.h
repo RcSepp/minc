@@ -70,6 +70,7 @@ extern "C"
 	std::string reportCasts(const BlockExprAST* scope);
 
 	BaseType* getBaseType();
+	BaseType* getVoidType();
 
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 

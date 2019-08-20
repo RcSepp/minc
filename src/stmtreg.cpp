@@ -401,6 +401,10 @@ bool IdExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
+	// Make sure collectParams(tplt, tplt) collects all placeholders
+	if (expr == this)
+		return true;
+
 	switch(p1)
 	{
 	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;

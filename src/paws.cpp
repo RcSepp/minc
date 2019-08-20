@@ -40,22 +40,22 @@ struct PawsInt : BaseValue
 
 void PAWRun(BlockExprAST* block)
 {
-	defineType(block, "PawsBase", PAWS_BASE_TYPE);
+	defineType("PawsBase", PAWS_BASE_TYPE);
 	defineSymbol(block, "PawsBase", getBaseType(), new PawsType(PAWS_BASE_TYPE));
 
-	defineType(block, "PawsType", PAWS_META_TYPE);
+	defineType("PawsType", PAWS_META_TYPE);
 	defineSymbol(block, "PawsType", PAWS_META_TYPE, new PawsType(PAWS_META_TYPE));
 	defineOpaqueCast(block, PAWS_META_TYPE, PAWS_BASE_TYPE);
 
-	defineType(block, "PawsString", PAWS_STRING_TYPE);
+	defineType("PawsString", PAWS_STRING_TYPE);
 	defineSymbol(block, "PawsString", PAWS_META_TYPE, new PawsType(PAWS_STRING_TYPE));
 	defineOpaqueCast(block, PAWS_STRING_TYPE, PAWS_BASE_TYPE);
 
-	defineType(block, "PawsInt", PAWS_INT_TYPE);
+	defineType("PawsInt", PAWS_INT_TYPE);
 	defineSymbol(block, "PawsInt", PAWS_META_TYPE, new PawsType(PAWS_INT_TYPE));
 	defineOpaqueCast(block, PAWS_INT_TYPE, PAWS_BASE_TYPE);
 
-	defineType(block, "PawsVoid", PAWS_VOID_TYPE);
+	defineType("PawsVoid", PAWS_VOID_TYPE);
 	defineSymbol(block, "PawsVoid", PAWS_META_TYPE, new PawsType(PAWS_VOID_TYPE));
 	defineOpaqueCast(block, PAWS_VOID_TYPE, PAWS_BASE_TYPE);
 

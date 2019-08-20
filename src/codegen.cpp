@@ -326,7 +326,7 @@ extern "C"
 		scope->addToScope(name, type, value);
 	}
 
-	void defineType(BlockExprAST* scope, const char* name, BaseType* type)
+	void defineType(const char* name, BaseType* type)
 	{
 		typereg[type] = TypeDescription{name};
 	}

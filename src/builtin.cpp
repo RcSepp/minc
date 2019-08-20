@@ -115,7 +115,7 @@ std::string mangle(const std::string& className, const std::string& funcName, Bu
 
 void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BuiltinType* type)
 {
-	defineType(scope, name, type);
+	defineType(name, type);
 	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
 }
 
@@ -444,7 +444,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	}
 
 	BaseType* baseType = getBaseType();
-	defineType(rootBlock, "BaseType", baseType);
+	defineType("BaseType", baseType);
 	defineSymbol(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType, (uint64_t)baseType));
 
 	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, BuiltinTypes::Builtin);

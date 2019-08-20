@@ -67,6 +67,29 @@ extern Value* closure;
 std::string currentSourcePath;
 DIBasicType* intType;
 
+extern "C"
+{
+	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
+	{
+		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
+	}
+
+	uint64_t compileJitFunction(JitFunction* jitFunc)
+	{
+		return jitFunc->compile();
+	}
+
+	void removeJitFunctionModule(JitFunction* jitFunc)
+	{
+		jitFunc->removeCompiledModule();
+	}
+
+	void removeJitFunction(JitFunction* jitFunc)
+	{
+		delete jitFunc;
+	}
+}
+
 XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode)
 	: prevModule(currentModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), loc(loc)
 {
@@ -267,6 +290,14 @@ void FileModule::run()
 
 void JitFunction::init()
 {
+	// Initialize target registry etc.
+InitializeNativeTarget();
+	InitializeAllTargetInfos();
+	InitializeAllTargets();
+	InitializeAllTargetMCs();
+	InitializeAllAsmParsers();
+	InitializeAllAsmPrinters();
+
 	// Create JIT
 	jit = new KaleidoscopeJIT();
 }

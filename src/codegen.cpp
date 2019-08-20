@@ -515,40 +515,12 @@ extern "C"
 
 		//TODO: Free importedModule
 	}
-
-	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
-	{
-		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
-	}
-
-	uint64_t compileJitFunction(JitFunction* jitFunc)
-	{
-		return jitFunc->compile();
-	}
-
-	void removeJitFunctionModule(JitFunction* jitFunc)
-	{
-		jitFunc->removeCompiledModule();
-	}
-
-	void removeJitFunction(JitFunction* jitFunc)
-	{
-		delete jitFunc;
-	}
 }
 
 void init()
 {
 	context = unwrap(LLVMGetGlobalContext());//new LLVMContext();
 	builder = new IRBuilder<>(*context);
-
-	// Initialize target registry etc.
-InitializeNativeTarget();
-	InitializeAllTargetInfos();
-	InitializeAllTargets();
-	InitializeAllTargetMCs();
-	InitializeAllAsmParsers();
-	InitializeAllAsmPrinters();
 
 	JitFunction::init();
 

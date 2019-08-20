@@ -10,9 +10,10 @@ public:
 	virtual void print() = 0;
 	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
 	virtual void run() = 0;
+	virtual void finalize() = 0;
 };
 
 void init();
-IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, BlockExprAST* parentBlock = nullptr);
+IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols);
 
 #endif

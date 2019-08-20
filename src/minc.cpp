@@ -9,6 +9,7 @@
 #include "cparser.h"
 #include "pyparser.h"
 #include "codegen.h"
+#include "builtin.h"
 #include "paws.h"
 
 const std::string APP_NAME = "minc";
@@ -52,7 +53,10 @@ int main(int argc, char **argv)
 	const bool sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.compare(sourcePath.length() - PY_EXT.length(), PY_EXT.length(), PY_EXT) == 0;
 	
 	if (!sourceIsPaws)
+	{
 		init();
+		initBuiltinSymbols();
+	}
 
 	// Open source file
 	std::istream* in = sourcePath != "-" ? new std::ifstream(sourcePath) : &std::cin;
@@ -101,7 +105,12 @@ int main(int argc, char **argv)
 		if (sourceIsPaws)
 			PAWRun(rootBlock);
 		else
-			module = createModule(realPath, rootBlock, outputDebugSymbols, nullptr);
+		{
+			module = createModule(realPath, rootBlock, outputDebugSymbols);
+			defineBuiltinSymbols(rootBlock);
+			rootBlock->codegen(nullptr);
+			module->finalize();
+		}
 	} catch (CompileError err) {
 std::cerr << std::endl;
 		if (err.loc.filename != nullptr)

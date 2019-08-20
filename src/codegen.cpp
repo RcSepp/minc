@@ -87,9 +87,6 @@ std::map<const BaseType*, TypeDescription> typereg;
 const std::string NULL_TYPE = "NULL";
 const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
-void initBuiltinSymbols();
-void defineBuiltinSymbols(BlockExprAST* block);
-
 struct StaticStmtContext : public CodegenContext
 {
 private:
@@ -557,18 +554,11 @@ InitializeNativeTarget();
 
 	// Declare types
 	Types::create(*context);
-
-	// Initialize builtin symbols
-	initBuiltinSymbols();
 }
 
-IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, BlockExprAST* parentBlock)
+IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
 {
-	FileModule* module = new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
-	defineBuiltinSymbols(moduleBlock);
-	moduleBlock->codegen(parentBlock);
-	module->finalize();
-	return module;
+	return new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
 }
 
 StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context)

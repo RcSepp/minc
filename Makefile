@@ -21,7 +21,7 @@ ${BIN_DIR}minc: ${OBJPATHS}
 	-mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${OBJPATHS} ${LIBS}
 
-# CParser code
+# Parser code
 
 ${TEMP_DIR}%.yy.cc: ${SRC_DIR}%.l ${TEMP_DIR}%.o
 	-mkdir -p ${TEMP_DIR}
@@ -33,12 +33,16 @@ ${TEMP_DIR}%.cc: ${SRC_DIR}%.y
 
 # Generated parser code
 
-${TEMP_DIR}%.o: %.cc
+${TEMP_DIR}%.o: ${TEMP_DIR}%.cc
 	-mkdir -p ${TEMP_DIR}
 	$(CXX) ${CPPFLAGS} -o $@ -c $<
 
 # Compiler code
 
 ${TEMP_DIR}%.o: ${SRC_DIR}%.cpp
+	-mkdir -p ${TEMP_DIR}
+	$(CXX) ${CPPFLAGS} -o $@ -c $<
+
+${TEMP_DIR}minc.o: ${SRC_DIR}minc.cpp ${TEMP_DIR}cparser.cc ${TEMP_DIR}pyparser.cc
 	-mkdir -p ${TEMP_DIR}
 	$(CXX) ${CPPFLAGS} -o $@ -c $<

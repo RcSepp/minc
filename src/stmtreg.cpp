@@ -69,7 +69,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 		{
 			++tplt; // Eat $S
 
-			if (!block->lookupStatement(expr))
+			if (!block->lookupStatement(expr, exprEnd))
 				return false;
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -165,7 +165,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 			++tplt; // Eat $S
 
 			const ExprASTIter beginExpr = expr;
-			const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = block->lookupStatement(expr);
+			const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = block->lookupStatement(expr, exprEnd);
 			const ExprASTIter endExpr = expr;
 			assert(stmtContext);
 			StmtAST* stmt = new StmtAST(beginExpr, endExpr, stmtContext->second);
@@ -227,10 +227,10 @@ void StmtAST::collectParams(const BlockExprAST* block, const std::vector<ExprAST
 	collectStatement(block, tplt.cbegin(), tplt.cend(), begin, end, resolvedParams, paramIdx);
 }
 
-const std::pair<const std::vector<ExprAST*>, CodegenContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& bestScore, ExprASTIter& bestStmtEnd) const
+const std::pair<const std::vector<ExprAST*>, CodegenContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	ExprASTIter currentStmtEnd;
+	ExprASTIter currentStmtEnd, stmtEnd = bestStmtEnd;
 	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* bestStmt = nullptr;
 	for (const std::pair<const std::vector<ExprAST*>, CodegenContext*>& iter: stmtreg)
 	{
@@ -239,7 +239,7 @@ auto foo = ExprListAST('\0', iter.first).str();
 		printf("%scandidate `%s`", indent.c_str(), ExprListAST('\0', iter.first).str().c_str());
 #endif
 		currentScore = 0;
-		if (matchStatement(block, iter.first.cbegin(), iter.first.cend(), stmt, block->exprs->cend(), currentScore, &currentStmtEnd) && currentScore > bestScore)
+		if (matchStatement(block, iter.first.cbegin(), iter.first.cend(), stmt, stmtEnd, currentScore, &currentStmtEnd) && currentScore > bestScore)
 		{
 			bestScore = currentScore;
 			bestStmt = &iter;
@@ -350,15 +350,15 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 		return false;
 }
 
-const std::pair<const std::vector<ExprAST*>, CodegenContext*>* BlockExprAST::lookupStatement(ExprASTIter& exprs) const
+const std::pair<const std::vector<ExprAST*>, CodegenContext*>* BlockExprAST::lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const
 {
 //TODO: Figure out logic for looking up expressions ahead of looking up statements
-for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
+for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
 	(*exprIter)->resolveTypes(const_cast<BlockExprAST*>(this));
 
 #ifdef DEBUG_STMTREG
 	std::vector<ExprAST*> _exprs;
-	for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
+	for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
 		_exprs.push_back(*exprIter);
 	printf("%slookupStmt(%s)\n", indent.c_str(), ExprListAST('\0', _exprs).str().c_str());
 	indent += '\t';
@@ -372,7 +372,8 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
-		currentContext = block->stmtreg.lookupStatement(this, exprs, currentScore, currentStmtEnd);
+		currentStmtEnd = exprEnd;
+		currentContext = block->stmtreg.lookupStatement(this, exprs, currentStmtEnd, currentScore);
 		if (currentScore > score)
 		{
 			context = currentContext;
@@ -388,7 +389,7 @@ for (ExprASTIter exprIter = exprs; exprIter != this->exprs->cend() && (*exprIter
 	if (context)
 		exprs = stmtEnd;
 	else
-		while (exprs != this->exprs->cend() && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs++)->exprtype != ExprAST::ExprType::BLOCK) {}
+		while (exprs != exprEnd && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs++)->exprtype != ExprAST::ExprType::BLOCK) {}
 
 	return context;
 }
@@ -414,6 +415,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
 	case 'V': return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
+	case 'S':
 		score -= 1; // Penalize vague expression type
 		break;
 	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);

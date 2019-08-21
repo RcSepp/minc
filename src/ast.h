@@ -144,7 +144,7 @@ private:
 public:
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg.push_front({tplt, stmt}); }
 	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(this->stmtreg.begin(), stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
-	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, MatchScore& score, ExprASTIter& stmtEnd) const;
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	{
@@ -200,7 +200,7 @@ public:
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(tplt, stmt);
 	}
-	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(ExprASTIter& exprs) const;
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
 
 	void defineExpr(ExprAST* tplt, CodegenContext* expr)
 	{

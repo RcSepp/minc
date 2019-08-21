@@ -206,6 +206,33 @@ public:
 	}
 };
 
+struct DynamicExprContext2 : public CodegenContext
+{
+private:
+	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
+	typedef BaseType* (*typeFuncPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, const BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST*const* params);
+	typeFuncPtr const typeCbk;
+	funcPtr const cbk;
+	// Keep typeCbk before cbk, so that typeFunc->compile() is called before func->compile().
+	// This is currently necessary to ensure JitFunction's are finalized in opposit order in which they were created.
+	// Otherwise, the line `builder->SetInsertPoint(currentBB = prevBB);` would not recover prevBB.
+public:
+	DynamicExprContext2(JitFunction* func, JitFunction* typeFunc) : typeCbk(reinterpret_cast<typeFuncPtr>(typeFunc->compile())), cbk(reinterpret_cast<funcPtr>(func->compile())) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		//BasicBlock* _currentBB = currentBB;
+		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+		BaseType* type = typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+		//if (currentBB != _currentBB)
+		//	builder->SetInsertPoint(currentBB = _currentBB);
+		return Variable(type, new XXXValue(foo));
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+	}
+};
+
 extern "C"
 {
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope)
@@ -264,6 +291,16 @@ extern "C"
 	bool ExprASTIsBlock(const ExprAST* expr)
 	{
 		return expr->exprtype == ExprAST::ExprType::BLOCK;
+	}
+
+	void resolveExprAST(BlockExprAST* scope, ExprAST* expr)
+	{
+		scope->lookupExpr(expr);
+	}
+
+	BlockExprAST* wrapExprAST(ExprAST* expr)
+	{
+		return new BlockExprAST(expr->loc, new std::vector<ExprAST*>(1, expr));
 	}
 
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr)
@@ -399,6 +436,11 @@ extern "C"
 		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock, exprArgs));
 	}
 
+	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
+	{
+		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
+	}
+
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
 		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
@@ -492,7 +534,7 @@ extern "C"
 	LLVMValueRef LookupScope(BlockExprAST* scope, IdExprAST* nameAST)
 	{
 		const Variable* var = scope->lookupScope(nameAST->name);
-		return wrap(((XXXValue*)var->value)->val); //TODO: Check for errors
+		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
 	}
 
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
@@ -576,7 +618,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
 	{
 		const ExprASTIter beginExpr = iter;
-		const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = lookupStatement(iter);
+		const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
 		const ExprASTIter endExpr = iter;
 
 		StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);

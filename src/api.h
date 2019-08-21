@@ -39,6 +39,8 @@ extern "C"
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
+	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);
+	BlockExprAST* wrapExprAST(ExprAST* expr);
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
@@ -60,6 +62,7 @@ extern "C"
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
+	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc);
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);

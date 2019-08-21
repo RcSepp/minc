@@ -700,6 +700,53 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			removeJitFunction(jitFunc);
 		}
 	);
+	defineStmt2(rootBlock, "exprdef<$E> $E $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			ExprAST* exprTypeAST = params[0];
+			ExprAST* exprAST = params[1];
+			BlockExprAST* blockAST = (BlockExprAST*)params.back();
+
+			std::vector<ExprAST*> exprParams;
+			collectParams(parentBlock, exprAST, exprAST, exprParams);
+
+			// Generate JIT function name
+			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
+
+			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
+
+			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
+			capturedScope.clear();
+			codegenExpr((ExprAST*)blockAST, parentBlock);
+
+			jitFuncName = '<' + jitFuncName + '>';
+
+			BlockExprAST* exprTypeBlock = wrapExprAST(exprTypeAST);
+			setBlockExprASTParent(exprTypeBlock, parentBlock);
+			JitFunction* jitTypeFunc = createJitFunction(parentBlock, exprTypeBlock, BuiltinTypes::Base, exprParams, jitFuncName);
+			capturedScope.clear();
+			resolveExprAST(exprTypeBlock, exprTypeAST); // Reresolve exprTypeAST context
+			BaseType* exprTypeType = getType(exprTypeAST, parentBlock);
+			if (exprTypeType != BuiltinTypes::Builtin)
+			{
+				ExprAST* castExpr = lookupCast(parentBlock, exprTypeAST, BuiltinTypes::Builtin);
+				if (castExpr == nullptr)
+				{
+					std::string candidateReport = reportExprCandidates(parentBlock, exprTypeAST);
+					raiseCompileError(
+						("can't convert <" + getTypeName(exprTypeType) + "> to <" + getTypeName(BuiltinTypes::Builtin) + ">\n" + candidateReport).c_str(),
+						exprTypeAST
+					);
+				}
+				else
+					exprTypeAST = castExpr;
+			}
+			builder->CreateRet(builder->CreateBitCast(((XXXValue*)codegenExpr(exprTypeAST, exprTypeBlock).value)->val, Types::BaseType->getPointerTo()));
+
+			defineExpr4(parentBlock, exprAST, jitFunc, jitTypeFunc);
+			removeJitFunction(jitTypeFunc);
+			removeJitFunction(jitFunc);
+		}
+	);
 
 	// Define `castdef`
 	defineStmt2(rootBlock, "castdef<$I> $E $B",
@@ -1360,7 +1407,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 		}
 	);
 
-	// Define symdef
+	// Define throw
 	defineStmt2(rootBlock, "throw $E<string>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			Value* msgVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
@@ -1420,6 +1467,15 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 
 			Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
 			builder->CreateCall(raiseCompileErrorFunc, { msgVal, locExprVal });
+		}
+	);
+	defineStmt2(rootBlock, "throw CompileError($E<string>, $E<ExprAST>)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			Value* msgVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
+			Value* locVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
+
+			Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
+			builder->CreateCall(raiseCompileErrorFunc, { msgVal, locVal });
 		}
 	);
 
@@ -1518,20 +1574,6 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			if (strchr(value, '.'))
 				return BuiltinTypes::Double;
 			return BuiltinTypes::Int32;
-		}
-	);
-
-	// Define variable assignment
-	defineExpr3(rootBlock, "$I = $E",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			Variable expr = codegenExpr(params[1], parentBlock);
-
-			builder->CreateStore(((XXXValue*)expr.value)->val, ((XXXValue*)var.value)->val);
-			return expr;
-		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			return getType(params[1], parentBlock);
 		}
 	);
 

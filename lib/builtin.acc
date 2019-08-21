@@ -43,6 +43,17 @@ castdef<ExprAST> $E<BlockExprAST> {
 	);
 }
 
+/* ---------------------------------------------------------------------------*\
+Name: Simplified variable assignment
+Template: $I = $E
+Depends on: return $E
+Notes: This expression does not check for errors and it does not return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<void> $I = $E {
+	LLVMBuildStore(codegen($1, parentBlock), LookupScope(parentBlock, $0));
+	return LLVMConstNull(LLVMVoidType());
+}
+
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |
@@ -128,6 +139,12 @@ exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] {
 	LLVMSetAlignment(val, 8);
 	return val;
 }
+
+/* ---------------------------------------------------------------------------*\
+Cast: LLVMValueRef to bool
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<bool> $E<LLVMValueRef> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
 
 /* ---------------------------------------------------------------------------*\
 Name: LLVMBasicBlockRef declaration
@@ -364,23 +381,23 @@ stmtdef int $I {
 	LLVMSetAlignment(storage, 4);
 	addToScope(parentBlock, $0, int, storage);
 
-	LLVMDIBuilderInsertDeclareAtEnd(
-		storage,
-		LLVMDIBuilderCreateAutoVariable(
-			LLVMGetSubprogram(function),
-			$0.name,
-			strlen($0.name),
-			dfile,
-			getExprLine($0),
-			intType,
-			1,
-			0,
-			0
-		),
-		LLVMDIBuilderCreateExpression(),
-		LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
-		LLVMGetInsertBlock()
-	);
+	// LLVMDIBuilderInsertDeclareAtEnd(
+	// 	storage,
+	// 	LLVMDIBuilderCreateAutoVariable(
+	// 		LLVMGetSubprogram(function),
+	// 		$0.name,
+	// 		strlen($0.name),
+	// 		dfile,
+	// 		getExprLine($0),
+	// 		intType,
+	// 		1,
+	// 		0,
+	// 		0
+	// 	),
+	// 	LLVMDIBuilderCreateExpression(),
+	// 	LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
+	// 	LLVMGetInsertBlock()
+	// );
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -881,4 +898,29 @@ stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
 	}
 
 	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 1);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Variable assignment
+Template: $I = $E
+\* ---------------------------------------------------------------------------*/
+exprdef<gettype($1, parentBlock)> $I = $E {
+	LLVMValueRef var = LookupScope(parentBlock, $0);
+	LLVMValueRef expr = codegen($1, parentBlock);
+	if (var)
+	{
+		LLVMBuildStore(expr, var);
+	}
+	else
+	{
+		extern string malloc(long size);
+		extern string strcpy(string destination, string source);
+		extern string strcat(string destination, string source);
+		string err = malloc(256);
+		strcpy(err, "`");
+		strcat(err, $0.name);
+		strcat(err, "` was not declared in this scope");
+		throw CompileError(err, $0);
+	}
+	return expr;
 }

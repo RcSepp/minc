@@ -1,3 +1,4 @@
+//#define DEBUG_PARAMETER_COLLECTION
 #include <sstream>
 
 // LLVM-C //DELETE
@@ -603,6 +604,13 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 					jitFuncName += ' ';
 				jitFuncName += ExprASTIsBlock(stmtParam) ? std::string("{}") : ExprASTToString(stmtParam);
 			}
+
+#ifdef DEBUG_PARAMETER_COLLECTION
+			printf("\033[34m%s:\033[0m", jitFuncName.c_str());
+			for (ExprAST* stmtParam: stmtParams)
+				printf(" %s", ExprASTToString(stmtParam).c_str());
+			printf("\n");
+#endif
 
 			defineReturnStmt(blockAST, BuiltinTypes::Void);
 

@@ -40,11 +40,14 @@ namespace MincFunctions
 	Func* getExprLoc;
 	Func* getExprLine;
 	Func* getExprColumn;
+	Func* getTypeName;
 	Func* getPointerToBuiltinType;
 
+	Func* lookupCast;
 	Func* addToScope;
 	Func* addToFileScope;
 	Func* lookupScope;
+	Func* lookupScopeType;
 	Func* codegenExprValue;
 	Func* codegenExprConstant;
 	Func* codegenStmt;
@@ -398,11 +401,14 @@ void initBuiltinSymbols()
 	MincFunctions::getExprLoc = new Func("getExprLoc", BuiltinTypes::Location, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getExprLine = new Func("getExprLine", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getExprColumn = new Func("getExprColumn", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
+	MincFunctions::getTypeName = new Func("getTypeName", BuiltinTypes::Int8Ptr, { BuiltinTypes::Base }, false, "getTypeName2");
 	MincFunctions::getPointerToBuiltinType = new Func("getPointerToBuiltinType", BuiltinTypes::Builtin, { BuiltinTypes::Builtin }, false);
 
+	MincFunctions::lookupCast = new Func("lookupCast", BuiltinTypes::ExprAST, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST, BuiltinTypes::Base }, false);
 	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::lookupScope = new Func("LookupScope", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
+	MincFunctions::lookupScopeType = new Func("LookupScopeType", BuiltinTypes::Base, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
@@ -432,7 +438,10 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		MincFunctions::getExprLoc,
 		MincFunctions::getExprLine,
 		MincFunctions::getExprColumn,
+		MincFunctions::getTypeName,
+		MincFunctions::lookupCast,
 		MincFunctions::lookupScope,
+		MincFunctions::lookupScopeType,
 		MincFunctions::defineFunction,
 	})
 	{
@@ -448,9 +457,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		);
 	}
 
-	BaseType* baseType = getBaseType();
-	defineType("BaseType", baseType);
-	defineSymbol(rootBlock, "BaseType", baseType, new XXXValue(Types::BaseType, (uint64_t)baseType));
+	defineType(rootBlock, "BaseType", BuiltinTypes::Base, BuiltinTypes::Base);
 
 	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, BuiltinTypes::Builtin);
 	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr());

@@ -363,6 +363,12 @@ exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 	return LLVMBuildCall(setBlockExprASTParent, args, 2, "");
 }
 
+/* ---------------------------------------------------------------------------*\
+Cast: ExprAST to bool
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<bool> $E<ExprAST> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |
@@ -428,6 +434,15 @@ stmtdef int $I = $E<int> {
 	// 	LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
 	// 	LLVMGetInsertBlock()
 	// );
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Boolean negation
+Template: !$E<bool>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<bool> !$E<bool> {
+	return LLVMBuildNot(codegen($0, parentBlock), "not");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -743,6 +758,16 @@ int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
+exprdef<bool> $E<BaseType> == $E<BaseType> {
+int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+exprdef<bool> $E<BaseType> != $E<BaseType> {
+int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
+	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
 /* ---------------------------------------------------------------------------*\
 Cast: BuiltinType to BaseType
 Depends on: return $E
@@ -905,22 +930,39 @@ Name: Variable assignment
 Template: $I = $E
 \* ---------------------------------------------------------------------------*/
 exprdef<gettype($1, parentBlock)> $I = $E {
-	LLVMValueRef var = LookupScope(parentBlock, $0);
-	LLVMValueRef expr = codegen($1, parentBlock);
-	if (var)
+	extern string malloc(long size);
+	extern string strcpy(string destination, string source);
+	extern string strcat(string destination, string source);
+
+	BaseType varType = LookupScopeType(parentBlock, $0);
+	BuiltinType exprType = gettype($1, parentBlock);
+	ExprAST expr = $1;
+	if (varType != exprType)
 	{
-		LLVMBuildStore(expr, var);
+		expr = lookupCast(parentBlock, expr, varType);
+		if (!expr)
+		{
+			string err = malloc(256);
+			strcpy(err, "cannot convert <");
+			strcat(err, getTypeName(exprType));
+			strcat(err, "> to <");
+			strcat(err, getTypeName(varType));
+			strcat(err, "> in assignment");
+			throw CompileError(err, $0);
+		}
 	}
-	else
+
+	LLVMValueRef varValue = LookupScope(parentBlock, $0);
+	if (!varValue)
 	{
-		extern string malloc(long size);
-		extern string strcpy(string destination, string source);
-		extern string strcat(string destination, string source);
 		string err = malloc(256);
 		strcpy(err, "`");
 		strcat(err, $0.name);
 		strcat(err, "` was not declared in this scope");
 		throw CompileError(err, $0);
 	}
-	return expr;
+
+	LLVMValueRef exprValue = codegen(expr, parentBlock);
+	LLVMBuildStore(exprValue, varValue);
+	return exprValue;
 }

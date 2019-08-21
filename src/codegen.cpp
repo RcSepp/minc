@@ -358,6 +358,16 @@ extern "C"
 		else
 			return typeDesc->second.name;
 	}
+	const char* getTypeName2(const BaseType* type)
+	{
+		if (type == nullptr)
+			return NULL_TYPE.c_str();
+		const auto typeDesc = typereg.find(type);
+		if (typeDesc == typereg.cend())
+			return UNKNOWN_TYPE.c_str();
+		else
+			return typeDesc->second.name.c_str();
+	}
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value)
 	{
@@ -535,6 +545,11 @@ extern "C"
 	{
 		const Variable* var = scope->lookupScope(nameAST->name);
 		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
+	}
+	BaseType* LookupScopeType(BlockExprAST* scope, IdExprAST* nameAST)
+	{
+		const Variable* var = scope->lookupScope(nameAST->name);
+		return var == nullptr ? nullptr : var->type;
 	}
 
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)

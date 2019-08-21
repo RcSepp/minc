@@ -104,6 +104,6 @@ DM			->
 {GEQ}							return token::GEQ;
 {LEQ}							return token::LEQ;
 
-;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&	return yytext[0];
+;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!	return yytext[0];
 
 %%

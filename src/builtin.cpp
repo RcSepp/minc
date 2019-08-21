@@ -37,6 +37,7 @@ namespace MincFunctions
 	Func* getBlockExprASTParent;
 	Func* setBlockExprASTParent;
 	Func* getCastExprASTSource;
+	Func* getExprLoc;
 	Func* getExprLine;
 	Func* getExprColumn;
 	Func* getPointerToBuiltinType;
@@ -372,6 +373,7 @@ void initBuiltinSymbols()
 	BuiltinTypes::LLVMValueMetadataEntryRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8);
 
 	// AST types
+	BuiltinTypes::Location = BuiltinType::get("Location", wrap(Types::Location->getPointerTo()), 8);
 	BuiltinTypes::ExprAST = BuiltinType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
 	BuiltinTypes::ExprListAST = BuiltinType::get("ExprListAST", wrap(Types::ExprListAST->getPointerTo()), 8);
 	BuiltinTypes::LiteralExprAST = BuiltinType::get("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
@@ -393,6 +395,7 @@ void initBuiltinSymbols()
 	MincFunctions::getBlockExprASTParent = new Func("getBlockExprASTParent", BuiltinTypes::BlockExprAST, { BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::setBlockExprASTParent = new Func("setBlockExprASTParent", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::getCastExprASTSource = new Func("getCastExprASTSource", BuiltinTypes::ExprAST, { BuiltinTypes::CastExprAST }, false);
+	MincFunctions::getExprLoc = new Func("getExprLoc", BuiltinTypes::Location, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getExprLine = new Func("getExprLine", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getExprColumn = new Func("getExprColumn", BuiltinTypes::Int32, { BuiltinTypes::ExprAST }, false);
 	MincFunctions::getPointerToBuiltinType = new Func("getPointerToBuiltinType", BuiltinTypes::Builtin, { BuiltinTypes::Builtin }, false);
@@ -426,6 +429,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		MincFunctions::getBlockExprASTParent,
 		MincFunctions::setBlockExprASTParent,
 		MincFunctions::getPointerToBuiltinType,
+		MincFunctions::getExprLoc,
 		MincFunctions::getExprLine,
 		MincFunctions::getExprColumn,
 		MincFunctions::lookupScope,
@@ -459,6 +463,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineType(rootBlock, "double", BuiltinTypes::Builtin, BuiltinTypes::Double);
 	defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, BuiltinTypes::DoublePtr);
 	defineType(rootBlock, "string", BuiltinTypes::Builtin, BuiltinTypes::Int8Ptr);
+	defineType(rootBlock, "Location", BuiltinTypes::Builtin, BuiltinTypes::Location);
 	defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, BuiltinTypes::ExprAST);
 	defineType(rootBlock, "ExprASTPtr", BuiltinTypes::Builtin, BuiltinTypes::ExprAST->Ptr());
 	defineType(rootBlock, "ExprListAST", BuiltinTypes::Builtin, BuiltinTypes::ExprListAST);

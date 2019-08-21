@@ -172,6 +172,7 @@ namespace BuiltinTypes
 	BuiltinType* LLVMValueMetadataEntryRef;
 
 	// AST types
+	BuiltinType* Location;
 	BuiltinType* ExprAST;
 	BuiltinType* ExprListAST;
 	BuiltinType* LiteralExprAST;

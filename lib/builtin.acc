@@ -309,6 +309,12 @@ stmtdef BlockExprAST $I = $E<BlockExprAST> {
 	addToScope(parentBlock, $0, BlockExprAST, foo);
 }
 
+exprdef<Location> $E<ExprAST>.loc {
+	LLVMValueRef args[1];
+	args[0] = codegen($0, parentBlock);
+	return LLVMBuildCall(getExprLoc, args, 1, "");
+}
+
 exprdef<long> $E<ExprListAST>.size {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);

@@ -111,6 +111,7 @@ namespace BuiltinTypes
 	extern BuiltinType* LLVMValueMetadataEntryRef;
 
 	// AST types
+	extern BuiltinType* Location;
 	extern BuiltinType* ExprAST;
 	extern BuiltinType* ExprListAST;
 	extern BuiltinType* LiteralExprAST;

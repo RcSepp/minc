@@ -299,6 +299,7 @@ extern "C"
 		return expr->resolvedParams[0];
 	}
 
+	const Location* getExprLoc(const ExprAST* expr) { return &expr->loc; }
 	const char* getExprFilename(const ExprAST* expr) { return expr->loc.filename; }
 	unsigned getExprLine(const ExprAST* expr) { return expr->loc.begin_line; }
 	unsigned getExprColumn(const ExprAST* expr) { return expr->loc.begin_col; }

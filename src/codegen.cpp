@@ -295,7 +295,7 @@ extern "C"
 
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr)
 	{
-		scope->lookupExpr(expr);
+		expr->resolveTypes(scope);
 	}
 
 	BlockExprAST* wrapExprAST(ExprAST* expr)
@@ -473,7 +473,7 @@ extern "C"
 
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
 	{
-		BaseType* fromType = expr->getType(scope);
+		BaseType* fromType = (expr->exprtype == ExprAST::ExprType::CAST ? expr->resolvedParams[0] : expr)->getType(scope);
 		if (fromType == toType)
 			return expr;
 
@@ -682,6 +682,11 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 	}
 	else
 		throw UndefinedExprException{this};
+}
+
+BaseType* ExprAST::getType(const BlockExprAST* parentBlock) const
+{
+	return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
 }
 
 Variable StmtAST::codegen(BlockExprAST* parentBlock)

@@ -79,10 +79,7 @@ public:
 	ExprAST(const Location& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedContext(nullptr) {}
 	virtual ~ExprAST() {}
 	virtual Variable codegen(BlockExprAST* parentBlock);
-	virtual BaseType* getType(const BlockExprAST* parentBlock) const
-	{
-		return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
-	}
+	virtual BaseType* getType(const BlockExprAST* parentBlock) const;
 	virtual bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
 	virtual void resolveTypes(BlockExprAST* block);

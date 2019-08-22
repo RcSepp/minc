@@ -492,29 +492,6 @@ int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 }
 
 /* ---------------------------------------------------------------------------*\
-Name: 64 bit signed integer declaration
-Template: long $I
-Depends on: none
-\* ---------------------------------------------------------------------------*/
-stmtdef long $I {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt64Type(), "");
-	LLVMSetAlignment(storage, 4);
-	addToScope(parentBlock, $0, long, storage);
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: 64 bit signed integer declaration with initialization
-Template: long $I = $E<long>
-Depends on: LLVMValueRef $I = $E<LLVMValueRef>
-\* ---------------------------------------------------------------------------*/
-stmtdef long $I = $E<long> {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt64Type(), "");
-	LLVMSetAlignment(storage, 4);
-	LLVMBuildStore(codegen($1, parentBlock), storage);
-	addToScope(parentBlock, $0, long, storage);
-}
-
-/* ---------------------------------------------------------------------------*\
 Name: Long bitwise AND
 Template: $E<long> & $E<long>
 Depends on: return $E
@@ -526,29 +503,6 @@ exprdef<long> $E<long> & $E<long> {
 exprdef<bool> $E<long> != $E<long> {
 int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: 64 bit float declaration
-Template: double $I
-Depends on: none
-\* ---------------------------------------------------------------------------*/
-stmtdef double $I {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
-	LLVMSetAlignment(foo, 8);
-	addToScope(parentBlock, $0, double, foo);
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: 64 bit float declaration with initialization
-Template: int $I = $E<double>
-Depends on: LLVMValueRef $I = $E<LLVMValueRef>
-\* ---------------------------------------------------------------------------*/
-stmtdef double $I = $E<double> {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMDoubleType(), "");
-	LLVMSetAlignment(foo, 8);
-	LLVMBuildStore(codegen($1, parentBlock), foo);
-	addToScope(parentBlock, $0, double, foo);
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -748,6 +702,13 @@ exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
 	return llvmtype;
 }
 
+exprdef<int> $E<BuiltinType>.align {
+	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
+	align = LLVMBuildLoad(align, "align");
+	LLVMSetAlignment(align, 4);
+	return align;
+}
+
 exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
 int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
@@ -841,6 +802,10 @@ stmtdef for(int $I = $E; $E; $E) $B {
 	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), loopVar), 4);
 	addToScope($4, $0, int, loopVar);
 
+	// Reresolve condition and update expressions to take loop variable into account
+	resolveExprAST($4, $2);
+	resolveExprAST($4, $3);
+
 	// Create basic blocks
 	LLVMBasicBlockRef forCondBlock = LLVMAppendBasicBlock(function, "forCondBlock");
 	LLVMBasicBlockRef forBlock = LLVMAppendBasicBlock(function, "forBlock");
@@ -923,6 +888,50 @@ stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
 	}
 
 	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 1);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Variable declaration
+Template: $E<BuiltinType> $I
+\* ---------------------------------------------------------------------------*/
+stmtdef $E<BuiltinType> $I {
+	BuiltinType type = getconst($0, parentBlock);
+	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
+	LLVMSetAlignment(storage, type.align);
+	addToScope(parentBlock, $1, type, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Variable declaration with initialization
+Template: $E<BuiltinType> $I = $E<BuiltinValue>
+\* ---------------------------------------------------------------------------*/
+stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
+	extern string malloc(long size);
+	extern string strcpy(string destination, string source);
+	extern string strcat(string destination, string source);
+
+	BuiltinType varType = getconst($0, parentBlock);
+	BuiltinType exprType = gettype($2, parentBlock);
+	ExprAST expr = $2;
+	if (varType != exprType)
+	{
+		expr = lookupCast(parentBlock, expr, varType);
+		if (!expr)
+		{
+			string err = malloc(256);
+			strcpy(err, "cannot convert <");
+			strcat(err, getTypeName(exprType));
+			strcat(err, "> to <");
+			strcat(err, getTypeName(varType));
+			strcat(err, "> in initialization");
+			throw CompileError(err, $0);
+		}
+	}
+
+	LLVMValueRef storage = LLVMBuildAlloca(varType.llvmtype, "");
+	LLVMSetAlignment(storage, varType.align);
+	LLVMBuildStore(codegen(expr, parentBlock), storage);
+	addToScope(parentBlock, $1, varType, storage);
 }
 
 /* ---------------------------------------------------------------------------*\

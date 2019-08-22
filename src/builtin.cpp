@@ -30,6 +30,7 @@ std::list<std::pair<std::string, const Variable>> capturedScope;
 
 namespace MincFunctions
 {
+	Func* resolveExprAST;
 	Func* getExprListASTExpression;
 	Func* getExprListASTSize;
 	Func* getIdExprASTName;
@@ -391,6 +392,7 @@ void initBuiltinSymbols()
 
 	// >>> Create Minc extern functions
 
+	MincFunctions::resolveExprAST = new Func("resolveExprAST", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST }, false);
 	MincFunctions::getExprListASTExpression = new Func("getExprListASTExpression", BuiltinTypes::ExprAST, { BuiltinTypes::ExprListAST, BuiltinTypes::Int64 }, false);
 	MincFunctions::getExprListASTSize = new Func("getExprListASTSize", BuiltinTypes::Int64, { BuiltinTypes::ExprListAST }, false);
 	MincFunctions::getIdExprASTName = new Func("getIdExprASTName", BuiltinTypes::Int8Ptr, { BuiltinTypes::IdExprAST }, false);
@@ -429,6 +431,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 	// Define Minc extern functions
 	for (Func* func: {
+		MincFunctions::resolveExprAST,
 		MincFunctions::getExprListASTSize,
 		MincFunctions::getIdExprASTName,
 		MincFunctions::getLiteralExprASTValue,
@@ -1331,12 +1334,8 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			Value* exprVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
 			Value* parentBlockVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
 
-			exprVal = builder->CreateBitCast(exprVal, Types::CastExprAST->getPointerTo()); // exprVal = (CastExprAST*)exprVal
-			Function* func = MincFunctions::getCastExprASTSource->getFunction(currentModule);
-			exprVal = builder->CreateCall(func, { exprVal }); // exprVal = getCastExprASTSource(exprVal)
-
-			func = MincFunctions::getType->getFunction(currentModule);
-			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal }); // resultVal = getCastExprASTSource(exprVal, parentBlockVal)
+			Function* func = MincFunctions::getType->getFunction(currentModule);
+			Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal }); // resultVal = getType(exprVal, parentBlockVal)
 			resultVal = builder->CreateBitCast(resultVal, Types::BuiltinType); // resultVal = (BuiltinType*)resultVal //TODO: Return BaseType instead of BuiltinType
 			return Variable(BuiltinTypes::/*Base*/Builtin, new XXXValue(resultVal)); //TODO: Return BaseType instead of BuiltinType
 		},

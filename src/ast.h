@@ -9,6 +9,7 @@
 #include <array>
 #include <functional>
 #include <cassert>
+#include <regex>
 
 #include "api.h"
 
@@ -324,7 +325,7 @@ public:
 		return expr->exprtype == this->exprtype && strcmp(((LiteralExprAST*)expr)->value,  this->value) == 0;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
-	std::string str() const { return std::string(value); }
+	std::string str() const { return std::regex_replace(std::regex_replace(value, std::regex("\n"), "\\n"), std::regex("\r"), "\\r"); }
 };
 
 class IdExprAST : public ExprAST

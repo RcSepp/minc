@@ -3,12 +3,6 @@
 #include <iostream>
 #include "api.h"
 
-class BaseType {};
-struct BaseValue
-{
-	virtual uint64_t getConstantValue() = 0;
-};
-
 BaseType* PAWS_BASE_TYPE = new BaseType();
 BaseType* PAWS_META_TYPE = new BaseType();
 BaseType* PAWS_STRING_TYPE = new BaseType();

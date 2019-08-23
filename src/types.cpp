@@ -10,7 +10,6 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/DIBuilder.h>
 
-#include "api.h"
 #include "types.h"
 
 using namespace llvm;

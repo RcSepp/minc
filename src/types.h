@@ -1,6 +1,8 @@
 #ifndef __INCLUDE_H
 #define __INCLUDE_H
 
+#include "api.h"
+
 namespace llvm {
 	class Value;
 	class Constant;
@@ -9,12 +11,6 @@ namespace llvm {
 
 struct Func;
 struct LLVMOpaqueType;
-
-struct BaseType {};
-struct BaseValue
-{
-	virtual uint64_t getConstantValue() = 0;
-};
 
 enum Visibility {
 	PRIVATE, PUBLIC, PROTECTED

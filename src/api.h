@@ -1,8 +1,14 @@
+#ifndef __MINC_API_H
+#define __MINC_API_H
+
 #include <string>
 #include <vector>
 
-struct BaseType;
-struct BaseValue;
+struct BaseType {};
+struct BaseValue
+{
+	virtual uint64_t getConstantValue() = 0;
+};
 class JitFunction;
 
 class ExprAST;
@@ -84,3 +90,5 @@ extern "C"
 	void removeJitFunctionModule(JitFunction* jitFunc);
 	void removeJitFunction(JitFunction* jitFunc);
 }
+
+#endif

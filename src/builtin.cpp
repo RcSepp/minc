@@ -12,7 +12,6 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
 
-#include "api.h"
 #include "llvm_constants.h"
 
 extern llvm::LLVMContext* context;

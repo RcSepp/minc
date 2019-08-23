@@ -255,10 +255,10 @@ auto foo = ExprListAST('\0', iter.first).str();
 	return bestStmt;
 }
 
-const std::pair<const ExprAST*, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
+const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	const std::pair<const ExprAST*, CodegenContext*>* bestStmt = nullptr;
+	const std::pair<const ExprAST*const, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
@@ -298,10 +298,10 @@ const std::pair<const ExprAST*, CodegenContext*>* StatementRegister::lookupExpr(
 	return bestStmt;
 }
 
-void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
+void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const
 {
 	MatchScore score;
-	const std::pair<const ExprAST*, CodegenContext*>* bestStmt = nullptr;
+	const std::pair<const ExprAST*const, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 		score = 0;
@@ -324,7 +324,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 #endif
 	expr->resolvedParams.clear();
 	MatchScore currentScore, score = -2147483648;
-	const std::pair<const ExprAST*, CodegenContext*> *currentContext, *context = nullptr;
+	const std::pair<const ExprAST*const, CodegenContext*> *currentContext, *context = nullptr;
 	for (const BlockExprAST* block = this; block && !context; block = block->parent)
 	{
 		currentScore = score;

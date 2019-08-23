@@ -85,7 +85,16 @@ public:
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
 	virtual void resolveTypes(BlockExprAST* block);
 	virtual std::string str() const = 0;
+	virtual int comp(const ExprAST* other) const { return this->exprtype - other->exprtype; }
 };
+
+namespace std
+{
+	template<> struct less<ExprAST*>
+	{
+		bool operator()(const ExprAST* lhs, const ExprAST* rhs) const { return lhs->comp(rhs) < 0; }
+	};
+}
 
 class ExprListAST : public ExprAST
 {
@@ -117,6 +126,20 @@ public:
 			result += s + (*expriter)->str();
 		return result;
 	}
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const ExprListAST* _other = (const ExprListAST*)other;
+		c = (int)this->exprs.size() - (int)_other->exprs.size();
+		if (c) return c;
+		for (std::vector<ExprAST*>::const_iterator t = this->exprs.cbegin(), o = _other->exprs.cbegin(); t != this->exprs.cend(); ++t, ++o)
+		{
+			c = (*t)->comp(*o);
+			if (c) return c;
+		}
+		return 0;
+	}
 
 	std::vector<ExprAST*>::iterator begin() { return exprs.begin(); }
 	std::vector<ExprAST*>::const_iterator cbegin() const { return exprs.cbegin(); }
@@ -137,24 +160,24 @@ std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
 class StatementRegister
 {
 private:
-	std::list<std::pair<const std::vector<ExprAST*>, CodegenContext*>> stmtreg;
-	std::array<std::list<std::pair<const ExprAST*, CodegenContext*>>, ExprAST::NUM_EXPR_TYPES> exprreg;
+	std::map<const std::vector<ExprAST*>, CodegenContext*> stmtreg;
+	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
 public:
-	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg.push_front({tplt, stmt}); }
-	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(this->stmtreg.begin(), stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
+	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[tplt] = stmt; }
+	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
 	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	{
-		exprreg[tplt->exprtype].push_front({tplt, expr});
+		exprreg[tplt->exprtype][tplt] = expr;
 	}
 	void importExprs(StatementRegister& stmtreg)
 	{
 		for (size_t i = 0; i < exprreg.size(); ++i)
-			this->exprreg[i].insert(this->exprreg[i].begin(), stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
+			this->exprreg[i].insert(stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
 	}
-	const std::pair<const ExprAST*, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
-	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const;
+	const std::pair<const ExprAST*const, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
+	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const;
 };
 
 class StmtAST : public ExprAST
@@ -176,6 +199,20 @@ void resolveTypes(BlockExprAST* block) { assert(0); }
 		for (ExprASTIter expr = begin; ++expr != end;)
 			result += ' ' + (*expr)->str();
 		return result;
+	}
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const StmtAST* _other = (const StmtAST*)other;
+		c = (int)(this->end - this->begin) - (int)(_other->end - _other->begin);
+		if (c) return c;
+		for (std::vector<ExprAST*>::const_iterator t = this->begin, o = _other->begin; t != this->end; ++t, ++o)
+		{
+			c = (*t)->comp(*o);
+			if (c) return c;
+		}
+		return 0;
 	}
 };
 
@@ -206,7 +243,7 @@ public:
 		stmtreg.defineExpr(tplt, expr);
 	}
 	bool lookupExpr(ExprAST* expr) const;
-	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
+	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 			block->stmtreg.lookupExprCandidates(this, expr, candidates);
@@ -301,6 +338,20 @@ public:
 
 		return result + '}';
 	}
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const BlockExprAST* _other = (const BlockExprAST*)other;
+		c = (int)this->exprs->size() - (int)_other->exprs->size();
+		if (c) return c;
+		for (std::vector<ExprAST*>::const_iterator t = this->exprs->cbegin(), o = _other->exprs->cbegin(); t != this->exprs->cend(); ++t, ++o)
+		{
+			c = (*t)->comp(*o);
+			if (c) return c;
+		}
+		return 0;
+	}
 };
 
 class StopExprAST : public ExprAST
@@ -326,6 +377,13 @@ public:
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
 	std::string str() const { return std::regex_replace(std::regex_replace(value, std::regex("\n"), "\\n"), std::regex("\r"), "\\r"); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const LiteralExprAST* _other = (const LiteralExprAST*)other;
+		return strcmp(this->value, _other->value);
+	}
 };
 
 class IdExprAST : public ExprAST
@@ -336,6 +394,13 @@ public:
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
 	std::string str() const { return name; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const IdExprAST* _other = (const IdExprAST*)other;
+		return strcmp(this->name, _other->name);
+	}
 };
 
 class CastExprAST : public ExprAST
@@ -362,6 +427,15 @@ public:
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	std::string str() const { return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + '>'); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const PlchldExprAST* _other = (const PlchldExprAST*)other;
+		c = this->p1 - _other->p1;
+		if (c) return c;
+		return strcmp(this->p2, _other->p2);
+	}
 };
 
 class ParamExprAST : public ExprAST
@@ -389,6 +463,13 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return '$' + (dynamicIdx ? '[' + dynamicIdx->str() + ']' : std::to_string(staticIdx)); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const ParamExprAST* _other = (const ParamExprAST*)other;
+		return this->staticIdx - _other->staticIdx;
+	}
 };
 
 class EllipsisExprAST : public ExprAST
@@ -410,6 +491,13 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return expr->str() + ", ..."; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const EllipsisExprAST* _other = (const EllipsisExprAST*)other;
+		return this->expr->comp(_other->expr);
+	}
 };
 
 class CallExprAST : public ExprAST
@@ -434,6 +522,15 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return var->str() + "(" + args->str() + ")"; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const CallExprAST* _other = (const CallExprAST*)other;
+		c = this->var->comp(_other->var);
+		if (c) return c;
+		return this->args->comp(_other->args);
+	}
 };
 
 class PrecExprAST : public ExprAST
@@ -455,6 +552,13 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return "(" + val->str() + ")"; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const PrecExprAST* _other = (const PrecExprAST*)other;
+		return this->val->comp(_other->val);
+	}
 };
 
 class SubscrExprAST : public ExprAST
@@ -479,6 +583,15 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return var->str() + "[" + idx->str() + "]"; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const SubscrExprAST* _other = (const SubscrExprAST*)other;
+		c = this->var->comp(_other->var);
+		if (c) return c;
+		return this->idx->comp(_other->idx);
+	}
 };
 
 class TpltExprAST : public ExprAST
@@ -503,6 +616,15 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return var->str() + "<" + args->str() + ">"; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const TpltExprAST* _other = (const TpltExprAST*)other;
+		c = this->var->comp(_other->var);
+		if (c) return c;
+		return this->args->comp(_other->args);
+	}
 };
 
 class TerOpExprAST : public ExprAST
@@ -537,6 +659,21 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return a->str() + " " + opstr1 + " " + b->str() + " " + opstr2 + " " + c->str(); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const TerOpExprAST* _other = (const TerOpExprAST*)other;
+		c = this->op1 - _other->op1;
+		if (c) return c;
+		c = this->op2 - _other->op2;
+		if (c) return c;
+		c = this->a->comp(_other->a);
+		if (c) return c;
+		c = this->b->comp(_other->b);
+		if (c) return c;
+		return this->c->comp(_other->c);
+	}
 };
 
 class BinOpExprAST : public ExprAST
@@ -562,6 +699,17 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return a->str() + " " + opstr + " " + b->str(); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const BinOpExprAST* _other = (const BinOpExprAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
+		c = this->a->comp(_other->a);
+		if (c) return c;
+		return this->b->comp(_other->b);
+	}
 };
 
 class PrefixExprAST : public ExprAST
@@ -585,6 +733,15 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return opstr + a->str(); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const PrefixExprAST* _other = (const PrefixExprAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
+		return this->a->comp(_other->a);
+	}
 };
 
 class PostfixExprAST : public ExprAST
@@ -608,6 +765,15 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return a->str() + opstr; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const PostfixExprAST* _other = (const PostfixExprAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
+		return this->a->comp(_other->a);
+	}
 };
 
 #endif

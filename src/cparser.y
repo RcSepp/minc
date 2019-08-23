@@ -35,7 +35,9 @@
 %type<ExprAST*> id_or_plchld expr
 
 %start file
-%right '='
+%right '=' '?' ':'
+%left OR
+%left AND
 %left '&'
 %left EQ NE
 %left '<' LEQ '>' GEQ
@@ -43,6 +45,7 @@
 %left '*' '/' '%'
 %left NEW
 %left '.' CALL SUBSCRIPT TPLT DM
+%left PREC
 
 %%
 
@@ -89,12 +92,16 @@ expr
 	| PARAM { $$ = new ParamExprAST(getloc(@1, @1), $1); }
 	| PARAMS '[' expr ']' { $$ = new ParamExprAST(getloc(@1, @4), $3); }
 	| id_or_plchld { $$ = $1; }
+	| '(' expr ')' %prec PREC { $$ = new PrecExprAST(getloc(@1, @3), $2); }
 	| expr '(' ')' %prec CALL { $$ = new CallExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| expr '(' expr_lists ')' %prec CALL { $$ = new CallExprAST(getloc(@1, @4), $1, $3); }
 	| expr '[' ']' %prec SUBSCRIPT { $$ = new SubscrExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| expr '[' expr_lists ']' %prec SUBSCRIPT { $$ = new SubscrExprAST(getloc(@1, @4), $1, $3); }
 	| id_or_plchld '<' '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @3), $1, new ExprListAST(';')); }
 	| id_or_plchld '<' expr_lists '>' %prec TPLT { $$ = new TpltExprAST(getloc(@1, @4), $1, $3); }
+
+	// Tertiary operators
+	| expr '?' expr ':' expr { $$ = new TerOpExprAST(getloc(@1, @5), (int)'?', (int)':', "?", ":", $1, $3, $5); }
 
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
@@ -109,10 +116,13 @@ expr
 	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
 	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
 	| expr GEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
+	| expr AND expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
+	| expr OR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
 
 	// Unary operators
 	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
+	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
 ;
 

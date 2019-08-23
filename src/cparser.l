@@ -17,7 +17,7 @@ using token = yy::CParser::token;
 %option yyclass="CLexer"
 %option prefix="C"
 
-LITERAL		([0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]*\'[^\'\n]*\')
+LITERAL		(-?[0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]*\'[^\'\n]*\')
 ID			([a-zA-Z_][0-9a-zA-Z_]*)|$#
 PLCHLD1		$[A-Z]
 PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*>
@@ -28,6 +28,8 @@ EQ			==
 NE			!=
 GEQ			>=
 LEQ			<=
+AND			&&
+OR			\|\|
 NEW			new
 DM			->
 
@@ -103,7 +105,9 @@ DM			->
 {NE}							return token::NE;
 {GEQ}							return token::GEQ;
 {LEQ}							return token::LEQ;
+{AND}							return token::AND;
+{OR}							return token::OR;
 
-;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!	return yytext[0];
+;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!|:|\?	return yytext[0];
 
 %%

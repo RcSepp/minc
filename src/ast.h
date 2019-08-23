@@ -68,7 +68,7 @@ class ExprAST
 public:
 	const Location loc;
 	enum ExprType {
-		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, CALL, SUBSCR, TPLT, BINOP, PREOP, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, CALL, PREC, SUBSCR, TPLT, TEROP, BINOP, PREOP, POSTOP, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -436,6 +436,27 @@ public:
 	std::string str() const { return var->str() + "(" + args->str() + ")"; }
 };
 
+class PrecExprAST : public ExprAST
+{
+public:
+	ExprAST *val;
+	PrecExprAST(const Location& loc, ExprAST* val) : ExprAST(loc, ExprAST::ExprType::PREC), val(val) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype && val->match(block, ((PrecExprAST*)expr)->val, score);
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+	{
+		val->collectParams(block, ((PrecExprAST*)expr)->val, params, paramIdx);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		val->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+	}
+	std::string str() const { return "(" + val->str() + ")"; }
+};
+
 class SubscrExprAST : public ExprAST
 {
 public:
@@ -484,6 +505,40 @@ public:
 	std::string str() const { return var->str() + "<" + args->str() + ">"; }
 };
 
+class TerOpExprAST : public ExprAST
+{
+public:
+	int op1, op2;
+	ExprAST *a, *b, *c;
+	const std::string opstr1, opstr2;
+	TerOpExprAST(const Location& loc, int op1, int op2, const char* opstr1, const char* opstr2, ExprAST* a, ExprAST* b, ExprAST* c)
+		: ExprAST(loc, ExprAST::ExprType::TEROP), op1(op1), op2(op2), a(a), b(b), c(c), opstr1(opstr1), opstr2(opstr2) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype
+			&& ((TerOpExprAST*)expr)->op1 == this->op1
+			&& ((TerOpExprAST*)expr)->op2 == this->op2
+			&& a->match(block, ((TerOpExprAST*)expr)->a, score)
+			&& b->match(block, ((TerOpExprAST*)expr)->b, score)
+			&& c->match(block, ((TerOpExprAST*)expr)->c, score)
+		;
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+	{
+		a->collectParams(block, ((TerOpExprAST*)expr)->a, params, paramIdx);
+		b->collectParams(block, ((TerOpExprAST*)expr)->b, params, paramIdx);
+		c->collectParams(block, ((TerOpExprAST*)expr)->c, params, paramIdx);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		a->resolveTypes(block);
+		b->resolveTypes(block);
+		c->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+	}
+	std::string str() const { return a->str() + " " + opstr1 + " " + b->str() + " " + opstr2 + " " + c->str(); }
+};
+
 class BinOpExprAST : public ExprAST
 {
 public:
@@ -530,6 +585,29 @@ public:
 		ExprAST::resolveTypes(block);
 	}
 	std::string str() const { return opstr + a->str(); }
+};
+
+class PostfixExprAST : public ExprAST
+{
+public:
+	int op;
+	ExprAST *a;
+	const std::string opstr;
+	PostfixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a) : ExprAST(loc, ExprAST::ExprType::POSTOP), op(op), a(a), opstr(opstr) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score);
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+	{
+		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		a->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+	}
+	std::string str() const { return a->str() + opstr; }
 };
 
 #endif

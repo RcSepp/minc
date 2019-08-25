@@ -16,6 +16,7 @@
 %{
 #include <vector>
 #include <stdlib.h>
+#include <fstream>
 #include "../src/cparser.h"
 
 #undef yylex
@@ -131,4 +132,30 @@ expr
 void yy::CParser::error( const location_type &l, const std::string &err_message )
 {
 	std::cerr << "Error: " << err_message << " at " << l << "\n"; //TODO: throw syntax error
+}
+
+BlockExprAST* parseCFile(const char* filename)
+{
+	// Open source file
+	std::ifstream in(filename);
+	if (!in.good())
+	{
+		std::cerr << "\033[31merror:\033[0m " << std::string(filename) << ": No such file or directory\n";
+		return nullptr;
+	}
+
+	// Get absolute path to source file
+	char buf[1024];
+	const char* realPath = realpath(filename, buf);
+
+	// Parse file into rootBlock
+	BlockExprAST* rootBlock;
+	CLexer lexer(&in, &std::cout);
+	yy::CParser parser(lexer, realPath, &rootBlock);
+	parser.parse();
+
+	// Close source file
+	in.close();
+
+	return rootBlock;
 }

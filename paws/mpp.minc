@@ -1,0 +1,93 @@
+APP_NAME = "minc";
+HELP_MESSAGE = "minc compiler\n";
+COMMANDS = map(
+	"build": "compile to executable",
+	"run": "compile and run",
+	"parse": "compile to LLVM IR",
+	"debug": "compile LLVM IR and binary"
+);
+
+if (!COMMANDS.contains($1))
+{
+	print(HELP_MESSAGE);
+	print("Usage:");
+	print("    " + APP_NAME + " [arguments]");
+	print();
+	print("The commands are:");
+	print();
+	for (cmd, desc: COMMANDS) {
+		print("    " + cmd + (8 - cmd.length()) * " " + desc);
+	}
+	return 0;
+}
+command = $1;
+
+sourcePath = $2 != NULL ? $2 : "-";
+outputPath = $2;
+outputPath = outputPath.substr(max(outputPath.rfind("/"), outputPath.rfind("\\")) + 1);
+dt = outputPath.rfind(".");
+if (dt != -1) outputPath = outputPath.substr(0, dt);
+outputDebugSymbols = 1;
+
+PAWS_EXT = ".minc";
+sourceIsPaws = sourcePath.length() >= PAWS_EXT.length() && sourcePath.substr(sourcePath.length() - PAWS_EXT.length()) == PAWS_EXT;
+PY_EXT = ".py";
+sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.substr(sourcePath.length() - PY_EXT.length()) == PY_EXT;
+
+// Get absolute path to source file
+realPath = sourcePath == "-" ? sourcePath : realpath(sourcePath);
+
+// Parse source code from file or stdin into AST
+if (!sourceIsPython)
+	rootBlock = parseCFile(realPath);
+else
+	rootBlock = 0; //TODO
+
+// Print AST
+//print(str(rootBlock));
+
+// Compile AST
+initCodeGenerator();
+initBuiltinSymbols();
+module = createModule(realPath, rootBlock, outputDebugSymbols);
+defineBuiltinSymbols(rootBlock);
+rootBlock.codegen(FILE_SCOPE);
+module.finalize();
+
+// Execute command
+if (command == "parse" || command == "debug")
+{
+	if (outputPath == "-")
+		module.print();
+	else
+		module.print(outputPath + ".ll");
+}
+if (command == "build")
+{
+	errstr = "";
+	if (!module.compile(outputPath + ".o", errstr))
+	{
+		printerr(errstr);
+		return -1;
+	}
+}
+if (command == "run" || command == "debug")
+{
+	module.run();
+}
+
+// rootBlock.exprs; // TODO
+// // TODO:
+// // See paws.cpp:571
+// // rootBlock.exprs could return either a map<string, CodegenContext> or a map<ExprAST*, CodegenContext>
+// // The goal would be to replace `exprdef "..." { ... }` with `rootBlock.exprs[""] = { ... }`
+// //
+// // Example:
+// rootBlock.exprs["if ($E) $S"] = {
+// 	if (codegen($0, parentBlock)) {
+// 		codegen($1, parentBlock);
+// 	}
+// }
+// print(rootBlock.exprs); // { "if ($E) $S": ... }
+// rootBlock.remove("if ($E) $S");
+// print(rootBlock.exprs); // { }

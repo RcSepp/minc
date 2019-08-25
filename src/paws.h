@@ -3,6 +3,6 @@
 
 class BlockExprAST;
 
-void PAWRun(BlockExprAST* block);
+int PAWRun(BlockExprAST* block, int argc, char **argv);
 
 #endif

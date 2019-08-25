@@ -13,7 +13,7 @@
 #include "paws.h"
 
 const std::string APP_NAME = "minc";
-const std::string HELP_MESSAGE = "AsyncC compiler\n";
+const std::string HELP_MESSAGE = "minc compiler\n";
 const std::map<std::string, std::string> COMMANDS = {
 	{"build", "compile to executable"},
 	{"run", "compile and run"},
@@ -23,6 +23,8 @@ const std::map<std::string, std::string> COMMANDS = {
 
 int main(int argc, char **argv)
 {
+	int result = 0;
+
 	// >>> Parse command line
 
 	if (argc < 2 || COMMANDS.find(argv[1]) == COMMANDS.end())
@@ -47,7 +49,7 @@ int main(int argc, char **argv)
 	if (dt != std::string::npos) outputPath = outputPath.substr(0, dt);
 	bool outputDebugSymbols = true;
 
-	const std::string PAWS_EXT = ".mpw";
+	const std::string PAWS_EXT = ".minc";
 	const bool sourceIsPaws = sourcePath.length() >= PAWS_EXT.length() && sourcePath.compare(sourcePath.length() - PAWS_EXT.length(), PAWS_EXT.length(), PAWS_EXT) == 0;
 	const std::string PY_EXT = ".py";
 	const bool sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.compare(sourcePath.length() - PY_EXT.length(), PY_EXT.length(), PY_EXT) == 0;
@@ -103,7 +105,11 @@ int main(int argc, char **argv)
 	IModule* module;
 	try {
 		if (sourceIsPaws)
-			PAWRun(rootBlock);
+		{
+			argv[2] = argv[1];
+			argv[1] = argv[0];
+			result = PAWRun(rootBlock, --argc, ++argv);
+		}
 		else
 		{
 			module = createModule(realPath, rootBlock, outputDebugSymbols);
@@ -168,5 +174,5 @@ std::cerr << std::endl;
 		}
 	}
 
-	return 0;
+	return result;
 }

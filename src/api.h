@@ -35,6 +35,12 @@ typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::v
 
 extern "C"
 {
+	// >>> Parser
+
+	BlockExprAST* parseCFile(const char* filename);
+
+	// >>> Code Generator
+
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
 	BaseType* getType(ExprAST* expr, const BlockExprAST* scope);
@@ -84,6 +90,8 @@ extern "C"
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 
 	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc);
+
+	// >>> Compiler
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
 	uint64_t compileJitFunction(JitFunction* jitFunc);

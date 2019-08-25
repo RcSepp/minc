@@ -100,7 +100,7 @@ public:
 		//if (dbuilder)
 		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		cbk(parentBlock, params, stmtArgs);
-		return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
+		return VOID;
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{

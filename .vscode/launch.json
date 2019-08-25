@@ -12,6 +12,7 @@
             "program": "${workspaceFolder}/bin/minc",
             "args": [
                 "debug",
+                "../paws/mpp.minc",
                 "../examples/test.acc"
             ],
             "stopAtEntry": false,

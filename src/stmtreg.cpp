@@ -410,10 +410,10 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	{
 	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;
 		break;
-	case 'L': return expr->exprtype == ExprAST::ExprType::LITERAL;
-	case 'B': return expr->exprtype == ExprAST::ExprType::BLOCK;
-	case 'P': return expr->exprtype == ExprAST::ExprType::PLCHLD;
-	case 'V': return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
+	case 'L': score += 1; return expr->exprtype == ExprAST::ExprType::LITERAL;
+	case 'B': score += 1; return expr->exprtype == ExprAST::ExprType::BLOCK;
+	case 'P': score += 1; return expr->exprtype == ExprAST::ExprType::PLCHLD;
+	case 'V': score += 1; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
 	case 'S':
 		score -= 1; // Penalize vague expression type

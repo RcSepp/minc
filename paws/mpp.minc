@@ -47,7 +47,7 @@ else
 //print(str(rootBlock));
 
 // Compile AST
-initCodeGenerator();
+initCompiler();
 initBuiltinSymbols();
 module = createModule(realPath, rootBlock, outputDebugSymbols);
 defineBuiltinSymbols(rootBlock);

@@ -1,90 +1,23 @@
-#define OUTPUT_JIT_CODE
-const bool ENABLE_JIT_CODE_DEBUG_SYMBOLS = false;
-const bool OPTIMIZE_JIT_CODE = true;
-
 // STD
 #include <string>
 #include <vector>
-#include <stack>
 #include <set>
 #include <map>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
-#include <stdio.h>
-#include <unistd.h>
-
-// LLVM-C //DELETE
-#include <llvm-c/Core.h> //DELETE
-
-// LLVM IR creation
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/DIBuilder.h>
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Verifier.h>
-
-// LLVM compilation
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/Host.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/TargetRegistry.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
-
-// LLVM execution
-//#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/MCJIT.h"
-//#include "llvm/ExecutionEngine/Interpreter.h"
-#include "llvm/ExecutionEngine/JITEventListener.h"
-#include "llvm/ExecutionEngine/GenericValue.h"
-
-// LLVM optimization
-#include <llvm/Transforms/Coroutines.h>
-#include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/PassManagerBuilder.h>
-#include <llvm/IR/LegacyPassManager.h>
 
 // Local includes
+#include "api.h"
 #include "cparser.h"
-#include "codegen.h"
-#include "llvm_constants.h" //DELETE
-#include "module.h"
-
-using namespace llvm;
 
 class KaleidoscopeJIT;
 class FileModule;
 
-extern LLVMContext* context;
-extern IRBuilder<>* builder;
-extern Module* currentModule;
-extern Function* currentFunc;
-extern BasicBlock* currentBB;
-extern DIBuilder* dbuilder;
-extern DIFile* dfile;
-extern Value* closure;
-
-// Singletons
-LLVMContext* context;
-IRBuilder<> *builder;
-BaseType BASE_TYPE;
-Variable VOID;
-
-// Current state
-Module* currentModule;
-Function *currentFunc;
-BasicBlock *currentBB;
-DIBuilder *dbuilder;
-DIFile *dfile;
+const Variable VOID = Variable(new BaseType(), nullptr);
 
 // Misc
-Value* closure;
 BlockExprAST* rootBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
 std::map<const BaseType*, TypeDescription> typereg;
+std::set<StepEvent> stepEventListeners;
 const std::string NULL_TYPE = "NULL";
 const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
@@ -97,8 +30,6 @@ public:
 	StaticStmtContext(StmtBlock cbk, void* stmtArgs = nullptr) : cbk(cbk), stmtArgs(stmtArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
-		//if (dbuilder)
-		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		cbk(parentBlock, params, stmtArgs);
 		return VOID;
 	}
@@ -117,8 +48,6 @@ public:
 	StaticExprContext(ExprBlock cbk, BaseType* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
-		//if (dbuilder)
-		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		return cbk(parentBlock, params, exprArgs);
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
@@ -136,8 +65,6 @@ public:
 	StaticExprContext2(ExprBlock cbk, ExprTypeBlock typecbk, void* exprArgs = nullptr) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
-		//if (dbuilder)
-		//	builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
 		return cbk(parentBlock, params, exprArgs);
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
@@ -161,88 +88,11 @@ public:
 	}
 };
 
-
-struct DynamicStmtContext : public CodegenContext
-{
-private:
-	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* stmtArgs);
-	funcPtr cbk;
-	void* stmtArgs;
-public:
-	DynamicStmtContext(JitFunction* func, void* stmtArgs = nullptr) : cbk(reinterpret_cast<funcPtr>(func->compile())), stmtArgs(stmtArgs) {}
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
-	{
-		//BasicBlock* _currentBB = currentBB;
-		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), stmtArgs);
-		//if (currentBB != _currentBB)
-		//	builder->SetInsertPoint(currentBB = _currentBB);
-		return VOID;
-	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
-	{
-		return nullptr;
-	}
-};
-
-struct DynamicExprContext : public CodegenContext
-{
-private:
-	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
-	funcPtr const cbk;
-	BaseType* const type;
-public:
-	DynamicExprContext(JitFunction* func, BaseType* type) : cbk(reinterpret_cast<funcPtr>(func->compile())), type(type) {}
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
-	{
-		//BasicBlock* _currentBB = currentBB;
-		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
-		//if (currentBB != _currentBB)
-		//	builder->SetInsertPoint(currentBB = _currentBB);
-		return Variable(type, new XXXValue(foo));
-	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
-	{
-		return type;
-	}
-};
-
-struct DynamicExprContext2 : public CodegenContext
-{
-private:
-	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
-	typedef BaseType* (*typeFuncPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, const BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST*const* params);
-	typeFuncPtr const typeCbk;
-	funcPtr const cbk;
-	// Keep typeCbk before cbk, so that typeFunc->compile() is called before func->compile().
-	// This is currently necessary to ensure JitFunction's are finalized in opposit order in which they were created.
-	// Otherwise, the line `builder->SetInsertPoint(currentBB = prevBB);` would not recover prevBB.
-public:
-	DynamicExprContext2(JitFunction* func, JitFunction* typeFunc) : typeCbk(reinterpret_cast<typeFuncPtr>(typeFunc->compile())), cbk(reinterpret_cast<funcPtr>(func->compile())) {}
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
-	{
-		//BasicBlock* _currentBB = currentBB;
-		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
-		BaseType* type = typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
-		//if (currentBB != _currentBB)
-		//	builder->SetInsertPoint(currentBB = _currentBB);
-		return Variable(type, new XXXValue(foo));
-	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
-	{
-		return typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
-	}
-};
-
 extern "C"
 {
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope)
 	{
 		return expr->codegen(scope);
-	}
-
-	LLVMValueRef codegenExprValue(ExprAST* expr, BlockExprAST* scope)
-	{
-		return wrap(((XXXValue*)expr->codegen(scope).value)->val);
 	}
 
 	uint64_t codegenExprConstant(ExprAST* expr, BlockExprAST* scope)
@@ -347,6 +197,10 @@ extern "C"
 	{
 		return rootBlock;
 	}
+	BlockExprAST* getFileScope()
+	{
+		return fileBlock;
+	}
 
 	const std::string& getTypeName(const BaseType* type)
 	{
@@ -379,20 +233,6 @@ extern "C"
 		typereg[type] = TypeDescription{name};
 	}
 
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
-	{
-		if (tplt.empty())
-			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
-		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
-		{
-			std::vector<ExprAST*> stoppedTplt(tplt);
-			stoppedTplt.push_back(new StopExprAST(Location{}));
-			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, stmtArgs));
-		}
-		else
-			scope->defineStatement(tplt, new DynamicStmtContext(func, stmtArgs));
-	}
-
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs)
 	{
 		// Append STOP expr to make tpltStr a valid statement
@@ -413,11 +253,6 @@ extern "C"
 			tpltBlock->exprs->pop_back();
 	
 		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
-	}
-
-	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
-	{
-		scope->defineExpr(tplt, new DynamicExprContext(func, type));
 	}
 
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
@@ -444,16 +279,6 @@ extern "C"
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
 		ExprAST* tplt = tpltBlock->exprs->at(0);
 		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock, exprArgs));
-	}
-
-	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
-	{
-		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
-	}
-
-	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
-	{
-		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
 	}
 
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
@@ -516,14 +341,9 @@ extern "C"
 		return report;
 	}
 
-	BaseType* getBaseType()
+	const Variable& getVoid()
 	{
-		return &BASE_TYPE;
-	}
-
-	BaseType* getVoidType()
-	{
-		return VOID.type;
+		return VOID;
 	}
 
 	void raiseCompileError(const char* msg, const ExprAST* loc)
@@ -531,86 +351,21 @@ extern "C"
 		throw CompileError(msg, loc->loc);
 	}
 
-	void AddToScope(BlockExprAST* targetBlock, IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
+	void registerStepEventListener(StepEvent listener)
 	{
-		targetBlock->addToScope(nameAST->name, type, new XXXValue(unwrap(val)));
+		stepEventListeners.insert(listener);
 	}
 
-	void AddToFileScope(IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
+	void deregisterStepEventListener(StepEvent listener)
 	{
-		fileBlock->addToScope(nameAST->name, type, new XXXValue(unwrap(val)));
-	}
-
-	LLVMValueRef LookupScope(BlockExprAST* scope, IdExprAST* nameAST)
-	{
-		const Variable* var = scope->lookupScope(nameAST->name);
-		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
-	}
-	BaseType* LookupScopeType(BlockExprAST* scope, IdExprAST* nameAST)
-	{
-		const Variable* var = scope->lookupScope(nameAST->name);
-		return var == nullptr ? nullptr : var->type;
-	}
-
-	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
-	{
-		targetBlock->defineStatement(std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
-	}*/
-
-	Value* getValueFunction(XXXValue* value)
-	{
-		return value->getFunction(currentModule);
-	}
-
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc)
-	{
-		std::ifstream file(path);
-		if (!file.good())
-			throw CompileError(std::string(path) + ": No such file or directory\n", loc->loc);
-
-		//TODO: Cache imported symbols, statements and expressions, instead of ignoring already imported files
-		char buf[1024];
-		realpath(path, buf);
-		char* realPath = new char[strlen(buf) + 1];
-		strcpy(realPath, buf);
-		static std::set<std::string> importedPaths;
-		if (importedPaths.find(realPath) != importedPaths.end()) return;
-		importedPaths.insert(realPath);
-
-		// Parse imported file
-		CLexer lexer(file, std::cout);
-		BlockExprAST* importedBlock;
-		yy::CParser parser(lexer, realPath, &importedBlock);
-		if (parser.parse())
-			throw CompileError("error parsing file " + std::string(path), loc->loc);
-
-		// Generate module from parsed file
-		FileModule* importedModule = new FileModule(realPath, importedBlock, dbuilder != nullptr, dbuilder == nullptr);
-		importedBlock->codegen(scope);
-		importedModule->finalize();
-
-		scope->import(importedBlock);
-
-		//TODO: Free importedModule
+		stepEventListeners.erase(listener);
 	}
 }
 
-void init()
+void raiseStepEvent(const ExprAST* loc)
 {
-	context = unwrap(LLVMGetGlobalContext());//new LLVMContext();
-	builder = new IRBuilder<>(*context);
-
-	JitFunction::init();
-
-	// Declare types
-	Types::create(*context);
-	VOID.type = BuiltinType::get("void", LLVMVoidType(), 0);
-	VOID.value = new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)));
-}
-
-IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
-{
-	return new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
+	for (StepEvent listener: stepEventListeners)
+		listener(loc);
 }
 
 StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context)
@@ -647,8 +402,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 			throw UndefinedStmtException(&stmt);
 	}
 
-	if (dbuilder)
-		builder->SetCurrentDebugLocation(DebugLoc());
+	raiseStepEvent(nullptr);
 
 	if (fileBlock == this)
 	{
@@ -667,8 +421,7 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 
 	if (resolvedContext)
 	{
-		if (dbuilder)
-			builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
+		raiseStepEvent(this);
 		const Variable var = resolvedContext->codegen(parentBlock, resolvedParams);
 		const BaseType *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
@@ -691,10 +444,9 @@ BaseType* ExprAST::getType(const BlockExprAST* parentBlock) const
 
 Variable StmtAST::codegen(BlockExprAST* parentBlock)
 {
-	if (dbuilder)
-		builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, loc.begin_col, currentFunc->getSubprogram()));
+	raiseStepEvent(this);
 	resolvedContext->codegen(parentBlock, resolvedParams);
-	return Variable(BuiltinTypes::Void, new XXXValue(nullptr));
+	return VOID;
 }
 
 void ExprAST::resolveTypes(BlockExprAST* block)

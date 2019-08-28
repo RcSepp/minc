@@ -47,10 +47,10 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include <llvm/IR/LegacyPassManager.h>
 
 #include "ast.h"
-#include "codegen.h"
 #include "llvm_constants.h"
 #include "KaleidoscopeJIT.h"
 #include "module.h"
+#include "cparser.h"
 
 using namespace llvm;
 
@@ -60,15 +60,153 @@ extern Module* currentModule;
 extern Function* currentFunc;
 extern BasicBlock* currentBB;
 extern DIBuilder* dbuilder;
-KaleidoscopeJIT* jit;
 extern DIFile* dfile;
 extern Value* closure;
 
+// Singletons
+LLVMContext* context;
+IRBuilder<> *builder;
+Module* currentModule;
+Function *currentFunc;
+BasicBlock *currentBB;
+DIBuilder *dbuilder;
+DIFile *dfile;
+
+// Misc
+KaleidoscopeJIT* jit;
 std::string currentSourcePath;
 DIBasicType* intType;
+Value* closure;
+
+struct DynamicStmtContext : public CodegenContext
+{
+private:
+	typedef void (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params, void* stmtArgs);
+	funcPtr cbk;
+	void* stmtArgs;
+public:
+	DynamicStmtContext(JitFunction* func, void* stmtArgs = nullptr) : cbk(reinterpret_cast<funcPtr>(func->compile())), stmtArgs(stmtArgs) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		//BasicBlock* _currentBB = currentBB;
+		cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data(), stmtArgs);
+		//if (currentBB != _currentBB)
+		//	builder->SetInsertPoint(currentBB = _currentBB);
+		return getVoid();
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return nullptr;
+	}
+};
+
+struct DynamicExprContext : public CodegenContext
+{
+private:
+	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
+	funcPtr const cbk;
+	BaseType* const type;
+public:
+	DynamicExprContext(JitFunction* func, BaseType* type) : cbk(reinterpret_cast<funcPtr>(func->compile())), type(type) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		//BasicBlock* _currentBB = currentBB;
+		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+		//if (currentBB != _currentBB)
+		//	builder->SetInsertPoint(currentBB = _currentBB);
+		return Variable(type, new XXXValue(foo));
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return type;
+	}
+};
+
+struct DynamicExprContext2 : public CodegenContext
+{
+private:
+	typedef Value* (*funcPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST** params);
+	typedef BaseType* (*typeFuncPtr)(LLVMBuilderRef, LLVMModuleRef, LLVMValueRef, const BlockExprAST* parentBlock, LLVMMetadataRef, ExprAST*const* params);
+	typeFuncPtr const typeCbk;
+	funcPtr const cbk;
+	// Keep typeCbk before cbk, so that typeFunc->compile() is called before func->compile().
+	// This is currently necessary to ensure JitFunction's are finalized in opposit order in which they were created.
+	// Otherwise, the line `builder->SetInsertPoint(currentBB = prevBB);` would not recover prevBB.
+public:
+	DynamicExprContext2(JitFunction* func, JitFunction* typeFunc) : typeCbk(reinterpret_cast<typeFuncPtr>(typeFunc->compile())), cbk(reinterpret_cast<funcPtr>(func->compile())) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		//BasicBlock* _currentBB = currentBB;
+		Value* foo = cbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+		BaseType* type = typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+		//if (currentBB != _currentBB)
+		//	builder->SetInsertPoint(currentBB = _currentBB);
+		return Variable(type, new XXXValue(foo));
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return typeCbk(wrap(builder), wrap(currentModule), wrap(currentFunc), parentBlock, wrap(dfile), params.data());
+	}
+};
 
 extern "C"
 {
+	void initCompiler()
+	{
+		context = unwrap(LLVMGetGlobalContext());//new LLVMContext();
+		builder = new IRBuilder<>(*context);
+
+		JitFunction::init();
+
+		registerStepEventListener([](const ExprAST* loc) {
+			if (dbuilder)
+				builder->SetCurrentDebugLocation(
+					loc == nullptr
+					? DebugLoc()
+					: DebugLoc::get(getExprLine(loc), getExprColumn(loc), currentFunc->getSubprogram())
+				);
+		});
+	}
+
+	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
+	{
+		if (tplt.empty())
+			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
+		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		{
+			std::vector<ExprAST*> stoppedTplt(tplt);
+			stoppedTplt.push_back(new StopExprAST(Location{}));
+			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, stmtArgs));
+		}
+		else
+			scope->defineStatement(tplt, new DynamicStmtContext(func, stmtArgs));
+	}
+
+	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
+	{
+		targetBlock->defineStatement(std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
+	}*/
+
+	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
+	{
+		scope->defineExpr(tplt, new DynamicExprContext(func, type));
+	}
+
+	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
+	{
+		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
+	}
+
+	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
+	{
+		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
+	}
+
+	IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
+	{
+		return new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
+	}
+
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
 	{
 		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
@@ -87,6 +225,38 @@ extern "C"
 	void removeJitFunction(JitFunction* jitFunc)
 	{
 		delete jitFunc;
+	}
+
+	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc)
+	{
+		std::ifstream file(path);
+		if (!file.good())
+			throw CompileError(std::string(path) + ": No such file or directory\n", loc->loc);
+
+		//TODO: Cache imported symbols, statements and expressions, instead of ignoring already imported files
+		char buf[1024];
+		realpath(path, buf);
+		char* realPath = new char[strlen(buf) + 1];
+		strcpy(realPath, buf);
+		static std::set<std::string> importedPaths;
+		if (importedPaths.find(realPath) != importedPaths.end()) return;
+		importedPaths.insert(realPath);
+
+		// Parse imported file
+		CLexer lexer(file, std::cout);
+		BlockExprAST* importedBlock;
+		yy::CParser parser(lexer, realPath, &importedBlock);
+		if (parser.parse())
+			throw CompileError("error parsing file " + std::string(path), loc->loc);
+
+		// Generate module from parsed file
+		FileModule* importedModule = new FileModule(realPath, importedBlock, dbuilder != nullptr, dbuilder == nullptr);
+		importedBlock->codegen(scope);
+		importedModule->finalize();
+
+		scope->import(importedBlock);
+
+		//TODO: Free importedModule
 	}
 }
 

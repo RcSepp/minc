@@ -67,6 +67,40 @@ extern "C"
 		return type->Ptr();
 	}
 
+	void AddToScope(BlockExprAST* targetBlock, IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
+	{
+		defineSymbol(targetBlock, getIdExprASTName(nameAST), type, new XXXValue(unwrap(val)));
+	}
+
+	void AddToFileScope(IdExprAST* nameAST, BaseType* type, LLVMValueRef val)
+	{
+		defineSymbol(getFileScope(), getIdExprASTName(nameAST), type, new XXXValue(unwrap(val)));
+	}
+
+	LLVMValueRef LookupScope(BlockExprAST* scope, IdExprAST* nameAST)
+	{
+		bool isCaptured;
+		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST), isCaptured);
+		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
+	}
+	BaseType* LookupScopeType(BlockExprAST* scope, IdExprAST* nameAST)
+	{
+		bool isCaptured;
+		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST), isCaptured);
+		return var == nullptr ? nullptr : var->type;
+	}
+
+	LLVMValueRef codegenExprValue(ExprAST* expr, BlockExprAST* scope)
+	{
+		XXXValue* value = (XXXValue*)codegenExpr(expr, scope).value;
+		return wrap(value == nullptr ? Constant::getNullValue(Type::getVoidTy(*context)) : value->val);
+	}
+
+	Value* getValueFunction(XXXValue* value)
+	{
+		return value->getFunction(currentModule);
+	}
+
 	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes)
 	{
 		std::vector<BuiltinType*> builtinArgTypes;
@@ -326,6 +360,9 @@ currentFunc = parentFunc;
 
 void initBuiltinSymbols()
 {
+	// Create LLVM types
+	Types::create(*context);
+
 	// >>> Create builtin types
 
 	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8);
@@ -336,10 +373,10 @@ void initBuiltinSymbols()
 	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8);
 
 	// Primitive types
-	BuiltinTypes::Void = (BuiltinType*)getVoidType();
+	BuiltinTypes::Void = BuiltinType::get("void", LLVMVoidType(), 0);
 	BuiltinTypes::VoidPtr = BuiltinTypes::Void->Ptr();
 	BuiltinTypes::Int1 = BuiltinType::get("bool", wrap(Types::Int1), 1);
-	BuiltinTypes::Int1Ptr =BuiltinTypes::Int1->Ptr();
+	BuiltinTypes::Int1Ptr = BuiltinTypes::Int1->Ptr();
 	BuiltinTypes::Int8 = BuiltinType::get("char", wrap(Types::Int8), 1);
 	BuiltinTypes::Int8Ptr = BuiltinType::get("string", wrap(Types::Int8Ptr), 8);
 	BuiltinTypes::Int16 = BuiltinType::get("short", wrap(Types::Int16), 2);

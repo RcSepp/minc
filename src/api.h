@@ -29,9 +29,20 @@ struct Variable
 	Variable(BaseType* type, BaseValue* value) : type(type), value(value) {}
 };
 
+class IModule
+{
+public:
+	virtual void print(const std::string& outputPath) = 0;
+	virtual void print() = 0;
+	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
+	virtual void run() = 0;
+	virtual void finalize() = 0;
+};
+
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
+typedef void (*StepEvent)(const ExprAST* loc);
 
 extern "C"
 {
@@ -65,6 +76,7 @@ extern "C"
 	unsigned getExprEndLine(const ExprAST* expr);
 	unsigned getExprEndColumn(const ExprAST* expr);
 	BlockExprAST* getRootScope();
+	BlockExprAST* getFileScope();
 	const std::string& getTypeName(const BaseType* type);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
@@ -84,14 +96,19 @@ extern "C"
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);
 
-	BaseType* getBaseType();
-	BaseType* getVoidType();
+	const Variable& getVoid();
 
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 
 	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc);
 
+	void registerStepEventListener(StepEvent listener);
+	void deregisterStepEventListener(StepEvent listener);
+
 	// >>> Compiler
+
+	void initCompiler();
+	IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
 	uint64_t compileJitFunction(JitFunction* jitFunc);

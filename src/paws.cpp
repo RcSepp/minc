@@ -4,7 +4,6 @@
 #include <iostream>
 #include <functional>
 #include "api.h"
-#include "codegen.h"
 #include "builtin.h"
 
 template<typename T> struct PawsType : BaseValue
@@ -225,7 +224,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 int PAWRun(BlockExprAST* block, int argc, char **argv)
 {
 	defineType("PawsBase", PawsBase::TYPE);
-	defineSymbol(block, "PawsBase", getBaseType(), new PawsMetaType(PawsBase::TYPE));
+	defineSymbol(block, "PawsBase", PawsBase::TYPE, new PawsMetaType(PawsBase::TYPE));
 
 	defineType("PawsVoid", PawsVoid::TYPE);
 	defineSymbol(block, "PawsVoid", PawsMetaType::TYPE, new PawsMetaType(PawsVoid::TYPE));
@@ -276,8 +275,9 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define context-free block statement
-	defineStmt(block, "$B",
-		+[](BlockExprAST*) {
+	defineStmt2(block, "$B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			codegenExpr(params[0], parentBlock);
 		}
 	);
 
@@ -694,9 +694,9 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
-	defineExpr(block, "initCodeGenerator()",
+	defineExpr(block, "initCompiler()",
 		+[]() -> void {
-			init();
+			initCompiler();
 		}
 	);
 

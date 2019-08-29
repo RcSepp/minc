@@ -181,6 +181,10 @@ extern "C"
 	{
 		expr->parent = parent;
 	}
+	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams)
+	{
+		expr->blockParams = blockParams;
+	}
 	ExprAST* getCastExprASTSource(const CastExprAST* expr)
 	{
 		return expr->resolvedParams[0];

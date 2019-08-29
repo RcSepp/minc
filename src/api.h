@@ -69,6 +69,7 @@ extern "C"
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
+	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
 	const char* getExprFilename(const ExprAST* expr);
 	unsigned getExprLine(const ExprAST* expr);

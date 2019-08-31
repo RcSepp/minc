@@ -256,17 +256,18 @@ public:
 
 	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 	{
-		casts[{fromType, toType}] = context;
+		casts[std::make_pair(fromType, toType)] = context;
 	}
 	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const
 	{
+		const std::pair<BaseType*, BaseType*>& key = std::make_pair(fromType, toType);
 		std::map<std::pair<BaseType*, BaseType*>, CodegenContext*>::const_iterator cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
-			if ((cast = block->casts.find({fromType, toType})) != block->casts.end())
+			if ((cast = block->casts.find(key)) != block->casts.end())
 				return cast->second;
 			for (const BlockExprAST* ref: block->references)
-				if ((cast = ref->casts.find({fromType, toType})) != casts.end())
+				if ((cast = ref->casts.find(key)) != ref->casts.end())
 					return cast->second;
 		}
 		return nullptr;
@@ -289,7 +290,7 @@ public:
 
 		// Import importBlock
 		for (block = this; block; block = block->parent)
-			if (importBlock == block && block->references.find(importBlock) != block->references.end())
+			if (importBlock == block || block->references.find(importBlock) != block->references.end())
 				break;
 		if (block == nullptr)
 			references.insert(importBlock);
@@ -298,7 +299,7 @@ public:
 		for (BlockExprAST* importRef: importBlock->references)
 		{
 			for (block = this; block; block = block->parent)
-				if (importRef == block && block->references.find(importRef) != block->references.end())
+				if (importRef == block || block->references.find(importRef) != block->references.end())
 					break;
 			if (block == nullptr)
 				references.insert(importRef);

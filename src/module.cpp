@@ -204,7 +204,11 @@ extern "C"
 
 	IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
 	{
-		return new FileModule(sourcePath, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
+		// Unbind parseCFile filename parameter lifetime from local filename parameter
+		char* path = new char[sourcePath.size() + 1];
+		strcpy(path, sourcePath.c_str());
+
+		return new FileModule(path, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
 	}
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
@@ -409,8 +413,8 @@ void XXXModule::run()
 	assert(0);
 }
 
-FileModule::FileModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
-	: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath.c_str(), 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
+FileModule::FileModule(const char* sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
+	: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath, 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 {
 	// Generate main function
 	FunctionType *mainType = FunctionType::get(Types::Int32, {}, false);

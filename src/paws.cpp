@@ -676,7 +676,10 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 
 	defineExpr(block, "parseCFile($E<PawsString>)",
 		+[](std::string filename) -> BlockExprAST* {
-			return parseCFile(filename.c_str());
+			// Unbind parseCFile filename parameter lifetime from local filename parameter
+			char* fname = new char[filename.size() + 1];
+			strcpy(fname, filename.c_str());
+			return parseCFile(fname);
 		}
 	);
 

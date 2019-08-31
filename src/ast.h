@@ -124,7 +124,7 @@ public:
 
 		std::string result = exprs[0]->str();
 		for (auto expriter = exprs.begin() + 1; expriter != exprs.end(); ++expriter)
-			result += s + (*expriter)->str();
+			result += (*expriter)->exprtype == ExprAST::ExprType::STOP ? (*expriter)->str() : s + (*expriter)->str();
 		return result;
 	}
 	int comp(const ExprAST* other) const

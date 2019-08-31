@@ -206,9 +206,9 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	ExprASTIter listExprEnd;
-	if (expr->exprtype == this->exprtype && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score, &listExprEnd) && listExprEnd == ((ExprListAST*)expr)->exprs.cend())
+	if (expr->exprtype == ExprAST::ExprType::LIST && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), ((ExprListAST*)expr)->exprs.cbegin(), ((ExprListAST*)expr)->exprs.cend(), score, &listExprEnd) && listExprEnd == ((ExprListAST*)expr)->exprs.cend())
 		return true;
-	if (this->exprs.size() == 1)
+	if (expr->exprtype != ExprAST::ExprType::LIST && this->exprs.size() == 1)
 		return this->exprs[0]->match(block, expr, score);
 	return false;
 }

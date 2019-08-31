@@ -17,6 +17,7 @@ const Variable VOID = Variable(new BaseType(), nullptr);
 BlockExprAST* rootBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
 std::map<const BaseType*, TypeDescription> typereg;
+std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<BaseType*, ImptBlock>> importRules;
 std::set<StepEvent> stepEventListeners;
 const std::string NULL_TYPE = "NULL";
 const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
@@ -206,6 +207,21 @@ extern "C"
 		return fileBlock;
 	}
 
+	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType)
+	{
+		scope->setScopeType(scopeType);
+	}
+
+	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock)
+	{
+		const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(fromScope, toScope);
+		auto rules = importRules.find(key);
+		if (rules == importRules.end())
+			importRules[key] = { {symbolType, imptBlock } };
+		else
+			rules->second[symbolType] = imptBlock;
+	}
+
 	const std::string& getTypeName(const BaseType* type)
 	{
 		if (type == nullptr)
@@ -229,7 +245,7 @@ extern "C"
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value)
 	{
-		scope->addToScope(name, type, value);
+		scope->defineSymbol(name, type, value);
 	}
 
 	void defineType(const char* name, BaseType* type)
@@ -295,9 +311,13 @@ extern "C"
 		scope->defineCast(fromType, toType, new OpaqueExprContext(toType));
 	}
 
-	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured)
+	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name)
 	{
-		return scope->lookupScope(name, isCaptured);
+		return scope->lookupSymbol(name);
+	}
+	Variable* importSymbol(BlockExprAST* scope, const char* name)
+	{
+		return scope->importSymbol(name);
 	}
 
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
@@ -379,15 +399,117 @@ StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* con
 	resolvedContext = context;
 }
 
+const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
+{
+	std::map<std::string, Variable>::const_iterator symbolIter;
+	if ((symbolIter = scope.find(name)) != scope.cend())
+		return &symbolIter->second; // Symbol found in local scope
+
+	const Variable* symbol;
+	for (const BlockExprAST* ref: references)
+		if ((symbolIter = ref->scope.find(name)) != scope.cend())
+			return &symbolIter->second; // Symbol found in ref scope
+	
+	if (parent != nullptr && (symbol = parent->lookupSymbol(name)))
+		return symbol; // Symbol found in parent scope
+
+	return nullptr; // Symbol not found
+}
+
+Variable* BlockExprAST::importSymbol(const std::string& name)
+{
+	std::map<std::string, Variable>::iterator symbolIter;
+	if ((symbolIter = scope.find(name)) != scope.end())
+		return &symbolIter->second; // Symbol found in local scope
+
+	Variable* symbol;
+	for (BlockExprAST* ref: references)
+		if ((symbolIter = ref->scope.find(name)) != scope.end())
+		{
+			symbol = &symbolIter->second; // Symbol found in ref scope
+
+			if (ref->scopeType == nullptr || scopeType == nullptr)
+				return symbol; // Scope type undefined for either ref scope or local scope
+
+			const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(ref->scopeType, scopeType);
+			const auto rules = importRules.find(key);
+			if (rules == importRules.end())
+				return symbol; // No import rules defined from ref scope to local scope
+
+			// Search for import rule on symbol type
+			const std::map<BaseType*, ImptBlock>::iterator rule = rules->second.find(symbol->type);
+			if (rule != rules->second.end())
+			{
+				rule->second(*symbol, ref->scopeType, scopeType); // Execute import rule
+				scope[name] = *symbol; // Import symbol into local scope
+				return symbol; // Symbol and import rule found in ref scope
+			}
+
+			// Search for import rule on any type that symbol type can be casted to
+			for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
+				if (lookupCast(symbol->type, rule.first) != nullptr)
+				{
+					//TODO: Should we cast symbol to rule.first?
+					rule.second(*symbol, ref->scopeType, scopeType); // Execute import rule
+					scope[name] = *symbol; // Import symbol into local scope
+					return symbol; // Symbol and import rule found in ref scope
+				}
+
+			return symbol; // No import rules on symbol type defined from ref scope to local scope
+		}
+	
+	if (parent != nullptr && (symbol = parent->importSymbol(name)))
+	{
+		// Symbol found in parent scope
+
+		if (parent->scopeType == nullptr || scopeType == nullptr)
+			return symbol; // Scope type undefined for either parent scope or local scope
+
+		const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(parent->scopeType, scopeType);
+		const auto rules = importRules.find(key);
+		if (rules == importRules.end())
+		{
+			scope[name] = *symbol; // Import symbol into local scope
+			return symbol; // No import rules defined from parent scope to local scope
+		}
+
+		// Search for import rule on symbol type
+		const std::map<BaseType*, ImptBlock>::const_iterator rule = rules->second.find(symbol->type);
+		if (rule != rules->second.end())
+		{
+			rule->second(*symbol, parent->scopeType, scopeType); // Execute import rule
+			scope[name] = *symbol; // Import symbol into local scope
+			return symbol; // Symbol and import rule found in parent scope
+		}
+
+		// Search for import rule on any type that symbol type can be casted to
+		for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
+			if (lookupCast(symbol->type, rule.first) != nullptr)
+			{
+				//TODO: Should we cast symbol to rule.first?
+				rule.second(*symbol, parent->scopeType, scopeType); // Execute import rule
+				scope[name] = *symbol; // Import symbol into local scope
+				return symbol; // Symbol and import rule found in parent scope
+			}
+
+		scope[name] = *symbol; // Import symbol into local scope
+		return symbol; // No import rules on symbol type defined from parent scope to local scope
+	}
+
+	return nullptr; // Symbol not found
+}
+
 Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
 	parent = parentBlock;
 
-	if (fileBlock == nullptr)
-	{
+	BlockExprAST* oldRootBlock = rootBlock;
+	if (parentBlock == nullptr)
 		rootBlock = this;
+
+	BlockExprAST* oldFileBlock = fileBlock;
+	if (fileBlock == nullptr)
 		fileBlock = this;
-	}
 
 	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
 	{
@@ -408,13 +530,13 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	raiseStepEvent(nullptr);
 
-	if (fileBlock == this)
-	{
-		rootBlock = nullptr;
-		fileBlock = nullptr;
-	}
+	if (rootBlock == this)
+		rootBlock = oldRootBlock;
 
-	//parent = nullptr;
+	if (fileBlock == this)
+		fileBlock = oldFileBlock;
+
+	// parent = nullptr;
 	return VOID;
 }
 
@@ -462,7 +584,7 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	if (p2 == nullptr)
 		return nullptr;
-	const Variable* var = parentBlock->lookupScope(p2);
+	const Variable* var = parentBlock->lookupSymbol(p2);
 	if (var == nullptr)
 		throw UndefinedIdentifierException(new IdExprAST(loc, p2));
 	return (BaseType*)var->value->getConstantValue();

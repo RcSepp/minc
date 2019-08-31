@@ -127,6 +127,7 @@ namespace BuiltinTypes
 	BuiltinType* Base;
 	BuiltinType* Builtin;
 	BuiltinType* BuiltinValue;
+	BuiltinType* BuiltinFunction;
 	BuiltinType* BuiltinClass;
 	BuiltinType* BuiltinInstance;
 	BuiltinType* Value;

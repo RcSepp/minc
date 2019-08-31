@@ -66,6 +66,7 @@ namespace BuiltinTypes
 	extern BuiltinType* Base;
 	extern BuiltinType* Builtin;
 	extern BuiltinType* BuiltinValue;
+	extern BuiltinType* BuiltinFunction;
 	extern BuiltinType* BuiltinClass;
 	extern BuiltinType* BuiltinInstance;
 	extern BuiltinType* Value;

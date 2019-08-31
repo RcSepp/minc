@@ -51,7 +51,7 @@ initCompiler();
 initBuiltinSymbols();
 module = createModule(realPath, rootBlock, outputDebugSymbols);
 defineBuiltinSymbols(rootBlock);
-rootBlock.codegen(FILE_SCOPE);
+rootBlock.codegen(NULL);
 module.finalize();
 
 // Execute command

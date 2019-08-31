@@ -227,7 +227,7 @@ extern "C"
 		delete jitFunc;
 	}
 
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc)
+	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc, BaseScopeType* fileScope)
 	{
 		std::ifstream file(path);
 		if (!file.good())
@@ -250,6 +250,7 @@ extern "C"
 			throw CompileError("error parsing file " + std::string(path), loc->loc);
 
 		// Generate module from parsed file
+		setScopeType(importedBlock, fileScope);
 		FileModule* importedModule = new FileModule(realPath, importedBlock, dbuilder != nullptr, dbuilder == nullptr);
 		importedBlock->codegen(scope);
 		importedModule->finalize();
@@ -512,27 +513,27 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 	AllocaInst* builderPtr = builder->CreateAlloca(Types::LLVMOpaqueBuilder->getPointerTo(), nullptr, "builder");
 	builderPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin(), builderPtr)->setAlignment(8);
-	blockAST->addToScope("builder", BuiltinTypes::LLVMBuilderRef, new XXXValue(builderPtr));
+	blockAST->defineSymbol("builder", BuiltinTypes::LLVMBuilderRef, new XXXValue(builderPtr));
 
 	AllocaInst* modulePtr = builder->CreateAlloca(Types::LLVMOpaqueModule->getPointerTo(), nullptr, "module");
 	modulePtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 1, modulePtr)->setAlignment(8);
-	blockAST->addToScope("module", BuiltinTypes::LLVMModuleRef, new XXXValue(modulePtr));
+	blockAST->defineSymbol("module", BuiltinTypes::LLVMModuleRef, new XXXValue(modulePtr));
 
 	AllocaInst* functionPtr = builder->CreateAlloca(Types::LLVMOpaqueValue->getPointerTo(), nullptr, "function");
 	functionPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 2, functionPtr)->setAlignment(8);
-	blockAST->addToScope("function", BuiltinTypes::LLVMValueRef, new XXXValue(functionPtr));
+	blockAST->defineSymbol("function", BuiltinTypes::LLVMValueRef, new XXXValue(functionPtr));
 
 	AllocaInst* parentBlockPtr = builder->CreateAlloca(Types::BlockExprAST->getPointerTo(), nullptr, "parentBlock");
 	parentBlockPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(8);
-	blockAST->addToScope("parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
+	blockAST->defineSymbol("parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
 
 	AllocaInst* dfilePtr = builder->CreateAlloca(Types::LLVMOpaqueMetadata->getPointerTo(), nullptr, "dfile");
 	dfilePtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 4, dfilePtr)->setAlignment(8);
-	blockAST->addToScope("dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
+	blockAST->defineSymbol("dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
 
 	Value* paramsVal = currentFunc->args().begin() + 5;
 	paramsVal->setName("params");
@@ -558,7 +559,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 			case 'E':
 				if (blockParamPlchldExpr->p2 == nullptr)
 					break;
-				if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
+				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
 				{
 					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
 					paramVar = Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
@@ -583,7 +584,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 			case 'E':
 				if (blockParamPlchldExpr->p2 == nullptr)
 					break;
-				if (const Variable* var = parentBlock->lookupScope(blockParamPlchldExpr->p2))
+				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
 				{
 					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
 					exprType = TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);

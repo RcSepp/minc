@@ -27,6 +27,13 @@ extern llvm::Value* closure;
 std::list<Func> llvm_c_functions;
 std::list<std::pair<std::string, const Variable>> capturedScope;
 
+namespace BuiltinScopes
+{
+	BaseScopeType* File = new BaseScopeType();
+	BaseScopeType* Function = new BaseScopeType();
+	BaseScopeType* JitFunction = new BaseScopeType();
+};
+
 namespace MincFunctions
 {
 	Func* resolveExprAST;
@@ -46,7 +53,7 @@ namespace MincFunctions
 	Func* lookupCast;
 	Func* addToScope;
 	Func* addToFileScope;
-	Func* lookupScope;
+	Func* lookupSymbol;
 	Func* lookupScopeType;
 	Func* codegenExprValue;
 	Func* codegenExprConstant;
@@ -79,14 +86,12 @@ extern "C"
 
 	LLVMValueRef LookupScope(BlockExprAST* scope, IdExprAST* nameAST)
 	{
-		bool isCaptured;
-		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST), isCaptured);
+		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST));
 		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
 	}
 	BaseType* LookupScopeType(BlockExprAST* scope, IdExprAST* nameAST)
 	{
-		bool isCaptured;
-		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST), isCaptured);
+		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST));
 		return var == nullptr ? nullptr : var->type;
 	}
 
@@ -122,6 +127,7 @@ extern "C"
 				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 			}
 		);
+		defineOpaqueCast(scope, &func->type, BuiltinTypes::BuiltinFunction);
 	}
 }
 
@@ -158,10 +164,9 @@ void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, Bu
 	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
 }
 
-Variable lookupVariable(const BlockExprAST* parentBlock, const IdExprAST* id)
+Variable lookupVariable(BlockExprAST* parentBlock, const IdExprAST* id)
 {
-	bool isCaptured;
-	const Variable* var = lookupSymbol(parentBlock, getIdExprASTName(id), isCaptured);
+	const Variable* var = importSymbol(parentBlock, getIdExprASTName(id));
 	if (var == nullptr)
 		raiseCompileError(("`" + std::string(getIdExprASTName(id)) + "` was not declared in this scope").c_str(), (ExprAST*)id);
 auto foo = getIdExprASTName(id);
@@ -170,33 +175,33 @@ auto foo = getIdExprASTName(id);
 	if (varVal->isFunction() || varVal->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
 		return *var;
 
-	if (isCaptured //)
-&& closure) //DELETE
-	{
-		if (!closure) assert(0);
+// 	if (isCaptured //) //TODO: Implement this using import rules
+// && closure) //DELETE
+// 	{
+// 		if (!closure) assert(0);
 
-		capturedScope.push_back({getIdExprASTName(id), *var});
+// 		capturedScope.push_back({getIdExprASTName(id), *var});
 
-Type** capturedTypes = new Type*[capturedScope.size()];
-int i = 0;
-for (auto&& [name, var]: capturedScope)
-{
-capturedTypes[i++] = unwrap(((BuiltinType*)var.type)->llvmtype);
-}
-StructType* closureType = (StructType*)closure->getType()->getPointerElementType();
-closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
+// Type** capturedTypes = new Type*[capturedScope.size()];
+// int i = 0;
+// for (auto&& [name, var]: capturedScope)
+// {
+// capturedTypes[i++] = unwrap(((BuiltinType*)var.type)->llvmtype);
+// }
+// StructType* closureType = (StructType*)closure->getType()->getPointerElementType();
+// closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
 
-		// expr = closure[idxVal]
-		Value* gep = builder->CreateInBoundsGEP(closure, {
-			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, 0, true)),
-			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(32, capturedScope.size() - 1, true))
-		});
-		LoadInst* exprVal = builder->CreateLoad(gep);
-		exprVal->setAlignment(8);
-		varVal = new XXXValue(exprVal);
+// 		// expr = closure[idxVal]
+// 		Value* gep = builder->CreateInBoundsGEP(closure, {
+// 			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, 0, true)),
+// 			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(32, capturedScope.size() - 1, true))
+// 		});
+// 		LoadInst* exprVal = builder->CreateLoad(gep);
+// 		exprVal->setAlignment(8);
+// 		varVal = new XXXValue(exprVal);
 
-//		parentBlock->addToScope(id->name, var->type, varVal); //TODO: Check if closures still work without this
-	}
+// //		parentBlock->defineSymbol(id->name, var->type, varVal); //TODO: Check if closures still work without this
+// 	}
 
 	return Variable(var->type, varVal);
 }
@@ -265,6 +270,8 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 
 	size_t numArgs = argTypes.size();
 	assert(argNames.size() == numArgs);
+
+	setScopeType(funcBlock, BuiltinScopes::Function);
 
 	// Create entry BB in currentFunc
 	BasicBlock *parentBB = currentBB;
@@ -368,6 +375,7 @@ void initBuiltinSymbols()
 	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8);
 	BuiltinTypes::Builtin = BuiltinType::get("BuiltinType", wrap(Types::BuiltinType), 8);
 	BuiltinTypes::BuiltinValue = BuiltinType::get("BuiltinValue", nullptr, 0);
+	BuiltinTypes::BuiltinFunction = BuiltinType::get("BuiltinFunction", nullptr, 0);
 	BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0);
 	BuiltinTypes::BuiltinInstance = BuiltinType::get("BuiltinInstance", nullptr, 0);
 	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8);
@@ -445,7 +453,7 @@ void initBuiltinSymbols()
 	MincFunctions::lookupCast = new Func("lookupCast", BuiltinTypes::ExprAST, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST, BuiltinTypes::Base }, false);
 	MincFunctions::addToScope = new Func("AddToScope", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
-	MincFunctions::lookupScope = new Func("LookupScope", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
+	MincFunctions::lookupSymbol = new Func("LookupScope", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::lookupScopeType = new Func("LookupScopeType", BuiltinTypes::Base, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
@@ -461,9 +469,14 @@ void initBuiltinSymbols()
 
 void defineBuiltinSymbols(BlockExprAST* rootBlock)
 {
+	setScopeType(rootBlock, BuiltinScopes::File);
+
 	// Define LLVM-c extern functions
 	for (Func& func: llvm_c_functions)
+	{
 		defineSymbol(rootBlock, func.type.name, &func.type, &func);
+		defineOpaqueCast(rootBlock, &func.type, BuiltinTypes::BuiltinFunction);
+	}
 
 	// Define Minc extern functions
 	for (Func* func: {
@@ -479,7 +492,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		MincFunctions::getExprColumn,
 		MincFunctions::getTypeName,
 		MincFunctions::lookupCast,
-		MincFunctions::lookupScope,
+		MincFunctions::lookupSymbol,
 		MincFunctions::lookupScopeType,
 		MincFunctions::defineFunction,
 	})
@@ -494,6 +507,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 			}
 		);
+		defineOpaqueCast(rootBlock, &func->type, BuiltinTypes::BuiltinFunction);
 	}
 
 	defineType(rootBlock, "BaseType", BuiltinTypes::Base, BuiltinTypes::Base);
@@ -525,7 +539,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef);
 	defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef->Ptr());
 
-	defineType(rootBlock, "BuiltinValue", BuiltinTypes::BuiltinValue, BuiltinTypes::BuiltinValue);
+	defineType(rootBlock, "BuiltinValue", BuiltinTypes::Builtin, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int1, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int32, BuiltinTypes::BuiltinValue);
@@ -546,6 +560,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
+
+	defineType(rootBlock, "BuiltinFunction", BuiltinTypes::Builtin, BuiltinTypes::BuiltinFunction);
 
 	defineType(rootBlock, "BuiltinClass", BuiltinTypes::Builtin, BuiltinTypes::BuiltinClass);
 	defineOpaqueCast(rootBlock, BuiltinTypes::BuiltinClass, BuiltinTypes::Builtin);
@@ -625,7 +641,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			std::string path(getLiteralExprASTValue(pathAST));
 			path = path.substr(1, path.length() - 2);
 
-			importModule(parentBlock, path.c_str(), (ExprAST*)pathAST);
+			importModule(parentBlock, path.c_str(), (ExprAST*)pathAST, BuiltinScopes::File);
 		}
 	);
 	defineStmt2(rootBlock, "import <$I.$I>",
@@ -633,7 +649,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			IdExprAST* filenameAST = (IdExprAST*)params[0];
 			IdExprAST* fileextAST = (IdExprAST*)params[1];
 
-			importModule(parentBlock, ("../lib/" + std::string(getIdExprASTName(filenameAST)) + '.' + std::string(getIdExprASTName(fileextAST))).c_str(), (ExprAST*)filenameAST);
+			importModule(parentBlock, ("../lib/" + std::string(getIdExprASTName(filenameAST)) + '.' + std::string(getIdExprASTName(fileextAST))).c_str(), (ExprAST*)filenameAST, BuiltinScopes::File);
 		}
 	);
 
@@ -663,6 +679,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			printf("\n");
 #endif
 
+			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::Void);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
@@ -694,6 +711,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 // 				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
 // 			}
 
+//			setScopeType(blockAST, BuiltinScopes::JitFunction);
 //			defineReturnStmt(blockAST, BuiltinTypes::Void);
 
 // 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
@@ -736,6 +754,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			// Generate JIT function name
 			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
 
+			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
@@ -758,6 +777,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			// Generate JIT function name
 			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
 
+			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
@@ -767,6 +787,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			jitFuncName = '<' + jitFuncName + '>';
 
 			BlockExprAST* exprTypeBlock = wrapExprAST(exprTypeAST);
+			setScopeType(exprTypeBlock, BuiltinScopes::JitFunction);
 			setBlockExprASTParent(exprTypeBlock, parentBlock);
 			JitFunction* jitTypeFunc = createJitFunction(parentBlock, exprTypeBlock, BuiltinTypes::Base, exprParams, jitFuncName);
 			capturedScope.clear();
@@ -808,6 +829,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			// Generate JIT function name
 			std::string jitFuncName("cast " + getTypeName(fromType) + " -> " + getTypeName(toType));
 
+			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
@@ -829,6 +851,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			// Generate JIT function name
 			std::string jitFuncName("typedef " + std::string(getIdExprASTName(nameAST)));
 
+			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, metaType);
 
 			std::vector<ExprAST*> typeParams;
@@ -933,6 +956,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 				}
 			);
+			defineOpaqueCast(parentBlock, &func->type, BuiltinTypes::BuiltinFunction);
 		}
 	);
 	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType> $I, ..., $V)",
@@ -959,6 +983,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 				}
 			);
+			defineOpaqueCast(parentBlock, &func->type, BuiltinTypes::BuiltinFunction);
 		}
 	);
 	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType>, ...)",
@@ -989,6 +1014,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 				}
 			);
+			defineOpaqueCast(parentBlock, &func->type, BuiltinTypes::BuiltinFunction);
 		}
 	);
 
@@ -1396,7 +1422,7 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 			typeVal = builder->CreateBitCast(typeVal, Types::BaseType->getPointerTo());
 
 			/*IdExprAST* typeAST = (IdExprAST*)params[2];
-			const Variable* typeVar = parentBlock->lookupScope(getIdExprASTName(typeAST));
+			const Variable* typeVar = parentBlock->lookupSymbol(getIdExprASTName(typeAST));
 			if (!typeVar)
 				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
 			if (typeVar->value)
@@ -1426,8 +1452,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineStmt2(rootBlock, "symdef<$E> $E = $E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			IdExprAST* typeAST = (IdExprAST*)params[0];
-			bool isCaptured;
-			const Variable* typeVar = lookupSymbol(parentBlock, getIdExprASTName(typeAST), isCaptured);
+			const Variable* typeVar = importSymbol(parentBlock, getIdExprASTName(typeAST));
 			if (!typeVar)
 				raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
 			if (typeVar->value)
@@ -1580,8 +1605,7 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			return Variable(var.type, new XXXValue(loadVal));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			bool isCaptured;
-			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), isCaptured);
+			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			return var != nullptr ? var->type : nullptr;
 		}
 	);

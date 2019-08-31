@@ -4,6 +4,7 @@
 #include <string>
 #include <cstring>
 #include <map>
+#include <unordered_set>
 #include <list>
 #include <vector>
 #include <array>
@@ -164,17 +165,11 @@ private:
 	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
 public:
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[tplt] = stmt; }
-	void importStatements(StatementRegister& stmtreg) { this->stmtreg.insert(stmtreg.stmtreg.begin(), stmtreg.stmtreg.end()); }
 	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	{
 		exprreg[tplt->exprtype][tplt] = expr;
-	}
-	void importExprs(StatementRegister& stmtreg)
-	{
-		for (size_t i = 0; i < exprreg.size(); ++i)
-			this->exprreg[i].insert(stmtreg.exprreg[i].begin(), stmtreg.exprreg[i].end());
 	}
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const;
@@ -222,12 +217,18 @@ private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
 	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
+	BaseScopeType* scopeType;
+
+	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
+	const std::pair<const ExprAST*const, CodegenContext*>* lookupExprInternal(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
+
 public:
 	BlockExprAST* parent;
+	std::unordered_set<BlockExprAST*> references;
 	std::vector<ExprAST*>* exprs;
 	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), scopeType(nullptr), parent(nullptr), exprs(exprs) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
@@ -246,7 +247,11 @@ public:
 	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
 			block->stmtreg.lookupExprCandidates(this, expr, candidates);
+			for (const BlockExprAST* ref: block->references)
+				ref->stmtreg.lookupExprCandidates(this, expr, candidates);
+		}
 	}
 
 	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
@@ -257,52 +262,65 @@ public:
 	{
 		std::map<std::pair<BaseType*, BaseType*>, CodegenContext*>::const_iterator cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
 			if ((cast = block->casts.find({fromType, toType})) != block->casts.end())
 				return cast->second;
+			for (const BlockExprAST* ref: block->references)
+				if ((cast = ref->casts.find({fromType, toType})) != casts.end())
+					return cast->second;
+		}
 		return nullptr;
 	}
 	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
 			for (const std::pair<std::pair<BaseType*, BaseType*>, CodegenContext*> cast: block->casts)
 				casts.push_back(cast.first);
+			for (const BlockExprAST* ref: block->references)
+				for (const std::pair<std::pair<BaseType*, BaseType*>, CodegenContext*> cast: ref->casts)
+					casts.push_back(cast.first);
+		}
 	}
 
-	void import(BlockExprAST* block)
+	void import(BlockExprAST* importBlock)
 	{
-		this->stmtreg.importStatements(block->stmtreg);
-		this->stmtreg.importExprs(block->stmtreg);
-		this->casts.insert(block->casts.begin(), block->casts.end());
+		const BlockExprAST* block;
+
+		// Import importBlock
+		for (block = this; block; block = block->parent)
+			if (importBlock == block && block->references.find(importBlock) != block->references.end())
+				break;
+		if (block == nullptr)
+			references.insert(importBlock);
+
+		// Import all references of importBlock
+		for (BlockExprAST* importRef: importBlock->references)
+		{
+			for (block = this; block; block = block->parent)
+				if (importRef == block && block->references.find(importRef) != block->references.end())
+					break;
+			if (block == nullptr)
+				references.insert(importRef);
+		}
 	}
 
-	void addToScope(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
-	const Variable* lookupScope(const std::string& name) const
-	{
-		std::map<std::string, Variable>::const_iterator var;
-		for (const BlockExprAST* block = this; block; block = block->parent)
-			if ((var = block->scope.find(name)) != block->scope.end())
-				return &var->second;
-		return nullptr;
-	}
-	const Variable* lookupScope(const std::string& name, bool& isCaptured) const
-	{
-		std::map<std::string, Variable>::const_iterator var;
-		for (const BlockExprAST* block = this; block; block = block->parent)
-			if ((var = block->scope.find(name)) != block->scope.end())
-			{
-				isCaptured = false; //block != this; //TODO: Fix and re-enable closure
-				return &var->second;
-			}
-		isCaptured = false;
-		return nullptr;
-	}
+	void defineSymbol(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
+	const Variable* lookupSymbol(const std::string& name) const;
+	Variable* importSymbol(const std::string& name);
+
+	void setScopeType(BaseScopeType* scopeType) { this->scopeType = scopeType; }
 
 	const std::vector<Variable>* getBlockParams() const
 	{
-		std::vector<Variable>* params;
 		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
 			if (block->blockParams.size())
 				return &block->blockParams;
+			for (const BlockExprAST* ref: block->references)
+				if (ref->blockParams.size())
+					return &ref->blockParams;
+		}
 		return nullptr;
 	}
 

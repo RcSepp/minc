@@ -5,6 +5,7 @@
 #include <vector>
 
 struct BaseType {};
+struct BaseScopeType {};
 struct BaseValue
 {
 	virtual uint64_t getConstantValue() = 0;
@@ -42,6 +43,7 @@ public:
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
+typedef void (*ImptBlock)(Variable symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
 typedef void (*StepEvent)(const ExprAST* loc);
 
 extern "C"
@@ -78,6 +80,8 @@ extern "C"
 	unsigned getExprEndColumn(const ExprAST* expr);
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
+	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType);
+	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
 	const std::string& getTypeName(const BaseType* type);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
@@ -92,7 +96,8 @@ extern "C"
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 
-	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name, bool& isCaptured);
+	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name);
+	Variable* importSymbol(BlockExprAST* scope, const char* name);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);
@@ -101,7 +106,7 @@ extern "C"
 
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc);
+	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc, BaseScopeType* fileScope);
 
 	void registerStepEventListener(StepEvent listener);
 	void deregisterStepEventListener(StepEvent listener);

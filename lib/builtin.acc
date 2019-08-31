@@ -217,6 +217,20 @@ stmtdef LLVMTypeRef $I[$E<int>] {
 	);
 }
 
+exprdef<LLVMTypeRef> $E<LLVMTypeRefPtr>[$E<int>] = $E<LLVMTypeRef> {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+
+	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMBuildStore(
+		expr,
+		gep
+	);
+	return expr;
+}
+
 /* ---------------------------------------------------------------------------*\
 Name: BaseType declaration
 Template: BaseType $I
@@ -974,4 +988,10 @@ exprdef<gettype($1, parentBlock)> $I = $E {
 	LLVMValueRef exprValue = codegen(expr, parentBlock);
 	LLVMBuildStore(exprValue, varValue);
 	return exprValue;
+}
+
+void IMPORT_TEST()
+{
+	extern int puts(string str);
+	puts("IMPORT_TEST() called");
 }

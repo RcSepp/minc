@@ -334,6 +334,16 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 			context = currentContext;
 			score = currentScore;
 		}
+		for (const BlockExprAST* ref: block->references)
+		{
+			currentScore = score;
+			currentContext = ref->stmtreg.lookupExpr(this, expr, currentScore);
+			if (currentScore > score)
+			{
+				context = currentContext;
+				score = currentScore;
+			}
+		}
 	}
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
@@ -379,6 +389,18 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 			context = currentContext;
 			score = currentScore;
 			stmtEnd = currentStmtEnd;
+		}
+		for (const BlockExprAST* ref: block->references)
+		{
+			currentScore = score;
+			currentStmtEnd = exprEnd;
+			currentContext = ref->stmtreg.lookupStatement(this, exprs, currentStmtEnd, currentScore);
+			if (currentScore > score)
+			{
+				context = currentContext;
+				score = currentScore;
+				stmtEnd = currentStmtEnd;
+			}
 		}
 	}
 #ifdef DEBUG_STMTREG

@@ -61,6 +61,7 @@ TpltType* TpltType::get(std::string name, BuiltinType* baseType, BaseType* tpltT
 	{
 		t = tpltTypes.insert({ name, new TpltType(baseType, tpltType) }).first;
 		defineOpaqueCast(getRootScope(), t->second, baseType);
+		defineType(name.c_str(), t->second);
 	}
 	return t->second;
 }

@@ -144,14 +144,10 @@ BlockExprAST* parseCFile(const char* filename)
 		return nullptr;
 	}
 
-	// Get absolute path to source file
-	char buf[1024];
-	const char* realPath = realpath(filename, buf);
-
 	// Parse file into rootBlock
 	BlockExprAST* rootBlock;
 	CLexer lexer(&in, &std::cout);
-	yy::CParser parser(lexer, realPath, &rootBlock);
+	yy::CParser parser(lexer, filename, &rootBlock);
 	parser.parse();
 
 	// Close source file

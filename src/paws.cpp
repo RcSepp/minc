@@ -224,7 +224,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 int PAWRun(BlockExprAST* block, int argc, char **argv)
 {
 	defineType("PawsBase", PawsBase::TYPE);
-	defineSymbol(block, "PawsBase", PawsBase::TYPE, new PawsMetaType(PawsBase::TYPE));
+	defineSymbol(block, "PawsBase", PawsMetaType::TYPE, new PawsMetaType(PawsBase::TYPE));
 
 	defineType("PawsVoid", PawsVoid::TYPE);
 	defineSymbol(block, "PawsVoid", PawsMetaType::TYPE, new PawsMetaType(PawsVoid::TYPE));
@@ -301,15 +301,13 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	// Define variable lookup
 	defineExpr3(block, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			bool isCaptured;
-			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), isCaptured);
+			const Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			if (var == nullptr)
 				raiseCompileError(("`" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
 			return *var;
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			bool isCaptured;
-			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), isCaptured);
+			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			return var != nullptr ? var->type : nullptr;
 		}
 	);

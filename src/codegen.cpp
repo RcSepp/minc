@@ -407,7 +407,7 @@ const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
 
 	const Variable* symbol;
 	for (const BlockExprAST* ref: references)
-		if ((symbolIter = ref->scope.find(name)) != scope.cend())
+		if ((symbolIter = ref->scope.find(name)) != ref->scope.cend())
 			return &symbolIter->second; // Symbol found in ref scope
 	
 	if (parent != nullptr && (symbol = parent->lookupSymbol(name)))
@@ -424,7 +424,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 
 	Variable* symbol;
 	for (BlockExprAST* ref: references)
-		if ((symbolIter = ref->scope.find(name)) != scope.end())
+		if ((symbolIter = ref->scope.find(name)) != ref->scope.end())
 		{
 			symbol = &symbolIter->second; // Symbol found in ref scope
 

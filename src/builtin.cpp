@@ -919,18 +919,6 @@ defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(T
 		}
 	);
 
-	// Define `auto` variable declaration with initialization //TODO: not working
-	defineStmt2(rootBlock, "auto $I = $E",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			IdExprAST* varAST = (IdExprAST*)params[0];
-			ExprAST* valAST = (ExprAST*)params[1];
-			XXXValue* val = (XXXValue*)codegenExpr(valAST, parentBlock).value;
-
-			val->val->setName(getIdExprASTName(varAST));
-			defineSymbol(parentBlock, getIdExprASTName(varAST), nullptr, val);
-		}
-	);
-
 	// Define function declaration
 	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType> $I, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {

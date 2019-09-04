@@ -451,12 +451,30 @@ stmtdef int $I = $E<int> {
 }
 
 /* ---------------------------------------------------------------------------*\
-Name: Boolean negation
+Name: Logical NOT
 Template: !$E<bool>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<bool> !$E<bool> {
 	return LLVMBuildNot(codegen($0, parentBlock), "not");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Logical AND
+Template: $E<bool> && $E<bool>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<bool> $E<bool> && $E<bool> {
+	return LLVMBuildAnd(codegen($0, parentBlock), codegen($1, parentBlock), "and");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Logical OR
+Template: $E<bool> || $E<bool>
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+exprdef<bool> $E<bool> || $E<bool> {
+	return LLVMBuildOr(codegen($0, parentBlock), codegen($1, parentBlock), "or");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -709,6 +727,20 @@ exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] = $E<BuiltinType> {
 	return expr;
 }
 
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType array element getter
+Template: $E<BuiltinTypePtr>[$E<int>]
+\* ---------------------------------------------------------------------------*/
+exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] {
+	LLVMValueRef var = codegen($0, parentBlock);
+	LLVMValueRef idx = codegen($1, parentBlock);
+
+	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+	LLVMValueRef val = LLVMBuildLoad(gep, "");
+	LLVMSetAlignment(val, 8);
+	return val;
+}
+
 exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
 	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
 	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
@@ -869,10 +901,10 @@ stmtdef while ($E<bool>) $S {
 
 
 /* ---------------------------------------------------------------------------*\
-Name: Extern function declaration
-Template: extern $E<BuiltinType> $I($E<BuiltinType> $I, ...)
+Name: Function declaration
+Template: $E<BuiltinType> $I($E<BuiltinType> $I, ...)
 \* ---------------------------------------------------------------------------*/
-stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ...) {
+stmtdef $E<BuiltinType> $I($E<BuiltinType> $I, ...) {
 	BuiltinType returnType = getconst($0, parentBlock);
 	string funcName = $1.name;
 	int numArgs = $2.size;
@@ -887,10 +919,32 @@ stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ...) {
 }
 
 /* ---------------------------------------------------------------------------*\
-Name: Variable argument extern function declaration
-Template: extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V)
+Name: Function declaration without parameter names
+Template: $E<BuiltinType> $I($E<BuiltinType>, ...)
 \* ---------------------------------------------------------------------------*/
-stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
+stmtdef $E<BuiltinType> $I($E<BuiltinType>, ...) {
+	BuiltinType returnType = getconst($0, parentBlock);
+	string funcName = $1.name;
+	int numArgs = $2.size;
+
+	BuiltinType argTypes[numArgs];
+	for (int i = 0; i != numArgs; i = i + 1)
+	{
+		argTypes[i] = getconst($2[i], parentBlock);
+	}
+
+	// Handle $E<BuiltinType> $I(void)
+	if (numArgs == 1 && argTypes[0] == void)
+		numArgs = numArgs - 1;
+
+	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 0);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Variable argument function declaration
+Template: $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V)
+\* ---------------------------------------------------------------------------*/
+stmtdef $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
 	BuiltinType returnType = getconst($0, parentBlock);
 	string funcName = $1.name;
 	int numArgs = $2.size;
@@ -903,6 +957,25 @@ stmtdef extern $E<BuiltinType> $I($E<BuiltinType> $I, ..., $V) {
 
 	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 1);
 }
+
+// /* ---------------------------------------------------------------------------*\
+// Name: Variable argument function declaration without parameter names
+// Template: $E<BuiltinType> $I($E<BuiltinType>, ..., $V)
+// TODO: This breaks!
+// \* ---------------------------------------------------------------------------*/
+// stmtdef $E<BuiltinType> $I($E<BuiltinType>, ..., $V) {
+// 	BuiltinType returnType = getconst($0, parentBlock);
+// 	string funcName = $1.name;
+// 	int numArgs = $2.size;
+
+// 	BuiltinType argTypes[numArgs];
+// 	for (int i = 0; i != numArgs; i = i + 1)
+// 	{
+// 		argTypes[i] = getconst($2[i], parentBlock);
+// 	}
+
+// 	defineFunction(parentBlock, funcName, returnType, argTypes, numArgs, 1);
+// }
 
 /* ---------------------------------------------------------------------------*\
 Name: Variable declaration
@@ -920,9 +993,9 @@ Name: Variable declaration with initialization
 Template: $E<BuiltinType> $I = $E<BuiltinValue>
 \* ---------------------------------------------------------------------------*/
 stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
-	extern string malloc(long size);
-	extern string strcpy(string destination, string source);
-	extern string strcat(string destination, string source);
+	string malloc(long size);
+	string strcpy(string destination, string source);
+	string strcat(string destination, string source);
 
 	BuiltinType varType = getconst($0, parentBlock);
 	BuiltinType exprType = gettype($2, parentBlock);
@@ -953,9 +1026,9 @@ Name: Variable assignment
 Template: $I = $E
 \* ---------------------------------------------------------------------------*/
 exprdef<gettype($1, parentBlock)> $I = $E {
-	extern string malloc(long size);
-	extern string strcpy(string destination, string source);
-	extern string strcat(string destination, string source);
+	string malloc(long size);
+	string strcpy(string destination, string source);
+	string strcat(string destination, string source);
 
 	BaseType varType = LookupScopeType(parentBlock, $0);
 	BuiltinType exprType = gettype($1, parentBlock);
@@ -988,10 +1061,4 @@ exprdef<gettype($1, parentBlock)> $I = $E {
 	LLVMValueRef exprValue = codegen(expr, parentBlock);
 	LLVMBuildStore(exprValue, varValue);
 	return exprValue;
-}
-
-void IMPORT_TEST()
-{
-	extern int puts(string str);
-	puts("IMPORT_TEST() called");
 }

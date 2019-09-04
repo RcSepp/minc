@@ -1,6 +1,6 @@
 import <builtin.acc>;
 
-extern int printf(string format, ...);
+int printf(string format, ...);
 
 int func1(int a, int b)
 {

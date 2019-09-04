@@ -37,8 +37,8 @@ stmtdef runCompileTimeTests() {
 	// Test arithmetic
 	assert(11 + 7 / 3 * 5 == 21);
 
-	// Test extern function declaration
-	extern int atoi(string str); assert(atoi("123") == 123);
+	// Test function declaration
+	int atoi(string str); assert(atoi("123") == 123);
 	int printf(string format, ...); assert(printf("\r\r\r\r\r") == 5);
 
 

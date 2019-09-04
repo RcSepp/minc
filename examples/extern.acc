@@ -1,11 +1,11 @@
 import <builtin.acc>;
 
-extern int atoi(string str);
-extern void free(string ptr);
-extern string malloc(long size);
-extern int puts(string str);
-extern int printf(string format, ...);
-extern long strlen(string str);
+int atoi(string str);
+void free(string ptr);
+string malloc(long size);
+int puts(string str);
+int printf(string format, ...);
+long strlen(string str);
 puts("foo\n");
 printf("%i %s %li\n", atoi("123"), "abc", strlen("spam"));
 string mem = malloc(16);

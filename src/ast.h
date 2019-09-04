@@ -28,7 +28,9 @@ struct CompileError
 {
 	const Location loc;
 	const std::string msg;
+	std::vector<std::string> hints;
 	CompileError(std::string msg, Location loc={0}) : msg(msg), loc(loc) {}
+	void addHint(const std::string& hint) { hints.push_back(hint); }
 };
 struct UndefinedStmtException : public CompileError
 {

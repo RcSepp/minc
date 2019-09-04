@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	std::istream* in = sourcePath != "-" ? new std::ifstream(sourcePath) : &std::cin;
 	if (!in->good())
 	{
-		std::cerr << "\033[31merror:\033[0m " << sourcePath << ": No such file or directory\n";
+		std::cerr << "\e[31merror:\e[0m " << sourcePath << ": No such file or directory\n";
 		return -1;
 	}
 
@@ -123,8 +123,10 @@ std::cerr << std::endl;
 			std::cerr << err.loc.filename << ':';
 		std::cerr << err.loc.begin_line << ':';
 		std::cerr << err.loc.begin_col << ':';
-		std::cerr << " \033[31merror:\033[0m ";
+		std::cerr << " \e[1;31merror:\e[0m ";
 		std::cerr << err.msg << std::endl;
+		for (std::string& hint: err.hints)
+			std::cerr << "\t\e[1;94mnote:\e[0m " << hint << std::endl;
 		if (err.loc.filename != nullptr && err.loc.begin_line == err.loc.end_line && err.loc.begin_col > err.loc.end_col) //TODO: Cleanup
 		{
 			in->seekg(0, in->beg);
@@ -136,11 +138,11 @@ std::cerr << std::endl;
 			linebuf[0] = c;
 			in->getline(linebuf + 1, 0x1000);
 			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
-			std::cerr << "\033[31m" << std::string(linebuf + err.loc.begin_col - 1, linebuf + err.loc.end_col - 1) << "\033[0m";
+			std::cerr << "\e[31m" << std::string(linebuf + err.loc.begin_col - 1, linebuf + err.loc.end_col - 1) << "\e[0m";
 			std::cerr << std::string(linebuf + err.loc.end_col - 1) << std::endl;
 			for (int i = 0; i < err.loc.begin_col; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
 			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
-			std::cerr << "\033[31m" << std::string(1, '^') << std::string(err.loc.end_col - err.loc.begin_col - 1, '~') << "\033[0m" << std::endl;
+			std::cerr << "\e[31m" << std::string(1, '^') << std::string(err.loc.end_col - err.loc.begin_col - 1, '~') << "\e[0m" << std::endl;
 		}
 		if (sourcePath != "-") ((std::ifstream*)in)->close();
 		return -1;

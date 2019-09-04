@@ -117,7 +117,7 @@ extern "C"
 	Func* defineFunction(BlockExprAST* scope, const char* name, BuiltinType* resultType, BuiltinType** argTypes, size_t numArgTypes, bool isVarArg)
 	{
 		Func* func = new Func(name, resultType, std::vector<BuiltinType*>(argTypes, argTypes + numArgTypes), isVarArg);
-		defineSymbol(scope, func->type.name, &func->type, func);
+		defineSymbol(scope, name, &func->type, func);
 		defineCast2(scope, &func->type, BuiltinTypes::LLVMValueRef,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
@@ -372,63 +372,63 @@ void initBuiltinSymbols()
 
 	// >>> Create builtin types
 
-	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8);
-	BuiltinTypes::Builtin = BuiltinType::get("BuiltinType", wrap(Types::BuiltinType), 8);
-	BuiltinTypes::BuiltinValue = BuiltinType::get("BuiltinValue", nullptr, 0);
-	BuiltinTypes::BuiltinFunction = BuiltinType::get("BuiltinFunction", nullptr, 0);
-	BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0);
-	BuiltinTypes::BuiltinInstance = BuiltinType::get("BuiltinInstance", nullptr, 0);
-	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8);
+	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::Builtin = BuiltinType::get("BuiltinType", wrap(Types::BuiltinType), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::BuiltinValue = BuiltinType::get("BuiltinValue", nullptr, 0, 0, 0);
+	BuiltinTypes::BuiltinFunction = BuiltinType::get("BuiltinFunction", nullptr, 0, 0, 0);
+	BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0, 0, 0);
+	BuiltinTypes::BuiltinInstance = BuiltinType::get("BuiltinInstance", nullptr, 0, 0, 0);
+	BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 
 	// Primitive types
-	BuiltinTypes::Void = BuiltinType::get("void", LLVMVoidType(), 0);
+	BuiltinTypes::Void = BuiltinType::get("void", LLVMVoidType(), 0, 0, 0);
 	BuiltinTypes::VoidPtr = BuiltinTypes::Void->Ptr();
-	BuiltinTypes::Int1 = BuiltinType::get("bool", wrap(Types::Int1), 1);
+	BuiltinTypes::Int1 = BuiltinType::get("bool", wrap(Types::Int1), 1, dwarf::DW_ATE_boolean, 8);
 	BuiltinTypes::Int1Ptr = BuiltinTypes::Int1->Ptr();
-	BuiltinTypes::Int8 = BuiltinType::get("char", wrap(Types::Int8), 1);
-	BuiltinTypes::Int8Ptr = BuiltinType::get("string", wrap(Types::Int8Ptr), 8);
-	BuiltinTypes::Int16 = BuiltinType::get("short", wrap(Types::Int16), 2);
+	BuiltinTypes::Int8 = BuiltinType::get("char", wrap(Types::Int8), 1, dwarf::DW_ATE_signed_char, 8);
+	BuiltinTypes::Int8Ptr = BuiltinTypes::Int8->Ptr();
+	BuiltinTypes::Int16 = BuiltinType::get("short", wrap(Types::Int16), 2, dwarf::DW_ATE_signed, 16);
 	BuiltinTypes::Int16Ptr = BuiltinTypes::Int16->Ptr();
-	BuiltinTypes::Int32 = BuiltinType::get("int", LLVMInt32Type(), 4);
+	BuiltinTypes::Int32 = BuiltinType::get("int", LLVMInt32Type(), 4, dwarf::DW_ATE_signed, 32);
 	BuiltinTypes::Int32Ptr = BuiltinTypes::Int32->Ptr();
-	BuiltinTypes::Int64 = BuiltinType::get("long", wrap(Types::Int64), 8);
+	BuiltinTypes::Int64 = BuiltinType::get("long", wrap(Types::Int64), 8, dwarf::DW_ATE_signed, 64);
 	BuiltinTypes::Int64Ptr = BuiltinTypes::Int64->Ptr();
-	BuiltinTypes::Half = BuiltinType::get("half", LLVMHalfType(), 2);
+	BuiltinTypes::Half = BuiltinType::get("half", LLVMHalfType(), 2, dwarf::DW_ATE_float, 16);
 	BuiltinTypes::HalfPtr = BuiltinTypes::Half->Ptr();
-	BuiltinTypes::Float = BuiltinType::get("float", LLVMFloatType(), 4);
+	BuiltinTypes::Float = BuiltinType::get("float", LLVMFloatType(), 4, dwarf::DW_ATE_float, 32);
 	BuiltinTypes::FloatPtr = BuiltinTypes::Float->Ptr();
-	BuiltinTypes::Double = BuiltinType::get("double", LLVMDoubleType(), 8);
+	BuiltinTypes::Double = BuiltinType::get("double", LLVMDoubleType(), 8, dwarf::DW_ATE_float, 64);
 	BuiltinTypes::DoublePtr = BuiltinTypes::Double->Ptr();
 
 	// LLVM types
-	BuiltinTypes::LLVMAttributeRef = BuiltinType::get("LLVMAttributeRef", wrap(Types::LLVMOpaqueAttributeRef->getPointerTo()), 8);
-	BuiltinTypes::LLVMBasicBlockRef = BuiltinType::get("LLVMBasicBlockRef", wrap(Types::LLVMOpaqueBasicBlock->getPointerTo()), 8);
-	BuiltinTypes::LLVMBuilderRef = BuiltinType::get("LLVMBuilderRef", wrap(Types::LLVMOpaqueBuilder->getPointerTo()), 8);
-	BuiltinTypes::LLVMContextRef = BuiltinType::get("LLVMContextRef", wrap(Types::LLVMOpaqueContext->getPointerTo()), 8);
-	BuiltinTypes::LLVMDiagnosticInfoRef = BuiltinType::get("LLVMDiagnosticInfoRef", wrap(Types::LLVMOpaqueDiagnosticInfo->getPointerTo()), 8);
-	BuiltinTypes::LLVMDIBuilderRef = BuiltinType::get("LLVMDIBuilderRef", wrap(Types::LLVMOpaqueDIBuilder->getPointerTo()), 8);
-	BuiltinTypes::LLVMMemoryBufferRef = BuiltinType::get("LLVMMemoryBufferRef", wrap(Types::LLVMOpaqueMemoryBuffer->getPointerTo()), 8);
-	BuiltinTypes::LLVMMetadataRef = BuiltinType::get("LLVMMetadataRef", wrap(Types::LLVMOpaqueMetadata->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleRef = BuiltinType::get("LLVMModuleRef", wrap(Types::LLVMOpaqueModule->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleFlagEntryRef = BuiltinType::get("LLVMModuleFlagEntryRef", wrap(Types::LLVMOpaqueModuleFlagEntry->getPointerTo()), 8);
-	BuiltinTypes::LLVMModuleProviderRef = BuiltinType::get("LLVMModuleProviderRef", wrap(Types::LLVMOpaqueModuleProvider->getPointerTo()), 8);
-	BuiltinTypes::LLVMNamedMDNodeRef = BuiltinType::get("LLVMNamedMDNodeRef", wrap(Types::LLVMOpaqueNamedMDNode->getPointerTo()), 8);
-	BuiltinTypes::LLVMPassManagerRef = BuiltinType::get("LLVMPassManagerRef", wrap(Types::LLVMOpaquePassManager->getPointerTo()), 8);
-	BuiltinTypes::LLVMPassRegistryRef = BuiltinType::get("LLVMPassRegistryRef", wrap(Types::LLVMOpaquePassRegistry->getPointerTo()), 8);
-	BuiltinTypes::LLVMTypeRef = BuiltinType::get("LLVMTypeRef", wrap(Types::LLVMOpaqueType->getPointerTo()), 8);
-	BuiltinTypes::LLVMUseRef = BuiltinType::get("LLVMUseRef", wrap(Types::LLVMOpaqueUse->getPointerTo()), 8);
-	BuiltinTypes::LLVMValueRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValue->getPointerTo()), 8);
-	BuiltinTypes::LLVMValueMetadataEntryRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8);
+	BuiltinTypes::LLVMAttributeRef = BuiltinType::get("LLVMAttributeRef", wrap(Types::LLVMOpaqueAttributeRef->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMBasicBlockRef = BuiltinType::get("LLVMBasicBlockRef", wrap(Types::LLVMOpaqueBasicBlock->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMBuilderRef = BuiltinType::get("LLVMBuilderRef", wrap(Types::LLVMOpaqueBuilder->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMContextRef = BuiltinType::get("LLVMContextRef", wrap(Types::LLVMOpaqueContext->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMDiagnosticInfoRef = BuiltinType::get("LLVMDiagnosticInfoRef", wrap(Types::LLVMOpaqueDiagnosticInfo->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMDIBuilderRef = BuiltinType::get("LLVMDIBuilderRef", wrap(Types::LLVMOpaqueDIBuilder->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMMemoryBufferRef = BuiltinType::get("LLVMMemoryBufferRef", wrap(Types::LLVMOpaqueMemoryBuffer->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMMetadataRef = BuiltinType::get("LLVMMetadataRef", wrap(Types::LLVMOpaqueMetadata->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMModuleRef = BuiltinType::get("LLVMModuleRef", wrap(Types::LLVMOpaqueModule->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMModuleFlagEntryRef = BuiltinType::get("LLVMModuleFlagEntryRef", wrap(Types::LLVMOpaqueModuleFlagEntry->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMModuleProviderRef = BuiltinType::get("LLVMModuleProviderRef", wrap(Types::LLVMOpaqueModuleProvider->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMNamedMDNodeRef = BuiltinType::get("LLVMNamedMDNodeRef", wrap(Types::LLVMOpaqueNamedMDNode->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMPassManagerRef = BuiltinType::get("LLVMPassManagerRef", wrap(Types::LLVMOpaquePassManager->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMPassRegistryRef = BuiltinType::get("LLVMPassRegistryRef", wrap(Types::LLVMOpaquePassRegistry->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMTypeRef = BuiltinType::get("LLVMTypeRef", wrap(Types::LLVMOpaqueType->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMUseRef = BuiltinType::get("LLVMUseRef", wrap(Types::LLVMOpaqueUse->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMValueRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValue->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LLVMValueMetadataEntryRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 
 	// AST types
-	BuiltinTypes::Location = BuiltinType::get("Location", wrap(Types::Location->getPointerTo()), 8);
-	BuiltinTypes::ExprAST = BuiltinType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8);
-	BuiltinTypes::ExprListAST = BuiltinType::get("ExprListAST", wrap(Types::ExprListAST->getPointerTo()), 8);
-	BuiltinTypes::LiteralExprAST = BuiltinType::get("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8);
-	BuiltinTypes::IdExprAST = BuiltinType::get("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8);
-	BuiltinTypes::CastExprAST = BuiltinType::get("CastExprAST", wrap(Types::CastExprAST->getPointerTo()), 8);
-	BuiltinTypes::BlockExprAST = BuiltinType::get("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8);
-	BuiltinTypes::StmtAST = BuiltinType::get("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8);
+	BuiltinTypes::Location = BuiltinType::get("Location", wrap(Types::Location->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::ExprAST = BuiltinType::get("ExprAST", wrap(Types::ExprAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::ExprListAST = BuiltinType::get("ExprListAST", wrap(Types::ExprListAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::LiteralExprAST = BuiltinType::get("LiteralExprAST", wrap(Types::LiteralExprAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::IdExprAST = BuiltinType::get("IdExprAST", wrap(Types::IdExprAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::CastExprAST = BuiltinType::get("CastExprAST", wrap(Types::CastExprAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::BlockExprAST = BuiltinType::get("BlockExprAST", wrap(Types::BlockExprAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::StmtAST = BuiltinType::get("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 
 	// >>> Create LLVM-c extern functions
 
@@ -548,18 +548,19 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineOpaqueCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinValue);
+	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::ExprListAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LiteralExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::IdExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::CastExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::BlockExprAST, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMValueRef, BuiltinTypes::BuiltinValue);
-	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMValueRef, BuiltinTypes::BuiltinValue);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMValueRef->Ptr(), BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMBasicBlockRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef, BuiltinTypes::BuiltinValue);
-	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef, BuiltinTypes::BuiltinValue);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef->Ptr(), BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
-	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef->Ptr(), BuiltinTypes::BuiltinValue);
 
 	defineType(rootBlock, "BuiltinFunction", BuiltinTypes::Builtin, BuiltinTypes::BuiltinFunction);
 
@@ -567,8 +568,6 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineOpaqueCast(rootBlock, BuiltinTypes::BuiltinClass, BuiltinTypes::Builtin);
 	defineType(rootBlock, "BuiltinInstance", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance);
 //	defineType(rootBlock, "BuiltinInstancePtr", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance->Ptr());
-
-defineSymbol(rootBlock, "intType", BuiltinTypes::LLVMMetadataRef, new XXXValue(Types::LLVMOpaqueMetadata->getPointerTo(), (uint64_t)intType));
 
 	// Define single-expr statement
 	defineStmt2(rootBlock, "$E",

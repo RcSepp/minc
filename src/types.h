@@ -23,15 +23,16 @@ private:
 	BuiltinType* ptr;
 
 protected:
-	BuiltinType(LLVMOpaqueType* llvmtype, int32_t align)
-		: ptr(nullptr), llvmtype(llvmtype), align(align) {}
+	BuiltinType(LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits)
+		: ptr(nullptr), llvmtype(llvmtype), align(align), encoding(encoding), numbits(numbits) {}
 
 public:
 	LLVMOpaqueType* llvmtype;
-	int32_t align;
+	int32_t align, encoding;
+	int64_t numbits;
 	virtual ~BuiltinType() {};
 
-	static BuiltinType* get(const char* name, LLVMOpaqueType* llvmtype, int32_t align);
+	static BuiltinType* get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits);
 
 	BuiltinType* Ptr();
 };
@@ -78,7 +79,7 @@ private:
 
 protected:
 	TpltType(BuiltinType* baseType, BaseType* tpltType)
-		: BuiltinType(baseType->llvmtype, baseType->align), tpltType(tpltType) {}
+		: BuiltinType(baseType->llvmtype, baseType->align, baseType->encoding, baseType->numbits), tpltType(tpltType) {}
 
 public:
 	BaseType* tpltType;
@@ -95,7 +96,7 @@ public:
 	llvm::Value* val;
 
 	XXXValue(llvm::Value* val)
-		: val(val), constantValue(0) {}
+		: val(val), constantValue(0xFFFFFFFFFFFFFFFF) {}
 	XXXValue(llvm::Type* type, uint64_t value)
 		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
 
@@ -116,7 +117,7 @@ public:
 
 	bool isConstant()
 	{
-		return constantValue != 0;//llvm::isa<llvm::Constant>(val);
+		return constantValue != 0xFFFFFFFFFFFFFFFF;//llvm::isa<llvm::Constant>(val);
 	}
 };
 

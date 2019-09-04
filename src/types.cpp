@@ -19,12 +19,12 @@ extern LLVMContext* context;
 std::map<std::string, BuiltinType*> BuiltinType::builtinTypes;
 std::map<std::string, TpltType*> TpltType::tpltTypes;
 
-BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_t align)
+BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits)
 {
 	std::string hash = std::string(name);
 	auto t = builtinTypes.find(hash);
 	if (t == builtinTypes.end())
-		t = builtinTypes.insert({ name, new BuiltinType(llvmtype, align) }).first;
+		t = builtinTypes.insert({ name, new BuiltinType(llvmtype, align, encoding, numbits) }).first;
 	return t->second;
 }
 
@@ -43,7 +43,7 @@ BuiltinType* BuiltinType::Ptr()
 }
 
 FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg)
-	: BuiltinType(nullptr, 8), resultType(resultType), argTypes(argTypes), name(name)
+	: BuiltinType(nullptr, 8, dwarf::DW_ATE_address, 64), resultType(resultType), argTypes(argTypes), name(name)
 {
 	std::vector<llvm::Type*> argLlvmTypes;
 	for (BuiltinType* argType: argTypes)
@@ -52,7 +52,7 @@ FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<
 }
 
 ClassType::ClassType()
-	: BuiltinType(wrap(StructType::create(*context)), 4) {}
+	: BuiltinType(wrap(StructType::create(*context)), 4, 0, 0) {}
 
 TpltType* TpltType::get(std::string name, BuiltinType* baseType, BaseType* tpltType)
 {

@@ -232,6 +232,74 @@ exprdef<LLVMTypeRef> $E<LLVMTypeRefPtr>[$E<int>] = $E<LLVMTypeRef> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Cast: LLVMMetadataRef to bool
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+castdef<bool> $E<LLVMMetadataRef> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType declaration
+Template: BuiltinType $I
+\* ---------------------------------------------------------------------------*/
+stmtdef BuiltinType $I {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
+	LLVMSetAlignment(storage, 8);
+	addToScope(parentBlock, $0, BuiltinType, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: BuiltinType declaration with initialization
+Template: BuiltinType $I = $E<BuiltinType>
+\* ---------------------------------------------------------------------------*/
+stmtdef BuiltinType $I = $E<BuiltinType> {
+	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
+	LLVMSetAlignment(storage, 8);
+	LLVMBuildStore(codegen($1, parentBlock), storage);
+	addToScope(parentBlock, $0, BuiltinType, storage);
+}
+
+exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
+	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep"), "llvmtype");
+}
+
+exprdef<int> $E<BuiltinType>.align {
+	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep"), "align");
+}
+
+exprdef<int> $E<BuiltinType>.encoding {
+	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 4, "gep"), "encoding");
+}
+
+exprdef<long> $E<BuiltinType>.numbits {
+	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 5, "gep"), "numbits");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Simplified variable declaration
+Template: $E<BuiltinType> $I
+Notes: This statement does not define debug symbols
+\* ---------------------------------------------------------------------------*/
+stmtdef $E<BuiltinType> $I {
+	BuiltinType type = getconst($0, parentBlock);
+	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
+	LLVMSetAlignment(storage, type.align);
+	addToScope(parentBlock, $1, type, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Simplified variable declaration with initialization
+Template: $E<BuiltinType> $I = $E<BuiltinValue>
+Notes: This statement does not define debug symbols and it does not cast the expression type
+\* ---------------------------------------------------------------------------*/
+stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
+	BuiltinType type = getconst($0, parentBlock);
+	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
+	LLVMSetAlignment(storage, type.align);
+	LLVMBuildStore(codegen($2, parentBlock), storage);
+	addToScope(parentBlock, $1, type, storage);
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: BaseType declaration
 Template: BaseType $I
 Depends on: none
@@ -346,10 +414,14 @@ exprdef<Location> $E<ExprAST>.loc {
 	return LLVMBuildCall(getExprLoc, args, 1, "");
 }
 
-exprdef<long> $E<ExprListAST>.size {
+exprdef<int> $E<ExprListAST>.size {
 	LLVMValueRef args[1];
 	args[0] = codegen($0, parentBlock);
-	return LLVMBuildCall(getExprListASTSize, args, 1, "");
+	return LLVMBuildTrunc(
+		LLVMBuildCall(getExprListASTSize, args, 1, ""),
+		LLVMInt32Type(),
+		""
+	);
 }
 
 exprdef<string> $E<LiteralExprAST>.value {
@@ -390,65 +462,6 @@ castdef<bool> $E<ExprAST> { return LLVMBuildIsNotNull(codegen($0, parentBlock), 
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
-
-/* ---------------------------------------------------------------------------*\
-Name: 32 bit signed integer declaration
-Template: int $I
-Depends on: none
-\* ---------------------------------------------------------------------------*/
-stmtdef int $I {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt32Type(), "");
-	LLVMSetAlignment(storage, 4);
-	addToScope(parentBlock, $0, int, storage);
-
-	// LLVMDIBuilderInsertDeclareAtEnd(
-	// 	storage,
-	// 	LLVMDIBuilderCreateAutoVariable(
-	// 		LLVMGetSubprogram(function),
-	// 		$0.name,
-	// 		strlen($0.name),
-	// 		dfile,
-	// 		getExprLine($0),
-	// 		intType,
-	// 		1,
-	// 		0,
-	// 		0
-	// 	),
-	// 	LLVMDIBuilderCreateExpression(),
-	// 	LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
-	// 	LLVMGetInsertBlock()
-	// );
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: 32 bit signed integer declaration with initialization
-Template: int $I = $E<int>
-Depends on: LLVMValueRef $I = $E<LLVMValueRef>
-\* ---------------------------------------------------------------------------*/
-stmtdef int $I = $E<int> {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMInt32Type(), "");
-	LLVMSetAlignment(storage, 4);
-	LLVMBuildStore(codegen($1, parentBlock), storage);
-	addToScope(parentBlock, $0, int, storage);
-
-	// LLVMDIBuilderInsertDeclareAtEnd(
-	// 	storage,
-	// 	LLVMDIBuilderCreateAutoVariable(
-	// 		LLVMGetSubprogram(function),
-	// 		$0.name,
-	// 		strlen($0.name),
-	// 		dfile,
-	// 		getExprLine($0),
-	// 		intType,
-	// 		1,
-	// 		0,
-	// 		0
-	// 	),
-	// 	LLVMDIBuilderCreateExpression(),
-	// 	LLVMDIBuilderCreateDebugLocation(getExprLine($0), getExprColumn($0), LLVMGetSubprogram(function)),
-	// 	LLVMGetInsertBlock()
-	// );
-}
 
 /* ---------------------------------------------------------------------------*\
 Name: Logical NOT
@@ -651,26 +664,26 @@ castdef<long> $E<int> {
 \* ---------------------------------------------------------------------------*/
 
 
-/* ---------------------------------------------------------------------------*\
-Name: String declaration
-Template: string $I
-\* ---------------------------------------------------------------------------*/
-stmtdef string $I {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
-	LLVMSetAlignment(storage, 1);
-	addToScope(parentBlock, $0, string, storage);
-}
+// /* ---------------------------------------------------------------------------*\
+// Name: String declaration
+// Template: string $I
+// \* ---------------------------------------------------------------------------*/
+// stmtdef string $I {
+// 	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+// 	LLVMSetAlignment(storage, 1);
+// 	addToScope(parentBlock, $0, string, storage);
+// }
 
-/* ---------------------------------------------------------------------------*\
-Name: String declaration with initialization
-Template: string $I = $E<string>
-\* ---------------------------------------------------------------------------*/
-stmtdef string $I = $E<string> {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
-	LLVMSetAlignment(storage, 1);
-	LLVMBuildStore(codegen($1, parentBlock), storage);
-	addToScope(parentBlock, $0, string, storage);
-}
+// /* ---------------------------------------------------------------------------*\
+// Name: String declaration with initialization
+// Template: string $I = $E<string>
+// \* ---------------------------------------------------------------------------*/
+// stmtdef string $I = $E<string> {
+// 	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+// 	LLVMSetAlignment(storage, 1);
+// 	LLVMBuildStore(codegen($1, parentBlock), storage);
+// 	addToScope(parentBlock, $0, string, storage);
+// }
 
 
 /* ---------------------------------------------------------------------------*\
@@ -679,27 +692,6 @@ stmtdef string $I = $E<string> {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
-
-/* ---------------------------------------------------------------------------*\
-Name: BuiltinType declaration
-Template: BuiltinType $I
-\* ---------------------------------------------------------------------------*/
-stmtdef BuiltinType $I {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
-	LLVMSetAlignment(storage, 8);
-	addToScope(parentBlock, $0, BuiltinType, storage);
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: BuiltinType declaration with initialization
-Template: BuiltinType $I = $E<BuiltinType>
-\* ---------------------------------------------------------------------------*/
-stmtdef BuiltinType $I = $E<BuiltinType> {
-	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
-	LLVMSetAlignment(storage, 8);
-	LLVMBuildStore(codegen($1, parentBlock), storage);
-	addToScope(parentBlock, $0, BuiltinType, storage);
-}
 
 /* ---------------------------------------------------------------------------*\
 Name: BuiltinType array declaration
@@ -739,20 +731,6 @@ exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] {
 	LLVMValueRef val = LLVMBuildLoad(gep, "");
 	LLVMSetAlignment(val, 8);
 	return val;
-}
-
-exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
-	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
-	LLVMSetAlignment(llvmtype, 8);
-	return llvmtype;
-}
-
-exprdef<int> $E<BuiltinType>.align {
-	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
-	align = LLVMBuildLoad(align, "align");
-	LLVMSetAlignment(align, 4);
-	return align;
 }
 
 exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
@@ -982,10 +960,34 @@ Name: Variable declaration
 Template: $E<BuiltinType> $I
 \* ---------------------------------------------------------------------------*/
 stmtdef $E<BuiltinType> $I {
+	long strlen(string str);
+
 	BuiltinType type = getconst($0, parentBlock);
+	string typeName = getTypeName(type);
 	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
 	LLVMSetAlignment(storage, type.align);
 	addToScope(parentBlock, $1, type, storage);
+
+	if (dfile && type.encoding != 0)
+	{
+		LLVMDIBuilderInsertDeclareAtEnd(
+			storage,
+			LLVMDIBuilderCreateAutoVariable(
+				LLVMGetSubprogram(function),
+				$1.name,
+				strlen($1.name),
+				dfile,
+				getExprLine($1),
+				LLVMDIBuilderCreateBasicType(typeName, strlen(typeName), type.numbits, type.encoding, 0),
+				1,
+				0,
+				0
+			),
+			LLVMDIBuilderCreateExpression(),
+			LLVMDIBuilderCreateDebugLocation(getExprLine($1), getExprColumn($1), LLVMGetSubprogram(function)),
+			LLVMGetInsertBlock()
+		);
+	}
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -996,8 +998,10 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 	string malloc(long size);
 	string strcpy(string destination, string source);
 	string strcat(string destination, string source);
+	long strlen(string str);
 
 	BuiltinType varType = getconst($0, parentBlock);
+	string varTypeName = getTypeName(varType);
 	BuiltinType exprType = gettype($2, parentBlock);
 	ExprAST expr = $2;
 	if (varType != exprType)
@@ -1009,7 +1013,7 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 			strcpy(err, "cannot convert <");
 			strcat(err, getTypeName(exprType));
 			strcat(err, "> to <");
-			strcat(err, getTypeName(varType));
+			strcat(err, varTypeName);
 			strcat(err, "> in initialization");
 			throw CompileError(err, $0);
 		}
@@ -1019,6 +1023,27 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 	LLVMSetAlignment(storage, varType.align);
 	LLVMBuildStore(codegen(expr, parentBlock), storage);
 	addToScope(parentBlock, $1, varType, storage);
+
+	if (dfile && varType.encoding != 0)
+	{
+		LLVMDIBuilderInsertDeclareAtEnd(
+			storage,
+			LLVMDIBuilderCreateAutoVariable(
+				LLVMGetSubprogram(function),
+				$1.name,
+				strlen($1.name),
+				dfile,
+				getExprLine($1),
+				LLVMDIBuilderCreateBasicType(varTypeName, strlen(varTypeName), varType.numbits, varType.encoding, 0),
+				1,
+				0,
+				0
+			),
+			LLVMDIBuilderCreateExpression(),
+			LLVMDIBuilderCreateDebugLocation(getExprLine($1), getExprColumn($1), LLVMGetSubprogram(function)),
+			LLVMGetInsertBlock()
+		);
+	}
 }
 
 /* ---------------------------------------------------------------------------*\

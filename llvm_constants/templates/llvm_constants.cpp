@@ -89,7 +89,9 @@ namespace Types
 			FunctionType::get(Type::getInt32Ty(c), true)->getPointerTo()->getPointerTo(),
 			VoidPtr,
 			LLVMOpaqueType->getPointerTo(),
-			Type::getInt32Ty(c)
+			Type::getInt32Ty(c),
+			Type::getInt32Ty(c),
+			Type::getInt64Ty(c)
 		)->getPointerTo();
 
 		Location = StructType::create("struct.Location",

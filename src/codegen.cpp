@@ -514,7 +514,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
 	{
 		const ExprASTIter beginExpr = iter;
-		const std::pair<const std::vector<ExprAST*>, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
+		const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
 		const ExprASTIter endExpr = iter;
 
 		StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
@@ -566,6 +566,11 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 BaseType* ExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
+}
+
+bool operator<(const ExprAST& left, const ExprAST& right)
+{
+	return left.comp(&right) < 0;
 }
 
 Variable StmtAST::codegen(BlockExprAST* parentBlock)

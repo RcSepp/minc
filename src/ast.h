@@ -90,6 +90,7 @@ public:
 	virtual std::string str() const = 0;
 	virtual int comp(const ExprAST* other) const { return this->exprtype - other->exprtype; }
 };
+bool operator<(const ExprAST& left, const ExprAST& right);
 
 namespace std
 {
@@ -163,11 +164,11 @@ std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
 class StatementRegister
 {
 private:
-	std::map<const std::vector<ExprAST*>, CodegenContext*> stmtreg;
+	std::map<const ExprListAST, CodegenContext*> stmtreg;
 	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
 public:
-	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[tplt] = stmt; }
-	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
+	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[ExprListAST('\0', tplt)] = stmt; }
+	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	{
@@ -183,7 +184,7 @@ public:
 	ExprASTIter begin, end;
 
 	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
-	void collectParams(const BlockExprAST* block, const std::vector<ExprAST*> tplt);
+	void collectParams(const BlockExprAST* block, const ExprListAST& tplt);
 	Variable codegen(BlockExprAST* parentBlock);
 bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); }
 void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
@@ -221,7 +222,7 @@ private:
 	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
 	BaseScopeType* scopeType;
 
-	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
+	const std::pair<const ExprListAST, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExprInternal(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
 
 public:
@@ -238,7 +239,7 @@ public:
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(tplt, stmt);
 	}
-	const std::pair<const std::vector<ExprAST*>, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
+	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
 
 	void defineExpr(ExprAST* tplt, CodegenContext* expr)
 	{
@@ -455,6 +456,7 @@ public:
 		const PlchldExprAST* _other = (const PlchldExprAST*)other;
 		c = this->p1 - _other->p1;
 		if (c) return c;
+		if (this->p2 == nullptr || _other->p2 == nullptr) return this->p2 - _other->p2;
 		return strcmp(this->p2, _other->p2);
 	}
 };

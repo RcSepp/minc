@@ -4,7 +4,7 @@ TEMP_DIR = tmp/
 BIN_DIR = bin/
 
 YACC = bison
-CPPFLAGS = -g
+CPPFLAGS = -g -std=c++1z
 OBJS = minc.o stmtreg.o builtin.o paws.o codegen.o module.o llvm_constants.o types.o cparser.o cparser.yy.o pyparser.o pyparser.yy.o
 LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -fexceptions -rdynamic
 

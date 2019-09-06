@@ -34,17 +34,50 @@ template<int T> struct PawsOpaqueType
 	static inline BaseType* TYPE = new BaseType();
 };
 
+struct TpltType : BaseType
+{
+	BaseType* tpltType;
+	TpltType(BaseType* tpltType) : tpltType(tpltType) {}
+};
+
 typedef PawsOpaqueType<0> PawsBase;
 typedef PawsType<void> PawsVoid;
 typedef PawsType<BaseType*> PawsMetaType;
 typedef PawsType<int> PawsInt;
 typedef PawsType<std::string> PawsString;
 typedef PawsType<ExprAST*> PawsExprAST;
+std::map<BaseType*, TpltType> TypedPawsExprAST;
 typedef PawsType<BlockExprAST*> PawsBlockExprAST;
 typedef PawsType<IModule*> PawsModule;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
 typedef PawsType<std::map<PawsExprAST*, PawsExprAST*>> PawsExprASTMap;
 
+
+
+template<typename T> void registerType(BlockExprAST* scope, const char* name)
+{
+	// Define type and add type symbol to scope
+	defineType(name, T::TYPE);
+	defineSymbol(scope, name, PawsMetaType::TYPE, new PawsMetaType(T::TYPE));
+
+	if (T::TYPE != PawsBase::TYPE)
+	{
+		// Let type derive from PawsBase
+		defineOpaqueCast(scope, T::TYPE, PawsBase::TYPE);
+
+		// Create PawsExprAST-version of type
+		size_t nameLen = strlen(name);
+		char* exprASTName = new char[nameLen + strlen("PawsExprAST<>") + 1];
+		strcpy(exprASTName, "PawsExprAST<");
+		strcat(exprASTName, name);
+		strcat(exprASTName, ">");
+		BaseType* exprASTType = &TypedPawsExprAST.insert({ T::TYPE, TpltType(T::TYPE) }).first->second;
+		defineType(exprASTName, exprASTType);
+		defineOpaqueCast(scope, exprASTType, PawsBase::TYPE); // Let PawsExprAST<type> derive from PawsBase
+		defineOpaqueCast(scope, exprASTType, PawsExprAST::TYPE); // Let PawsExprAST<type> derive from PawsExprAST
+		delete[] exprASTName;
+	}
+}
 
 struct ReturnException
 {
@@ -223,41 +256,16 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 
 int PAWRun(BlockExprAST* block, int argc, char **argv)
 {
-	defineType("PawsBase", PawsBase::TYPE);
-	defineSymbol(block, "PawsBase", PawsMetaType::TYPE, new PawsMetaType(PawsBase::TYPE));
-
-	defineType("PawsVoid", PawsVoid::TYPE);
-	defineSymbol(block, "PawsVoid", PawsMetaType::TYPE, new PawsMetaType(PawsVoid::TYPE));
-	defineOpaqueCast(block, PawsVoid::TYPE, PawsBase::TYPE);
-
-	defineType("PawsMetaType", PawsMetaType::TYPE);
-	defineSymbol(block, "PawsMetaType", PawsMetaType::TYPE, new PawsMetaType(PawsMetaType::TYPE));
-	defineOpaqueCast(block, PawsMetaType::TYPE, PawsBase::TYPE);
-
-	defineType("PawsInt", PawsInt::TYPE);
-	defineSymbol(block, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsInt::TYPE));
-	defineOpaqueCast(block, PawsInt::TYPE, PawsBase::TYPE);
-
-	defineType("PawsString", PawsString::TYPE);
-	defineSymbol(block, "PawsString", PawsMetaType::TYPE, new PawsMetaType(PawsString::TYPE));
-	defineOpaqueCast(block, PawsString::TYPE, PawsBase::TYPE);
-
-	defineType("PawsExprAST", PawsExprAST::TYPE);
-	defineSymbol(block, "PawsExprAST", PawsMetaType::TYPE, new PawsMetaType(PawsExprAST::TYPE));
-	defineOpaqueCast(block, PawsExprAST::TYPE, PawsBase::TYPE);
-
-	defineType("PawsBlockExprAST", PawsBlockExprAST::TYPE);
-	defineSymbol(block, "PawsBlockExprAST", PawsMetaType::TYPE, new PawsMetaType(PawsBlockExprAST::TYPE));
-	defineOpaqueCast(block, PawsBlockExprAST::TYPE, PawsBase::TYPE);
+	registerType<PawsBase>(block, "PawsBase");
+	registerType<PawsVoid>(block, "PawsVoid");
+	registerType<PawsMetaType>(block, "PawsMetaType");
+	registerType<PawsInt>(block, "PawsInt");
+	registerType<PawsString>(block, "PawsString");
+	registerType<PawsExprAST>(block, "PawsExprAST");
+	registerType<PawsBlockExprAST>(block, "PawsBlockExprAST");
 	defineOpaqueCast(block, PawsBlockExprAST::TYPE, PawsExprAST::TYPE);
-
-	defineType("PawsModule", PawsModule::TYPE);
-	defineSymbol(block, "PawsModule", PawsMetaType::TYPE, new PawsMetaType(PawsModule::TYPE));
-	defineOpaqueCast(block, PawsModule::TYPE, PawsBase::TYPE);
-
-	defineType("PawsStringMap", PawsStringMap::TYPE);
-	defineSymbol(block, "PawsStringMap", PawsMetaType::TYPE, new PawsMetaType(PawsStringMap::TYPE));
-	defineOpaqueCast(block, PawsStringMap::TYPE, PawsBase::TYPE);
+	registerType<PawsModule>(block, "PawsModule");
+	registerType<PawsStringMap>(block, "PawsStringMap");
 
 	std::vector<Variable> blockParams;
 	blockParams.reserve(argc);
@@ -689,9 +697,28 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
-	defineExpr(block, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
+	// Define codegen
+	defineExpr3(block, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->val;
+			return codegenExpr(expr, scope);
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			if (!ExprASTIsCast(params[0]))
+				raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
+			BaseType* type = getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			return ((TpltType*)type)->tpltType;
+		}
+	);
+	defineExpr(block, "$E<PawsBlockExprAST>.codegen($E<PawsBlockExprAST>)",
 		+[](ExprAST* expr, BlockExprAST* scope) -> void {
 			codegenExpr(expr, scope);
+		}
+	);
+	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
+		+[](ExprAST* expr) -> void {
+			codegenExpr(expr, nullptr);
 		}
 	);
 

@@ -30,6 +30,12 @@ struct Variable
 	Variable(BaseType* type, BaseValue* value) : type(type), value(value) {}
 };
 
+struct CodegenContext
+{
+	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
+	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
+};
+
 class IModule
 {
 public:
@@ -88,10 +94,12 @@ extern "C"
 	void defineType(const char* name, BaseType* type);
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
+	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc);
+	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr);
 	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);

@@ -275,6 +275,20 @@ extern "C"
 		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
+	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
+	{
+		if (tplt.empty())
+			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
+		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		{
+			std::vector<ExprAST*> stoppedTplt(tplt);
+			stoppedTplt.push_back(new StopExprAST(Location{}));
+			scope->defineStatement(stoppedTplt, stmt);
+		}
+		else
+			scope->defineStatement(tplt, stmt);
+	}
+
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
 	{
 		std::stringstream ss(tpltStr);
@@ -299,6 +313,11 @@ extern "C"
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
 		ExprAST* tplt = tpltBlock->exprs->at(0);
 		scope->defineExpr(tplt, new StaticExprContext2(codeBlock, typeBlock, exprArgs));
+	}
+
+	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr)
+	{
+		scope->defineExpr(tplt, expr);
 	}
 
 	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)

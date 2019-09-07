@@ -54,12 +54,6 @@ struct TypeDescription
 	std::string name;
 };
 
-struct CodegenContext
-{
-	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
-	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
-};
-
 class Expr
 {
 	virtual Variable codegen(BlockExprAST* parentBlock) = 0;

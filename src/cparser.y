@@ -32,7 +32,7 @@
 %token<int> PARAM
 %type<BlockExprAST*> block
 %type<std::vector<ExprAST*>*> stmt_string
-%type<ExprListAST*> expr_string expr_list expr_lists
+%type<ExprListAST*> expr_string expr_list expr_lists optional_expr_lists
 %type<ExprAST*> id_or_plchld expr
 
 %start file
@@ -82,6 +82,11 @@ expr_lists
 	| expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
 ;
 
+optional_expr_lists
+	: %empty { $$ = new ExprListAST(';'); }
+	| expr_lists { $$ = $1; }
+;
+
 id_or_plchld
 	: ID { $$ = new IdExprAST(getloc(@1, @1), $1); }
 	| PLCHLD1 { $$ = new PlchldExprAST(getloc(@1, @1), $1); }
@@ -92,14 +97,15 @@ expr
 	: LITERAL { $$ = new LiteralExprAST(getloc(@1, @1), $1); }
 	| PARAM { $$ = new ParamExprAST(getloc(@1, @1), $1); }
 	| id_or_plchld { $$ = $1; }
+
+	// Enclosed expressions
 	| '(' expr ')' %prec PREC { $$ = new PrecExprAST(getloc(@1, @3), $2); }
-	| expr '(' ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @3), (int)'(', "(", ")", $1, new ExprListAST(';')); }
-	| expr '(' expr_lists ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' ']' %prec SUBSCRIPT { $$ = new ArgOpAST(getloc(@1, @3), (int)'[', "[", "]", $1, new ExprListAST(';')); }
-	| expr '[' expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
-	| id_or_plchld '<' '>' %prec TPLT { $$ = new ArgOpAST(getloc(@1, @3), (int)'<', "<", ">", $1, new ExprListAST(';')); }
-	| id_or_plchld '<' expr_lists '>' %prec TPLT { $$ = new ArgOpAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
 	| '{' block '}' { $$ = $2; }
+
+	// Parameterized expressions
+	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
+	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
 
 	// Tertiary operators
 	| expr '?' expr ':' expr { $$ = new TerOpExprAST(getloc(@1, @5), (int)'?', (int)':', "?", ":", $1, $3, $5); }

@@ -32,6 +32,14 @@ PLCHLD1		$[A-Z]
 PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*>
 PARAM		$0|($[1-9][0-9]*)
 ELLIPSIS	\.\.\.
+EQ			==
+NE			!=
+GEQ			>=
+LEQ			<=
+AND			&&
+OR			\|\|
+NEW			new
+DM			->
 
 %%
 	int indent_caller = normal;
@@ -129,6 +137,8 @@ ELLIPSIS	\.\.\.
 					}
 				}
 
+<normal>{NEW}							return token::NEW;
+<normal>{DM}							return token::DM;
 <normal>{LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];
@@ -192,6 +202,12 @@ ELLIPSIS	\.\.\.
 <normal>"/*"([^*]|(\*+[^*/]))*\*+\/		while (*(++yytext)) if (*yytext == '\n') loc->lines(); // Multi-line comment
 
 <normal>{ELLIPSIS}						return token::ELLIPSIS;
+<normal>{EQ}							return token::EQ;
+<normal>{NE}							return token::NE;
+<normal>{GEQ}							return token::GEQ;
+<normal>{LEQ}							return token::LEQ;
+<normal>{AND}							return token::AND;
+<normal>{OR}							return token::OR;
 
 <normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:	return yytext[0];
 

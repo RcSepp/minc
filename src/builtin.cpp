@@ -668,7 +668,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 			{
 				if (stmtParam != stmtParamsAST.front())
 					jitFuncName += ' ';
-				jitFuncName += ExprASTIsBlock(stmtParam) ? std::string("{}") : ExprASTToString(stmtParam);
+				jitFuncName += ExprASTToShortString(stmtParam);
 			}
 
 #ifdef DEBUG_PARAMETER_COLLECTION
@@ -707,7 +707,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 // 			{
 // 				if (param != params.front())
 // 					jitFuncName += ' ';
-// 				jitFuncName += ExprASTIsBlock(param) ? std::string("{}") : ExprASTToString(param);
+// 				jitFuncName += ExprASTToShortString(param);
 // 			}
 
 //			setScopeType(blockAST, BuiltinScopes::JitFunction);
@@ -751,7 +751,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 			collectParams(parentBlock, exprAST, exprAST, exprParams);
 
 			// Generate JIT function name
-			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
+			std::string jitFuncName = ExprASTToShortString(exprAST);
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
@@ -774,7 +774,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 			collectParams(parentBlock, exprAST, exprAST, exprParams);
 
 			// Generate JIT function name
-			std::string jitFuncName = ExprASTIsBlock(exprAST) ? std::string("{}") : ExprASTToString(exprAST);
+			std::string jitFuncName = ExprASTToShortString(exprAST);
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);

@@ -121,10 +121,9 @@ extern "C"
 	{
 		return expr->str();
 	}
-
-	std::string StmtASTToString(const StmtAST* stmt)
+	std::string ExprASTToShortString(const ExprAST* expr)
 	{
-		return stmt->str();
+		return expr->shortStr();
 	}
 
 	bool ExprASTIsId(const ExprAST* expr)

@@ -82,6 +82,7 @@ public:
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
 	virtual void resolveTypes(BlockExprAST* block);
 	virtual std::string str() const = 0;
+	virtual std::string shortStr() const { return str(); }
 	virtual int comp(const ExprAST* other) const { return this->exprtype - other->exprtype; }
 };
 bool operator<(const ExprAST& left, const ExprAST& right);
@@ -354,6 +355,7 @@ public:
 
 		return result + '}';
 	}
+	std::string shortStr() const { return "{}"; }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);

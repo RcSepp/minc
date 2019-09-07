@@ -65,7 +65,7 @@ class ExprAST
 public:
 	const Location loc;
 	enum ExprType {
-		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, CALL, PREC, SUBSCR, TPLT, TEROP, BINOP, PREOP, POSTOP, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ARGOP, PREC, TEROP, BINOP, PREOP, POSTOP, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -517,20 +517,28 @@ public:
 	}
 };
 
-class CallExprAST : public ExprAST
+class ArgOpAST : public ExprAST
 {
 public:
+	int op;
 	ExprAST *var;
 	ExprListAST* args;
-	CallExprAST(const Location& loc, ExprAST* var, ExprListAST* args) : ExprAST(loc, ExprAST::ExprType::CALL), var(var), args(args) {}
+	const std::string oopstr, copstr;
+
+	ArgOpAST(const Location& loc, int op, const char* oopstr, const char* copstr, ExprAST* var, ExprListAST* args)
+		: ExprAST(loc, ExprAST::ExprType::ARGOP), op(op), var(var), args(args), oopstr(oopstr), copstr(copstr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && var->match(block, ((CallExprAST*)expr)->var, score) && args->match(block, ((CallExprAST*)expr)->args, score);
+		return expr->exprtype == this->exprtype
+			&& ((ArgOpAST*)expr)->op == this->op
+			&& var->match(block, ((ArgOpAST*)expr)->var, score)
+			&& args->match(block, ((ArgOpAST*)expr)->args, score)
+		;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 	{
-		var->collectParams(block, ((CallExprAST*)expr)->var, params, paramIdx);
-		args->collectParams(block, ((CallExprAST*)expr)->args, params, paramIdx);
+		var->collectParams(block, ((ArgOpAST*)expr)->var, params, paramIdx);
+		args->collectParams(block, ((ArgOpAST*)expr)->args, params, paramIdx);
 	}
 	void resolveTypes(BlockExprAST* block)
 	{
@@ -538,12 +546,14 @@ public:
 		args->resolveTypes(block);
 		ExprAST::resolveTypes(block);
 	}
-	std::string str() const { return var->str() + "(" + args->str() + ")"; }
+	std::string str() const { return var->str() + oopstr + args->str() + copstr; }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);
 		if (c) return c;
-		const CallExprAST* _other = (const CallExprAST*)other;
+		const ArgOpAST* _other = (const ArgOpAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
 		c = this->var->comp(_other->var);
 		if (c) return c;
 		return this->args->comp(_other->args);
@@ -575,72 +585,6 @@ public:
 		if (c) return c;
 		const PrecExprAST* _other = (const PrecExprAST*)other;
 		return this->val->comp(_other->val);
-	}
-};
-
-class SubscrExprAST : public ExprAST
-{
-public:
-	ExprAST *var;
-	ExprListAST* idx;
-	SubscrExprAST(const Location& loc, ExprAST* var, ExprListAST* idx) : ExprAST(loc, ExprAST::ExprType::SUBSCR), var(var), idx(idx) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && var->match(block, ((SubscrExprAST*)expr)->var, score) && idx->match(block, ((SubscrExprAST*)expr)->idx, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-	{
-		var->collectParams(block, ((SubscrExprAST*)expr)->var, params, paramIdx);
-		idx->collectParams(block, ((SubscrExprAST*)expr)->idx, params, paramIdx);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		var->resolveTypes(block);
-		idx->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return var->str() + "[" + idx->str() + "]"; }
-	int comp(const ExprAST* other) const
-	{
-		int c = ExprAST::comp(other);
-		if (c) return c;
-		const SubscrExprAST* _other = (const SubscrExprAST*)other;
-		c = this->var->comp(_other->var);
-		if (c) return c;
-		return this->idx->comp(_other->idx);
-	}
-};
-
-class TpltExprAST : public ExprAST
-{
-public:
-	ExprAST *var;
-	ExprListAST* args;
-	TpltExprAST(const Location& loc, ExprAST* var, ExprListAST* args) : ExprAST(loc, ExprAST::ExprType::TPLT), var(var), args(args) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && var->match(block, ((TpltExprAST*)expr)->var, score) && args->match(block, ((TpltExprAST*)expr)->args, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-	{
-		var->collectParams(block, ((TpltExprAST*)expr)->var, params, paramIdx);
-		args->collectParams(block, ((TpltExprAST*)expr)->args, params, paramIdx);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		var->resolveTypes(block);
-		args->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return var->str() + "<" + args->str() + ">"; }
-	int comp(const ExprAST* other) const
-	{
-		int c = ExprAST::comp(other);
-		if (c) return c;
-		const TpltExprAST* _other = (const TpltExprAST*)other;
-		c = this->var->comp(_other->var);
-		if (c) return c;
-		return this->args->comp(_other->args);
 	}
 };
 

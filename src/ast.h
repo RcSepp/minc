@@ -458,34 +458,22 @@ public:
 class ParamExprAST : public ExprAST
 {
 public:
-	int staticIdx;
-	ExprAST* dynamicIdx;
-	ParamExprAST(const Location& loc, int idx) : ExprAST(loc, ExprAST::ExprType::PARAM), staticIdx(idx), dynamicIdx(nullptr) {}
-	ParamExprAST(const Location& loc, ExprAST* idx) : ExprAST(loc, ExprAST::ExprType::PARAM), staticIdx(-1), dynamicIdx(idx) {}
+	int idx;
+	ParamExprAST(const Location& loc, int idx) : ExprAST(loc, ExprAST::ExprType::PARAM), idx(idx) {}
 	Variable codegen(BlockExprAST* parentBlock);
 	BaseType* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return staticIdx == this->staticIdx && (dynamicIdx == nullptr || this->dynamicIdx->match(block, dynamicIdx, score));
+		return expr->exprtype == this->exprtype && idx == this->idx;
 	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-	{
-		if (dynamicIdx && this->dynamicIdx)
-			this->dynamicIdx->collectParams(block, dynamicIdx, params, paramIdx);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		if (dynamicIdx)
-			dynamicIdx->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return '$' + (dynamicIdx ? '[' + dynamicIdx->str() + ']' : std::to_string(staticIdx)); }
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
+	std::string str() const { return '$' + std::to_string(idx); }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);
 		if (c) return c;
 		const ParamExprAST* _other = (const ParamExprAST*)other;
-		return this->staticIdx - _other->staticIdx;
+		return this->idx - _other->idx;
 	}
 };
 

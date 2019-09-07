@@ -25,7 +25,7 @@
 #define getloc(b, e) Location{filename, b.begin.line, b.begin.column, e.end.line, e.end.column}
 %}
 
-%token PARAMS ELLIPSIS
+%token ELLIPSIS
 %token EQ NE LEQ GEQ NEW DM
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
@@ -91,7 +91,6 @@ id_or_plchld
 expr
 	: LITERAL { $$ = new LiteralExprAST(getloc(@1, @1), $1); }
 	| PARAM { $$ = new ParamExprAST(getloc(@1, @1), $1); }
-	| PARAMS '[' expr ']' { $$ = new ParamExprAST(getloc(@1, @4), $3); }
 	| id_or_plchld { $$ = $1; }
 	| '(' expr ')' %prec PREC { $$ = new PrecExprAST(getloc(@1, @3), $2); }
 	| expr '(' ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @3), (int)'(', "(", ")", $1, new ExprListAST(';')); }

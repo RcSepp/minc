@@ -30,7 +30,6 @@ LITERAL		([0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]
 ID			([a-zA-Z_][0-9a-zA-Z_]*)|$#
 PLCHLD1		$[A-Z]
 PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*>
-PARAMS		\$
 PARAM		$0|($[1-9][0-9]*)
 ELLIPSIS	\.\.\.
 
@@ -182,7 +181,6 @@ ELLIPSIS	\.\.\.
 									return token::PLCHLD2;
 								}
 
-<normal>{PARAMS}						return token::PARAMS;
 <normal>{PARAM}							{
 									lval->build<int>(atoi(yytext + 1));
 									return token::PARAM;

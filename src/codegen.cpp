@@ -619,15 +619,15 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr)
 		throw CompileError("invalid use of parameter expression in parameterless scope", loc);
-	if (staticIdx >= blockParams->size())
+	if (idx >= blockParams->size())
 		throw CompileError("parameter index out of bounds", loc);
-	return blockParams->at(staticIdx);
+	return blockParams->at(idx);
 }
 
 BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
-	if (blockParams == nullptr || staticIdx >= blockParams->size())
+	if (blockParams == nullptr || idx >= blockParams->size())
 		return nullptr;
-	return blockParams->at(staticIdx).type;
+	return blockParams->at(idx).type;
 }

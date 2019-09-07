@@ -25,7 +25,7 @@
 %}
 
 %token NEWLINE INDENT OUTDENT
-%token PARAMS ELLIPSIS
+%token ELLIPSIS
 %token EQ NE LEQ GEQ
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
@@ -88,7 +88,6 @@ id_or_plchld
 expr
 	: LITERAL { $$ = new LiteralExprAST(getloc(@1, @1), $1); }
 	| PARAM { $$ = new ParamExprAST(getloc(@1, @1), $1); }
-	| PARAMS '[' expr ']' { $$ = new ParamExprAST(getloc(@1, @4), $3); }
 	| id_or_plchld { $$ = $1; }
 	| id_or_plchld '(' ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @3), (int)'(', "(", ")", $1, new ExprListAST(';')); }
 	| id_or_plchld '(' expr_lists ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }

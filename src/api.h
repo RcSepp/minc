@@ -57,6 +57,7 @@ extern "C"
 	// >>> Parser
 
 	BlockExprAST* parseCFile(const char* filename);
+	BlockExprAST* parsePythonFile(const char* filename);
 
 	// >>> Code Generator
 

@@ -41,7 +41,7 @@ realPath = sourcePath == "-" ? sourcePath : realpath(sourcePath);
 if (!sourceIsPython)
 	rootBlock = parseCFile(realPath);
 else
-	rootBlock = 0; //TODO
+	rootBlock = parsePythonFile(realPath);
 
 // Print AST
 //print(str(rootBlock));

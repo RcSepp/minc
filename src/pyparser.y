@@ -16,6 +16,7 @@
 %{
 #include <vector>
 #include <stdlib.h>
+#include <fstream>
 #include "../src/pyparser.h"
 
 #undef yylex
@@ -135,4 +136,26 @@ expr
 void yy::PyParser::error( const location_type &l, const std::string &err_message )
 {
 	std::cerr << "Error: " << err_message << " at " << l << "\n"; //TODO: throw syntax error
+}
+
+BlockExprAST* parsePythonFile(const char* filename)
+{
+	// Open source file
+	std::ifstream in(filename);
+	if (!in.good())
+	{
+		std::cerr << "\033[31merror:\033[0m " << std::string(filename) << ": No such file or directory\n";
+		return nullptr;
+	}
+
+	// Parse file into rootBlock
+	BlockExprAST* rootBlock;
+	PyLexer lexer(&in, &std::cout);
+	yy::PyParser parser(lexer, filename, &rootBlock);
+	parser.parse();
+
+	// Close source file
+	in.close();
+
+	return rootBlock;
 }

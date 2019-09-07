@@ -46,7 +46,7 @@
 %left '*' '/' '%'
 %left NEW
 %left '.' CALL SUBSCRIPT TPLT DM
-%left PREC
+%left ENC
 
 %%
 
@@ -101,13 +101,14 @@ expr
 	| id_or_plchld { $$ = $1; }
 
 	// Enclosed expressions
-	| '(' expr ')' %prec PREC { $$ = new PrecExprAST(getloc(@1, @3), $2); }
+	| '(' expr ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
+	| '<' expr '>' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'<', "<", ">", $2); }
 	| '{' block '}' { $$ = $2; }
 
 	// Parameterized expressions
-	| id_or_plchld '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
-	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
+	| id_or_plchld '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
+	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
 
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }

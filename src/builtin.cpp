@@ -863,6 +863,18 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		}
 	);
 
+	// Define opaque `castdef`
+	defineStmt2(rootBlock, "castdef<$I> $E",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+			//TODO: Check for errors
+			BaseType* fromType = getType(params[1], parentBlock);
+			//TODO: Check for errors
+
+			defineOpaqueCast(parentBlock, fromType, toType);
+		}
+	);
+
 	// Define `typedef`
 	defineStmt2(rootBlock, "typedef<$I> $I $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {

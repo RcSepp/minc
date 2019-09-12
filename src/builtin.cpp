@@ -55,6 +55,7 @@ namespace MincFunctions
 	Func* addToFileScope;
 	Func* lookupSymbol;
 	Func* lookupScopeType;
+	Func* importSymbol;
 	Func* codegenExprValue;
 	Func* codegenExprConstant;
 	Func* codegenStmt;
@@ -93,6 +94,11 @@ extern "C"
 	{
 		const Variable* var = lookupSymbol(scope, getIdExprASTName(nameAST));
 		return var == nullptr ? nullptr : var->type;
+	}
+	LLVMValueRef ImportSymbol(BlockExprAST* scope, IdExprAST* nameAST)
+	{
+		const Variable* var = importSymbol(scope, getIdExprASTName(nameAST));
+		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
 	}
 
 	LLVMValueRef codegenExprValue(ExprAST* expr, BlockExprAST* scope)
@@ -456,6 +462,7 @@ void initBuiltinSymbols()
 	MincFunctions::addToFileScope = new Func("AddToFileScope", BuiltinTypes::Void, { BuiltinTypes::IdExprAST, BuiltinTypes::Base, BuiltinTypes::LLVMValueRef }, false);
 	MincFunctions::lookupSymbol = new Func("LookupScope", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::lookupScopeType = new Func("LookupScopeType", BuiltinTypes::Base, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
+	MincFunctions::importSymbol = new Func("ImportSymbol", BuiltinTypes::LLVMValueRef, { BuiltinTypes::BlockExprAST, BuiltinTypes::IdExprAST }, false);
 	MincFunctions::codegenExprValue = new Func("codegenExprValue", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenExprConstant = new Func("codegenExprConstant", BuiltinTypes::LLVMValueRef, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 	MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
@@ -494,6 +501,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		MincFunctions::getTypeName,
 		MincFunctions::lookupCast,
 		MincFunctions::lookupSymbol,
+		MincFunctions::importSymbol,
 		MincFunctions::lookupScopeType,
 		MincFunctions::defineFunction,
 	})

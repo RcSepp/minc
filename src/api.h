@@ -71,6 +71,7 @@ extern "C"
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
+	bool ExprASTIsPlchld(const ExprAST* expr);
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);
 	BlockExprAST* wrapExprAST(ExprAST* expr);
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
@@ -80,6 +81,8 @@ extern "C"
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
+	char getPlchldExprASTLabel(const PlchldExprAST* expr);
+	const char* getPlchldExprASTSublabel(const PlchldExprAST* expr);
 	const char* getExprFilename(const ExprAST* expr);
 	unsigned getExprLine(const ExprAST* expr);
 	unsigned getExprColumn(const ExprAST* expr);

@@ -142,6 +142,10 @@ extern "C"
 	{
 		return expr->exprtype == ExprAST::ExprType::BLOCK;
 	}
+	bool ExprASTIsPlchld(const ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::PLCHLD;
+	}
 
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr)
 	{
@@ -188,6 +192,14 @@ extern "C"
 	ExprAST* getCastExprASTSource(const CastExprAST* expr)
 	{
 		return expr->resolvedParams[0];
+	}
+	char getPlchldExprASTLabel(const PlchldExprAST* expr)
+	{
+		return expr->p1;
+	}
+	const char* getPlchldExprASTSublabel(const PlchldExprAST* expr)
+	{
+		return expr->p2;
 	}
 
 	const Location* getExprLoc(const ExprAST* expr) { return &expr->loc; }

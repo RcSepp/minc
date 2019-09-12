@@ -43,6 +43,7 @@ namespace Types
 	StructType* BaseType;
 	StructType* Variable;
 	PointerType* BuiltinType;
+	PointerType* BuiltinPtrType;
 
 	// AST types
 	StructType* Location;
@@ -93,6 +94,10 @@ namespace Types
 			Type::getInt32Ty(c),
 			Type::getInt64Ty(c)
 		)->getPointerTo();
+		BuiltinPtrType = StructType::create("BuiltinPtrType",
+			BuiltinType->getElementType(),
+			BuiltinType
+		)->getPointerTo();
 
 		Location = StructType::create("struct.Location",
 			Type::getInt8PtrTy(c),
@@ -128,6 +133,7 @@ namespace BuiltinTypes
 {
 	BuiltinType* Base;
 	BuiltinType* Builtin;
+	BuiltinType* BuiltinPtr;
 	BuiltinType* BuiltinValue;
 	BuiltinType* BuiltinFunction;
 	BuiltinType* BuiltinClass;

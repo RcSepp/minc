@@ -374,6 +374,7 @@ void initBuiltinSymbols()
 
 	BuiltinTypes::Base = BuiltinType::get("BaseType", wrap(Types::BaseType->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 	BuiltinTypes::Builtin = BuiltinType::get("BuiltinType", wrap(Types::BuiltinType), 8, dwarf::DW_ATE_address, 64);
+	BuiltinTypes::BuiltinPtr = BuiltinType::get("BuiltinPtrType", wrap(Types::BuiltinPtrType), 8, dwarf::DW_ATE_address, 64);
 	BuiltinTypes::BuiltinValue = BuiltinType::get("BuiltinValue", nullptr, 0, 0, 0);
 	BuiltinTypes::BuiltinFunction = BuiltinType::get("BuiltinFunction", nullptr, 0, 0, 0);
 	BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0, 0, 0);
@@ -561,6 +562,20 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef->Ptr(), BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef->Ptr(), BuiltinTypes::BuiltinValue);
+
+	defineType(rootBlock, "BuiltinPtr", BuiltinTypes::Builtin, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::ExprListAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LiteralExprAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::IdExprAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::CastExprAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::BlockExprAST, BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMValueRef->Ptr(), BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMTypeRef->Ptr(), BuiltinTypes::BuiltinPtr);
+	defineOpaqueCast(rootBlock, BuiltinTypes::LLVMMetadataRef->Ptr(), BuiltinTypes::BuiltinPtr);
 
 	defineType(rootBlock, "BuiltinFunction", BuiltinTypes::Builtin, BuiltinTypes::BuiltinFunction);
 

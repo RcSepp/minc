@@ -47,6 +47,7 @@ namespace Types
 	extern StructType* BaseType;
 	extern StructType* Variable;
 	extern PointerType* BuiltinType;
+	extern PointerType* BuiltinPtrType;
 
 	// AST types
 	extern StructType* Location;
@@ -65,6 +66,7 @@ namespace BuiltinTypes
 {
 	extern BuiltinType* Base;
 	extern BuiltinType* Builtin;
+	extern BuiltinType* BuiltinPtr;
 	extern BuiltinType* BuiltinValue;
 	extern BuiltinType* BuiltinFunction;
 	extern BuiltinType* BuiltinClass;

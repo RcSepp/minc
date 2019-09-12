@@ -4,7 +4,7 @@
 #include <string>
 #include <cstring>
 #include <map>
-#include <unordered_set>
+#include <algorithm>
 #include <list>
 #include <vector>
 #include <array>
@@ -222,7 +222,7 @@ private:
 
 public:
 	BlockExprAST* parent;
-	std::unordered_set<BlockExprAST*> references;
+	std::vector<BlockExprAST*> references;
 	std::vector<ExprAST*>* exprs;
 	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
@@ -288,19 +288,19 @@ public:
 
 		// Import importBlock
 		for (block = this; block; block = block->parent)
-			if (importBlock == block || block->references.find(importBlock) != block->references.end())
+			if (importBlock == block || std::find(block->references.begin(), block->references.end(), importBlock) != block->references.end())
 				break;
 		if (block == nullptr)
-			references.insert(importBlock);
+			references.push_back(importBlock);
 
 		// Import all references of importBlock
 		for (BlockExprAST* importRef: importBlock->references)
 		{
 			for (block = this; block; block = block->parent)
-				if (importRef == block || block->references.find(importRef) != block->references.end())
+				if (importRef == block || std::find(block->references.begin(), block->references.end(), importRef) != block->references.end())
 					break;
 			if (block == nullptr)
-				references.insert(importRef);
+				references.push_back(importRef);
 		}
 	}
 

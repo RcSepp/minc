@@ -8,6 +8,7 @@
 
 template<typename T> struct PawsType : BaseValue
 {
+	typedef T CType;
 	T val;
 	static inline BaseType* TYPE = new BaseType();
 	PawsType() {}
@@ -16,6 +17,7 @@ template<typename T> struct PawsType : BaseValue
 };
 template<> struct PawsType<void> : BaseValue
 {
+	typedef void CType;
 	static inline BaseType* TYPE = new BaseType();
 	PawsType() {}
 	uint64_t getConstantValue() { return 0; }
@@ -31,6 +33,7 @@ namespace std
 
 template<int T> struct PawsOpaqueType
 {
+	typedef void CType;
 	static inline BaseType* TYPE = new BaseType();
 };
 
@@ -64,6 +67,26 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 	{
 		// Let type derive from PawsBase
 		defineOpaqueCast(scope, T::TYPE, PawsBase::TYPE);
+
+		// Define ExprAST type hierarchy
+		typedef typename std::remove_pointer<typename T::CType>::type baseCType; // Pointer-less T::CType
+		typedef typename std::remove_const<baseCType>::type rawCType; // Pointer-less, const-less T::CType
+		if (
+			std::is_same<ExprAST, rawCType>()
+			|| std::is_same<IdExprAST, rawCType>()
+			|| std::is_same<CastExprAST, rawCType>()
+			|| std::is_same<LiteralExprAST, rawCType>()
+			|| std::is_same<PlchldExprAST, rawCType>()
+			|| std::is_same<ExprListAST, rawCType>()
+			|| std::is_same<StmtAST, rawCType>()
+			|| std::is_same<BlockExprAST, rawCType>()
+		) // If rawCType derives from ExprAST
+		{
+			if (!std::is_same<ExprAST, baseCType>() && !std::is_const<baseCType>()) // If T::CType != ExprAST* and T::CType is not a const type
+				defineOpaqueCast(scope, T::TYPE, PawsExprAST::TYPE); // Let type derive from PawsExprAST
+			if (!std::is_same<const ExprAST, baseCType>()) // If T::CType != const ExprAST*
+				defineOpaqueCast(scope, T::TYPE, PawsConstExprAST::TYPE); // Let type derive from PawsConstExprAST
+		}
 
 		// Create PawsExprAST-version of type
 		size_t nameLen = strlen(name);
@@ -263,7 +286,6 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	registerType<PawsString>(block, "PawsString");
 	registerType<PawsExprAST>(block, "PawsExprAST");
 	registerType<PawsBlockExprAST>(block, "PawsBlockExprAST");
-	defineOpaqueCast(block, PawsBlockExprAST::TYPE, PawsExprAST::TYPE);
 	registerType<PawsModule>(block, "PawsModule");
 	registerType<PawsStringMap>(block, "PawsStringMap");
 

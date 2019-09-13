@@ -1,5 +1,6 @@
 #include <string>
 #include <map>
+#include <cassert>
 #include <cstring>
 #include <iostream>
 #include <functional>
@@ -51,14 +52,17 @@ typedef PawsType<std::string> PawsString;
 typedef PawsType<ExprAST*> PawsExprAST;
 std::map<BaseType*, TpltType> TypedPawsExprAST;
 typedef PawsType<BlockExprAST*> PawsBlockExprAST;
+typedef PawsType<ExprListAST*> PawsExprListAST;
+typedef PawsType<LiteralExprAST*> PawsLiteralExprAST;
+typedef PawsType<IdExprAST*> PawsIdExprAST;
 typedef PawsType<IModule*> PawsModule;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
-typedef PawsType<std::map<PawsExprAST*, PawsExprAST*>> PawsExprASTMap;
-
 
 
 template<typename T> void registerType(BlockExprAST* scope, const char* name)
 {
+	const size_t nameLen = strlen(name);
+
 	// Define type and add type symbol to scope
 	defineType(name, T::TYPE);
 	defineSymbol(scope, name, PawsMetaType::TYPE, new PawsMetaType(T::TYPE));
@@ -82,14 +86,27 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 			|| std::is_same<BlockExprAST, rawCType>()
 		) // If rawCType derives from ExprAST
 		{
-			if (!std::is_same<ExprAST, baseCType>() && !std::is_const<baseCType>()) // If T::CType != ExprAST* and T::CType is not a const type
-				defineOpaqueCast(scope, T::TYPE, PawsExprAST::TYPE); // Let type derive from PawsExprAST
+			if (!std::is_const<baseCType>()) // If T::CType != ExprAST* and T::CType is not a const type
+			{
+				// Register const type
+				typedef PawsType<typename std::add_pointer<typename std::add_const<baseCType>::type>::type> constT; // const T
+				char* constExprASTName = new char[nameLen + strlen("Const") + 1];
+				strcpy(constExprASTName, "PawsConst");
+				strcat(constExprASTName, name + strlen("Paws"));
+				registerType<constT>(scope, constExprASTName);
+
+				// Let type derive from const type
+				defineOpaqueCast(scope, T::TYPE, constT::TYPE);
+
+				if (!std::is_same<ExprAST, baseCType>()) // If T::CType != ExprAST*
+					defineOpaqueCast(scope, T::TYPE, PawsExprAST::TYPE); // Let type derive from PawsExprAST
+			}
+			
 			if (!std::is_same<const ExprAST, baseCType>()) // If T::CType != const ExprAST*
-				defineOpaqueCast(scope, T::TYPE, PawsConstExprAST::TYPE); // Let type derive from PawsConstExprAST
+				defineOpaqueCast(scope, T::TYPE, PawsType<const ExprAST*>::TYPE); // Let type derive from PawsConstExprAST
 		}
 
 		// Create PawsExprAST-version of type
-		size_t nameLen = strlen(name);
 		char* exprASTName = new char[nameLen + strlen("PawsExprAST<>") + 1];
 		strcpy(exprASTName, "PawsExprAST<");
 		strcat(exprASTName, name);
@@ -605,8 +622,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			return value;
 		}
 	);
-	defineExpr(block, "str($E<PawsExprAST>)",
-		+[](ExprAST* value) -> std::string {
+	defineExpr(block, "str($E<PawsConstExprAST>)",
+		+[](const ExprAST* value) -> std::string {
 			return ExprASTToString(value);
 		}
 	);
@@ -719,12 +736,6 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			char* fname = new char[filename.size() + 1];
 			strcpy(fname, filename.c_str());
 			return parsePythonFile(fname);
-		}
-	);
-
-	defineExpr(block, "$E<PawsBlockExprAST>.exprs",
-		+[](BlockExprAST* a) -> void {
-			//TODO
 		}
 	);
 

@@ -267,6 +267,88 @@ void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const cha
 	}
 }
 
+void VarDeclStmt(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs)
+{
+	BuiltinType* type = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+	const char* typeName = getTypeName(type).c_str();
+	LLVMValueRef storage = LLVMBuildAlloca(wrap(builder), type->llvmtype, "");
+	LLVMSetAlignment(storage, type->align);
+	defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[1]), type, new XXXValue(unwrap(storage)));
+
+	if (dfile && type->encoding != 0)
+	{
+		LLVMDIBuilderInsertDeclareAtEnd(
+			wrap(dbuilder),
+			storage,
+			LLVMDIBuilderCreateAutoVariable(
+				wrap(dbuilder),
+				LLVMGetSubprogram(wrap(currentFunc)),
+				getIdExprASTName((IdExprAST*)params[1]),
+				strlen(getIdExprASTName((IdExprAST*)params[1])),
+				wrap(dfile),
+				getExprLine(params[1]),
+				LLVMDIBuilderCreateBasicType(wrap(dbuilder), typeName, strlen(typeName), type->numbits, type->encoding, LLVMDIFlagZero),
+				1,
+				LLVMDIFlagZero,
+				0
+			),
+			LLVMDIBuilderCreateExpression(wrap(dbuilder), nullptr, 0),
+			LLVMDIBuilderCreateDebugLocation(wrap(context), getExprLine(params[1]), getExprColumn(params[1]), LLVMGetSubprogram(wrap(currentFunc)), nullptr),
+			LLVMGetInsertBlock(wrap(builder))
+		);
+	}
+}
+
+void InitializedVarDeclStmt(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs)
+{
+	BuiltinType* varType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+	const char* varTypeName = getTypeName(varType).c_str();
+	BuiltinType* exprType = (BuiltinType*)getType(params[2], parentBlock);
+	ExprAST* expr = params[2];
+	if (varType != exprType)
+	{
+		expr = lookupCast(parentBlock, expr, varType);
+		if (!expr)
+		{
+			char* err = (char*)malloc(256);
+			strcpy(err, "cannot convert <");
+			strcat(err, getTypeName(exprType).c_str());
+			strcat(err, "> to <");
+			strcat(err, varTypeName);
+			strcat(err, "> in initialization");
+			raiseCompileError(err, params[0]);
+		}
+	}
+
+	LLVMValueRef storage = LLVMBuildAlloca(wrap(builder), varType->llvmtype, "");
+	LLVMSetAlignment(storage, varType->align);
+	LLVMBuildStore(wrap(builder), wrap(((XXXValue*)codegenExpr(expr, parentBlock).value)->val), storage);
+	defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[1]), varType, new XXXValue(unwrap(storage)));
+
+	if (dfile && varType->encoding != 0)
+	{
+		LLVMDIBuilderInsertDeclareAtEnd(
+			wrap(dbuilder),
+			storage,
+			LLVMDIBuilderCreateAutoVariable(
+				wrap(dbuilder),
+				LLVMGetSubprogram(wrap(currentFunc)),
+				getIdExprASTName((IdExprAST*)params[1]),
+				strlen(getIdExprASTName((IdExprAST*)params[1])),
+				wrap(dfile),
+				getExprLine(params[1]),
+				LLVMDIBuilderCreateBasicType(wrap(dbuilder), varTypeName, strlen(varTypeName), varType->numbits, varType->encoding, LLVMDIFlagZero),
+				1,
+				LLVMDIFlagZero,
+				0
+			),
+			LLVMDIBuilderCreateExpression(wrap(dbuilder), nullptr, 0),
+			LLVMDIBuilderCreateDebugLocation(wrap(context), getExprLine(params[1]), getExprColumn(params[1]), LLVMGetSubprogram(wrap(currentFunc)), nullptr),
+			LLVMGetInsertBlock(wrap(builder))
+		);
+	}
+}
+
 Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* funcName, BuiltinType* returnType, BuiltinType* classType, std::vector<BuiltinType*>& argTypes, std::vector<IdExprAST*>& argNames, bool isVarArg)
 {
 	Func* func = new Func(funcName, returnType, argTypes, false);
@@ -327,6 +409,8 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 	}
 
 	defineReturnStmt(funcBlock, returnType, funcName);
+	defineStmt2(funcBlock, "$E<BuiltinType> $I", VarDeclStmt);
+	defineStmt2(funcBlock, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 	if (classType != nullptr)
 	{
@@ -703,6 +787,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::Void);
+			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 			capturedScope.clear();
@@ -735,6 +821,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 //			setScopeType(blockAST, BuiltinScopes::JitFunction);
 //			defineReturnStmt(blockAST, BuiltinTypes::Void);
+//			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+//			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 // 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 // 			capturedScope.clear();
@@ -778,6 +866,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
+			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 			capturedScope.clear();
@@ -801,6 +891,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
+			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 			capturedScope.clear();
@@ -853,6 +945,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
+			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
 			capturedScope.clear();
@@ -887,6 +981,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 
 			setScopeType(blockAST, BuiltinScopes::JitFunction);
 			defineReturnStmt(blockAST, metaType);
+			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
+			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 			std::vector<ExprAST*> typeParams;
 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, metaType, typeParams, jitFuncName);
@@ -969,7 +1065,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 			std::vector<IdExprAST*> argNames; argTypes.reserve(argNameExprs.size());
 			for (ExprAST* argNameExpr: argNameExprs)
 				argNames.push_back((IdExprAST*)argNameExpr);
-			
+
 			Func* func = defineFunction(parentBlock, blockAST, funcName, returnType, nullptr, argTypes, argNames, false);
 
 			// Define function symbol in parent scope

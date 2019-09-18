@@ -964,7 +964,8 @@ stmtdef $E<BuiltinType> $I {
 
 	BuiltinType type = getconst($0, parentBlock);
 	string typeName = getTypeName(type);
-	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
+	LLVMValueRef storage = LLVMAddGlobal(type.llvmtype, $1.name);
+	LLVMSetInitializer(storage, LLVMConstNull(type.llvmtype));
 	LLVMSetAlignment(storage, type.align);
 	addToScope(parentBlock, $1, type, storage);
 
@@ -1019,7 +1020,8 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 		}
 	}
 
-	LLVMValueRef storage = LLVMBuildAlloca(varType.llvmtype, "");
+	LLVMValueRef storage = LLVMAddGlobal(varType.llvmtype, $1.name);
+	LLVMSetInitializer(storage, LLVMConstNull(varType.llvmtype));
 	LLVMSetAlignment(storage, varType.align);
 	LLVMBuildStore(codegen(expr, parentBlock), storage);
 	addToScope(parentBlock, $1, varType, storage);

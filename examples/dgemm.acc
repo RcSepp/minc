@@ -1,5 +1,7 @@
 import <builtin.acc>;
 
+string malloc(long size);
+
 stmtdef double* $I = $E<doublePtr> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), "");
 	LLVMSetAlignment(foo, 8);
@@ -50,35 +52,39 @@ exprdef<double> $E[$E<int>] {
 }
 
 
-int N = 512;//1024;
-int NN = N*N;
+int dgemm()
+{
+	int N = 512;//1024;
+	int NN = N*N;
 
-// --j--   --k--   --j--
-// i C | = i A | * k B |
-// -----   -----   -----
+	// --j--   --k--   --j--
+	// i C | = i A | * k B |
+	// -----   -----   -----
 
-double* A = toDoublePtr(malloc(NN * 8));
-double* B = toDoublePtr(malloc(NN * 8));
-double* C = toDoublePtr(malloc(NN * 8));
-for (int i = 0; i != NN; i = i + 1) {
-	A[i] = i;
-}
-for (int i = 0; i != NN; i = i + 1) {
-	B[i] = i;
-}
-for (int i = 0; i != NN; i = i + 1) {
-	C[i] = 0.0;
-}
+	double* A = toDoublePtr(malloc(NN * 8));
+	double* B = toDoublePtr(malloc(NN * 8));
+	double* C = toDoublePtr(malloc(NN * 8));
+	for (int i = 0; i != NN; i = i + 1) {
+		A[i] = i;
+	}
+	for (int i = 0; i != NN; i = i + 1) {
+		B[i] = i;
+	}
+	for (int i = 0; i != NN; i = i + 1) {
+		C[i] = 0.0;
+	}
 
-for (int i = 0; i != N; i = i + 1) {
-	for (int j = 0; j != N; j = j + 1) {
-		for (int k = 0; k != N; k = k + 1) {
-			C[i * N + j] = C[i * N + j] + A[i * N + k] * B[k * N + j];
+	for (int i = 0; i != N; i = i + 1) {
+		for (int j = 0; j != N; j = j + 1) {
+			for (int k = 0; k != N; k = k + 1) {
+				C[i * N + j] = C[i * N + j] + A[i * N + k] * B[k * N + j];
+			}
 		}
 	}
-}
 
-double fresult = C[N] * 0.000000001;
-int result = fresult;
-//free(toCharPtr(ptr));
-return result;
+	double fresult = C[N] * 0.000000001;
+	int result = fresult;
+	//free(toCharPtr(ptr));
+	return result;
+}
+return dgemm();

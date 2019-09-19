@@ -667,9 +667,11 @@ new GlobalVariable(
 	auto jitFunctionSymbol = jit->findSymbol(name);
 //auto foo = cantFail(jit->findSymbol("MY_CONSTANT").getAddress());
 //TODO: Implement https://lists.llvm.org/pipermail/llvm-dev/2011-May/040236.html -> possibility 2
-	uint64_t jitFunctionPointer = cantFail(jitFunctionSymbol.getAddress());
-
-	return jitFunctionPointer;
+	auto jitFunctionPointer = jitFunctionSymbol.getAddress();
+	if (jitFunctionPointer)
+		return *jitFunctionPointer;
+	else
+		throw CompileError("error linking JIT function\n" + toString(jitFunctionPointer.takeError()), loc);
 }
 
 void JitFunction::removeCompiledModule()

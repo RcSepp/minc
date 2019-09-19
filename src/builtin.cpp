@@ -565,6 +565,8 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 {
 	setScopeType(rootBlock, BuiltinScopes::File);
 
+	defineSymbol(rootBlock, "NULL", nullptr, new XXXValue(nullptr, 0));
+
 	// Define LLVM-c extern functions
 	for (Func& func: llvm_c_functions)
 	{

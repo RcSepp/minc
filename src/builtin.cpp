@@ -260,9 +260,9 @@ void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const cha
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
 				if (funcName)
-					raiseCompileError(("non-void function '" + std::string(funcName) + "' should return a value").c_str(), params[0]);
+					raiseCompileError(("non-void function '" + std::string(funcName) + "' should return a value").c_str(), (ExprAST*)parentBlock);
 				else
-					raiseCompileError("non-void function should return a value", params[0]);
+					raiseCompileError("non-void function should return a value", (ExprAST*)parentBlock);
 			},
 			(void*)funcName
 		);

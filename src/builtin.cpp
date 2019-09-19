@@ -97,6 +97,8 @@ extern "C"
 	}
 	LLVMValueRef ImportSymbol(BlockExprAST* scope, IdExprAST* nameAST)
 	{
+		if (ExprASTIsCast((ExprAST*)nameAST))
+			nameAST = (IdExprAST*)getCastExprASTSource((CastExprAST*)nameAST);
 		const Variable* var = importSymbol(scope, getIdExprASTName(nameAST));
 		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
 	}

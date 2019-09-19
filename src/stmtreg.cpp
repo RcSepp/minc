@@ -1,3 +1,14 @@
+// Match scores:
+// Score | ExprAST type | ExprAST subtype
+// --------------------------------------
+// 6     | ID           |
+// 6     | PLCHLD       | $I<MATCH>
+// 5     | PLCHLD       | $E<MATCH>
+// 4     | PLCHLD       | $I<CAST>
+// 3     | PLCHLD       | $E<CAST>
+// 2     | PLCHLD       | $I
+// 1     | PLCHLD       | $E
+
 //#define DEBUG_STMTREG
 
 #include <assert.h>
@@ -238,16 +249,19 @@ const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupSt
 		printf("%scandidate `%s`", indent.c_str(), iter.first.str().c_str());
 #endif
 		currentScore = 0;
-		if (matchStatement(block, iter.first.exprs.cbegin(), iter.first.exprs.cend(), stmt, stmtEnd, currentScore, &currentStmtEnd) && currentScore > bestScore)
+		if (matchStatement(block, iter.first.exprs.cbegin(), iter.first.exprs.cend(), stmt, stmtEnd, currentScore, &currentStmtEnd))
+#ifdef DEBUG_STMTREG
 		{
-			bestScore = currentScore;
-			bestStmt = &iter;
-			bestStmtEnd = currentStmtEnd;
+#endif
+			if (currentScore > bestScore)
+			{
+				bestScore = currentScore;
+				bestStmt = &iter;
+				bestStmtEnd = currentStmtEnd;
+			}
 #ifdef DEBUG_STMTREG
 			printf(" MATCH(score=%i)", currentScore);
-#endif
 		}
-#ifdef DEBUG_STMTREG
 		printf("\n");
 #endif
 	}
@@ -264,15 +278,18 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
 #endif
 		currentScore = 0;
-		if (iter.first->match(block, expr, currentScore) && currentScore > bestScore)
+		if (iter.first->match(block, expr, currentScore))
+#ifdef DEBUG_STMTREG
 		{
-			bestScore = currentScore;
-			bestStmt = &iter;
+#endif
+			if (currentScore > bestScore)
+			{
+				bestScore = currentScore;
+				bestStmt = &iter;
+			}
 #ifdef DEBUG_STMTREG
 			printf(" MATCH(score=%i)", currentScore);
-#endif
 		}
-#ifdef DEBUG_STMTREG
 		printf("\n");
 #endif
 	}
@@ -282,15 +299,18 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
 #endif
 		currentScore = 0;
-		if (iter.first->match(block, expr, currentScore) && currentScore > bestScore)
+		if (iter.first->match(block, expr, currentScore))
+#ifdef DEBUG_STMTREG
 		{
-			bestScore = currentScore;
-			bestStmt = &iter;
+#endif
+			if (currentScore > bestScore)
+			{
+				bestScore = currentScore;
+				bestStmt = &iter;
+			}
 #ifdef DEBUG_STMTREG
 			printf(" MATCH(score=%i)", currentScore);
-#endif
 		}
-#ifdef DEBUG_STMTREG
 		printf("\n");
 #endif
 	}
@@ -417,7 +437,7 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 
 bool IdExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
-	score += 1; // Reward exact match (score is disregarded on mismatch)
+	score += 6; // Reward exact match (score is disregarded on mismatch)
 	return expr->exprtype == this->exprtype && strcmp(((IdExprAST*)expr)->name, this->name) == 0;
 }
 
@@ -430,21 +450,21 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	switch(p1)
 	{
 	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;
+		score += 1; // Reward $I (over $E or $S)
 		break;
-	case 'L': score += 1; return expr->exprtype == ExprAST::ExprType::LITERAL;
-	case 'B': score += 1; return expr->exprtype == ExprAST::ExprType::BLOCK;
-	case 'P': score += 1; return expr->exprtype == ExprAST::ExprType::PLCHLD;
-	case 'V': score += 1; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
+	case 'L': score += 6; return expr->exprtype == ExprAST::ExprType::LITERAL;
+	case 'B': score += 6; return expr->exprtype == ExprAST::ExprType::BLOCK;
+	case 'P': score += 6; return expr->exprtype == ExprAST::ExprType::PLCHLD;
+	case 'V': score += 6; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
 	case 'S':
-		score -= 1; // Penalize vague expression type
 		break;
 	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
 	}
 
 	if (p2 == nullptr)
 	{
-		score -= 1; // Penalize vague expression template
+		score += 1; // Reward vague match
 		return true;
 	}
 	else
@@ -453,10 +473,10 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 		BaseType* tpltType = getType(block);
 		if (exprType == tpltType)
 		{
-			score += 1; // Reward exact match
+			score += 5; // Reward exact match
 			return true;
 		}
-		score -= 1; // Penalize implicit cast
+		score += 3; // Reward inexact match (score is disregarded on mismatch)
 		return allowCast && block->lookupCast(exprType, tpltType) != nullptr;
 	}
 }

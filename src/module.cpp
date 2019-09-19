@@ -581,9 +581,9 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 			switch(blockParamPlchldExpr->p1)
 			{
 			default: assert(0); //TODO: Throw exception
-			case 'L': exprType = BuiltinTypes::LiteralExprAST;
-			case 'I': exprType = BuiltinTypes::IdExprAST;
-			case 'B': exprType = BuiltinTypes::BlockExprAST;
+			case 'L': exprType = BuiltinTypes::LiteralExprAST; break;
+			case 'I': exprType = BuiltinTypes::IdExprAST; break;
+			case 'B': exprType = BuiltinTypes::BlockExprAST; break;
 			case 'S': break;
 			case 'E':
 				if (blockParamPlchldExpr->p2 == nullptr)

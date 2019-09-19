@@ -438,19 +438,38 @@ class PlchldExprAST : public ExprAST
 {
 public:
 	char p1;
-	const char* p2;
+	char* p2;
+	bool allowCast;
 	PlchldExprAST(const Location& loc, char p1) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), p2(nullptr) {}
-	PlchldExprAST(const Location& loc, const char* p2) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p2[0]), p2(p2 + 1) {}
+	PlchldExprAST(const Location& loc, const char* p2) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p2[0])
+	{
+		size_t p2len = strlen(++p2);
+		if (p2len && p2[p2len - 1] == '!')
+		{
+			allowCast = false;
+			this->p2 = new char[p2len];
+			memcpy(this->p2, p2, p2len - 1);
+			this->p2[p2len - 1] = '\0';
+		}
+		else
+		{
+			allowCast = true;
+			this->p2 = new char[p2len + 1];
+			memcpy(this->p2, p2, p2len + 1);
+		}
+	}
 	BaseType* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	std::string str() const { return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + '>'); }
+	std::string str() const { return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + (allowCast ? ">" : "!>")); }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);
 		if (c) return c;
 		const PlchldExprAST* _other = (const PlchldExprAST*)other;
 		c = this->p1 - _other->p1;
+		if (c) return c;
+		c = (int)this->allowCast - (int)_other->allowCast;
 		if (c) return c;
 		if (this->p2 == nullptr || _other->p2 == nullptr) return this->p2 - _other->p2;
 		return strcmp(this->p2, _other->p2);

@@ -20,7 +20,7 @@ using token = yy::CParser::token;
 LITERAL		(-?[0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]*\'[^\'\n]*\')
 ID			([a-zA-Z_][0-9a-zA-Z_]*)|$#
 PLCHLD1		$[A-Z]
-PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*>
+PLCHLD2		$[A-Z]<[a-zA-Z_][0-9a-zA-Z_]*!?>
 PARAM		$0|($[1-9][0-9]*)
 ELLIPSIS	\.\.\.
 EQ			==

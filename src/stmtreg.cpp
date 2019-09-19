@@ -457,7 +457,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 			return true;
 		}
 		score -= 1; // Penalize implicit cast
-		return block->lookupCast(exprType, tpltType) != nullptr;
+		return allowCast && block->lookupCast(exprType, tpltType) != nullptr;
 	}
 }
 

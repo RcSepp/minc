@@ -96,7 +96,7 @@ public:
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
-		return nullptr;
+		return getVoid().type;
 	}
 };
 

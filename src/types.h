@@ -9,6 +9,7 @@ namespace llvm {
 	class Function;
 }
 
+struct PtrType;
 struct Func;
 struct LLVMOpaqueType;
 
@@ -20,7 +21,7 @@ struct BuiltinType : public BaseType
 {
 private:
 	static std::map<std::string, BuiltinType*> builtinTypes;
-	BuiltinType* ptr;
+	PtrType* ptr;
 
 protected:
 	BuiltinType(LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits)
@@ -34,7 +35,15 @@ public:
 
 	static BuiltinType* get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits);
 
-	BuiltinType* Ptr();
+	PtrType* Ptr();
+};
+
+struct PtrType : public BuiltinType
+{
+	BuiltinType* pointeeType;
+
+	PtrType(BuiltinType* pointeeType);
+	virtual ~PtrType() {};
 };
 
 struct FuncType : public BuiltinType

@@ -28,7 +28,7 @@ BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_
 	return t->second;
 }
 
-BuiltinType* BuiltinType::Ptr()
+PtrType* BuiltinType::Ptr()
 {
 	if (ptr == nullptr)
 	{
@@ -36,11 +36,14 @@ BuiltinType* BuiltinType::Ptr()
 		char* ptrName = new char[name.size() + 3];
 		strcpy(ptrName, name.c_str());
 		strcpy(ptrName + name.size(), "Ptr");
-		ptr = new BuiltinType(llvmtype == nullptr ? nullptr : LLVMPointerType(llvmtype, 0), 8);
+		ptr = new PtrType(this);
 //		defineType(nullptr, ptrName, BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)ptr));
 	}
 	return ptr;
 }
+
+PtrType::PtrType(BuiltinType* pointeeType)
+	: BuiltinType(pointeeType == nullptr ? nullptr : LLVMPointerType(pointeeType->llvmtype, 0), 8, dwarf::DW_ATE_address, 64), pointeeType(pointeeType) {}
 
 FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg)
 	: BuiltinType(nullptr, 8, dwarf::DW_ATE_address, 64), resultType(resultType), argTypes(argTypes), name(name)

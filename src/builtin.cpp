@@ -588,6 +588,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		MincFunctions::getExprColumn,
 		MincFunctions::getTypeName,
 		MincFunctions::lookupCast,
+		MincFunctions::addToScope,
 		MincFunctions::lookupSymbol,
 		MincFunctions::importSymbol,
 		MincFunctions::lookupScopeType,

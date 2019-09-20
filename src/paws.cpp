@@ -388,7 +388,11 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
 			Variable expr = codegenExpr(exprAST, parentBlock);
 
-			defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), expr.type, expr.value);
+			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+			if (var == nullptr)
+				defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), expr.type, expr.value);
+			else
+				var->value = expr.value;
 			return expr;
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {

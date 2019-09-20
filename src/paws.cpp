@@ -543,15 +543,38 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	// Define is-NULL
 	defineExpr2(block, "$E == NULL",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) == nullptr));
+			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) == nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
 		},
 		PawsInt::TYPE
 	);
 	defineExpr2(block, "$E != NULL",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) != nullptr));
+			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) != nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
 		},
 		PawsInt::TYPE
+	);
+
+	// Define pointer equivalence operators
+	//TODO: Generalize this beyond PawsConstExprAST
+	defineExpr(block, "$E<PawsConstExprAST> == NULL",
+		+[](const ExprAST* a) -> int {
+			return a == nullptr;
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST> != NULL",
+		+[](const ExprAST* a) -> int {
+			return a != nullptr;
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST> == $E<PawsConstExprAST>",
+		+[](const ExprAST* a, const ExprAST* b) -> int {
+			return a == b;
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST> != $E<PawsConstExprAST>",
+		+[](const ExprAST* a, const ExprAST* b) -> int {
+			return a != b;
+		}
 	);
 
 	// Define if statement

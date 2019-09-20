@@ -411,7 +411,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define string length getter
-	defineExpr(block, "$E<PawsString>.length()",
+	defineExpr(block, "$E<PawsString>.length",
 		+[](std::string a) -> int {
 			return a.length();
 		}

@@ -16,7 +16,7 @@ if (!COMMANDS.contains($1))
 	print("The commands are:");
 	print();
 	for (cmd, desc: COMMANDS) {
-		print("    " + cmd + (8 - cmd.length()) * " " + desc);
+		print("    " + cmd + (8 - cmd.length) * " " + desc);
 	}
 	return 0;
 }
@@ -30,9 +30,9 @@ if (dt != -1) outputPath = outputPath.substr(0, dt);
 outputDebugSymbols = 1;
 
 PAWS_EXT = ".minc";
-sourceIsPaws = sourcePath.length() >= PAWS_EXT.length() && sourcePath.substr(sourcePath.length() - PAWS_EXT.length()) == PAWS_EXT;
+sourceIsPaws = sourcePath.length >= PAWS_EXT.length && sourcePath.substr(sourcePath.length - PAWS_EXT.length) == PAWS_EXT;
 PY_EXT = ".py";
-sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.substr(sourcePath.length() - PY_EXT.length()) == PY_EXT;
+sourceIsPython = sourcePath.length >= PY_EXT.length && sourcePath.substr(sourcePath.length - PY_EXT.length) == PY_EXT;
 
 // Get absolute path to source file
 realPath = sourcePath == "-" ? sourcePath : realpath(sourcePath);

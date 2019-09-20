@@ -1741,7 +1741,7 @@ defineExpr2(rootBlock, "getfunc($E)",
 			builder->SetInsertPoint(currentBB = elseBlock);
 			Function* getExprListASTExprFunc = MincFunctions::getExprListASTExpression->getFunction(currentModule);
 			Value* resultVal = builder->CreateCall(getExprListASTExprFunc, { ((XXXValue*)listVar.value)->val, ((XXXValue*)idxVar.value)->val });
-			return Variable(listType->tpltType, new XXXValue(resultVal));
+			return Variable(listType->tpltType, new XXXValue(builder->CreateBitCast(resultVal, unwrap(listType->tpltType->llvmtype))));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));

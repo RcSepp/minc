@@ -142,6 +142,10 @@ extern "C"
 	{
 		return expr->exprtype == ExprAST::ExprType::BLOCK;
 	}
+	bool ExprASTIsList(const ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::LIST;
+	}
 	bool ExprASTIsPlchld(const ExprAST* expr)
 	{
 		return expr->exprtype == ExprAST::ExprType::PLCHLD;
@@ -180,6 +184,22 @@ extern "C"
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr)
 	{
 		return expr->parent;
+	}
+	size_t countBlockExprASTStmts(const BlockExprAST* expr)
+	{
+		return expr->countStatements();
+	}
+	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk)
+	{
+		return expr->iterateStatements(cbk);
+	}
+	size_t countBlockExprASTExprs(const BlockExprAST* expr)
+	{
+		return expr->countExprs();
+	}
+	void iterateBlockExprASTExprs(const BlockExprAST* expr, std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk)
+	{
+		return expr->iterateExprs(cbk);
 	}
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent)
 	{

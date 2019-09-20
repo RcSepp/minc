@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 struct BaseType {};
 struct BaseScopeType {};
@@ -71,6 +72,7 @@ extern "C"
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
+	bool ExprASTIsList(const ExprAST* expr);
 	bool ExprASTIsPlchld(const ExprAST* expr);
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);
 	BlockExprAST* wrapExprAST(ExprAST* expr);
@@ -78,6 +80,10 @@ extern "C"
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
+	size_t countBlockExprASTStmts(const BlockExprAST* expr);
+	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk);
+	size_t countBlockExprASTExprs(const BlockExprAST* expr);
+	void iterateBlockExprASTExprs(const BlockExprAST* expr, std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);

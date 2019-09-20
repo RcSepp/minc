@@ -164,13 +164,18 @@ private:
 public:
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[ExprListAST('\0', tplt)] = stmt; }
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
-
-	void defineExpr(const ExprAST* tplt, CodegenContext* expr)
+	size_t countStatements() const { return stmtreg.size(); }
+	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
 	{
-		exprreg[tplt->exprtype][tplt] = expr;
+		for (const std::pair<const ExprListAST, CodegenContext*>& iter: stmtreg)
+			cbk(&iter.first, iter.second);
 	}
+
+	void defineExpr(const ExprAST* tplt, CodegenContext* expr) { exprreg[tplt->exprtype][tplt] = expr; }
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const;
+	size_t countExprs() const;
+	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 };
 
 class StmtAST : public ExprAST
@@ -235,6 +240,8 @@ public:
 		stmtreg.defineStatement(tplt, stmt);
 	}
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
+	size_t countStatements() const { return stmtreg.countStatements(); }
+	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }
 
 	void defineExpr(ExprAST* tplt, CodegenContext* expr)
 	{
@@ -251,6 +258,8 @@ public:
 				ref->stmtreg.lookupExprCandidates(this, expr, candidates);
 		}
 	}
+	size_t countExprs() const { return stmtreg.countExprs(); }
+	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const { stmtreg.iterateExprs(cbk); }
 
 	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 	{

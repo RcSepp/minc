@@ -335,6 +335,21 @@ void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const Ex
 	}
 }
 
+size_t StatementRegister::countExprs() const
+{
+	size_t numExprs = 0;
+	for (const std::map<const ExprAST*, CodegenContext*>& exprreg: this->exprreg)
+		numExprs += exprreg.size();
+	return numExprs;
+}
+
+void StatementRegister::iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const
+{
+	for (const std::map<const ExprAST*, CodegenContext*>& exprreg: this->exprreg)
+		for (const std::pair<const ExprAST*, CodegenContext*>& iter: exprreg)
+			cbk(iter.first, iter.second);
+}
+
 bool BlockExprAST::lookupExpr(ExprAST* expr) const
 {
 #ifdef DEBUG_STMTREG

@@ -565,7 +565,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 					break;
 				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
 				{
-					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+					BuiltinType* codegenType = (BuiltinType*)var->value->getConstantValue();
 					paramVar = Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
 					break;
 				}
@@ -590,7 +590,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 					break;
 				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
 				{
-					BaseType* codegenType = (BaseType*)var->value->getConstantValue();
+					BuiltinType* codegenType = (BuiltinType*)var->value->getConstantValue();
 					exprType = TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
 					break;
 				}

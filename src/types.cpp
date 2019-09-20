@@ -54,7 +54,7 @@ FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<
 ClassType::ClassType()
 	: BuiltinType(wrap(StructType::create(*context)), 4, 0, 0) {}
 
-TpltType* TpltType::get(std::string name, BuiltinType* baseType, BaseType* tpltType)
+TpltType* TpltType::get(std::string name, BuiltinType* baseType, BuiltinType* tpltType)
 {
 	auto t = tpltTypes.find(name);
 	if (t == tpltTypes.end())

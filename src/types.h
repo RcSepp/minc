@@ -78,13 +78,13 @@ private:
 	virtual ~TpltType() {};
 
 protected:
-	TpltType(BuiltinType* baseType, BaseType* tpltType)
+	TpltType(BuiltinType* baseType, BuiltinType* tpltType)
 		: BuiltinType(baseType->llvmtype, baseType->align, baseType->encoding, baseType->numbits), tpltType(tpltType) {}
 
 public:
-	BaseType* tpltType;
+	BuiltinType* tpltType;
 
-	static TpltType* get(std::string name, BuiltinType* baseType, BaseType* tpltType);
+	static TpltType* get(std::string name, BuiltinType* baseType, BuiltinType* tpltType);
 };
 
 struct XXXValue : BaseValue

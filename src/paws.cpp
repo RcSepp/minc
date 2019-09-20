@@ -1,5 +1,6 @@
 #include <string>
 #include <map>
+#include <set>
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -40,9 +41,32 @@ template<int T> struct PawsOpaqueType
 
 struct TpltType : BaseType
 {
-	BaseType* tpltType;
-	TpltType(BaseType* tpltType) : tpltType(tpltType) {}
+private:
+	static std::set<TpltType> tpltTypes;
+	TpltType(BaseType* baseType, BaseType* tpltType) : baseType(baseType), tpltType(tpltType) {}
+
+public:
+	BaseType *const baseType, *const tpltType;
+	static TpltType* get(BaseType* baseType, BaseType* tpltType)
+	{
+		std::set<TpltType>::iterator iter = tpltTypes.find(TpltType(baseType, tpltType));
+		if (iter == tpltTypes.end())
+		{
+			iter = tpltTypes.insert(TpltType(baseType, tpltType)).first;
+			TpltType* t = const_cast<TpltType*>(&*iter); //TODO: Find a way to avoid const_cast
+			defineType((getTypeName(baseType) + '<' + getTypeName(tpltType) + '>').c_str(), t);
+			defineOpaqueCast(getRootScope(), t, PawsOpaqueType<0>::TYPE); // Let baseType<tpltType> derive from PawsBase
+			defineOpaqueCast(getRootScope(), t, baseType); // Let baseType<tpltType> derive from baseType
+		}
+		return const_cast<TpltType*>(&*iter); //TODO: Find a way to avoid const_cast
+	}
 };
+bool operator<(const TpltType& lhs, const TpltType& rhs)
+{
+	return lhs.baseType < rhs.baseType
+		|| lhs.baseType == rhs.baseType && lhs.tpltType < rhs.tpltType;
+}
+std::set<TpltType> TpltType::tpltTypes;
 
 typedef PawsOpaqueType<0> PawsBase;
 typedef PawsType<void> PawsVoid;
@@ -50,13 +74,18 @@ typedef PawsType<BaseType*> PawsMetaType;
 typedef PawsType<int> PawsInt;
 typedef PawsType<std::string> PawsString;
 typedef PawsType<ExprAST*> PawsExprAST;
-std::map<BaseType*, TpltType> TypedPawsExprAST;
 typedef PawsType<BlockExprAST*> PawsBlockExprAST;
 typedef PawsType<ExprListAST*> PawsExprListAST;
 typedef PawsType<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsType<IdExprAST*> PawsIdExprAST;
 typedef PawsType<IModule*> PawsModule;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
+
+struct StmtMap { BlockExprAST* block; };
+typedef PawsType<StmtMap*> PawsStmtMap;
+
+struct ExprMap { BlockExprAST* block; };
+typedef PawsType<ExprMap*> PawsExprMap;
 
 
 template<typename T> void registerType(BlockExprAST* scope, const char* name)
@@ -105,24 +134,129 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 			if (!std::is_same<const ExprAST, baseCType>()) // If T::CType != const ExprAST*
 				defineOpaqueCast(scope, T::TYPE, PawsType<const ExprAST*>::TYPE); // Let type derive from PawsConstExprAST
 		}
-
-		// Create PawsExprAST-version of type
-		char* exprASTName = new char[nameLen + strlen("PawsExprAST<>") + 1];
-		strcpy(exprASTName, "PawsExprAST<");
-		strcat(exprASTName, name);
-		strcat(exprASTName, ">");
-		BaseType* exprASTType = &TypedPawsExprAST.insert({ T::TYPE, TpltType(T::TYPE) }).first->second;
-		defineType(exprASTName, exprASTType);
-		defineOpaqueCast(scope, exprASTType, PawsBase::TYPE); // Let PawsExprAST<type> derive from PawsBase
-		defineOpaqueCast(scope, exprASTType, PawsExprAST::TYPE); // Let PawsExprAST<type> derive from PawsExprAST
-		delete[] exprASTName;
 	}
 }
 
 struct ReturnException
 {
-	const int result;
-	ReturnException(int result) : result(result) {}
+	const Variable result;
+	ReturnException(const Variable& result) : result(result) {}
+};
+
+void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr)
+{
+	if (returnType == PawsVoid::TYPE)
+	{
+		// Define return statement with incorrect type in function scope
+		defineStmt2(scope, "return $E",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				const char* funcName = (const char*)stmtArgs;
+				BaseType* returnType = getType(params[0], parentBlock);
+				if (funcName)
+					raiseCompileError(("void function '" + std::string(funcName) + "' should not return a value").c_str(), params[0]);
+				else
+					raiseCompileError("void function should not return a value", params[0]);
+			},
+			(void*)funcName
+		);
+
+		// Define return statement without type in function scope
+		defineStmt2(scope, "return",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				throw ReturnException(Variable(PawsVoid::TYPE, nullptr));
+			}
+		);
+	}
+	else
+	{
+		// Define return statement with incorrect type in function scope
+		defineStmt2(scope, "return $E",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BaseType* returnType = getType(params[0], parentBlock);
+				raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
+			}
+		);
+
+		// Define return statement with correct type in function scope
+		defineStmt2(scope, ("return $E<" + getTypeName(returnType) + ">").c_str(),
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				throw ReturnException(codegenExpr(params[0], parentBlock));
+			}
+		);
+
+		// Define return statement without type in function scope
+		defineStmt2(scope, "return",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				const char* funcName = (const char*)stmtArgs;
+				if (funcName)
+					raiseCompileError(("non-void function '" + std::string(funcName) + "' should return a value").c_str(), (ExprAST*)parentBlock);
+				else
+					raiseCompileError("non-void function should return a value", (ExprAST*)parentBlock);
+			},
+			(void*)funcName
+		);
+	}
+}
+
+struct StmtContext : public CodegenContext
+{
+private:
+	BlockExprAST* const stmt;
+	std::vector<Variable> blockParams;
+public:
+	StmtContext(BlockExprAST* stmt, const std::vector<Variable>& blockParams)
+		: stmt(stmt), blockParams(blockParams) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		// Set block parameters
+		for (size_t i = 0; i < params.size(); ++i)
+			blockParams[i].value = new PawsExprAST(params[i]);
+		setBlockExprASTParams(stmt, blockParams);
+
+		// Execute statement code block
+		codegenExpr((ExprAST*)stmt, parentBlock);
+
+		return getVoid();
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return getVoid().type;
+	}
+};
+
+struct ExprContext : public CodegenContext
+{
+private:
+	BlockExprAST* const expr;
+	BaseType* const type;
+	std::vector<Variable> blockParams;
+public:
+	ExprContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams)
+		: expr(expr), type(type), blockParams(blockParams) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		// Set block parameters
+		for (size_t i = 0; i < params.size(); ++i)
+			blockParams[i].value = new PawsExprAST(params[i]);
+		setBlockExprASTParams(expr, blockParams);
+
+		// Execute expression code block
+		try
+		{
+			codegenExpr((ExprAST*)expr, parentBlock);
+		}
+		catch (ReturnException err)
+		{
+			return err.result;
+		}
+		raiseCompileError("missing return statement in expression block", (ExprAST*)expr);
+
+		return getVoid();
+	}
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	{
+		return type;
+	}
 };
 
 // Templated version of defineStmt2():
@@ -294,6 +428,55 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
+void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> params, std::vector<Variable>& blockParams)
+{
+	blockParams.reserve(params.size());
+	for (ExprAST* param: params)
+	{
+		BaseType* paramType = PawsExprAST::TYPE;
+		if (ExprASTIsPlchld(param))
+		{
+			PlchldExprAST* plchldParam = (PlchldExprAST*)param;
+			switch (getPlchldExprASTLabel(plchldParam))
+			{
+			default: assert(0); //TODO: Throw exception
+			case 'L': paramType = PawsLiteralExprAST::TYPE; break;
+			case 'I': paramType = PawsIdExprAST::TYPE; break;
+			case 'B': paramType = PawsBlockExprAST::TYPE; break;
+			case 'S': break;
+			case 'E':
+				if (getPlchldExprASTSublabel(plchldParam) == nullptr)
+					break;
+				if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
+					paramType = TpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
+			}
+		}
+		else if (ExprASTIsList(param))
+		{
+			const std::vector<ExprAST*>& listParamExprs = getExprListASTExpressions((ExprListAST*)param);
+			if (listParamExprs.size() != 0)
+			{
+				PlchldExprAST* plchldParam = (PlchldExprAST*)listParamExprs.front();
+				switch (getPlchldExprASTLabel(plchldParam))
+				{
+				default: assert(0); //TODO: Throw exception
+				case 'L': paramType = PawsLiteralExprAST::TYPE; break;
+				case 'I': paramType = PawsIdExprAST::TYPE; break;
+				case 'B': paramType = PawsBlockExprAST::TYPE; break;
+				case 'S': break;
+				case 'E':
+					if (getPlchldExprASTSublabel(plchldParam) == nullptr)
+						break;
+					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
+						paramType = TpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
+				}
+				paramType = TpltType::get(PawsExprListAST::TYPE, paramType);
+			}
+		}
+		blockParams.push_back(Variable(paramType, nullptr));
+	}
+}
+
 int PAWRun(BlockExprAST* block, int argc, char **argv)
 {
 	registerType<PawsBase>(block, "PawsBase");
@@ -303,8 +486,13 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	registerType<PawsString>(block, "PawsString");
 	registerType<PawsExprAST>(block, "PawsExprAST");
 	registerType<PawsBlockExprAST>(block, "PawsBlockExprAST");
+	registerType<PawsExprListAST>(block, "PawsExprListAST");
+	registerType<PawsLiteralExprAST>(block, "PawsLiteralExprAST");
+	registerType<PawsIdExprAST>(block, "PawsIdExprAST");
 	registerType<PawsModule>(block, "PawsModule");
 	registerType<PawsStringMap>(block, "PawsStringMap");
+	registerType<PawsStmtMap>(block, "PawsStmtMap");
+	registerType<PawsExprMap>(block, "PawsExprMap");
 
 	std::vector<Variable> blockParams;
 	blockParams.reserve(argc);
@@ -339,11 +527,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define return statement
-	defineStmt(block, "return $E<PawsInt>",
-		+[](int result) {
-			throw ReturnException(result);
-		}
-	);
+	definePawsReturnStmt(block, PawsInt::TYPE);
 
 	// Define variable lookup
 	defineExpr3(block, "$I",
@@ -766,16 +950,127 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	defineExpr(block, "$E<PawsStmtMap>.length",
+		+[](StmtMap* stmts) -> int {
+			return countBlockExprASTStmts(stmts->block);
+		}
+	);
+	defineStmt2(block, "for ($I, $I: $E<PawsStmtMap>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			IdExprAST* keyExpr = (IdExprAST*)params[0];
+			IdExprAST* valueExpr = (IdExprAST*)params[1];
+			PawsStmtMap* stmts = (PawsStmtMap*)codegenExpr(params[2], parentBlock).value;
+			BlockExprAST* body = (BlockExprAST*)params[3];
+			PawsType<const ExprListAST*> key, value;
+			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprListAST*>::TYPE, &key);
+			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprListAST*>::TYPE, &value);
+			iterateBlockExprASTStmts(stmts->val->block, [&](const ExprListAST* tplt, const CodegenContext* stmt) {
+				key.val = tplt;
+				codegenExpr((ExprAST*)body, parentBlock);
+			});
+		}
+	);
+	defineStmt2(block, "$E<PawsStmtMap>[$E ...] = $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			StmtMap* const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = stmts->block;
+			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[1]);
+
+			// Collect parameters
+			std::vector<ExprAST*> stmtParams;
+			for (ExprAST* stmtParam: stmtParamsAST)
+				collectParams(parentBlock, stmtParam, stmtParam, stmtParams);
+
+			// Get block parameter types
+			std::vector<Variable> blockParams;
+			getBlockParameterTypes(parentBlock, stmtParams, blockParams);
+
+			definePawsReturnStmt(scope, PawsVoid::TYPE);
+
+			defineStmt3(scope, stmtParamsAST, new StmtContext((BlockExprAST*)params[2], blockParams));
+		}
+	);
+
+	defineExpr(block, "$E<PawsExprMap>.length",
+		+[](ExprMap* exprs) -> int {
+			return countBlockExprASTExprs(exprs->block);
+		}
+	);
+	defineStmt2(block, "for ($I, $I: $E<PawsExprMap>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			IdExprAST* keyExpr = (IdExprAST*)params[0];
+			IdExprAST* valueExpr = (IdExprAST*)params[1];
+			PawsExprMap* exprs = (PawsExprMap*)codegenExpr(params[2], parentBlock).value;
+			BlockExprAST* body = (BlockExprAST*)params[3];
+			PawsType<const ExprAST*> key, value;
+			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprAST*>::TYPE, &key);
+			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprAST*>::TYPE, &value);
+			iterateBlockExprASTExprs(exprs->val->block, [&](const ExprAST* tplt, const CodegenContext* expr) {
+				key.val = tplt;
+				codegenExpr((ExprAST*)body, parentBlock);
+			});
+		}
+	);
+	defineStmt2(block, "$E<PawsExprMap>[$E] = <$I> $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			ExprMap* const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = exprs->block;
+			ExprAST* exprParamAST = params[1];
+			BaseType* exprType = (BaseType*)codegenExpr(params[2], parentBlock).value->getConstantValue();
+			//TODO: Check for errors
+
+			// Collect parameters
+			std::vector<ExprAST*> exprParams;
+			collectParams(parentBlock, exprParamAST, exprParamAST, exprParams);
+
+			// Get block parameter types
+			std::vector<Variable> blockParams;
+			getBlockParameterTypes(parentBlock, exprParams, blockParams);
+
+			definePawsReturnStmt(scope, exprType);
+
+			defineExpr5(scope, exprParamAST, new ExprContext((BlockExprAST*)params[3], exprType, blockParams));
+		}
+	);
+
+	defineExpr(block, "$E<PawsConstBlockExprAST>.parent",
+		+[](const BlockExprAST* block) -> BlockExprAST* {
+			return getBlockExprASTParent(block);
+		}
+	);
+	defineExpr(block, "$E<PawsBlockExprAST>.parent = $E<PawsBlockExprAST>",
+		+[](BlockExprAST* block, BlockExprAST* parent) -> void {
+			setBlockExprASTParent(block, parent);
+		}
+	);
+
+	defineExpr(block, "$E<PawsBlockExprAST>.stmts",
+		+[](BlockExprAST* block) -> StmtMap* {
+			return new StmtMap{block};
+		}
+	);
+
+	defineExpr(block, "$E<PawsBlockExprAST>.exprs",
+		+[](BlockExprAST* block) -> ExprMap* {
+			return new ExprMap{block};
+		}
+	);
+
 	// Define codegen
 	defineExpr3(block, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->val;
 			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->val;
+			if (!ExprASTIsCast(params[0]))
+			{
+				codegenExpr(expr, scope);
+				return Variable(PawsVoid::TYPE, nullptr);
+			}
 			return codegenExpr(expr, scope);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
-				raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
+				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
 			BaseType* type = getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
 			return ((TpltType*)type)->tpltType;
 		}
@@ -788,6 +1083,50 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
 		+[](ExprAST* expr) -> void {
 			codegenExpr(expr, nullptr);
+		}
+	);
+
+	defineExpr(block, "$E<PawsConstLiteralExprAST>.value",
+		+[](const LiteralExprAST* expr) -> std::string {
+			return getLiteralExprASTValue(expr);
+		}
+	);
+
+	defineExpr(block, "$E<PawsConstIdExprAST>.name",
+		+[](const IdExprAST* expr) -> std::string {
+			return getIdExprASTName(expr);
+		}
+	);
+
+	defineExpr3(block, "$E<PawsExprListAST>[$E<PawsInt>]",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			assert(ExprASTIsCast(params[0]));
+			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->val;
+			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->val;
+			return Variable(((TpltType*)exprsVar.type)->tpltType, new PawsExprAST(getExprListASTExpressions(exprs)[idx]));
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			assert(ExprASTIsCast(params[0]));
+			return ((TpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
+		}
+	);
+
+	defineStmt2(block, "for ($I: $E<PawsExprListAST>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			assert(ExprASTIsCast(params[1]));
+			IdExprAST* iterExpr = (IdExprAST*)params[0];
+			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[1]), parentBlock);
+			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->val;
+			BaseType* exprType = ((TpltType*)exprsVar.type)->tpltType;
+			BlockExprAST* body = (BlockExprAST*)params[2];
+			PawsExprAST iter;
+			defineSymbol(body, getIdExprASTName(iterExpr), exprType, &iter);
+			for (ExprAST* expr: getExprListASTExpressions(exprs))
+			{
+				iter.val = expr;
+				codegenExpr((ExprAST*)body, parentBlock);
+			}
 		}
 	);
 
@@ -901,7 +1240,7 @@ defineExpr2(block, "$E<PawsMetaType>*",
 	}
 	catch (ReturnException err)
 	{
-		return err.result;
+		return ((PawsInt*)err.result.value)->val;
 	}
 	return 0;
 }

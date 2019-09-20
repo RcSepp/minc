@@ -1,7 +1,12 @@
 // Match scores:
 // Score | ExprAST type | ExprAST subtype
 // --------------------------------------
+// 7     | PLCHLD       | $L<MATCH>
 // 6     | ID           |
+// 6     | PLCHLD       | $L
+// 6     | PLCHLD       | $B
+// 6     | PLCHLD       | $P
+// 6     | PLCHLD       | $V
 // 6     | PLCHLD       | $I<MATCH>
 // 5     | PLCHLD       | $E<MATCH>
 // 4     | PLCHLD       | $I<CAST>
@@ -467,7 +472,29 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;
 		score += 1; // Reward $I (over $E or $S)
 		break;
-	case 'L': score += 6; return expr->exprtype == ExprAST::ExprType::LITERAL;
+	case 'L': if (expr->exprtype != ExprAST::ExprType::LITERAL) return false;
+		if (p2 == nullptr)
+		{
+			score += 6; // Reward vague match
+			return true;
+		}
+		else
+		{
+			score += 7; // Reward exact match
+			const char* value = ((const LiteralExprAST*)expr)->value;
+			const char* valueEnd = value + strlen(value) - 1;
+			if (*valueEnd == '"' || *valueEnd == '\'')
+			{
+				size_t prefixLen = strchr(value, *valueEnd) - value;
+				return strncmp(p2, value, prefixLen) == 0 && p2[prefixLen] == '\0';
+			}
+			else
+			{
+				if (*value == '-') ++value;
+				while (*value >= '0' && *value <= '9') ++value;
+				return strcmp(p2, value) == 0;
+			}
+		}
 	case 'B': score += 6; return expr->exprtype == ExprAST::ExprType::BLOCK;
 	case 'P': score += 6; return expr->exprtype == ExprAST::ExprType::PLCHLD;
 	case 'V': score += 6; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
@@ -498,7 +525,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 
 void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 {
-	if (p2 != nullptr)
+	if (p2 != nullptr && p1 != 'L')
 	{
 		BaseType* exprType = expr->getType(block);
 		BaseType* tpltType = getType(block);

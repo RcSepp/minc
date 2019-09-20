@@ -1650,9 +1650,13 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	defineExpr3(rootBlock, "$L",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
+			const char* valueEnd = value + strlen(value) - 1;
 
-			if (value[0] == '"' || value[0] == '\'')
-				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(StringRef(value + 1, strlen(value) - 2), "MY_CONSTANT")));
+			if (*valueEnd == '"' || *valueEnd == '\'')
+			{
+				const char* valueStart = strchr(value, *valueEnd) + 1;
+				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(StringRef(valueStart, valueEnd - valueStart), "MY_CONSTANT")));
+			}
 
 			if (strchr(value, '.'))
 			{
@@ -1671,7 +1675,8 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
-			if (value[0] == '"' || value[0] == '\'')
+			const char* valueEnd = value + strlen(value) - 1;
+			if (*valueEnd == '"' || *valueEnd == '\'')
 				return BuiltinTypes::Int8Ptr;
 			if (strchr(value, '.'))
 				return BuiltinTypes::Double;

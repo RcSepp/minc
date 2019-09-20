@@ -547,9 +547,13 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	defineExpr3(block, "$L",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
+			const char* valueEnd = value + strlen(value) - 1;
 
-			if (value[0] == '"' || value[0] == '\'')
-				return Variable(PawsString::TYPE, new PawsString(std::string(value + 1, strlen(value) - 2)));
+			if (*valueEnd == '"' || *valueEnd == '\'')
+			{
+				const char* valueStart = strchr(value, *valueEnd) + 1;
+				return Variable(PawsString::TYPE, new PawsString(std::string(valueStart, valueEnd - valueStart)));
+			}
 			
 			int intValue;
 			if (value[0] == '0' && value[1] == 'x')
@@ -560,7 +564,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
-			return value[0] == '"' || value[0] == '\'' ? PawsString::TYPE : PawsInt::TYPE;
+			const char* valueEnd = value + strlen(value) - 1;
+			return *valueEnd == '"' || *valueEnd == '\'' ? PawsString::TYPE : PawsInt::TYPE;
 		}
 	);
 

@@ -49,7 +49,7 @@ public:
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
-typedef void (*ImptBlock)(Variable symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
+typedef void (*ImptBlock)(Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
 typedef void (*StepEvent)(const ExprAST* loc);
 
 extern "C"

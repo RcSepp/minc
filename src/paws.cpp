@@ -544,7 +544,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define literal definition
-	defineExpr3(block, "$L",
+	defineExpr3(block, "$L<p>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;

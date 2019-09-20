@@ -1,41 +1,41 @@
-APP_NAME = "minc";
-HELP_MESSAGE = "minc compiler\n";
+APP_NAME = p"minc";
+HELP_MESSAGE = p"minc compiler\n";
 COMMANDS = map(
-	"build": "compile to executable",
-	"run": "compile and run",
-	"parse": "compile to LLVM IR",
-	"debug": "compile LLVM IR and binary"
+	p"build": p"compile to executable",
+	p"run": p"compile and run",
+	p"parse": p"compile to LLVM IR",
+	p"debug": p"compile LLVM IR and binary"
 );
 
 if (!COMMANDS.contains($1))
 {
 	print(HELP_MESSAGE);
-	print("Usage:");
-	print("    " + APP_NAME + " [arguments]");
+	print(p"Usage:");
+	print(p"    " + APP_NAME + p" [arguments]");
 	print();
-	print("The commands are:");
+	print(p"The commands are:");
 	print();
 	for (cmd, desc: COMMANDS) {
-		print("    " + cmd + (8 - cmd.length) * " " + desc);
+		print(p"    " + cmd + (8p - cmd.length) * p" " + desc);
 	}
-	return 0;
+	return 0p;
 }
 command = $1;
 
-sourcePath = $2 != NULL ? $2 : "-";
+sourcePath = $2 != NULL ? $2 : p"-";
 outputPath = $2;
-outputPath = outputPath.substr(max(outputPath.rfind("/"), outputPath.rfind("\\")) + 1);
-dt = outputPath.rfind(".");
-if (dt != -1) outputPath = outputPath.substr(0, dt);
-outputDebugSymbols = 1;
+outputPath = outputPath.substr(max(outputPath.rfind(p"/"), outputPath.rfind(p"\\")) + 1p);
+dt = outputPath.rfind(p".");
+if (dt != -1p) outputPath = outputPath.substr(0p, dt);
+outputDebugSymbols = 1p;
 
-PAWS_EXT = ".minc";
+PAWS_EXT = p".minc";
 sourceIsPaws = sourcePath.length >= PAWS_EXT.length && sourcePath.substr(sourcePath.length - PAWS_EXT.length) == PAWS_EXT;
-PY_EXT = ".py";
+PY_EXT = p".py";
 sourceIsPython = sourcePath.length >= PY_EXT.length && sourcePath.substr(sourcePath.length - PY_EXT.length) == PY_EXT;
 
 // Get absolute path to source file
-realPath = sourcePath == "-" ? sourcePath : realpath(sourcePath);
+realPath = sourcePath == p"-" ? sourcePath : realpath(sourcePath);
 
 // Parse source code from file or stdin into AST
 if (!sourceIsPython)
@@ -43,7 +43,7 @@ if (!sourceIsPython)
 else
 	rootBlock = parsePythonFile(realPath);
 if (rootBlock == NULL)
-	return -1;
+	return -1p;
 
 // Print AST
 //print(str(rootBlock));
@@ -53,27 +53,28 @@ initCompiler();
 initBuiltinSymbols();
 module = createModule(realPath, rootBlock, outputDebugSymbols);
 defineBuiltinSymbols(rootBlock);
+print(456p);
 rootBlock.codegen(NULL);
 module.finalize();
 
 // Execute command
-if (command == "parse" || command == "debug")
+if (command == p"parse" || command == p"debug")
 {
-	if (outputPath == "-")
+	if (outputPath == p"-")
 		module.print();
 	else
-		module.print(outputPath + ".ll");
+		module.print(outputPath + p".ll");
 }
-if (command == "build")
+if (command == p"build")
 {
-	errstr = "";
-	if (!module.compile(outputPath + ".o", errstr))
+	errstr = p"";
+	if (!module.compile(outputPath + p".o", errstr))
 	{
 		printerr(errstr);
-		return -1;
+		return -1p;
 	}
 }
-if (command == "run" || command == "debug")
+if (command == p"run" || command == p"debug")
 {
 	module.run();
 }
@@ -82,14 +83,14 @@ if (command == "run" || command == "debug")
 // // TODO:
 // // See paws.cpp:571
 // // rootBlock.exprs could return either a map<string, CodegenContext> or a map<ExprAST*, CodegenContext>
-// // The goal would be to replace `exprdef "..." { ... }` with `rootBlock.exprs[""] = { ... }`
+// // The goal would be to replace `exprdef p"..." { ... }` with `rootBlock.exprs[p""] = { ... }`
 // //
 // // Example:
-// rootBlock.exprs["if ($E) $S"] = {
+// rootBlock.exprs[p"if ($E) $S"] = {
 // 	if (codegen($0, parentBlock)) {
 // 		codegen($1, parentBlock);
 // 	}
 // }
-// print(rootBlock.exprs); // { "if ($E) $S": ... }
-// rootBlock.remove("if ($E) $S");
+// print(rootBlock.exprs); // { p"if ($E) $S": ... }
+// rootBlock.remove(p"if ($E) $S");
 // print(rootBlock.exprs); // { }

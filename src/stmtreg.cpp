@@ -359,7 +359,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	expr->resolvedParams.clear();
 	MatchScore currentScore, score = -2147483648;
 	const std::pair<const ExprAST*const, CodegenContext*> *currentContext, *context = nullptr;
-	for (const BlockExprAST* block = this; block && !context; block = block->parent)
+	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
 		currentContext = block->stmtreg.lookupExpr(this, expr, currentScore);

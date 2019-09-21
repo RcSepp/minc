@@ -276,7 +276,7 @@ const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupSt
 const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	const std::pair<const ExprAST*const, CodegenContext*>* bestStmt = nullptr;
+	const std::pair<const ExprAST*const, CodegenContext*>* bestExpr = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
@@ -290,7 +290,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 			if (currentScore > bestScore)
 			{
 				bestScore = currentScore;
-				bestStmt = &iter;
+				bestExpr = &iter;
 			}
 #ifdef DEBUG_STMTREG
 			printf(" MATCH(score=%i)", currentScore);
@@ -311,7 +311,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 			if (currentScore > bestScore)
 			{
 				bestScore = currentScore;
-				bestStmt = &iter;
+				bestExpr = &iter;
 			}
 #ifdef DEBUG_STMTREG
 			printf(" MATCH(score=%i)", currentScore);
@@ -319,7 +319,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 		printf("\n");
 #endif
 	}
-	return bestStmt;
+	return bestExpr;
 }
 
 void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const

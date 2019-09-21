@@ -637,7 +637,7 @@ void ExprAST::resolveTypes(BlockExprAST* block)
 
 BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
-	if (p2 == nullptr)
+	if (p2 == nullptr || p1 == 'L')
 		return nullptr;
 	const Variable* var = parentBlock->lookupSymbol(p2);
 	if (var == nullptr)

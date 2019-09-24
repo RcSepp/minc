@@ -80,6 +80,7 @@ extern "C"
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
+	const std::vector<BlockExprAST*>& getBlockExprASTReferences(const BlockExprAST* expr);
 	size_t countBlockExprASTStmts(const BlockExprAST* expr);
 	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk);
 	size_t countBlockExprASTExprs(const BlockExprAST* expr);

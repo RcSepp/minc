@@ -185,6 +185,10 @@ extern "C"
 	{
 		return expr->parent;
 	}
+	const std::vector<BlockExprAST*>& getBlockExprASTReferences(const BlockExprAST* expr)
+	{
+		return expr->references;
+	}
 	size_t countBlockExprASTStmts(const BlockExprAST* expr)
 	{
 		return expr->countStatements();

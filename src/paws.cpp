@@ -75,6 +75,7 @@ typedef PawsType<int> PawsInt;
 typedef PawsType<std::string> PawsString;
 typedef PawsType<ExprAST*> PawsExprAST;
 typedef PawsType<BlockExprAST*> PawsBlockExprAST;
+typedef PawsType<const std::vector<BlockExprAST*>&> PawsConstBlockExprASTList;
 typedef PawsType<ExprListAST*> PawsExprListAST;
 typedef PawsType<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsType<IdExprAST*> PawsIdExprAST;
@@ -510,6 +511,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	registerType<PawsString>(block, "PawsString");
 	registerType<PawsExprAST>(block, "PawsExprAST");
 	registerType<PawsBlockExprAST>(block, "PawsBlockExprAST");
+	registerType<PawsConstBlockExprASTList>(block, "PawsConstBlockExprASTList");
 	registerType<PawsExprListAST>(block, "PawsExprListAST");
 	registerType<PawsLiteralExprAST>(block, "PawsLiteralExprAST");
 	registerType<PawsIdExprAST>(block, "PawsIdExprAST");
@@ -1073,6 +1075,12 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	defineExpr(block, "$E<PawsConstBlockExprAST>.references",
+		+[](const BlockExprAST* block) -> const std::vector<BlockExprAST*>& {
+			return getBlockExprASTReferences(block);
+		}
+	);
+
 	defineExpr(block, "$E<PawsBlockExprAST>.stmts",
 		+[](BlockExprAST* block) -> StmtMap* {
 			return new StmtMap{block};
@@ -1112,6 +1120,34 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
 		+[](ExprAST* expr) -> void {
 			codegenExpr(expr, nullptr);
+		}
+	);
+
+	defineExpr(block, "$E<PawsConstBlockExprASTList>[$E<PawsInt>]",
+		+[](const std::vector<BlockExprAST*>& blocks, int idx) -> const BlockExprAST* {
+			return blocks[idx];
+		}
+	);
+
+	defineExpr(block, "$E<PawsConstBlockExprASTList>.length",
+		+[](const std::vector<BlockExprAST*>& blocks) -> int {
+			return blocks.size();
+		}
+	);
+
+	defineStmt2(block, "for ($I: $E<PawsConstBlockExprASTList>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			IdExprAST* iterExpr = (IdExprAST*)params[0];
+			Variable exprsVar = codegenExpr(params[1], parentBlock);
+			const std::vector<BlockExprAST*>& exprs = ((PawsConstBlockExprASTList*)exprsVar.value)->val;
+			BlockExprAST* body = (BlockExprAST*)params[2];
+			PawsBlockExprAST iter;
+			defineSymbol(body, getIdExprASTName(iterExpr), PawsBlockExprAST::TYPE, &iter);
+			for (BlockExprAST* expr: exprs)
+			{
+				iter.val = expr;
+				codegenExpr((ExprAST*)body, parentBlock);
+			}
 		}
 	);
 

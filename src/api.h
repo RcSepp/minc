@@ -134,7 +134,7 @@ extern "C"
 	// >>> Compiler
 
 	void initCompiler();
-	IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols);
+	IModule* createModule(const std::string& sourcePath, bool outputDebugSymbols);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
 	uint64_t compileJitFunction(JitFunction* jitFunc);

@@ -33,7 +33,7 @@ private:
 	Function* mainFunc;
 
 public:
-	FileModule(const char* sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode);
+	FileModule(const char* sourcePath, bool outputDebugSymbols, bool optimizeCode);
 	void finalize();
 	void run();
 };

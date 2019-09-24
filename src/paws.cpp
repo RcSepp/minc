@@ -1213,9 +1213,9 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
-	defineExpr(block, "createModule($E<PawsString>, $E<PawsBlockExprAST>, $E<PawsInt>)",
-		+[](std::string sourcePath, BlockExprAST* moduleBlock, int outputDebugSymbols) -> IModule* {
-			return createModule(sourcePath, moduleBlock, outputDebugSymbols);
+	defineExpr(block, "createModule($E<PawsString>, $E<PawsInt>)",
+		+[](std::string sourcePath, int outputDebugSymbols) -> IModule* {
+			return createModule(sourcePath, outputDebugSymbols);
 		}
 	);
 

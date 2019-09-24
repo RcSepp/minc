@@ -202,13 +202,13 @@ extern "C"
 		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
 	}
 
-	IModule* createModule(const std::string& sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols)
+	IModule* createModule(const std::string& sourcePath, bool outputDebugSymbols)
 	{
 		// Unbind parseCFile filename parameter lifetime from local filename parameter
 		char* path = new char[sourcePath.size() + 1];
 		strcpy(path, sourcePath.c_str());
 
-		return new FileModule(path, moduleBlock, outputDebugSymbols, !outputDebugSymbols);
+		return new FileModule(path, outputDebugSymbols, !outputDebugSymbols);
 	}
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
@@ -255,7 +255,7 @@ extern "C"
 
 		// Generate module from parsed file
 		setScopeType(importedBlock, fileScope);
-		FileModule* importedModule = new FileModule(realPath, importedBlock, dbuilder != nullptr, dbuilder == nullptr);
+		FileModule* importedModule = new FileModule(realPath, dbuilder != nullptr, dbuilder == nullptr);
 		importedBlock->codegen(scope);
 		importedModule->finalize();
 
@@ -413,7 +413,7 @@ void XXXModule::run()
 	assert(0);
 }
 
-FileModule::FileModule(const char* sourcePath, BlockExprAST* moduleBlock, bool outputDebugSymbols, bool optimizeCode)
+FileModule::FileModule(const char* sourcePath, bool outputDebugSymbols, bool optimizeCode)
 	: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath, 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 {
 	// Generate main function

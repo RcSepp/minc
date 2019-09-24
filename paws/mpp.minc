@@ -51,7 +51,7 @@ if (rootBlock == NULL)
 // Compile AST
 initCompiler();
 initBuiltinSymbols();
-module = createModule(realPath, rootBlock, outputDebugSymbols);
+module = createModule(realPath, outputDebugSymbols);
 defineBuiltinSymbols(rootBlock);
 print(456p);
 rootBlock.codegen(NULL);

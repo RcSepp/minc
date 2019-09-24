@@ -82,6 +82,9 @@ PyObject PySequence_GetItem(PyObject o, long i);
 PyObject PyIter_Next(PyObject o);
 
 PyObject PyNumber_Add(PyObject o1, PyObject o2);
+PyObject PyNumber_Subtract(PyObject o1, PyObject o2);
+PyObject PyNumber_Multiply(PyObject o1, PyObject o2);
+PyObject PyNumber_TrueDivide(PyObject o1, PyObject o2);
 
 PyObject PyObject_GetIter(PyObject o);
 PyObject PyObject_GetAttr(PyObject o, PyObject attr_name);
@@ -163,6 +166,27 @@ exprdef<PyObject> $E<PyObject> + $E<PyObject> {
 	args[0] = codegen($0, parentBlock);
 	args[1] = codegen($1, parentBlock);
 	return LLVMBuildCall(PyNumber_Add, args, 2, "");
+}
+
+exprdef<PyObject> $E<PyObject> - $E<PyObject> {
+	LLVMValueRef args[2];
+	args[0] = codegen($0, parentBlock);
+	args[1] = codegen($1, parentBlock);
+	return LLVMBuildCall(PyNumber_Subtract, args, 2, "");
+}
+
+exprdef<PyObject> $E<PyObject> * $E<PyObject> {
+	LLVMValueRef args[2];
+	args[0] = codegen($0, parentBlock);
+	args[1] = codegen($1, parentBlock);
+	return LLVMBuildCall(PyNumber_Multiply, args, 2, "");
+}
+
+exprdef<PyObject> $E<PyObject> / $E<PyObject> {
+	LLVMValueRef args[2];
+	args[0] = codegen($0, parentBlock);
+	args[1] = codegen($1, parentBlock);
+	return LLVMBuildCall(PyNumber_TrueDivide, args, 2, "");
 }
 
 stmtdef for $I in $E<PyObject> $B {

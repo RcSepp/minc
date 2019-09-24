@@ -973,56 +973,6 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		}
 	);
 
-	// Define variable declaration
-	defineStmt2(rootBlock, "int_ref $I",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			IdExprAST* varAST = (IdExprAST*)params[0];
-
-			Type* type = IntegerType::getInt32Ty(*context);
-			AllocaInst* var = builder->CreateAlloca(type, nullptr, getIdExprASTName(varAST));
-			var->setAlignment(4);
-
-			if (dbuilder)
-			{
-				DILocalVariable *D = dbuilder->createAutoVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), dfile, getExprLine((ExprAST*)varAST), intType, true);
-				dbuilder->insertDeclare(
-					var, D, dbuilder->createExpression(),
-					DebugLoc::get(getExprLine((ExprAST*)varAST), getExprColumn((ExprAST*)varAST), currentFunc->getSubprogram()),
-					builder->GetInsertBlock()
-				);
-			}
-
-			defineSymbol(parentBlock, getIdExprASTName(varAST), BuiltinTypes::Int32, new XXXValue(var));
-		}
-	);
-
-	// Define variable declaration with initialization
-	defineStmt2(rootBlock, "int_ref $I = $E<int>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			IdExprAST* varAST = (IdExprAST*)params[0];
-			ExprAST* valAST = (ExprAST*)params[1];
-
-			Type* type = IntegerType::getInt32Ty(*context);
-			AllocaInst* var = builder->CreateAlloca(type, nullptr, getIdExprASTName(varAST));
-			var->setAlignment(4);
-
-			if (dbuilder)
-			{
-				DILocalVariable *D = dbuilder->createAutoVariable(currentFunc->getSubprogram(), getIdExprASTName(varAST), dfile, getExprLine((ExprAST*)varAST), intType, true);
-				dbuilder->insertDeclare(
-					var, D, dbuilder->createExpression(),
-					DebugLoc::get(getExprLine((ExprAST*)varAST), getExprColumn((ExprAST*)varAST), currentFunc->getSubprogram()),
-					builder->GetInsertBlock()
-				);
-			}
-
-			XXXValue* val = (XXXValue*)codegenExpr(valAST, parentBlock).value;
-			builder->CreateStore(val->val, var)->setAlignment(4);
-
-			defineSymbol(parentBlock, getIdExprASTName(varAST), BuiltinTypes::Int32, new XXXValue(var));
-		}
-	);
-
 	// Define function definition
 	defineStmt2(rootBlock, "$E<BuiltinType> $I($E<BuiltinType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
@@ -1585,18 +1535,6 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 			return getType(params[2], parentBlock);
 		}
 	);*/
-
-	// Define $E<LiteralExprAST>.value_ref
-	defineExpr2(rootBlock, "$E<LiteralExprAST>.value_ref",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Value* varVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-			varVal = builder->CreateBitCast(varVal, Types::LiteralExprAST->getPointerTo());
-
-			Function* getLiteralExprASTValueFunc = currentModule->getFunction("getLiteralExprASTValue");
-			return Variable(BuiltinTypes::Int8Ptr, new XXXValue(builder->CreateCall(getLiteralExprASTValueFunc, { varVal })));
-		},
-		BuiltinTypes::Int8Ptr
-	);
 
 	// Define variable lookup
 	defineExpr3(rootBlock, "$I",

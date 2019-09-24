@@ -168,50 +168,19 @@ std::string mangle(const std::string& className, const std::string& funcName, Bu
 
 void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BuiltinType* type)
 {
+	// Define type in minc type system
 	defineType(name, type);
+
+	// Define type symbol in scope
 	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
-}
 
-Variable lookupVariable(BlockExprAST* parentBlock, const IdExprAST* id)
-{
-	const Variable* var = importSymbol(parentBlock, getIdExprASTName(id));
-	if (var == nullptr)
-		raiseCompileError(("`" + std::string(getIdExprASTName(id)) + "` was not declared in this scope").c_str(), (ExprAST*)id);
-auto foo = getIdExprASTName(id);
-	XXXValue* varVal = (XXXValue*)var->value;
-	if (!varVal) raiseCompileError(("invalid use of type `" + std::string(getIdExprASTName(id)) + "` as expression").c_str(), (ExprAST*)id);
-	if (varVal->isFunction() || varVal->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
-		return *var;
-
-// 	if (isCaptured //) //TODO: Implement this using import rules
-// && closure) //DELETE
-// 	{
-// 		if (!closure) assert(0);
-
-// 		capturedScope.push_back({getIdExprASTName(id), *var});
-
-// Type** capturedTypes = new Type*[capturedScope.size()];
-// int i = 0;
-// for (auto&& [name, var]: capturedScope)
-// {
-// capturedTypes[i++] = unwrap(((BuiltinType*)var.type)->llvmtype);
-// }
-// StructType* closureType = (StructType*)closure->getType()->getPointerElementType();
-// closureType->setBody(ArrayRef<Type*>(capturedTypes, capturedScope.size()));
-
-// 		// expr = closure[idxVal]
-// 		Value* gep = builder->CreateInBoundsGEP(closure, {
-// 			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, 0, true)),
-// 			Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(32, capturedScope.size() - 1, true))
-// 		});
-// 		LoadInst* exprVal = builder->CreateLoad(gep);
-// 		exprVal->setAlignment(8);
-// 		varVal = new XXXValue(exprVal);
-
-// //		parentBlock->defineSymbol(id->name, var->type, varVal); //TODO: Check if closures still work without this
-// 	}
-
-	return Variable(var->type, varVal);
+	// Define bit-cast from type to metaType
+	defineCast2(scope, type, metaType,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+			return Variable((BuiltinType*)castArgs, new XXXValue(builder->CreateBitCast(((XXXValue*)codegenExpr(params[0], parentBlock).value)->val, unwrap(((BuiltinType*)castArgs)->llvmtype))));
+		},
+		metaType
+	);
 }
 
 void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr)
@@ -608,10 +577,10 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		defineOpaqueCast(rootBlock, &func->type, BuiltinTypes::BuiltinFunction);
 	}
 
-	defineType(rootBlock, "BaseType", BuiltinTypes::Base, BuiltinTypes::Base);
-
 	defineType(rootBlock, "BuiltinType", BuiltinTypes::Builtin, BuiltinTypes::Builtin);
 	defineType(rootBlock, "BuiltinTypePtr", BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr());
+
+	defineType(rootBlock, "BaseType", BuiltinTypes::Builtin, BuiltinTypes::Base);
 
 	defineType(rootBlock, "void", BuiltinTypes::Builtin, BuiltinTypes::Void);
 	defineType(rootBlock, "bool", BuiltinTypes::Builtin, BuiltinTypes::Int1);
@@ -1632,13 +1601,21 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 	// Define variable lookup
 	defineExpr3(rootBlock, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable var = lookupVariable(parentBlock, (IdExprAST*)params[0]);
-			if (((XXXValue*)var.value)->isFunction() || ((XXXValue*)var.value)->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var.type))
-				return var;
+			const char* varName = getIdExprASTName((IdExprAST*)params[0]);
+			const Variable* var = importSymbol(parentBlock, varName);
+			if (var == nullptr)
+				raiseCompileError(("`" + std::string(varName) + "` was not declared in this scope").c_str(), params[0]);
+			if (!isInstance(parentBlock, var->type, BuiltinTypes::Builtin))
+				return *var;
 
-			LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var.value)->val, getIdExprASTName((IdExprAST*)params[0]));
+			XXXValue* varVal = (XXXValue*)var->value;
+			if (!varVal) raiseCompileError(("invalid use of type `" + std::string(varName) + "` as expression").c_str(), params[0]);
+			if (varVal->isFunction() || varVal->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
+				return *var;
+
+			LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var->value)->val, varName);
 			loadVal->setAlignment(4);
-			return Variable(var.type, new XXXValue(loadVal));
+			return Variable(var->type, new XXXValue(loadVal));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));

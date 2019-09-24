@@ -265,6 +265,8 @@ void defineStmt(BlockExprAST* scope, const char* tpltStr, void (*stmtFunc)())
 {
 	using StmtFunc = void (*)();
 	StmtBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs){
+		if (params.size() != 0)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		(*(StmtFunc*)stmtArgs)();
 	};
 	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
@@ -273,6 +275,8 @@ template<class P0> void defineStmt(BlockExprAST* scope, const char* tpltStr, voi
 {
 	using StmtFunc = void (*)(P0);
 	StmtBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs){
+		if (params.size() != 1)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		(*(StmtFunc*)stmtArgs)(p0->val);
 	};
@@ -282,6 +286,8 @@ template<class P0, class P1> void defineStmt(BlockExprAST* scope, const char* tp
 {
 	using StmtFunc = void (*)(P0, P1);
 	StmtBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs){
+		if (params.size() != 2)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		(*(StmtFunc*)stmtArgs)(p0->val, p1->val);
@@ -292,6 +298,8 @@ template<class P0, class P1, class P2> void defineStmt(BlockExprAST* scope, cons
 {
 	using StmtFunc = void (*)(P0, P1, P2);
 	StmtBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs){
+		if (params.size() != 3)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -306,6 +314,8 @@ template<class R> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*
 {
 	using ExprFunc = R (*)();
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 0)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)();
@@ -320,6 +330,8 @@ template<class R, class P0> void defineExpr(BlockExprAST* scope, const char* tpl
 {
 	using ExprFunc = R (*)(P0);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 1)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
@@ -335,6 +347,8 @@ template<class R, class P0, class P1> void defineExpr(BlockExprAST* scope, const
 {
 	using ExprFunc = R (*)(P0, P1);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 2)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
@@ -351,6 +365,8 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 {
 	using ExprFunc = R (*)(P0, P1, P2);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 3)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -372,6 +388,8 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 	using ExprFunc = Variable (*)();
 	using ExprTypeFunc = BaseType* (*)();
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 0)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first();
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -384,6 +402,8 @@ template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Var
 	using ExprFunc = Variable (*)(P0);
 	using ExprTypeFunc = BaseType* (*)(BaseType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 1)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->val);
 	};
@@ -398,6 +418,8 @@ template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tp
 	using ExprFunc = Variable (*)(P0, P1);
 	using ExprTypeFunc = BaseType* (*)(BaseType*, BaseType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 2)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->val, p1->val);
@@ -414,6 +436,8 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 	using ExprFunc = Variable (*)(P0, P1, P2);
 	using ExprTypeFunc = BaseType* (*)(BaseType*, BaseType*, BaseType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 3)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
  		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;

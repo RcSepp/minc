@@ -1238,7 +1238,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	defineExpr(block, "$E<PawsModule>.run()",
-		+[](IModule* module) -> void {
+		+[](IModule* module) -> int {
 			module->run();
 		}
 	);

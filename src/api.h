@@ -43,7 +43,7 @@ public:
 	virtual void print(const std::string& outputPath) = 0;
 	virtual void print() = 0;
 	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
-	virtual void run() = 0;
+	virtual int run() = 0;
 	virtual void finalize() = 0;
 };
 

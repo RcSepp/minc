@@ -53,7 +53,6 @@ initCompiler();
 initBuiltinSymbols();
 module = createModule(realPath, outputDebugSymbols);
 defineBuiltinSymbols(rootBlock);
-print(456p);
 rootBlock.codegen(NULL);
 module.finalize();
 
@@ -76,21 +75,6 @@ if (command == p"build")
 }
 if (command == p"run" || command == p"debug")
 {
-	module.run();
+	result = module.run();
+	print(p"./minc Result: " + str(result));
 }
-
-// rootBlock.exprs; // TODO
-// // TODO:
-// // See paws.cpp:571
-// // rootBlock.exprs could return either a map<string, CodegenContext> or a map<ExprAST*, CodegenContext>
-// // The goal would be to replace `exprdef p"..." { ... }` with `rootBlock.exprs[p""] = { ... }`
-// //
-// // Example:
-// rootBlock.exprs[p"if ($E) $S"] = {
-// 	if (codegen($0, parentBlock)) {
-// 		codegen($1, parentBlock);
-// 	}
-// }
-// print(rootBlock.exprs); // { p"if ($E) $S": ... }
-// rootBlock.remove(p"if ($E) $S");
-// print(rootBlock.exprs); // { }

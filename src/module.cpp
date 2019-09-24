@@ -408,9 +408,10 @@ dest.flush();
 return true;
 }
 
-void XXXModule::run()
+int XXXModule::run()
 {
 	assert(0);
+	return -1;
 }
 
 FileModule::FileModule(const char* sourcePath, bool outputDebugSymbols, bool optimizeCode)
@@ -456,11 +457,10 @@ catch (CompileError err) {
 }
 }
 
-void FileModule::run()
+int FileModule::run()
 {
 	ExecutionEngine* EE = EngineBuilder(std::unique_ptr<Module>(module.get())).create();
-	int result = EE->runFunctionAsMain(mainFunc, {}, nullptr);
-	outs() << "./minc Result: " << result << "\n";
+	return EE->runFunctionAsMain(mainFunc, {}, nullptr);
 }
 
 void JitFunction::init()

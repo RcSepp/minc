@@ -490,9 +490,8 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 			}
 			else
 			{
-				if (*value == '-') ++value;
-				while (*value >= '0' && *value <= '9') ++value;
-				return strcmp(p2, value) == 0;
+				for (value = valueEnd; *value != '-' && (*value < '0' || *value > '9'); --value) {}
+				return strcmp(p2, ++value) == 0;
 			}
 		}
 	case 'B': score += 6; return expr->exprtype == ExprAST::ExprType::BLOCK;

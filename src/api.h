@@ -117,6 +117,7 @@ extern "C"
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name);
 	Variable* importSymbol(BlockExprAST* scope, const char* name);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
+	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);
 

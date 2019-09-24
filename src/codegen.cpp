@@ -386,6 +386,11 @@ extern "C"
 		return castExpr;
 	}
 
+	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	{
+		return fromType == toType || scope->lookupCast(fromType, toType) != nullptr;
+	}
+
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)
 	{
 		std::string report = "";

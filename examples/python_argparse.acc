@@ -1,0 +1,12 @@
+import <python37api.acc>;
+
+import argparse;
+import sys;
+
+sys.argv.append("embedded_python.py");
+sys.argv.append("-h");
+
+parser = argparse.ArgumentParser("TEST");
+parser.add_argument("-v", "--version", "print version and exit", "version");
+args = parser.parse_args();
+print(args);

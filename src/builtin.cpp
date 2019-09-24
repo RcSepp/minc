@@ -21,7 +21,6 @@ extern llvm::Function* currentFunc;
 extern llvm::BasicBlock* currentBB;
 extern llvm::DIBuilder* dbuilder;
 extern llvm::DIFile* dfile;
-extern llvm::DIBasicType* intType;
 extern llvm::Value* closure;
 
 std::list<Func> llvm_c_functions;
@@ -329,6 +328,7 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 
 	size_t numArgs = argTypes.size();
 	assert(argNames.size() == numArgs);
+	std::vector<DIBasicType*> argDTypes;
 
 	setScopeType(funcBlock, BuiltinScopes::Function);
 
@@ -338,10 +338,14 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 
 	if (dbuilder)
 	{
+		argDTypes.reserve(numArgs);
+		for (BuiltinType* argType: argTypes)
+			argDTypes.push_back(dbuilder->createBasicType(getTypeName(argType), argType->numbits, argType->encoding));
+
 		DIScope *FContext = dfile;
 		DISubprogram *subprogram = dbuilder->createFunction(
 			parentFunc->getSubprogram(), funcName, funcName, dfile, getExprLine((ExprAST*)funcBlock),
-			dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(std::vector<Metadata*>(numArgs, intType))), //TODO: Replace {} with array of argument types
+			dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(std::vector<Metadata*>(argDTypes.begin(), argDTypes.end()))),
 			getExprLine((ExprAST*)funcBlock), DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
 		;
 		currentFunc->setSubprogram(subprogram);
@@ -368,8 +372,8 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 					i + 1,
 					dfile,
 					getExprLine((ExprAST*)argNames[i]),
-					intType, //TODO: Replace with argTypes[i].ditype
-					true
+					argDTypes[i],
+					false
 				);
 				dbuilder->insertDeclare(
 					currentFunc->args().begin() + i, D, dbuilder->createExpression(),

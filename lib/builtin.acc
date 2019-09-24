@@ -980,7 +980,7 @@ stmtdef $E<BuiltinType> $I {
 				dfile,
 				getExprLine($1),
 				LLVMDIBuilderCreateBasicType(typeName, strlen(typeName), type.numbits, type.encoding, 0),
-				1,
+				0,
 				0,
 				0
 			),
@@ -1037,7 +1037,7 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 				dfile,
 				getExprLine($1),
 				LLVMDIBuilderCreateBasicType(varTypeName, strlen(varTypeName), varType.numbits, varType.encoding, 0),
-				1,
+				0,
 				0,
 				0
 			),

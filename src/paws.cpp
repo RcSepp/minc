@@ -986,6 +986,32 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	defineExpr(block, "$E<PawsConstExprAST>.filename",
+		+[](const ExprAST* expr) -> std::string {
+			return getExprFilename(expr);
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST>.line",
+		+[](const ExprAST* expr) -> int {
+			return getExprLine(expr);
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST>.column",
+		+[](const ExprAST* expr) -> int {
+			return getExprColumn(expr);
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST>.endLine",
+		+[](const ExprAST* expr) -> int {
+			return getExprEndLine(expr);
+		}
+	);
+	defineExpr(block, "$E<PawsConstExprAST>.endColumn",
+		+[](const ExprAST* expr) -> int {
+			return getExprEndColumn(expr);
+		}
+	);
+
 	defineExpr(block, "$E<PawsStmtMap>.length",
 		+[](StmtMap stmts) -> int {
 			return countBlockExprASTStmts(stmts);

@@ -97,6 +97,7 @@ extern "C"
 	unsigned getExprEndColumn(const ExprAST* expr);
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
+	BaseScopeType* getScopeType(const BlockExprAST* scope);
 	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType);
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
 	const std::string& getTypeName(const BaseType* type);

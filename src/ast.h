@@ -220,7 +220,6 @@ private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
 	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
-	BaseScopeType* scopeType;
 
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExprInternal(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
@@ -229,9 +228,10 @@ public:
 	BlockExprAST* parent;
 	std::vector<BlockExprAST*> references;
 	std::vector<ExprAST*>* exprs;
+	BaseScopeType* scopeType;
 	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), scopeType(nullptr), parent(nullptr), exprs(exprs) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs), scopeType(nullptr) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
@@ -316,8 +316,6 @@ public:
 	void defineSymbol(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
 	const Variable* lookupSymbol(const std::string& name) const;
 	Variable* importSymbol(const std::string& name);
-
-	void setScopeType(BaseScopeType* scopeType) { this->scopeType = scopeType; }
 
 	const std::vector<Variable>* getBlockParams() const
 	{

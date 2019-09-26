@@ -242,9 +242,13 @@ extern "C"
 		return fileBlock;
 	}
 
+	BaseScopeType* getScopeType(const BlockExprAST* scope)
+	{
+		return scope->scopeType;
+	}
 	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType)
 	{
-		scope->setScopeType(scopeType);
+		scope->scopeType = scopeType;
 	}
 
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock)

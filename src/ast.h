@@ -315,6 +315,12 @@ public:
 
 	void defineSymbol(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
 	const Variable* lookupSymbol(const std::string& name) const;
+	size_t countSymbols() const { return scope.size(); }
+	void iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const
+	{
+		for (const std::pair<std::string, Variable>& iter: scope)
+			cbk(iter.first, iter.second);
+	}
 	Variable* importSymbol(const std::string& name);
 
 	const std::vector<Variable>* getBlockParams() const

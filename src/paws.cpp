@@ -80,14 +80,17 @@ typedef PawsType<ExprListAST*> PawsExprListAST;
 typedef PawsType<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsType<IdExprAST*> PawsIdExprAST;
 typedef PawsType<IModule*> PawsModule;
+typedef PawsType<Variable> PawsVariable;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
 
-struct StmtMap { BlockExprAST* block; };
-typedef PawsType<StmtMap*> PawsStmtMap;
+struct StmtMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
+typedef PawsType<StmtMap> PawsStmtMap;
 
-struct ExprMap { BlockExprAST* block; };
-typedef PawsType<ExprMap*> PawsExprMap;
+struct ExprMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
+typedef PawsType<ExprMap> PawsExprMap;
 
+struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
+typedef PawsType<SymbolMap> PawsSymbolMap;
 
 template<typename T> void registerType(BlockExprAST* scope, const char* name)
 {
@@ -516,9 +519,11 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	registerType<PawsLiteralExprAST>(block, "PawsLiteralExprAST");
 	registerType<PawsIdExprAST>(block, "PawsIdExprAST");
 	registerType<PawsModule>(block, "PawsModule");
+	registerType<PawsVariable>(block, "PawsVariable");
 	registerType<PawsStringMap>(block, "PawsStringMap");
 	registerType<PawsStmtMap>(block, "PawsStmtMap");
 	registerType<PawsExprMap>(block, "PawsExprMap");
+	registerType<PawsSymbolMap>(block, "PawsSymbolMap");
 
 	std::vector<Variable> blockParams;
 	blockParams.reserve(argc);
@@ -982,8 +987,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	defineExpr(block, "$E<PawsStmtMap>.length",
-		+[](StmtMap* stmts) -> int {
-			return countBlockExprASTStmts(stmts->block);
+		+[](StmtMap stmts) -> int {
+			return countBlockExprASTStmts(stmts);
 		}
 	);
 	defineStmt2(block, "for ($I, $I: $E<PawsStmtMap>) $B",
@@ -995,7 +1000,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			PawsType<const ExprListAST*> key, value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprListAST*>::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprListAST*>::TYPE, &value);
-			iterateBlockExprASTStmts(stmts->val->block, [&](const ExprListAST* tplt, const CodegenContext* stmt) {
+			iterateBlockExprASTStmts(stmts->val, [&](const ExprListAST* tplt, const CodegenContext* stmt) {
 				key.val = tplt;
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
@@ -1003,8 +1008,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 	defineStmt2(block, "$E<PawsStmtMap>[$E ...] = $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			StmtMap* const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->val;
-			BlockExprAST* const scope = stmts->block;
+			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = stmts;
 			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[1]);
 
 			// Collect parameters
@@ -1023,8 +1028,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	defineExpr(block, "$E<PawsExprMap>.length",
-		+[](ExprMap* exprs) -> int {
-			return countBlockExprASTExprs(exprs->block);
+		+[](ExprMap exprs) -> int {
+			return countBlockExprASTExprs(exprs);
 		}
 	);
 	defineStmt2(block, "for ($I, $I: $E<PawsExprMap>) $B",
@@ -1036,7 +1041,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			PawsType<const ExprAST*> key, value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprAST*>::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprAST*>::TYPE, &value);
-			iterateBlockExprASTExprs(exprs->val->block, [&](const ExprAST* tplt, const CodegenContext* expr) {
+			iterateBlockExprASTExprs(exprs->val, [&](const ExprAST* tplt, const CodegenContext* expr) {
 				key.val = tplt;
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
@@ -1044,8 +1049,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 	defineStmt2(block, "$E<PawsExprMap>[$E] = <$I> $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			ExprMap* const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->val;
-			BlockExprAST* const scope = exprs->block;
+			ExprMap const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = exprs;
 			ExprAST* exprParamAST = params[1];
 			BaseType* exprType = (BaseType*)codegenExpr(params[2], parentBlock).value->getConstantValue();
 			//TODO: Check for errors
@@ -1061,6 +1066,39 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			definePawsReturnStmt(scope, exprType);
 
 			defineExpr5(scope, exprParamAST, new ExprContext((BlockExprAST*)params[3], exprType, blockParams));
+		}
+	);
+
+	defineExpr(block, "$E<PawsSymbolMap>.length",
+		+[](SymbolMap symbols) -> int {
+			return countBlockExprASTSymbols(symbols);
+		}
+	);
+	defineStmt2(block, "for ($I, $I: $E<PawsSymbolMap>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			IdExprAST* keyExpr = (IdExprAST*)params[0];
+			IdExprAST* valueExpr = (IdExprAST*)params[1];
+			PawsSymbolMap* symbols = (PawsSymbolMap*)codegenExpr(params[2], parentBlock).value;
+			BlockExprAST* body = (BlockExprAST*)params[3];
+			PawsString key;
+			PawsVariable value;
+			defineSymbol(body, getIdExprASTName(keyExpr), PawsString::TYPE, &key);
+			defineSymbol(body, getIdExprASTName(valueExpr), PawsVariable::TYPE, &value);
+			iterateBlockExprASTSymbols(symbols->val, [&](const std::string& name, const Variable& symbol) {
+				key.val = name;
+				value.val = symbol;
+				codegenExpr((ExprAST*)body, parentBlock);
+			});
+		}
+	);
+	defineStmt2(block, "$E<PawsSymbolMap>[$I] = $E",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			SymbolMap const symbols = ((PawsSymbolMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = symbols;
+			IdExprAST* symbolNameAST = (IdExprAST*)params[1];
+			const Variable& symbol = codegenExpr(params[2], parentBlock);
+
+			defineSymbol(scope, getIdExprASTName(symbolNameAST), symbol.type, symbol.value);
 		}
 	);
 
@@ -1082,14 +1120,20 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	defineExpr(block, "$E<PawsBlockExprAST>.stmts",
-		+[](BlockExprAST* block) -> StmtMap* {
-			return new StmtMap{block};
+		+[](BlockExprAST* block) -> StmtMap {
+			return StmtMap{block};
 		}
 	);
 
 	defineExpr(block, "$E<PawsBlockExprAST>.exprs",
-		+[](BlockExprAST* block) -> ExprMap* {
-			return new ExprMap{block};
+		+[](BlockExprAST* block) -> ExprMap {
+			return ExprMap{block};
+		}
+	);
+
+	defineExpr(block, "$E<PawsBlockExprAST>.symbols",
+		+[](BlockExprAST* block) -> SymbolMap {
+			return SymbolMap{block};
 		}
 	);
 

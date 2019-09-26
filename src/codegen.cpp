@@ -205,6 +205,14 @@ extern "C"
 	{
 		return expr->iterateExprs(cbk);
 	}
+	size_t countBlockExprASTSymbols(const BlockExprAST* expr)
+	{
+		return expr->countSymbols();
+	}
+	void iterateBlockExprASTSymbols(const BlockExprAST* expr, std::function<void(const std::string& name, const Variable& symbol)> cbk)
+	{
+		return expr->iterateSymbols(cbk);
+	}
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent)
 	{
 		expr->parent = parent;

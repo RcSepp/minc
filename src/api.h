@@ -85,6 +85,8 @@ extern "C"
 	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk);
 	size_t countBlockExprASTExprs(const BlockExprAST* expr);
 	void iterateBlockExprASTExprs(const BlockExprAST* expr, std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk);
+	size_t countBlockExprASTSymbols(const BlockExprAST* expr);
+	void iterateBlockExprASTSymbols(const BlockExprAST* expr, std::function<void(const std::string& name, const Variable& symbol)> cbk);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);

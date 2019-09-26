@@ -1188,13 +1188,13 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
-		+[](ExprAST* expr) -> void {
-			codegenExpr(expr, nullptr);
+		+[](BlockExprAST* block) -> void {
+			codegenExpr((ExprAST*)block, nullptr);
 		}
 	);
 
 	defineExpr(block, "$E<PawsConstBlockExprASTList>[$E<PawsInt>]",
-		+[](const std::vector<BlockExprAST*>& blocks, int idx) -> const BlockExprAST* {
+		+[](const std::vector<BlockExprAST*>& blocks, int idx) -> BlockExprAST* {
 			return blocks[idx];
 		}
 	);

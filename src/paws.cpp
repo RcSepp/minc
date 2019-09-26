@@ -81,6 +81,7 @@ typedef PawsType<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsType<IdExprAST*> PawsIdExprAST;
 typedef PawsType<IModule*> PawsModule;
 typedef PawsType<Variable> PawsVariable;
+typedef PawsType<BaseScopeType*> PawsScopeType;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
 
 struct StmtMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
@@ -520,6 +521,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	registerType<PawsIdExprAST>(block, "PawsIdExprAST");
 	registerType<PawsModule>(block, "PawsModule");
 	registerType<PawsVariable>(block, "PawsVariable");
+	registerType<PawsScopeType>(block, "PawsScopeType");
 	registerType<PawsStringMap>(block, "PawsStringMap");
 	registerType<PawsStmtMap>(block, "PawsStmtMap");
 	registerType<PawsExprMap>(block, "PawsExprMap");
@@ -1190,6 +1192,18 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
 		+[](BlockExprAST* block) -> void {
 			codegenExpr((ExprAST*)block, nullptr);
+		}
+	);
+
+	defineExpr(block, "$E<PawsBlockExprAST>.scopeType",
+		+[](BlockExprAST* scope) -> BaseScopeType* {
+			return getScopeType(scope);
+		}
+	);
+	defineExpr(block, "$E<PawsBlockExprAST>.scopeType = $E<PawsScopeType>",
+		+[](BlockExprAST* scope, BaseScopeType* scopeType) -> BaseScopeType* {
+			setScopeType(scope, scopeType);
+			return scopeType;
 		}
 	);
 

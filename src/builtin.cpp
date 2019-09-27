@@ -28,7 +28,7 @@ std::list<std::pair<std::string, const Variable>> capturedScope;
 
 namespace BuiltinScopes
 {
-	BaseScopeType* File = new BaseScopeType();
+	BaseScopeType* File = nullptr;
 	BaseScopeType* Function = new BaseScopeType();
 	BaseScopeType* JitFunction = new BaseScopeType();
 };
@@ -536,7 +536,7 @@ void initBuiltinSymbols()
 
 void defineBuiltinSymbols(BlockExprAST* rootBlock)
 {
-	setScopeType(rootBlock, BuiltinScopes::File);
+	BuiltinScopes::File = getScopeType(rootBlock);
 
 	defineSymbol(rootBlock, "NULL", nullptr, new XXXValue(nullptr, 0));
 
@@ -715,25 +715,6 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			FuncType* funcType = (FuncType*)getType(params[0], parentBlock);
 			return funcType == nullptr ? nullptr : funcType->resultType;
-		}
-	);
-
-	// Define `import`
-	defineStmt2(rootBlock, "import $L",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			LiteralExprAST* pathAST = (LiteralExprAST*)params[0];
-			std::string path(getLiteralExprASTValue(pathAST));
-			path = path.substr(1, path.length() - 2);
-
-			importModule(parentBlock, path.c_str(), (ExprAST*)pathAST, BuiltinScopes::File);
-		}
-	);
-	defineStmt2(rootBlock, "import <$I.$I>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			IdExprAST* filenameAST = (IdExprAST*)params[0];
-			IdExprAST* fileextAST = (IdExprAST*)params[1];
-
-			importModule(parentBlock, ("../lib/" + std::string(getIdExprASTName(filenameAST)) + '.' + std::string(getIdExprASTName(fileextAST))).c_str(), (ExprAST*)filenameAST, BuiltinScopes::File);
 		}
 	);
 

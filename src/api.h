@@ -44,6 +44,7 @@ public:
 	virtual void print() = 0;
 	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
 	virtual int run() = 0;
+	virtual void buildRun() = 0;
 	virtual void finalize() = 0;
 };
 
@@ -65,6 +66,7 @@ extern "C"
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
 	BaseType* getType(ExprAST* expr, const BlockExprAST* scope);
+	void importBlock(BlockExprAST* scope, BlockExprAST* block);
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params);
 	std::string ExprASTToString(const ExprAST* expr);
 	std::string ExprASTToShortString(const ExprAST* expr);
@@ -129,15 +131,13 @@ extern "C"
 
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc, BaseScopeType* fileScope);
-
 	void registerStepEventListener(StepEvent listener);
 	void deregisterStepEventListener(StepEvent listener);
 
 	// >>> Compiler
 
 	void initCompiler();
-	IModule* createModule(const std::string& sourcePath, bool outputDebugSymbols);
+	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
 	uint64_t compileJitFunction(JitFunction* jitFunc);

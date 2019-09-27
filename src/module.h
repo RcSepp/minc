@@ -24,6 +24,7 @@ public:
 	void print();
 	bool compile(const std::string& outputPath, std::string& errstr);
 	int run();
+	void buildRun();
 };
 
 class FileModule : public XXXModule
@@ -33,9 +34,10 @@ private:
 	Function* mainFunc;
 
 public:
-	FileModule(const char* sourcePath, bool outputDebugSymbols, bool optimizeCode);
+	FileModule(const char* sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols, bool optimizeCode);
 	void finalize();
 	int run();
+	void buildRun();
 };
 
 class JitFunction : public XXXModule

@@ -111,6 +111,11 @@ extern "C"
 		return expr->getType(scope);
 	}
 
+	void importBlock(BlockExprAST* scope, BlockExprAST* block)
+	{
+		scope->import(block);
+	}
+
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params)
 	{
 		size_t paramIdx = params.size();
@@ -215,6 +220,8 @@ extern "C"
 	}
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent)
 	{
+		if (parent == expr)
+			throw CompileError("a scope cannot be it's own parent", expr->loc);
 		expr->parent = parent;
 	}
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams)
@@ -572,6 +579,8 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 
 Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
+	if (parentBlock == this)
+		throw CompileError("block expression can't be it's own parent", this->loc);
 	parent = parentBlock;
 
 	BlockExprAST* oldRootBlock = rootBlock;

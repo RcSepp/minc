@@ -7,7 +7,6 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include <vector>
 #include <stack>
 #include <set>
-#include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <stdio.h>
@@ -202,13 +201,13 @@ extern "C"
 		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
 	}
 
-	IModule* createModule(const std::string& sourcePath, bool outputDebugSymbols)
+	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols)
 	{
 		// Unbind parseCFile filename parameter lifetime from local filename parameter
 		char* path = new char[sourcePath.size() + 1];
 		strcpy(path, sourcePath.c_str());
 
-		return new FileModule(path, outputDebugSymbols, !outputDebugSymbols);
+		return new FileModule(path, moduleFuncName, outputDebugSymbols, !outputDebugSymbols);
 	}
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
@@ -229,39 +228,6 @@ extern "C"
 	void removeJitFunction(JitFunction* jitFunc)
 	{
 		delete jitFunc;
-	}
-
-	void importModule(BlockExprAST* scope, const char* path, const ExprAST* loc, BaseScopeType* fileScope)
-	{
-		std::ifstream file(path);
-		if (!file.good())
-			throw CompileError(std::string(path) + ": No such file or directory\n", loc->loc);
-
-		//TODO: Cache imported symbols, statements and expressions, instead of ignoring already imported files
-		char buf[1024];
-		realpath(path, buf);
-		char* realPath = new char[strlen(buf) + 1];
-		strcpy(realPath, buf);
-		static std::set<std::string> importedPaths;
-		if (importedPaths.find(realPath) != importedPaths.end()) return;
-		importedPaths.insert(realPath);
-
-		// Parse imported file
-		CLexer lexer(file, std::cout);
-		BlockExprAST* importedBlock;
-		yy::CParser parser(lexer, realPath, &importedBlock);
-		if (parser.parse())
-			throw CompileError("error parsing file " + std::string(path), loc->loc);
-
-		// Generate module from parsed file
-		setScopeType(importedBlock, fileScope);
-		FileModule* importedModule = new FileModule(realPath, dbuilder != nullptr, dbuilder == nullptr);
-		importedBlock->codegen(scope);
-		importedModule->finalize();
-
-		scope->import(importedBlock);
-
-		//TODO: Free importedModule
 	}
 }
 
@@ -326,7 +292,7 @@ XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool ou
 
 void XXXModule::finalize()
 {
-	// Close main function
+	// Close module function
 	if (dbuilder)
 	{
 		dbuilder->finalizeSubprogram(currentFunc->getSubprogram());
@@ -414,12 +380,17 @@ int XXXModule::run()
 	return -1;
 }
 
-FileModule::FileModule(const char* sourcePath, bool outputDebugSymbols, bool optimizeCode)
+void XXXModule::buildRun()
+{
+	assert(0);
+}
+
+FileModule::FileModule(const char* sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols, bool optimizeCode)
 	: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath, 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 {
 	// Generate main function
 	FunctionType *mainType = FunctionType::get(Types::Int32, {}, false);
-	mainFunc = currentFunc = Function::Create(mainType, Function::ExternalLinkage, "main", currentModule);
+	mainFunc = currentFunc = Function::Create(mainType, Function::ExternalLinkage, moduleFuncName, currentModule);
 	mainFunc->setDSOLocal(true);
 	mainFunc->addAttribute(AttributeList::FunctionIndex, Attribute::AttrKind::NoInline);
 
@@ -461,6 +432,14 @@ int FileModule::run()
 {
 	ExecutionEngine* EE = EngineBuilder(std::unique_ptr<Module>(module.get())).create();
 	return EE->runFunctionAsMain(mainFunc, {}, nullptr);
+}
+
+void FileModule::buildRun()
+{
+	if (currentModule == module.get())
+		builder->CreateCall(mainFunc);
+	else
+		builder->CreateCall(Function::Create(mainFunc->getFunctionType(), mainFunc->getLinkage(), mainFunc->getName(), currentModule));
 }
 
 void JitFunction::init()

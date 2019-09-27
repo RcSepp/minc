@@ -218,6 +218,8 @@ public:
 			blockParams[i].value = new PawsExprAST(params[i]);
 		setBlockExprASTParams(stmt, blockParams);
 
+		defineSymbol(stmt, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
+
 		// Execute statement code block
 		codegenExpr((ExprAST*)stmt, parentBlock);
 
@@ -244,6 +246,8 @@ public:
 		for (size_t i = 0; i < params.size(); ++i)
 			blockParams[i].value = new PawsExprAST(params[i]);
 		setBlockExprASTParams(expr, blockParams);
+
+		defineSymbol(expr, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
 
 		// Execute expression code block
 		try
@@ -534,6 +538,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	setBlockExprASTParams(block, blockParams);
 
 	defineSymbol(block, "FILE_SCOPE", PawsBlockExprAST::TYPE, new PawsBlockExprAST(block));
+	defineSymbol(block, "FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(new BaseScopeType()));
 
 	// Define single-expr statement
 	defineStmt2(block, "$E<PawsBase>",
@@ -1195,6 +1200,12 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	defineExpr(block, "$E<PawsBlockExprAST>.import($E<PawsBlockExprAST>)",
+		+[](BlockExprAST* scope, BlockExprAST* block) -> void {
+			importBlock(scope, block);
+		}
+	);
+
 	defineExpr(block, "$E<PawsBlockExprAST>.scopeType",
 		+[](BlockExprAST* scope) -> BaseScopeType* {
 			return getScopeType(scope);
@@ -1297,9 +1308,9 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
-	defineExpr(block, "createModule($E<PawsString>, $E<PawsInt>)",
-		+[](std::string sourcePath, int outputDebugSymbols) -> IModule* {
-			return createModule(sourcePath, outputDebugSymbols);
+	defineExpr(block, "createModule($E<PawsString>, $E<PawsString>, $E<PawsInt>)",
+		+[](std::string sourcePath, std::string moduleFuncName, int outputDebugSymbols) -> IModule* {
+			return createModule(sourcePath, moduleFuncName, outputDebugSymbols);
 		}
 	);
 
@@ -1327,6 +1338,12 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	defineExpr(block, "$E<PawsModule>.buildRun()",
+		+[](IModule* module) -> void {
+			module->buildRun();
+		}
+	);
+
 	defineExpr(block, "$E<PawsModule>.finalize()",
 		+[](IModule* module) -> void {
 			module->finalize();
@@ -1340,48 +1357,6 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			return realPath;
 		}
 	);
-
-// defineStmt2(block, "foo $E<PawsMetaType>",
-// 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-// 		int abc = 0;
-// 	}
-// );
-// defineStmt2(block, "foo $E<PawsBase>",
-// 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-// 		int abc = 0;
-// 	}
-// );
-// defineStmt2(block, "foo $E<PawsInt>",
-// 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-// 		int abc = 0;
-// 	}
-// );
-
-/*defineStmt2(block, "$E<PawsMetaType> $I",
-	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-		int abc = 0;
-	}
-);
-defineExpr2(block, "$E<PawsMetaType>*",
-	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) -> Variable {
-		ExprAST* exprAST = params[0];
-		if (ExprASTIsCast(exprAST))
-			exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-		return Variable(PawsMetaType::TYPE, new PawsMetaType(getType(exprAST, parentBlock)));
-	},
-	PawsMetaType::TYPE
-);*/
-
-// std::map<Variable, Variable> foo;
-// Variable a = Variable(PawsInt::TYPE, new PawsInt(1));
-// Variable b = Variable(PawsInt::TYPE, new PawsInt(2));
-// Variable c = Variable(PawsInt::TYPE, new PawsInt(1));
-// Variable d = Variable(PawsString::TYPE, new PawsString("1"));
-// foo[a] = b;
-// foo[d] = c;
-// Variable bar1 = foo.at(c);
-// Variable bar2 = foo.at(Variable(PawsString::TYPE, new PawsString("1")));
-
 
 	try
 	{

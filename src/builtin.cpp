@@ -13,6 +13,7 @@
 #include <llvm/IR/Verifier.h>
 
 #include "llvm_constants.h"
+#include "paws_types.h"
 
 extern llvm::LLVMContext* context;
 extern llvm::IRBuilder<>* builder;
@@ -1552,41 +1553,48 @@ return Variable(BuiltinTypes::Builtin, new XXXValue(Constant::getIntegerValue(Ty
 		}
 	);
 
-	// Define literal definition
-	defineExpr3(rootBlock, "$L",
+	defineCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int1,
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
-			const char* valueEnd = value + strlen(value) - 1;
+			PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Int1, new XXXValue(unwrap(LLVMConstInt(LLVMInt1Type(), value->val, 1))));
+		}
+	);
+	defineCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int32,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Int32, new XXXValue(unwrap(LLVMConstInt(LLVMInt32Type(), value->val, 1))));
+		}
+	);
+	defineCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int64,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Int64, new XXXValue(unwrap(LLVMConstInt(LLVMInt64Type(), value->val, 1))));
+		}
+	);
 
-			if (*valueEnd == '"' || *valueEnd == '\'')
-			{
-				const char* valueStart = strchr(value, *valueEnd) + 1;
-				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(StringRef(valueStart, valueEnd - valueStart), "MY_CONSTANT")));
-			}
+	defineCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Half,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Half, new XXXValue(unwrap(LLVMConstReal(LLVMHalfType(), value->val))));
+		}
+	);
+	defineCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Float,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Float, new XXXValue(unwrap(LLVMConstReal(LLVMFloatType(), value->val))));
+		}
+	);
+	defineCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Double,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Double, new XXXValue(unwrap(LLVMConstReal(LLVMDoubleType(), value->val))));
+		}
+	);
 
-			if (strchr(value, '.'))
-			{
-				double doubleValue = std::stod(value);
-				return Variable(BuiltinTypes::Double, new XXXValue(unwrap(LLVMConstReal(LLVMDoubleType(), doubleValue))));
-			}
-
-			int intValue;
-			if (value[0] == '0' && value[1] == 'x')
-				intValue = std::stoi(value, 0, 16);
-			else
-				intValue = std::stoi(value, 0, 10);
-
-			return Variable(BuiltinTypes::Int32, new XXXValue(unwrap(LLVMConstInt(LLVMInt32Type(), intValue, 1))));
-			//return Variable(Type::getInt32Ty(*context), new XXXValue(ConstantInt::get(*context, APInt(32, value, true))));
-		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
-			const char* valueEnd = value + strlen(value) - 1;
-			if (*valueEnd == '"' || *valueEnd == '\'')
-				return BuiltinTypes::Int8Ptr;
-			if (strchr(value, '.'))
-				return BuiltinTypes::Double;
-			return BuiltinTypes::Int32;
+	defineCast2(rootBlock, PawsString::TYPE, BuiltinTypes::Int8Ptr,
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			PawsString* value = (PawsString*)codegenExpr(params[0], parentBlock).value;
+			return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(value->val, "MY_CONSTANT")));
 		}
 	);
 

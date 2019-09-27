@@ -1,41 +1,41 @@
-APP_NAME = p"minc";
-HELP_MESSAGE = p"minc compiler\n";
+APP_NAME = "minc";
+HELP_MESSAGE = "minc compiler\n";
 COMMANDS = map(
-	p"build": p"compile to executable",
-	p"run": p"compile and run",
-	p"parse": p"compile to LLVM IR",
-	p"debug": p"compile LLVM IR and binary"
+	"build": "compile to executable",
+	"run": "compile and run",
+	"parse": "compile to LLVM IR",
+	"debug": "compile LLVM IR and binary"
 );
 
 if (!COMMANDS.contains($1))
 {
 	print(HELP_MESSAGE);
-	print(p"Usage:");
-	print(p"    " + APP_NAME + p" [arguments]");
+	print("Usage:");
+	print("    " + APP_NAME + " [arguments]");
 	print();
-	print(p"The commands are:");
+	print("The commands are:");
 	print();
 	for (cmd, desc: COMMANDS) {
-		print(p"    " + cmd + (8p - cmd.length) * p" " + desc);
+		print("    " + cmd + (8 - cmd.length) * " " + desc);
 	}
-	return 0p;
+	return 0;
 }
 command = $1;
 
-sourcePath = $2 != NULL ? $2 : p"-";
+sourcePath = $2 != NULL ? $2 : "-";
 outputPath = $2;
-outputPath = outputPath.substr(max(outputPath.rfind(p"/"), outputPath.rfind(p"\\")) + 1p);
-dt = outputPath.rfind(p".");
-if (dt != -1p) outputPath = outputPath.substr(0p, dt);
-outputDebugSymbols = 1p;
+outputPath = outputPath.substr(max(outputPath.rfind("/"), outputPath.rfind("\\")) + 1);
+dt = outputPath.rfind(".");
+if (dt != -1) outputPath = outputPath.substr(0, dt);
+outputDebugSymbols = 1;
 
-PAWS_EXT = p".minc";
+PAWS_EXT = ".minc";
 sourceIsPaws = sourcePath.length >= PAWS_EXT.length && sourcePath.substr(sourcePath.length - PAWS_EXT.length) == PAWS_EXT;
-PY_EXT = p".py";
+PY_EXT = ".py";
 sourceIsPython = sourcePath.length >= PY_EXT.length && sourcePath.substr(sourcePath.length - PY_EXT.length) == PY_EXT;
 
 // Get absolute path to source file
-realPath = sourcePath == p"-" ? sourcePath : realpath(sourcePath);
+realPath = sourcePath == "-" ? sourcePath : realpath(sourcePath);
 
 // Parse source code from file or stdin into AST
 if (!sourceIsPython)
@@ -43,7 +43,7 @@ if (!sourceIsPython)
 else
 	rootBlock = parsePythonFile(realPath);
 if (rootBlock == NULL)
-	return -1p;
+	return -1;
 
 // Print AST
 //print(str(rootBlock));
@@ -52,15 +52,15 @@ if (rootBlock == NULL)
 rootBlock.stmts[import $E<PawsString>] = {
 	importPath = $0.codegen(parentBlock);
 	importRealPath = realpath(importPath);
-	importPath = importPath.substr(max(importPath.rfind(p"/"), importPath.rfind(p"\\")) + 1p);
-	dt = importPath.rfind(p".");
-	if (dt != -1p) importPath = importPath.substr(0p, dt);
+	importPath = importPath.substr(max(importPath.rfind("/"), importPath.rfind("\\")) + 1);
+	dt = importPath.rfind(".");
+	if (dt != -1) importPath = importPath.substr(0, dt);
 
 	// Parse imported source code //TODO: Implement file caching
 	importBlock = parseCFile(importRealPath);
 
 	// Codegen imported module
-	importModule = createModule(importRealPath, importPath + p":main", outputDebugSymbols);
+	importModule = createModule(importRealPath, importPath + ":main", outputDebugSymbols);
 	importBlock.scopeType = FILE_SCOPE_TYPE;
 	importBlock.symbols[FILE_SCOPE] = importBlock;
 	importBlock.codegen(parentBlock);
@@ -73,29 +73,29 @@ rootBlock.stmts[import $E<PawsString>] = {
 	parentBlock.import(importBlock);
 
 	// Execute command on imported module
-	if (command == p"parse" || command == p"debug")
-		importModule.print(importPath + p".ll");
-	if (command == p"build")
+	if (command == "parse" || command == "debug")
+		importModule.print(importPath + ".ll");
+	if (command == "build")
 	{
-		errstr = p"";
-		if (!importModule.compile(importPath + p".o", errstr))
+		errstr = "";
+		if (!importModule.compile(importPath + ".o", errstr))
 			printerr(errstr);
 	}
 };
 
 // Define library import statement
 rootBlock.stmts[import <$I.$I>] = {
-	importPath = p"../lib/" + $0.name + p"." + $1.name;
+	importPath = "../lib/" + $0.name + "." + $1.name;
 	importRealPath = realpath(importPath);
-	importPath = importPath.substr(max(importPath.rfind(p"/"), importPath.rfind(p"\\")) + 1p);
-	dt = importPath.rfind(p".");
-	if (dt != -1p) importPath = importPath.substr(0p, dt);
+	importPath = importPath.substr(max(importPath.rfind("/"), importPath.rfind("\\")) + 1);
+	dt = importPath.rfind(".");
+	if (dt != -1) importPath = importPath.substr(0, dt);
 
 	// Parse imported source code //TODO: Implement file caching
 	importBlock = parseCFile(importRealPath);
 
 	// Codegen imported module
-	importModule = createModule(importRealPath, importPath + p":main", outputDebugSymbols);
+	importModule = createModule(importRealPath, importPath + ":main", outputDebugSymbols);
 	importBlock.scopeType = FILE_SCOPE_TYPE;
 	importBlock.symbols[FILE_SCOPE] = importBlock;
 	importBlock.codegen(parentBlock);
@@ -108,12 +108,12 @@ rootBlock.stmts[import <$I.$I>] = {
 	parentBlock.import(importBlock);
 
 	// Execute command on imported module
-	if (command == p"parse" || command == p"debug")
-		importModule.print(importPath + p".ll");
-	if (command == p"build")
+	if (command == "parse" || command == "debug")
+		importModule.print(importPath + ".ll");
+	if (command == "build")
 	{
-		errstr = p"";
-		if (!importModule.compile(importPath + p".o", errstr))
+		errstr = "";
+		if (!importModule.compile(importPath + ".o", errstr))
 			printerr(errstr);
 	}
 };
@@ -121,7 +121,7 @@ rootBlock.stmts[import <$I.$I>] = {
 // Compile AST
 initCompiler();
 initBuiltinSymbols();
-module = createModule(realPath, p"main", outputDebugSymbols);
+module = createModule(realPath, "main", outputDebugSymbols);
 rootBlock.scopeType = FILE_SCOPE_TYPE;
 defineBuiltinSymbols(rootBlock);
 rootBlock.symbols[FILE_SCOPE] = rootBlock;
@@ -129,24 +129,24 @@ rootBlock.codegen(FILE_SCOPE);
 module.finalize();
 
 // Execute command
-if (command == p"parse" || command == p"debug")
+if (command == "parse" || command == "debug")
 {
-	if (outputPath == p"-")
+	if (outputPath == "-")
 		module.print();
 	else
-		module.print(outputPath + p".ll");
+		module.print(outputPath + ".ll");
 }
-if (command == p"build")
+if (command == "build")
 {
-	errstr = p"";
-	if (!module.compile(outputPath + p".o", errstr))
+	errstr = "";
+	if (!module.compile(outputPath + ".o", errstr))
 	{
 		printerr(errstr);
-		return -1p;
+		return -1;
 	}
 }
-if (command == p"run" || command == p"debug")
+if (command == "run" || command == "debug")
 {
 	result = module.run();
-	print(p"./minc Result: " + str(result));
+	print("./minc Result: " + str(result));
 }

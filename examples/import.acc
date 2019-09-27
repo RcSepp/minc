@@ -1,4 +1,4 @@
-// import p"../lib/builtin.acc";
+// import "../lib/builtin.acc";
 import <builtin.acc>;
 
 int a;

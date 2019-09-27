@@ -288,10 +288,10 @@ stmtdef $E<BuiltinType> $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: Simplified variable declaration with initialization
-Template: $E<BuiltinType> $I = $E<BuiltinValue>
+Template: $E<BuiltinType> $I = $E
 Notes: This statement does not define debug symbols and it does not cast the expression type
 \* ---------------------------------------------------------------------------*/
-stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
+stmtdef $E<BuiltinType> $I = $E {
 	BuiltinType type = getconst($0, parentBlock);
 	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
 	LLVMSetAlignment(storage, type.align);
@@ -314,7 +314,7 @@ Template: BaseType $I = $E
 TODO: Should be $I = $E<BaseType>
 Depends on: BaseType $I
 \* ---------------------------------------------------------------------------*/
-stmtdef BaseType $I = $E {
+stmtdef BaseType $I = $E<BaseType> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BaseType"), 0), "");
 	LLVMBuildStore(codegen($1, parentBlock), foo);
 	addToScope(parentBlock, $0, BaseType, foo);
@@ -807,7 +807,7 @@ stmtdef if($E<bool>) $S else $S {
 	LLVMPositionBuilder(endIfBlock);
 }
 
-stmtdef for(int $I = $E; $E; $E) $B {
+stmtdef for(int $I = $E<int>; $E; $E) $B {
 	// Inherent global scope into for block scope
 	$4.parent = parentBlock;
 
@@ -984,9 +984,9 @@ stmtdef $E<BuiltinType> $I {
 
 /* ---------------------------------------------------------------------------*\
 Name: Variable declaration with initialization
-Template: $E<BuiltinType> $I = $E<BuiltinValue>
+Template: $E<BuiltinType> $I = $E
 \* ---------------------------------------------------------------------------*/
-stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
+stmtdef $E<BuiltinType> $I = $E {
 	string malloc(long size);
 	string strcpy(string destination, string source);
 	string strcat(string destination, string source);

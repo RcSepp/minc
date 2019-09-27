@@ -1052,7 +1052,7 @@ stmtdef $E<BuiltinType> $I = $E<BuiltinValue> {
 Name: Variable assignment
 Template: $I = $E
 \* ---------------------------------------------------------------------------*/
-exprdef<gettype($1, parentBlock)> $I = $E {
+exprdef<gettype($0, parentBlock)> $I = $E {
 	string malloc(long size);
 	string strcpy(string destination, string source);
 	string strcat(string destination, string source);

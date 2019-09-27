@@ -70,6 +70,7 @@ Function *currentFunc;
 BasicBlock *currentBB;
 DIBuilder *dbuilder;
 DIFile *dfile;
+XXXModule* currentXXXModule = nullptr;
 
 // Misc
 KaleidoscopeJIT* jit;
@@ -232,12 +233,13 @@ extern "C"
 }
 
 XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode)
-	: prevModule(currentModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), loc(loc)
+	: prevModule(currentModule), prevXXXModule(currentXXXModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), loc(loc)
 {
 	// Create module
 	module = std::make_unique<Module>(moduleName, *context);
 	currentModule = module.get();
 	module->setDataLayout(jit->getTargetMachine().createDataLayout());
+	currentXXXModule = this;
 
 	if (outputDebugSymbols)
 	{
@@ -321,6 +323,7 @@ void XXXModule::finalize()
 
 	currentFunc = prevFunc; // Switch back to parent function
 	currentModule = prevModule; // Switch back to file module
+	currentXXXModule = prevXXXModule;
 	dbuilder = prevDbuilder; // Reenable debug symbol generation
 	dfile = prevDfile;
 
@@ -431,6 +434,24 @@ catch (CompileError err) {
 int FileModule::run()
 {
 	ExecutionEngine* EE = EngineBuilder(std::unique_ptr<Module>(module.get())).create();
+
+	// Load all dependent and sub-dependent modules
+	std::set<XXXModule*> recursiveDependencies;
+	std::stack<XXXModule*> recursiveDependencyStack;
+	recursiveDependencies.insert(this);
+	recursiveDependencyStack.push(this);
+	while (!recursiveDependencyStack.empty())
+	{
+		XXXModule* currentModule = recursiveDependencyStack.top(); recursiveDependencyStack.pop();
+		for (XXXModule* dependency: currentModule->dependencies)
+			if (recursiveDependencies.find(dependency) == recursiveDependencies.end())
+			{
+				EE->addModule(std::unique_ptr<Module>(dependency->module.get()));
+				recursiveDependencies.insert(dependency);
+				recursiveDependencyStack.push(dependency);
+			}
+	}
+
 	return EE->runFunctionAsMain(mainFunc, {}, nullptr);
 }
 
@@ -439,7 +460,10 @@ void FileModule::buildRun()
 	if (currentModule == module.get())
 		builder->CreateCall(mainFunc);
 	else
+	{
+		currentXXXModule->dependencies.insert(this);
 		builder->CreateCall(Function::Create(mainFunc->getFunctionType(), mainFunc->getLinkage(), mainFunc->getName(), currentModule));
+	}
 }
 
 void JitFunction::init()

@@ -1,23 +1,27 @@
 #ifndef __MODULE_H
 #define __MODULE_H
 
+#include <set>
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
 
 class XXXModule : public IModule
 {
 protected:
 	Module* const prevModule;
+	XXXModule* const prevXXXModule;
 	DIBuilder* const prevDbuilder;
 	DIFile* const prevDfile;
 	Function* const prevFunc;
 	BasicBlock* const prevBB;
 	const Location loc;
 
-	std::unique_ptr<Module> module;
 	legacy::FunctionPassManager* jitFunctionPassManager;
 	legacy::PassManager* jitModulePassManager;
 
 public:
+	std::unique_ptr<Module> module;
+	std::set<XXXModule*> dependencies;
+
 	XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode);
 	virtual void finalize();
 	void print(const std::string& outputPath);

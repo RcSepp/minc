@@ -11,8 +11,8 @@
             //"preLaunchTask": "make",
             "program": "${workspaceFolder}/bin/minc",
             "args": [
-                "debug",
                 "../paws/mpp.minc",
+                "debug",
                 "../examples/test.acc"
             ],
             "stopAtEntry": false,

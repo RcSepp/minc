@@ -12,88 +12,31 @@
 #include "builtin.h"
 #include "paws.h"
 
-const std::string APP_NAME = "minc";
-const std::string HELP_MESSAGE = "minc compiler\n";
-const std::map<std::string, std::string> COMMANDS = {
-	{"build", "compile to executable"},
-	{"run", "compile and run"},
-	{"parse", "compile to LLVM IR"},
-	{"debug", "compile LLVM IR and binary"},
-};
-
 int main(int argc, char **argv)
 {
-	int result = 0;
-
-	// >>> Parse command line
-
-	if (argc < 2 || COMMANDS.find(argv[1]) == COMMANDS.end())
-	{
-		std::cout << HELP_MESSAGE << std::endl;
-		std::cout << "Usage:" << std::endl;
-		std::cout << "\t" << APP_NAME << " [arguments]" << std::endl;
-		std::cout << std::endl;
-		std::cout << "The commands are:" << std::endl;
-		std::cout << std::endl;
-		for (auto cmd: COMMANDS)
-			std::cout << "\t" << cmd.first << std::string(8 - cmd.first.size(), ' ') << cmd.second << std::endl;
-		return 0;
-	}
-	const std::string command = argv[1];
-
-	std::string sourcePath = argc > 2 ? argv[2] : "-";
-	std::string outputPath = argv[2];
-	size_t sl = outputPath.find_last_of("/\\");
-	if (sl != std::string::npos) outputPath = outputPath.substr(sl + 1);
-	size_t dt = outputPath.find_last_of(".");
-	if (dt != std::string::npos) outputPath = outputPath.substr(0, dt);
-	bool outputDebugSymbols = true;
-
-	const std::string PAWS_EXT = ".minc";
-	const bool sourceIsPaws = sourcePath.length() >= PAWS_EXT.length() && sourcePath.compare(sourcePath.length() - PAWS_EXT.length(), PAWS_EXT.length(), PAWS_EXT) == 0;
-	const std::string PY_EXT = ".py";
-	const bool sourceIsPython = sourcePath.length() >= PY_EXT.length() && sourcePath.compare(sourcePath.length() - PY_EXT.length(), PY_EXT.length(), PY_EXT) == 0;
-	
-	if (!sourceIsPaws)
-	{
-		initCompiler();
-		initBuiltinSymbols();
-	}
+	const bool use_stdin = argc == 1;
 
 	// Open source file
-	std::istream* in = sourcePath != "-" ? new std::ifstream(sourcePath) : &std::cin;
+	std::istream* in = use_stdin ? &std::cin : new std::ifstream(argv[1]);
 	if (!in->good())
 	{
-		std::cerr << "\e[31merror:\e[0m " << sourcePath << ": No such file or directory\n";
+		std::cerr << "\e[31merror:\e[0m " << std::string(argv[1]) << ": No such file or directory\n";
 		return -1;
 	}
 
 	// Get absolute path to source file
 	char buf[1024];
-	const char* realPath = sourcePath == "-" ? nullptr : realpath(sourcePath.c_str(), buf);
+	const char* realPath = use_stdin ? nullptr : realpath(argv[1], buf);
 
 	// >>> Parse source code from file or stdin into AST
 
 	BlockExprAST* rootBlock;
-	if (sourceIsPython)
+	CLexer lexer(in, &std::cout);
+	yy::CParser parser(lexer, realPath, &rootBlock);
+	if (parser.parse())
 	{
-		PyLexer lexer(in, &std::cout);
-		yy::PyParser parser(lexer, realPath, &rootBlock);
-		if (parser.parse())
-		{
-			if (realPath != "-") ((std::ifstream*)in)->close();
-			return -1;
-		}
-	}
-	else
-	{
-		CLexer lexer(in, &std::cout);
-		yy::CParser parser(lexer, realPath, &rootBlock);
-		if (parser.parse())
-		{
-			if (realPath != "-") ((std::ifstream*)in)->close();
-			return -1;
-		}
+		if (!use_stdin) ((std::ifstream*)in)->close();
+		return -1;
 	}
 
 	// >>> Print AST
@@ -102,21 +45,10 @@ int main(int argc, char **argv)
 
 	// >>> Compile AST
 
-	IModule* module;
+	int result = 0;
 	try {
-		if (sourceIsPaws)
-		{
-			argv[2] = argv[1];
-			argv[1] = argv[0];
-			result = PAWRun(rootBlock, --argc, ++argv);
-		}
-		else
-		{
-			module = createModule(realPath, rootBlock, outputDebugSymbols);
-			defineBuiltinSymbols(rootBlock);
-			rootBlock->codegen(nullptr);
-			module->finalize();
-		}
+		argv[1] = argv[0];
+		result = PAWRun(rootBlock, --argc, ++argv);
 	} catch (CompileError err) {
 std::cerr << std::endl;
 		if (err.loc.filename != nullptr)
@@ -144,37 +76,10 @@ std::cerr << std::endl;
 			std::cerr << std::string(linebuf, linebuf + err.loc.begin_col - 1);
 			std::cerr << "\e[31m" << std::string(1, '^') << std::string(err.loc.end_col - err.loc.begin_col - 1, '~') << "\e[0m" << std::endl;
 		}
-		if (sourcePath != "-") ((std::ifstream*)in)->close();
+		if (!use_stdin) ((std::ifstream*)in)->close();
 		return -1;
 	}
-	if (sourcePath != "-") ((std::ifstream*)in)->close();
-
-	// >>> Execute command
-
-	if (!sourceIsPaws)
-	{
-		if (command == "parse" || command == "debug")
-		{
-			if (outputPath == "-")
-				module->print();
-			else
-				module->print(outputPath + ".ll");
-			
-		}
-		if (command == "build")
-		{
-			std::string errstr;
-			if (!module->compile(outputPath + ".o", errstr))
-			{
-				std::cerr << errstr;
-				return -1;
-			}
-		}
-		if (command == "run" || command == "debug")
-		{
-			module->run();
-		}
-	}
+	if (!use_stdin) ((std::ifstream*)in)->close();
 
 	return result;
 }

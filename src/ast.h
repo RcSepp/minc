@@ -89,7 +89,7 @@ bool operator<(const ExprAST& left, const ExprAST& right);
 
 namespace std
 {
-	template<> struct less<ExprAST*>
+	template<> struct less<const ExprAST*>
 	{
 		bool operator()(const ExprAST* lhs, const ExprAST* rhs) const { return lhs->comp(rhs) < 0; }
 	};

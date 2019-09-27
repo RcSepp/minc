@@ -527,12 +527,10 @@ exprdef<int> $E<int> / $E<int> {
 }
 
 exprdef<bool> $E<int> == $E<int> {
-int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $E<int> != $E<int> {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
@@ -546,7 +544,6 @@ exprdef<long> $E<long> & $E<long> {
 }
 
 exprdef<bool> $E<long> != $E<long> {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
@@ -569,12 +566,10 @@ exprdef<double> $E<double> * $E<double> {
 }
 
 exprdef<bool> $E<double> == $E<double> { //TODO: Untested
-int LLVMRealOEQ = 1; //TODO: Implement LLVM-c enums as constants //TODO: Untested
 	return LLVMBuildFCmp(LLVMRealOEQ, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
 }
 
 exprdef<bool> $E<double> != $E<double> { //TODO: Untested
-int LLVMRealONE = 6; //TODO: Implement LLVM-c enums as constants //TODO: Untested
 	return LLVMBuildFCmp(LLVMRealONE, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
 }
 
@@ -734,22 +729,18 @@ exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] {
 }
 
 exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
-int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BuiltinType> != $E<BuiltinType> {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BaseType> == $E<BaseType> {
-int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BaseType> != $E<BaseType> {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 

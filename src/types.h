@@ -106,8 +106,14 @@ public:
 
 	XXXValue(llvm::Value* val)
 		: val(val), constantValue(0xFFFFFFFFFFFFFFFF) {}
+	XXXValue(llvm::Type* type, int64_t value)
+		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
 	XXXValue(llvm::Type* type, uint64_t value)
 		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(64, value))), constantValue(value) {}
+	XXXValue(llvm::Type* type, int32_t value)
+		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(32, value))), constantValue(value) {}
+	XXXValue(llvm::Type* type, uint32_t value)
+		: val(type == nullptr ? nullptr : llvm::Constant::getIntegerValue(type, llvm::APInt(32, value))), constantValue(value) {}
 
 	uint64_t getConstantValue()
 	{

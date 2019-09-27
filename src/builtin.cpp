@@ -538,7 +538,7 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 {
 	BuiltinScopes::File = getScopeType(rootBlock);
 
-	defineSymbol(rootBlock, "NULL", nullptr, new XXXValue(nullptr, 0));
+	defineSymbol(rootBlock, "NULL", nullptr, new XXXValue(nullptr, (uint64_t)0));
 
 	// Define LLVM-c extern functions
 	for (Func& func: llvm_c_functions)
@@ -546,6 +546,12 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		defineSymbol(rootBlock, func.type.name, &func.type, &func);
 		defineOpaqueCast(rootBlock, &func.type, BuiltinTypes::BuiltinFunction);
 	}
+
+	// Define LLVM-c constants
+	defineSymbol(rootBlock, "LLVMIntEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 32));
+	defineSymbol(rootBlock, "LLVMIntNE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 33));
+	defineSymbol(rootBlock, "LLVMRealOEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 1)); //TODO: Untested
+	defineSymbol(rootBlock, "LLVMRealONE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 6)); //TODO: Untested
 
 	// Define Minc extern functions
 	for (Func* func: {

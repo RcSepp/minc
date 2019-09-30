@@ -1402,7 +1402,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 
 	defineExpr(block, "$E<PawsModule>.run()",
 		+[](IModule* module) -> int {
-			module->run();
+			return module->run();
 		}
 	);
 

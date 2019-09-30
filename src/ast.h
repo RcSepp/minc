@@ -31,6 +31,7 @@ struct CompileError
 	std::vector<std::string> hints;
 	CompileError(std::string msg, Location loc={0}) : msg(msg), loc(loc) {}
 	void addHint(const std::string& hint) { hints.push_back(hint); }
+	void print(std::ostream& out=std::cerr);
 };
 struct UndefinedStmtException : public CompileError
 {

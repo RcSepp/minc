@@ -817,15 +817,23 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define logical operators
-	defineExpr(block, "$E<PawsInt> && $E<PawsInt>",
-		+[](int a, int b) -> int {
-			return a && b;
-		}
+	defineExpr2(block, "$E<PawsInt> && $E<PawsInt>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			return Variable(PawsInt::TYPE, new PawsInt(
+					((PawsInt*)codegenExpr(params[0], parentBlock).value)->val &&
+					((PawsInt*)codegenExpr(params[1], parentBlock).value)->val
+			));
+		},
+		PawsInt::TYPE
 	);
-	defineExpr(block, "$E<PawsInt> || $E<PawsInt>",
-		+[](int a, int b) -> int {
-			return a || b;
-		}
+	defineExpr2(block, "$E<PawsInt> || $E<PawsInt>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			return Variable(PawsInt::TYPE, new PawsInt(
+					((PawsInt*)codegenExpr(params[0], parentBlock).value)->val ||
+					((PawsInt*)codegenExpr(params[1], parentBlock).value)->val
+			));
+		},
+		PawsInt::TYPE
 	);
 
 	// Define boolean negation

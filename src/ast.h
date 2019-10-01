@@ -11,6 +11,7 @@
 #include <functional>
 #include <cassert>
 #include <regex>
+#include <iostream>
 
 #include "api.h"
 

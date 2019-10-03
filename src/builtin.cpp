@@ -668,13 +668,6 @@ void defineBuiltinSymbols(BlockExprAST* rootBlock)
 		}
 	);
 
-	// Define context-free block statement
-	defineStmt2(rootBlock, "$B",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			codegenExpr(params[0], parentBlock);
-		}
-	);
-
 	// Define function call
 	defineExpr3(rootBlock, "$I($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

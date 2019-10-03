@@ -44,6 +44,15 @@ castdef<ExprAST> $E<BlockExprAST> {
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: Context-free block statement
+Template: $B
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef $B {
+	codegen($0, parentBlock);
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: Simplified variable assignment
 Template: $I = $E
 Depends on: return $E

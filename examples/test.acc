@@ -10,6 +10,11 @@ stmtdef runCompileTimeTests() {
 	int a = 0;
 	int b = 0;
 
+	// Test context-free block statement
+	a = 0;
+	{ a = 1; }
+	assert(a == 1);
+
 	// Test if statement
 	a = 0;
 	if (1) a = 1; assert(a == 1);

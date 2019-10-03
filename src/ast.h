@@ -180,6 +180,16 @@ public:
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 };
 
+class CastRegister
+{
+private:
+	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
+public:
+	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context);
+	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const;
+	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const;
+};
+
 class StmtAST : public ExprAST
 {
 public:
@@ -221,7 +231,7 @@ class BlockExprAST : public ExprAST
 private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
-	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
+	CastRegister castreg;
 
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExprInternal(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
@@ -263,21 +273,18 @@ public:
 	size_t countExprs() const { return stmtreg.countExprs(); }
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const { stmtreg.iterateExprs(cbk); }
 
-	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
-	{
-		casts[std::make_pair(fromType, toType)] = context;
-	}
+	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context) { castreg.defineCast(fromType, toType, context); }
 	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const
 	{
 		const std::pair<BaseType*, BaseType*>& key = std::make_pair(fromType, toType);
-		std::map<std::pair<BaseType*, BaseType*>, CodegenContext*>::const_iterator cast;
+		CodegenContext* cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
-			if ((cast = block->casts.find(key)) != block->casts.end())
-				return cast->second;
+			if ((cast = block->castreg.lookupCast(fromType, toType)) != nullptr)
+				return cast;
 			for (const BlockExprAST* ref: block->references)
-				if ((cast = ref->casts.find(key)) != ref->casts.end())
-					return cast->second;
+				if ((cast = ref->castreg.lookupCast(fromType, toType)) != nullptr)
+					return cast;
 		}
 		return nullptr;
 	}
@@ -285,11 +292,9 @@ public:
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
-			for (const std::pair<std::pair<BaseType*, BaseType*>, CodegenContext*> cast: block->casts)
-				casts.push_back(cast.first);
+			block->castreg.listAllCasts(casts);
 			for (const BlockExprAST* ref: block->references)
-				for (const std::pair<std::pair<BaseType*, BaseType*>, CodegenContext*> cast: ref->casts)
-					casts.push_back(cast.first);
+				ref->castreg.listAllCasts(casts);
 		}
 	}
 

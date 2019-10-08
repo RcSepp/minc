@@ -46,6 +46,8 @@ exprdef<int> $E<BuiltinTypePtr>.align = $E<int> {
 }
 
 exprdef<BuiltinType> BuiltinType($E<string>, $E<LLVMTypeRef>, $E<int>) {
+	string malloc(long size);
+
 	LLVMValueRef args[1];
 	args[0] = LLVMConstInt(long.llvmtype, 32, 1);
 	LLVMValueRef t = LLVMBuildCall(malloc, args, 1, "");

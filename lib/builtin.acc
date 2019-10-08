@@ -11,7 +11,7 @@ stmtdef return $E<int> {
 Cast: LiteralExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $E<LiteralExprAST> {
+inhtdef<ExprAST> $E<LiteralExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -23,7 +23,7 @@ castdef<ExprAST> $E<LiteralExprAST> {
 Cast: IdExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $E<IdExprAST> {
+inhtdef<ExprAST> $E<IdExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -35,7 +35,7 @@ castdef<ExprAST> $E<IdExprAST> {
 Cast: BlockExprAST to ExprAST
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<ExprAST> $E<BlockExprAST> {
+inhtdef<ExprAST> $E<BlockExprAST> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
@@ -769,7 +769,7 @@ exprdef<bool> $E<BaseType> != $E<BaseType> {
 Cast: BuiltinType to BaseType
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<BaseType> $E<BuiltinType> {
+inhtdef<BaseType> $E<BuiltinType> {
 	return LLVMBuildBitCast(
 		codegen($0, parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("BaseType"), 0),

@@ -180,13 +180,44 @@ public:
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 };
 
+struct Cast
+{
+	BaseType* const fromType;
+	BaseType* const toType;
+	CodegenContext* const context;
+	Cast() = default;
+	Cast(const Cast&) = default;
+	Cast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+		: fromType(fromType), toType(toType), context(context) {}
+	virtual MatchScore getCost() const = 0;
+};
+
+struct InheritanceCast : public Cast
+{
+	InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+		: Cast(fromType, toType, context) {}
+	MatchScore getCost() const { return 0; }
+};
+
+struct TypeCast : public Cast
+{
+	TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+		: Cast(fromType, toType, context) {}
+	MatchScore getCost() const { return 1; }
+};
+
 class CastRegister
 {
 private:
-	std::map<std::pair<BaseType*, BaseType*>, CodegenContext*> casts;
+	BlockExprAST* const block;
+	std::map<std::pair<BaseType*, BaseType*>, Cast*> casts;
+	std::multimap<BaseType*, Cast*> fwdCasts, bwdCasts;
 public:
-	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context);
-	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const;
+	CastRegister(BlockExprAST* block) : block(block) {}
+	void defineDirectCast(Cast* cast);
+	void defineIndirectCast(const CastRegister& castreg, Cast* cast);
+	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const;
+	bool isInstance(BaseType* derivedType, BaseType* baseType) const;
 	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const;
 };
 
@@ -243,7 +274,7 @@ public:
 	BaseScopeType* scopeType;
 	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), parent(nullptr), exprs(exprs), scopeType(nullptr) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), scopeType(nullptr) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
@@ -273,11 +304,31 @@ public:
 	size_t countExprs() const { return stmtreg.countExprs(); }
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const { stmtreg.iterateExprs(cbk); }
 
-	void defineCast(BaseType* fromType, BaseType* toType, CodegenContext* context) { castreg.defineCast(fromType, toType, context); }
-	CodegenContext* lookupCast(BaseType* fromType, BaseType* toType) const
+	void defineCast(Cast* cast)
+	{
+		// Skip if one of the following is true
+		// 1. fromType == toType
+		// 2. A cast exists from fromType to toType with a lower or equal cost
+		// 3. Cast is an inheritance and another inheritance cast exists from toType to fromType (inheritance loop avoidance)
+		const Cast* existingCast;
+		if (cast->fromType == cast->toType
+			|| ((existingCast = lookupCast(cast->fromType, cast->toType)) != nullptr && existingCast->getCost() <= cast->getCost())
+			|| ((existingCast = lookupCast(cast->toType, cast->fromType)) != nullptr && existingCast->getCost() == 0 && cast->getCost() == 0))
+			return;
+
+		castreg.defineDirectCast(cast);
+
+		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
+			castreg.defineIndirectCast(block->castreg, cast);
+			for (const BlockExprAST* ref: block->references)
+				castreg.defineIndirectCast(ref->castreg, cast);
+		}
+	}
+	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const
 	{
 		const std::pair<BaseType*, BaseType*>& key = std::make_pair(fromType, toType);
-		CodegenContext* cast;
+		const Cast* cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
 			if ((cast = block->castreg.lookupCast(fromType, toType)) != nullptr)
@@ -287,6 +338,19 @@ public:
 					return cast;
 		}
 		return nullptr;
+	}
+	bool isInstance(BaseType* derivedType, BaseType* baseType) const
+	{
+		const std::pair<BaseType*, BaseType*>& key = std::make_pair(derivedType, baseType);
+		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
+			if (block->castreg.isInstance(derivedType, baseType))
+				return true;
+			for (const BlockExprAST* ref: block->references)
+				if (ref->castreg.isInstance(derivedType, baseType))
+					return true;
+		}
+		return false;
 	}
 	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
 	{

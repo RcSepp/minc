@@ -197,9 +197,13 @@ extern "C"
 		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
 	}
 
-	void defineCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
+	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
-		scope->defineCast(fromType, toType, new DynamicExprContext(func, toType));
+		scope->defineCast(new TypeCast(fromType, toType, new DynamicExprContext(func, toType)));
+	}
+	void defineInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, new DynamicExprContext(func, toType)));
 	}
 
 	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols)

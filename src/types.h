@@ -50,9 +50,8 @@ struct FuncType : public BuiltinType
 {
 	BuiltinType* resultType;
 	std::vector<BuiltinType*> argTypes;
-	const char* name;
 
-	FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg);
+	FuncType(const char* funcName, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg);
 	virtual ~FuncType() {};
 };
 
@@ -139,11 +138,11 @@ public:
 struct Func : XXXValue
 {
 public:
-	FuncType type;
-	const char* symName;
+	FuncType* type;
+	const char *name, *symName;
 
 	Func(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg, const char* symName = nullptr)
-		: XXXValue(nullptr), type(name, resultType, argTypes, isVarArg), symName(symName ? symName : name) {}
+		: XXXValue(nullptr), type(new FuncType(name, resultType, argTypes, isVarArg)), name(name), symName(symName ? symName : name) {}
 
 	llvm::Function* getFunction(llvm::Module* module);
 

@@ -38,7 +38,7 @@ typedef<BuiltinType> PyObject {
 	LLVMStructSetBody(pyobjtype, pyobjSubtypes, 2, 0);
 	return BuiltinType("PyObject", LLVMPointerType(pyobjtype, 0), 8);
 }
-castdef<BuiltinValue> $E<PyObject>;
+inhtdef<BuiltinValue> $E<PyObject>;
 exprdef<PyTypeObject> $E<PyObject>.ob_type {
 	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 1, "gep");
 	llvmtype = LLVMBuildLoad(llvmtype, "ob_type");

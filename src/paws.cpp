@@ -27,7 +27,7 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 	if (T::TYPE != PawsBase::TYPE)
 	{
 		// Let type derive from PawsBase
-		defineOpaqueCast(scope, T::TYPE, PawsBase::TYPE);
+		defineOpaqueInheritanceCast(scope, T::TYPE, PawsBase::TYPE);
 
 		// Define ExprAST type hierarchy
 		typedef typename std::remove_pointer<typename T::CType>::type baseCType; // Pointer-less T::CType
@@ -43,7 +43,12 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 			|| std::is_same<BlockExprAST, rawCType>()
 		) // If rawCType derives from ExprAST
 		{
-			if (!std::is_const<baseCType>()) // If T::CType != ExprAST* and T::CType is not a const type
+			if (std::is_const<baseCType>()) // If T::CType is a const type
+			{
+				if (!std::is_same<ExprAST, rawCType>()) // If T::CType != const ExprAST*
+					defineOpaqueInheritanceCast(scope, T::TYPE, PawsType<const ExprAST*>::TYPE); // Let type derive from PawsConstExprAST
+			}
+			else // If T::CType is not a const type
 			{
 				// Register const type
 				typedef PawsType<typename std::add_pointer<typename std::add_const<baseCType>::type>::type> constT; // const T
@@ -53,14 +58,11 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 				registerType<constT>(scope, constExprASTName);
 
 				// Let type derive from const type
-				defineOpaqueCast(scope, T::TYPE, constT::TYPE);
+				defineOpaqueInheritanceCast(scope, T::TYPE, constT::TYPE);
 
 				if (!std::is_same<ExprAST, baseCType>()) // If T::CType != ExprAST*
-					defineOpaqueCast(scope, T::TYPE, PawsExprAST::TYPE); // Let type derive from PawsExprAST
+					defineOpaqueInheritanceCast(scope, T::TYPE, PawsExprAST::TYPE); // Let type derive from PawsExprAST
 			}
-			
-			if (!std::is_same<const ExprAST, baseCType>()) // If T::CType != const ExprAST*
-				defineOpaqueCast(scope, T::TYPE, PawsType<const ExprAST*>::TYPE); // Let type derive from PawsConstExprAST
 		}
 	}
 }

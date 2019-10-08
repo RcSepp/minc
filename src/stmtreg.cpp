@@ -517,8 +517,14 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 			score += 5; // Reward exact match
 			return true;
 		}
-		score += 3; // Reward inexact match (score is disregarded on mismatch)
-		return allowCast && block->lookupCast(exprType, tpltType) != nullptr;
+		const Cast* cast = allowCast ? block->lookupCast(exprType, tpltType) : nullptr;
+		if (cast != nullptr)
+		{
+			score += 3; // Reward inexact match (inheritance or type-cast)
+			score -= cast->getCost(); // Penalize type-cast
+			return true;
+		}
+		return false;
 	}
 }
 
@@ -531,10 +537,10 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 		if (exprType != tpltType)
 		{
 //printf("implicit cast from %s to %s in %s:%i\n", getTypeName(exprType), getTypeName(tpltType), expr->loc.filename, expr->loc.begin_line);
-			CodegenContext* castContext = block->lookupCast(exprType, tpltType);
-			assert(castContext != nullptr);
+			const Cast* cast = block->lookupCast(exprType, tpltType);
+			assert(cast != nullptr);
 			ExprAST* castExpr = new CastExprAST(expr->loc);
-			castExpr->resolvedContext = castContext;
+			castExpr->resolvedContext = cast->context;
 			castExpr->resolvedParams.push_back(expr);
 			storeParam(castExpr, params, paramIdx++);
 			return;

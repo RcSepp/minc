@@ -9,6 +9,8 @@
 #include "api.h"
 #include "cparser.h"
 
+#define DETECT_REDEFINED_TYPES
+
 class KaleidoscopeJIT;
 class FileModule;
 
@@ -305,6 +307,10 @@ extern "C"
 
 	void defineType(const char* name, BaseType* type)
 	{
+#ifdef DETECT_REDEFINED_TYPES
+		if (typereg.find(type) != typereg.end())
+			throw CompileError("redefined type " + std::string(name));
+#endif
 		typereg[type] = TypeDescription{name};
 	}
 
@@ -375,14 +381,22 @@ extern "C"
 		scope->defineExpr(tplt, expr);
 	}
 
-	void defineCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
+	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
 	{
-		scope->defineCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs));
+		scope->defineCast(new TypeCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs)));
+	}
+	void defineInheritanceCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs)));
 	}
 
-	void defineOpaqueCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
 	{
-		scope->defineCast(fromType, toType, new OpaqueExprContext(toType));
+		scope->defineCast(new TypeCast(fromType, toType, new OpaqueExprContext(toType)));
+	}
+	void defineOpaqueInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, new OpaqueExprContext(toType)));
 	}
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name)
@@ -400,19 +414,19 @@ extern "C"
 		if (fromType == toType)
 			return expr;
 
-		CodegenContext* castContext = scope->lookupCast(fromType, toType);
-		if (castContext == nullptr)
+		const Cast* cast = scope->lookupCast(fromType, toType);
+		if (cast == nullptr)
 			return nullptr;
 
 		ExprAST* castExpr = new CastExprAST(expr->loc);
-		castExpr->resolvedContext = castContext;
+		castExpr->resolvedContext = cast->context;
 		castExpr->resolvedParams.push_back(expr);
 		return castExpr;
 	}
 
 	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType)
 	{
-		return fromType == toType || scope->lookupCast(fromType, toType) != nullptr;
+		return fromType == toType || scope->isInstance(fromType, toType);
 	}
 
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)

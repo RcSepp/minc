@@ -24,7 +24,10 @@ BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_
 	std::string hash = std::string(name);
 	auto t = builtinTypes.find(hash);
 	if (t == builtinTypes.end())
+	{
 		t = builtinTypes.insert({ name, new BuiltinType(llvmtype, align, encoding, numbits) }).first;
+		defineType(name, t->second);
+	}
 	return t->second;
 }
 
@@ -37,7 +40,7 @@ PtrType* BuiltinType::Ptr()
 		strcpy(ptrName, name.c_str());
 		strcpy(ptrName + name.size(), "Ptr");
 		ptr = new PtrType(this);
-//		defineType(nullptr, ptrName, BuiltinTypes::Builtin, new XXXValue(Types::BuiltinType, (uint64_t)ptr));
+		defineType(ptrName, ptr);
 	}
 	return ptr;
 }
@@ -45,9 +48,20 @@ PtrType* BuiltinType::Ptr()
 PtrType::PtrType(BuiltinType* pointeeType)
 	: BuiltinType(pointeeType == nullptr ? nullptr : LLVMPointerType(pointeeType->llvmtype, 0), 8, dwarf::DW_ATE_address, 64), pointeeType(pointeeType) {}
 
-FuncType::FuncType(const char* name, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg)
-	: BuiltinType(nullptr, 8, dwarf::DW_ATE_address, 64), resultType(resultType), argTypes(argTypes), name(name)
+FuncType::FuncType(const char* funcName, BuiltinType* resultType, const std::vector<BuiltinType*>& argTypes, bool isVarArg)
+	: BuiltinType(nullptr, 8, dwarf::DW_ATE_address, 64), resultType(resultType), argTypes(argTypes)
 {
+	std::string name = funcName;
+	name += '(';
+	size_t i;
+	for (size_t i = 0; i < argTypes.size(); ++i)
+	{
+		if (i) name += ", ";
+		name += getTypeName(argTypes[i]);
+	}
+	name += ')';
+	defineType(name.c_str(), this);
+
 	std::vector<llvm::Type*> argLlvmTypes;
 	for (BuiltinType* argType: argTypes)
 		argLlvmTypes.push_back(unwrap(argType->llvmtype));
@@ -63,8 +77,8 @@ TpltType* TpltType::get(std::string name, BuiltinType* baseType, BuiltinType* tp
 	if (t == tpltTypes.end())
 	{
 		t = tpltTypes.insert({ name, new TpltType(baseType, tpltType) }).first;
-		defineOpaqueCast(getRootScope(), t->second, baseType);
 		defineType(name.c_str(), t->second);
+		defineOpaqueInheritanceCast(getRootScope(), t->second, baseType);
 	}
 	return t->second;
 }
@@ -76,6 +90,6 @@ llvm::Function* Func::getFunction(llvm::Module* module)
 	return (llvm::Function*)val;*/
 	val = module->getFunction(symName);
 	if (val == nullptr)
-		val = Function::Create((llvm::FunctionType*)unwrap(type.llvmtype), GlobalValue::ExternalLinkage, symName, module);
+		val = Function::Create((llvm::FunctionType*)unwrap(type->llvmtype), GlobalValue::ExternalLinkage, symName, module);
 	return (llvm::Function*)val;
 }

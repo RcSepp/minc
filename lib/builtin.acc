@@ -499,6 +499,14 @@ exprdef<bool> $E<bool> || $E<bool> {
 	return LLVMBuildOr(codegen($0, parentBlock), codegen($1, parentBlock), "or");
 }
 
+exprdef<bool> $E<bool> == $E<bool> {
+	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
+exprdef<bool> $E<bool> != $E<bool> {
+	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+}
+
 /* ---------------------------------------------------------------------------*\
 Name: Integer addition
 Template: $E<int> + $E<int>
@@ -550,6 +558,10 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<long> $E<long> & $E<long> {
 	return LLVMBuildAnd(codegen($0, parentBlock), codegen($1, parentBlock), "and");
+}
+
+exprdef<bool> $E<long> == $E<long> {
+	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
 }
 
 exprdef<bool> $E<long> != $E<long> {

@@ -863,6 +863,10 @@ stmtdef for(int $I = $E<int>; $E; $E) $B {
 	LLVMPositionBuilder(endForBlock);
 }
 
+stmtdef for(int $I = $E<int>; $E; $E) $S {
+	throw CompileError("single-statement for-loop not supported. Use `for (...) {...}` instead!", $4);
+}
+
 stmtdef while ($E<bool>) $S {
 	// Create basic blocks
 	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");

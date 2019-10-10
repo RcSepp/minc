@@ -579,9 +579,9 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 				return symbol; // Symbol and import rule found in ref scope
 			}
 
-			// Search for import rule on any type that symbol type can be casted to
+			// Search for import rule on any base type of symbol type
 			for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
-				if (lookupCast(symbol->type, rule.first) != nullptr)
+				if (isInstance(symbol->type, rule.first))
 				{
 					//TODO: Should we cast symbol to rule.first?
 					rule.second(*symbol, ref->scopeType, scopeType); // Execute import rule
@@ -616,9 +616,9 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 			return symbol; // Symbol and import rule found in parent scope
 		}
 
-		// Search for import rule on any type that symbol type can be casted to
+		// Search for import rule on any base type of symbol type
 		for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
-			if (lookupCast(symbol->type, rule.first) != nullptr)
+			if (isInstance(symbol->type, rule.first))
 			{
 				//TODO: Should we cast symbol to rule.first?
 				rule.second(*symbol, parent->scopeType, scopeType); // Execute import rule

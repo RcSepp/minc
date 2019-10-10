@@ -1703,7 +1703,7 @@ defineExpr2(rootBlock, "getfunc($E)",
 	defineImportRule(BuiltinScopes::File, BuiltinScopes::File, BuiltinTypes::BuiltinValue,
 		[](Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope) -> void {
 			XXXValue* value = (XXXValue*)symbol.value;
-			if (isInstance(getRootScope(), symbol.type, BuiltinTypes::Base) && !value->isFunction() && !value->isConstant())
+			if (!value->isFunction() && !value->isConstant())
 			{
 				assert(value->val->getName().size()); // Importing anonymus globals results in a seg fault!
 				symbol.value = new XXXValue(new GlobalVariable(*currentModule, unwrap(((BuiltinType*)symbol.type)->llvmtype), false, GlobalValue::ExternalLinkage, nullptr, value->val->getName()));

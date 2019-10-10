@@ -265,7 +265,7 @@ const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupSt
 				bestStmtEnd = currentStmtEnd;
 			}
 #ifdef DEBUG_STMTREG
-			printf(" MATCH(score=%i)", currentScore);
+			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
 		}
 		printf("\n");
 #endif
@@ -293,7 +293,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 				bestExpr = &iter;
 			}
 #ifdef DEBUG_STMTREG
-			printf(" MATCH(score=%i)", currentScore);
+			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
 		}
 		printf("\n");
 #endif
@@ -314,7 +314,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 				bestExpr = &iter;
 			}
 #ifdef DEBUG_STMTREG
-			printf(" MATCH(score=%i)", currentScore);
+			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
 		}
 		printf("\n");
 #endif

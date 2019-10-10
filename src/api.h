@@ -78,6 +78,8 @@ extern "C"
 	bool ExprASTIsPlchld(const ExprAST* expr);
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);
 	BlockExprAST* wrapExprAST(ExprAST* expr);
+	BlockExprAST* createEmptyBlockExprAST();
+	void removeBlockExprAST(BlockExprAST* expr);
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);

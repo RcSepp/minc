@@ -169,6 +169,16 @@ extern "C"
 		return new BlockExprAST(expr->loc, new std::vector<ExprAST*>(1, expr));
 	}
 
+	BlockExprAST* createEmptyBlockExprAST()
+	{
+		return new BlockExprAST({0}, {});
+	}
+
+	void removeBlockExprAST(BlockExprAST* expr)
+	{
+		delete expr;
+	}
+
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr)
 	{
 		return expr->exprs;

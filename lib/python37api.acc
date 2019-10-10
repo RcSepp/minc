@@ -266,7 +266,7 @@ Template: $E<PyObject>($E<PyObject>, ...)
 	callObjectArgs[1] = argsTuple;
 	return LLVMBuildCall(PyObject_CallObject, callObjectArgs, 2, "");
 }*/
-exprdef<PyObject> $E<PyObject>($E<PyObject>, ...) {
+exprdef<PyObject> $E<PyObject!>($E<PyObject>, ...) {
 	int numArgs = $1.size;
 	LLVMValueRef args[numArgs + 2];
 	args[0] = codegen($0, parentBlock);

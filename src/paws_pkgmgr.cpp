@@ -48,4 +48,17 @@ void PawsPackageManager::define(BlockExprAST* pkgScope)
 			pck->second->import(parentBlock);
 		}, this
 	);
+
+	defineExpr2(pkgScope, "$E<PawsBlockExprAST>.import(paws.$I)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			BlockExprAST* block = ((PawsBlockExprAST*)codegenExpr(params[0], parentBlock).value)->val;
+			PawsPackageManager* pkgMgr = (PawsPackageManager*)exprArgs;
+			std::string pkgName = getIdExprASTName((IdExprAST*)params[1]);
+			auto pck = pkgMgr->packages.find(pkgName);
+			if (pck == pkgMgr->packages.end())
+				raiseCompileError(("unknown paws package " + pkgName).c_str(), params[1]);
+			pck->second->import(block);
+			return Variable(PawsVoid::TYPE, nullptr);
+		}, PawsVoid::TYPE, this
+	);
 }

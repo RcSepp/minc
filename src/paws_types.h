@@ -5,6 +5,10 @@
 #include <map>
 #include <cstring>
 
+struct BaseScopeType;
+
+extern BaseScopeType* FILE_SCOPE_TYPE;
+
 template<typename T> struct PawsType : BaseValue
 {
 	typedef T CType;

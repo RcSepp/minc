@@ -5,7 +5,6 @@
 #include <iostream>
 #include <functional>
 #include "api.h"
-#include "builtin.h"
 #include "paws_types.h"
 #include "paws_pkgmgr.h"
 
@@ -1080,18 +1079,6 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	defineExpr(block, "initCompiler()",
 		+[]() -> void {
 			initCompiler();
-		}
-	);
-
-	defineExpr(block, "initBuiltinSymbols()",
-		+[]() -> void {
-			initBuiltinSymbols();
-		}
-	);
-
-	defineExpr(block, "defineBuiltinSymbols($E<PawsBlockExprAST>)",
-		+[](BlockExprAST* block) -> void {
-			defineBuiltinSymbols(block);
 		}
 	);
 

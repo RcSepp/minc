@@ -50,10 +50,9 @@ if (rootBlock == NULL)
 
 // Compile AST
 initCompiler();
-initBuiltinSymbols();
 module = createModule(realPath, "main", outputDebugSymbols);
 rootBlock.scopeType = FILE_SCOPE_TYPE;
-defineBuiltinSymbols(rootBlock);
+rootBlock.import(paws.bootstrap);
 rootBlock.symbols[FILE_SCOPE] = rootBlock;
 rootBlock.codegen(FILE_SCOPE);
 module.finalize();

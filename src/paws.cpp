@@ -9,6 +9,8 @@
 #include "paws_types.h"
 #include "paws_pkgmgr.h"
 
+BaseScopeType* FILE_SCOPE_TYPE = new BaseScopeType();
+
 template<> uint64_t PawsType<BaseType*>::getConstantValue() { return (uint64_t)val; }
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
@@ -211,6 +213,45 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
+void importFile(BlockExprAST* parentBlock, std::string importPath)
+{
+	char buf[1024];
+	realpath(importPath.c_str(), buf);
+	char* importRealPath = new char[strlen(buf) + 1];
+	strcpy(importRealPath, buf);
+	importPath = importPath.substr(std::max(importPath.rfind("/"), importPath.rfind("\\")) + 1);
+	const size_t dt = importPath.rfind(".");
+	if (dt != -1) importPath = importPath.substr(0, dt);
+
+	// Parse imported source code //TODO: Implement file caching
+	BlockExprAST* importBlock = parseCFile(importRealPath);
+
+	// Codegen imported module
+	const int outputDebugSymbols = ((PawsInt*)importSymbol(parentBlock, "outputDebugSymbols")->value)->val;
+	IModule* importModule = createModule(importRealPath, importPath + ":main", outputDebugSymbols);
+	setScopeType(importBlock, FILE_SCOPE_TYPE);
+	defineSymbol(importBlock, "FILE_SCOPE", PawsBlockExprAST::TYPE, new PawsBlockExprAST(importBlock));
+	codegenExpr((ExprAST*)importBlock, parentBlock);
+	importModule->finalize();
+
+	// Codegen a call to the imported module's main function
+	importModule->buildRun();
+
+	// Import imported module into importing scope
+	::importBlock(parentBlock, importBlock);
+
+	// Execute command on imported module
+	const std::string& command = ((PawsString*)importSymbol(parentBlock, "command")->value)->val;
+	if (command == "parse" || command == "debug")
+		importModule->print(importPath + ".ll");
+	if (command == "build")
+	{
+		std::string errstr = "";
+		if (!importModule->compile(importPath + ".o", errstr))
+			std::cerr << errstr;
+	}
+}
+
 int PAWRun(BlockExprAST* block, int argc, char **argv)
 {
 	registerType<PawsBase>(block, "PawsBase");
@@ -242,7 +283,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	PAWS_PACKAGE_MANAGER().import(block);
 
 	defineSymbol(block, "FILE_SCOPE", PawsBlockExprAST::TYPE, new PawsBlockExprAST(block));
-	defineSymbol(block, "FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(new BaseScopeType()));
+	defineSymbol(block, "FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(FILE_SCOPE_TYPE));
 
 	// Define single-expr statement
 	defineStmt2(block, "$E<PawsBase>",
@@ -1101,6 +1142,22 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			char realPath[1024];
 			realpath(path.c_str(), realPath);
 			return realPath;
+		}
+	);
+
+	// Define import statement
+	defineStmt2(block, "import $E<PawsString>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			std::string importPath = ((PawsString*)codegenExpr(params[0], parentBlock).value)->val;
+			importFile(parentBlock, importPath);
+		}
+	);
+
+	// Define library import statement
+	defineStmt2(block, "import <$I.$I>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			std::string importPath = "../lib/" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "." + std::string(getIdExprASTName((IdExprAST*)params[1]));
+			importFile(parentBlock, importPath);
 		}
 	);
 

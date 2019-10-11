@@ -10,7 +10,7 @@ struct IndirectCast : public Cast, public CodegenContext
 
 	IndirectCast(Cast* first, Cast* second)
 		: Cast(first->fromType, second->toType, this), first(first), second(second) {}
-	MatchScore getCost() const { return first->getCost() + second->getCost(); }
+	int getCost() const { return first->getCost() + second->getCost(); }
 
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{

@@ -180,30 +180,18 @@ public:
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 };
 
-struct Cast
-{
-	BaseType* const fromType;
-	BaseType* const toType;
-	CodegenContext* const context;
-	Cast() = default;
-	Cast(const Cast&) = default;
-	Cast(BaseType* fromType, BaseType* toType, CodegenContext* context)
-		: fromType(fromType), toType(toType), context(context) {}
-	virtual MatchScore getCost() const = 0;
-};
-
 struct InheritanceCast : public Cast
 {
 	InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 		: Cast(fromType, toType, context) {}
-	MatchScore getCost() const { return 0; }
+	int getCost() const { return 0; }
 };
 
 struct TypeCast : public Cast
 {
 	TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 		: Cast(fromType, toType, context) {}
-	MatchScore getCost() const { return 1; }
+	int getCost() const { return 1; }
 };
 
 class CastRegister
@@ -219,6 +207,12 @@ public:
 	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const;
 	bool isInstance(BaseType* derivedType, BaseType* baseType) const;
 	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const;
+	size_t countCasts() const { return casts.size(); }
+	void iterateCasts(std::function<void(const Cast* cast)> cbk) const
+	{
+		for (const std::pair<const std::pair<BaseType*, BaseType*>, Cast*>& iter: casts)
+			cbk(iter.second);
+	}
 };
 
 class StmtAST : public ExprAST
@@ -361,6 +355,8 @@ public:
 				ref->castreg.listAllCasts(casts);
 		}
 	}
+	size_t countCasts() const { return castreg.countCasts(); }
+	void iterateCasts(std::function<void(const Cast* cast)> cbk) const { castreg.iterateCasts(cbk); }
 
 	void import(BlockExprAST* importBlock)
 	{

@@ -223,6 +223,14 @@ extern "C"
 	{
 		return expr->iterateExprs(cbk);
 	}
+	size_t countBlockExprASTCasts(const BlockExprAST* expr)
+	{
+		return expr->countCasts();
+	}
+	void iterateBlockExprASTCasts(const BlockExprAST* expr, std::function<void(const Cast* cast)> cbk)
+	{
+		return expr->iterateCasts(cbk);
+	}
 	size_t countBlockExprASTSymbols(const BlockExprAST* expr)
 	{
 		return expr->countSymbols();

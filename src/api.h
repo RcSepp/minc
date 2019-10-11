@@ -37,6 +37,18 @@ struct CodegenContext
 	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
 };
 
+struct Cast
+{
+	BaseType* const fromType;
+	BaseType* const toType;
+	CodegenContext* const context;
+	Cast() = default;
+	Cast(const Cast&) = default;
+	Cast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+		: fromType(fromType), toType(toType), context(context) {}
+	virtual int getCost() const = 0;
+};
+
 class IModule
 {
 public:
@@ -89,6 +101,8 @@ extern "C"
 	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk);
 	size_t countBlockExprASTExprs(const BlockExprAST* expr);
 	void iterateBlockExprASTExprs(const BlockExprAST* expr, std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk);
+	size_t countBlockExprASTCasts(const BlockExprAST* expr);
+	void iterateBlockExprASTCasts(const BlockExprAST* expr, std::function<void(const Cast* cast)> cbk);
 	size_t countBlockExprASTSymbols(const BlockExprAST* expr);
 	void iterateBlockExprASTSymbols(const BlockExprAST* expr, std::function<void(const std::string& name, const Variable& symbol)> cbk);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);

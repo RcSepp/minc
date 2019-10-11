@@ -1,3 +1,5 @@
+import paws.stmtreg;
+
 APP_NAME = "minc";
 HELP_MESSAGE = "minc compiler\n";
 COMMANDS = map(
@@ -7,7 +9,7 @@ COMMANDS = map(
 	"debug": "compile LLVM IR and binary"
 );
 
-if (!COMMANDS.contains($1))
+if ($1 == NULL || !COMMANDS.contains($1))
 {
 	print(HELP_MESSAGE);
 	print("Usage:");

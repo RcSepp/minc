@@ -8,6 +8,7 @@ OBJS = \
 	stmtreg.o \
 	castreg.o \
 	paws.o \
+	paws_stmtreg.o \
 	paws_subroutine.o \
 	paws_bootstrap.o \
 	paws_pkgmgr.o \

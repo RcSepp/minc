@@ -80,15 +80,6 @@ typedef PawsType<Variable> PawsVariable;
 typedef PawsType<BaseScopeType*> PawsScopeType;
 typedef PawsType<std::map<std::string, std::string>> PawsStringMap;
 
-struct StmtMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<StmtMap> PawsStmtMap;
-
-struct ExprMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<ExprMap> PawsExprMap;
-
-struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<SymbolMap> PawsSymbolMap;
-
 template<typename T> void registerType(BlockExprAST* scope, const char* name)
 {
 	const size_t nameLen = strlen(name);

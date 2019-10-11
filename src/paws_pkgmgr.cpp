@@ -20,6 +20,7 @@ void PawsPackage::import(BlockExprAST* scope)
 	if (pkgScope == nullptr)
 	{
 		pkgScope = createEmptyBlockExprAST();
+		setBlockExprASTParent(pkgScope, scope);
 		this->define(pkgScope);
 	}
 	importBlock(scope, pkgScope);

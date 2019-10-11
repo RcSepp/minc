@@ -3,9 +3,25 @@ SRC_DIR = src/
 TEMP_DIR = tmp/
 BIN_DIR = bin/
 
+OBJS = \
+	minc.o \
+	stmtreg.o \
+	castreg.o \
+	paws.o \
+	paws_subroutine.o \
+	paws_bootstrap.o \
+	paws_pkgmgr.o \
+	codegen.o \
+	module.o \
+	llvm_constants.o \
+	types.o \
+	cparser.o \
+	cparser.yy.o \
+	pyparser.o \
+	pyparser.yy.o \
+
 YACC = bison
 CPPFLAGS = -g -std=c++1z
-OBJS = minc.o stmtreg.o castreg.o paws.o paws_bootstrap.o paws_pkgmgr.o codegen.o module.o llvm_constants.o types.o cparser.o cparser.yy.o pyparser.o pyparser.yy.o
 LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -fexceptions -rdynamic
 
 OBJPATHS = $(addprefix ${TEMP_DIR}, ${OBJS})

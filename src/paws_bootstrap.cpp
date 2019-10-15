@@ -590,6 +590,7 @@ private:
 			MincFunctions::lookupSymbol,
 			MincFunctions::importSymbol,
 			MincFunctions::lookupScopeType,
+			MincFunctions::raiseCompileError,
 			MincFunctions::defineFunction,
 		})
 		{
@@ -1458,15 +1459,6 @@ private:
 
 				Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
 				builder->CreateCall(raiseCompileErrorFunc, { msgVal, locExprVal });
-			}
-		);
-		defineStmt2(rootBlock, "throw CompileError($E<string>, $E<ExprAST>)",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				Value* msgVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-				Value* locVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
-
-				Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
-				builder->CreateCall(raiseCompileErrorFunc, { msgVal, locVal });
 			}
 		);
 

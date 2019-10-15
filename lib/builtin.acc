@@ -863,10 +863,6 @@ stmtdef for(int $I = $E<int>; $E; $E) $B {
 	LLVMPositionBuilder(endForBlock);
 }
 
-stmtdef for(int $I = $E<int>; $E; $E) $S {
-	throw CompileError("single-statement for-loop not supported. Use `for (...) {...}` instead!", $4);
-}
-
 stmtdef while ($E<bool>) $S {
 	// Create basic blocks
 	LLVMBasicBlockRef whileBlock = LLVMAppendBasicBlock(function, "whileBlock");
@@ -893,6 +889,25 @@ stmtdef while ($E<bool>) $S {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
+
+/* ---------------------------------------------------------------------------*\
+Name: Compile exception statement
+Template: throw CompileError($E<string>, $E<ExprAST>)
+\* ---------------------------------------------------------------------------*/
+stmtdef throw CompileError($E<string>, $E<ExprAST>) {
+	LLVMValueRef args[2];
+	args[0] = codegen($0, parentBlock);
+	args[1] = codegen($1, parentBlock);
+	LLVMBuildCall(raiseCompileError, args, 2, "");
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Unimplemented single-statement for-loop error
+Template: for(int $I = $E<int>; $E; $E) $S
+\* ---------------------------------------------------------------------------*/
+stmtdef for(int $I = $E<int>; $E; $E) $S {
+	throw CompileError("single-statement for-loop not supported. Use `for (...) {...}` instead!", $4);
+}
 
 /* ---------------------------------------------------------------------------*\
 Name: Function declaration

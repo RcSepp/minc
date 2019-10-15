@@ -174,6 +174,13 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 		}
 	);
 
+	// Define single-expr statement
+	defineStmt2(block, "$E",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			codegenExpr(params[0], parentBlock);
+		}
+	);
+
 	// Define context-free block statement
 	defineStmt2(block, "$B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {

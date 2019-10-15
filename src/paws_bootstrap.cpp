@@ -607,16 +607,14 @@ private:
 		}
 
 		// Define function call
-		defineExpr3(rootBlock, "$I($E, ...)",
+		defineExpr3(rootBlock, "$E<BuiltinFunction>($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				ExprAST* funcAST = params[0];
+				assert(ExprASTIsCast(funcAST));
+				funcAST = getCastExprASTSource((CastExprAST*)funcAST);
 				Variable funcVar = codegenExpr(funcAST, parentBlock);
 				FuncType* funcType = (FuncType*)funcVar.type;
-				if (funcType == nullptr)
-					raiseCompileError(("function `" + std::string(getIdExprASTName((IdExprAST*)funcAST)) + "` was not declared in this scope").c_str(), funcAST);
 				Function* func = ((XXXValue*)funcVar.value)->getFunction(currentModule);
-				if (func == nullptr)
-					raiseCompileError(("`" + std::string(getIdExprASTName((IdExprAST*)funcAST)) + "` is not a function").c_str(), funcAST);
 				std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 				const size_t numArgs = argExprs.size();
 
@@ -651,9 +649,26 @@ private:
 		
 				return Variable(funcType->resultType, new XXXValue(builder->CreateCall(func, argValues)));
 			}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-				FuncType* funcType = (FuncType*)getType(params[0], parentBlock);
+				ExprAST* funcAST = params[0];
+				assert(ExprASTIsCast(funcAST));
+				funcAST = getCastExprASTSource((CastExprAST*)funcAST);
+				FuncType* funcType = (FuncType*)getType(funcAST, parentBlock);
 				return funcType == nullptr ? nullptr : funcType->resultType;
 			}
+		);
+		// Define function call on non-function expression
+		defineExpr2(rootBlock, "$E($E, ...)",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+				raiseCompileError("expression cannot be used as a function", params[0]);
+			},
+			BuiltinTypes::Void
+		);
+		// Define function call on non-function identifier
+		defineExpr2(rootBlock, "$I($E, ...)",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+				raiseCompileError(("`" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` cannot be used as a function").c_str(), params[0]);
+			},
+			BuiltinTypes::Void
 		);
 
 		// Define `stmtdef`
@@ -946,6 +961,7 @@ private:
 
 				// Define function symbol in parent scope
 				defineSymbol(parentBlock, funcName, func->type, func);
+				defineOpaqueInheritanceCast(parentBlock, func->type, BuiltinTypes::BuiltinFunction);
 			}
 		);
 

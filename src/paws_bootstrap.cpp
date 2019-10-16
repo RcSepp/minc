@@ -1330,7 +1330,7 @@ private:
 		);
 
 		// Define addToScope()
-		defineExpr2(rootBlock, "addToScope($E<BlockExprAST>, $E<IdExprAST>, $E, $E)",
+		defineExpr2(rootBlock, "addToScope($E<BlockExprAST>, $E<IdExprAST>, $E<BaseType>, $E)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				Value* parentBlockVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
 				Value* nameVal; //= ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
@@ -1343,16 +1343,6 @@ private:
 					nameVal = builder->CreateBitCast(ConstantInt::get(*context, APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
 				else
 					assert(0);
-
-				typeVal = builder->CreateBitCast(typeVal, Types::BaseType->getPointerTo());
-
-				/*IdExprAST* typeAST = (IdExprAST*)params[2];
-				const Variable* typeVar = parentBlock->lookupSymbol(getIdExprASTName(typeAST));
-				if (!typeVar)
-					raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` was not declared in this scope").c_str(), (ExprAST*)typeAST);
-				if (typeVar->value)
-					raiseCompileError(("`" + std::string(getIdExprASTName(typeAST)) + "` is not a type").c_str(), (ExprAST*)typeAST);
-				Value* typeVal = Constant::getIntegerValue(Type::getInt8PtrTy(*context), APInt(64, (uint64_t)typeVar->type, true));*/
 
 				Function* addToScopeFunc = MincFunctions::addToScope->getFunction(currentModule);
 				Value* resultVal = builder->CreateCall(addToScopeFunc, { parentBlockVal, nameVal, typeVal, valVal });

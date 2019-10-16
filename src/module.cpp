@@ -180,6 +180,7 @@ extern "C"
 		BuiltinTypes::BuiltinClass = BuiltinType::get("BuiltinClass", nullptr, 0, 0, 0);
 		BuiltinTypes::BuiltinInstance = BuiltinType::get("BuiltinInstance", nullptr, 0, 0, 0);
 		BuiltinTypes::Value = BuiltinType::get("Value", wrap(Types::Value->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+		BuiltinTypes::Func = BuiltinType::get("Func", wrap(Types::Func->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 
 		// Primitive types
 		BuiltinTypes::Void = BuiltinType::get("void", LLVMVoidType(), 0, 0, 0);

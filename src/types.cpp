@@ -87,9 +87,9 @@ llvm::Function* Func::getFunction(llvm::Module* module)
 {
 	/*if (!val)
 		val = Function::Create((llvm::FunctionType*)unwrap(type.llvmtype), GlobalValue::ExternalLinkage, symName, module);
-	return (llvm::Function*)val;*/
+	return val;*/
 	val = module->getFunction(symName);
 	if (val == nullptr)
 		val = Function::Create((llvm::FunctionType*)unwrap(type->llvmtype), GlobalValue::ExternalLinkage, symName, module);
-	return (llvm::Function*)val;
+	return val;
 }

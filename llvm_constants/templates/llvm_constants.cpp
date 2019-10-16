@@ -5,11 +5,8 @@ using namespace llvm;
 extern LLVMContext* context;
 extern IRBuilder<>* builder;
 extern Module* currentModule;
-extern Function* currentFunc;
 extern BasicBlock* currentBB;
 extern DIBuilder* dbuilder;
-extern DIFile* dfile;
-extern Value* closure;
 
 namespace Types
 {
@@ -40,6 +37,7 @@ namespace Types
 	StructType* LLVMType;
 	StructType* LLVMValue;
 	StructType* Value;
+	StructType* Func;
 	StructType* BaseType;
 	StructType* Variable;
 	PointerType* BuiltinType;
@@ -81,6 +79,7 @@ namespace Types
 		LLVMType = StructType::create(c, "class.llvm::Type");
 		LLVMValue = StructType::create(c, "class.llvm::Value");
 		Value = StructType::create(c, "struct.Value");
+		Func = StructType::create(c, "struct.Func");
 		BaseType = StructType::create(c, "BaseType");
 		Variable = StructType::create("struct.Variable",
 			BaseType->getPointerTo(),
@@ -139,6 +138,7 @@ namespace BuiltinTypes
 	BuiltinType* BuiltinClass;
 	BuiltinType* BuiltinInstance;
 	BuiltinType* Value;
+	BuiltinType* Func;
 
 	// Primitive types
 	BuiltinType* Void;

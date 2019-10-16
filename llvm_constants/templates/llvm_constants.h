@@ -44,6 +44,7 @@ namespace Types
 	extern StructType* LLVMType;
 	extern StructType* LLVMValue;
 	extern StructType* Value;
+	extern StructType* Func;
 	extern StructType* BaseType;
 	extern StructType* Variable;
 	extern PointerType* BuiltinType;
@@ -72,6 +73,7 @@ namespace BuiltinTypes
 	extern BuiltinType* BuiltinClass;
 	extern BuiltinType* BuiltinInstance;
 	extern BuiltinType* Value;
+	extern BuiltinType* Func;
 
 	// Primitive types
 	extern BuiltinType* Void;

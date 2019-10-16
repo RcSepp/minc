@@ -110,7 +110,7 @@ extern "C"
 		return wrap(value == nullptr ? Constant::getNullValue(Type::getVoidTy(*context)) : value->val);
 	}
 
-	Value* getValueFunction(XXXValue* value)
+	Value* getValueFunction(Func* value)
 	{
 		return value->getFunction(currentModule);
 	}
@@ -127,9 +127,9 @@ extern "C"
 	{
 		Func* func = new Func(name, resultType, std::vector<BuiltinType*>(argTypes, argTypes + numArgTypes), isVarArg);
 		defineSymbol(scope, name, func->type, func);
-		defineInheritanceCast2(scope, func->type, BuiltinTypes::LLVMValueRef,
+		defineTypeCast2(scope, func->type, BuiltinTypes::LLVMValueRef,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
-				Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+				Value* funcVal = Constant::getIntegerValue(Types::Func->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
 
 				Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
 				Value* resultVal = builder->CreateCall(func, { funcVal });
@@ -467,7 +467,7 @@ private:
 		MincFunctions::codegenStmt = new Func("codegenStmt", BuiltinTypes::Void, { BuiltinTypes::StmtAST, BuiltinTypes::BlockExprAST }, false);
 		MincFunctions::getType = new Func("getType", BuiltinTypes::Base, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 		//MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, TODO, BuiltinTypes::Int8Ptr }, false);
-		MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Value }, false);
+		MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Func }, false);
 		MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
 		MincFunctions::cppNew = new Func("_Znwm", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
 		MincFunctions::raiseCompileError = new Func("raiseCompileError", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr, BuiltinTypes::ExprAST }, false);
@@ -595,9 +595,9 @@ private:
 		})
 		{
 			defineSymbol(rootBlock, func->name, func->type, func);
-			defineInheritanceCast2(rootBlock, func->type, BuiltinTypes::LLVMValueRef,
+			defineTypeCast2(rootBlock, func->type, BuiltinTypes::LLVMValueRef,
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
-					Value* funcVal = Constant::getIntegerValue(Types::Value->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
+					Value* funcVal = Constant::getIntegerValue(Types::Func->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
 
 					Function* func = MincFunctions::getValueFunction->getFunction(currentModule);
 					Value* resultVal = builder->CreateCall(func, { funcVal });
@@ -615,7 +615,7 @@ private:
 				funcAST = getCastExprASTSource((CastExprAST*)funcAST);
 				Variable funcVar = codegenExpr(funcAST, parentBlock);
 				FuncType* funcType = (FuncType*)funcVar.type;
-				Function* func = ((XXXValue*)funcVar.value)->getFunction(currentModule);
+				Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
 				std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 				const size_t numArgs = argExprs.size();
 
@@ -1499,7 +1499,7 @@ private:
 
 				XXXValue* varVal = (XXXValue*)var->value;
 				if (!varVal) raiseCompileError(("invalid use of type `" + std::string(varName) + "` as expression").c_str(), params[0]);
-				if (varVal->isFunction() || varVal->isConstant() )//|| dynamic_cast<ClassType* const>((BuiltinType* const)var->type))
+				if (varVal->isConstant() || isInstance(parentBlock, var->type, BuiltinTypes::BuiltinFunction))
 					return *var;
 
 				LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var->value)->val, varName);
@@ -1634,7 +1634,7 @@ private:
 		defineImportRule(BuiltinScopes::File, BuiltinScopes::File, BuiltinTypes::BuiltinValue,
 			[](Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope) -> void {
 				XXXValue* value = (XXXValue*)symbol.value;
-				if (!value->isFunction() && !value->isConstant())
+				if (!value->isConstant())
 				{
 					assert(value->val->getName().size()); // Importing anonymus globals results in a seg fault!
 					symbol.value = new XXXValue(new GlobalVariable(*currentModule, unwrap(((BuiltinType*)symbol.type)->llvmtype), false, GlobalValue::ExternalLinkage, nullptr, value->val->getName()));

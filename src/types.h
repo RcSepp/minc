@@ -124,32 +124,24 @@ public:
 		return nullptr;
 	}
 
-	virtual bool isFunction()
-	{
-		return false;
-	}
-
 	bool isConstant()
 	{
 		return constantValue != 0xFFFFFFFFFFFFFFFF;//llvm::isa<llvm::Constant>(val);
 	}
 };
 
-struct Func : XXXValue
+struct Func : BaseValue
 {
 public:
+	llvm::Function* val;
 	FuncType* type;
 	const char *name, *symName;
 
 	Func(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg, const char* symName = nullptr)
-		: XXXValue(nullptr), type(new FuncType(name, resultType, argTypes, isVarArg)), name(name), symName(symName ? symName : name) {}
+		: val(nullptr), type(new FuncType(name, resultType, argTypes, isVarArg)), name(name), symName(symName ? symName : name) {}
 
+	uint64_t getConstantValue() { return 0; }
 	llvm::Function* getFunction(llvm::Module* module);
-
-	bool isFunction()
-	{
-		return true;
-	}	
 };
 
 #endif

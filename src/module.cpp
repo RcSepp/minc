@@ -167,8 +167,95 @@ extern "C"
 				);
 		});
 
-		// Create LLVM types
-		Types::create(*context);
+		// >>> Create LLVM types
+
+		Types::LLVMOpaquePassRegistry = StructType::create(*context, "struct.LLVMOpaquePassRegistry");
+		Types::LLVMOpaqueContext = StructType::create(*context, "struct.LLVMOpaqueContext");
+		Types::LLVMOpaqueDiagnosticInfo = StructType::create(*context, "struct.LLVMOpaqueDiagnosticInfo");
+		Types::LLVMOpaqueAttributeRef = StructType::create(*context, "struct.LLVMOpaqueAttributeRef");
+		Types::LLVMOpaqueModule = StructType::create(*context, "struct.LLVMOpaqueModule");
+		Types::LLVMOpaqueModuleFlagEntry = StructType::create(*context, "struct.LLVMOpaqueModuleFlagEntry");
+		Types::LLVMOpaqueMetadata = StructType::create(*context, "struct.LLVMOpaqueMetadata");
+		Types::LLVMOpaqueValue = StructType::create(*context, "struct.LLVMOpaqueValue");
+		Types::LLVMOpaqueType = StructType::create(*context, "struct.LLVMOpaqueType");
+		Types::LLVMOpaqueValueMetadataEntry = StructType::create(*context, "struct.LLVMOpaqueValueMetadataEntry");
+		Types::LLVMOpaqueUse = StructType::create(*context, "struct.LLVMOpaqueUse");
+		Types::LLVMOpaqueNamedMDNode = StructType::create(*context, "struct.LLVMOpaqueNamedMDNode");
+		Types::LLVMOpaqueBasicBlock = StructType::create(*context, "struct.LLVMOpaqueBasicBlock");
+		Types::LLVMOpaqueBuilder = StructType::create(*context, "struct.LLVMOpaqueBuilder");
+		Types::LLVMOpaqueModuleProvider = StructType::create(*context, "struct.LLVMOpaqueModuleProvider");
+		Types::LLVMOpaqueMemoryBuffer = StructType::create(*context, "struct.LLVMOpaqueMemoryBuffer");
+		Types::LLVMOpaquePassManager = StructType::create(*context, "struct.LLVMOpaquePassManager");
+		Types::LLVMOpaqueDIBuilder = StructType::create(*context, "struct.LLVMOpaqueDIBuilder");
+
+		Types::Void = (StructType*)unwrap(LLVMVoidType());
+		Types::VoidPtr = (StructType*)unwrap(LLVMPointerType(LLVMVoidType(), 0));
+		Types::Int1 = (StructType*)unwrap(LLVMInt1Type());
+		Types::Int1Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt1Type(), 0));
+		Types::Int8 = (StructType*)unwrap(LLVMInt8Type());
+		Types::Int8Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt8Type(), 0));
+		Types::Int16 = (StructType*)unwrap(LLVMInt16Type());
+		Types::Int16Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt16Type(), 0));
+		Types::Int32 = (StructType*)unwrap(LLVMInt32Type());
+		Types::Int32Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt32Type(), 0));
+		Types::Int64 = (StructType*)unwrap(LLVMInt64Type());
+		Types::Int64Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt64Type(), 0));
+		Types::Half = (StructType*)unwrap(LLVMHalfType());
+		Types::HalfPtr = (StructType*)unwrap(LLVMPointerType(LLVMHalfType(), 0));
+		Types::Float = (StructType*)unwrap(LLVMFloatType());
+		Types::FloatPtr = (StructType*)unwrap(LLVMPointerType(LLVMFloatType(), 0));
+		Types::Double = (StructType*)unwrap(LLVMDoubleType());
+		Types::DoublePtr = (StructType*)unwrap(LLVMPointerType(LLVMDoubleType(), 0));
+
+		Types::LLVMType = StructType::create(*context, "class.llvm::Type");
+		Types::LLVMValue = StructType::create(*context, "class.llvm::Value");
+		Types::Value = StructType::create(*context, "struct.Value");
+		Types::Func = StructType::create(*context, "struct.Func");
+		Types::BaseType = StructType::create(*context, "BaseType");
+		Types::Variable = StructType::create("struct.Variable",
+			Types::BaseType->getPointerTo(),
+			Types::Value->getPointerTo()
+		);
+		Types::BuiltinType = StructType::create("BuiltinType",
+			FunctionType::get(Types::Int32, true)->getPointerTo()->getPointerTo(),
+			Types::VoidPtr,
+			Types::LLVMOpaqueType->getPointerTo(),
+			Types::Int32,
+			Types::Int32,
+			Types::Int64
+		)->getPointerTo();
+		Types::BuiltinPtrType = StructType::create("BuiltinPtrType",
+			Types::BuiltinType->getElementType(),
+			Types::BuiltinType
+		)->getPointerTo();
+
+		Types::Location = StructType::create("struct.Location",
+			Types::Int8Ptr,
+			Types::Int32,
+			Types::Int32,
+			Types::Int32,
+			Types::Int32
+		);
+		Types::ExprAST = StructType::create("class.ExprAST",
+			FunctionType::get(Types::Int32, true)->getPointerTo()->getPointerTo(),
+			Types::Location,
+			Types::Int32,
+			Types::Value->getPointerTo()
+		);
+		Types::ExprListAST = StructType::create(*context, "class.ExprListAST");
+		Types::LiteralExprAST = StructType::create("class.LiteralExprAST",
+			Types::ExprAST,
+			Types::Int8Ptr
+		);
+		Types::IdExprAST = StructType::create("class.IdExprAST",
+			Types::ExprAST,
+			Types::Int8Ptr
+		);
+		Types::CastExprAST = StructType::create("class.CastExprAST",
+			Types::ExprAST
+		);
+		Types::BlockExprAST = StructType::create(*context, "class.BlockExprAST");
+		Types::StmtAST = StructType::create(*context, "class.StmtAST");
 
 		// >>> Create builtin types
 

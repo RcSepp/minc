@@ -11,7 +11,24 @@ extern DIBuilder* dbuilder;
 namespace Types
 {
 	// LLVM-c types
-@	LLVM_TYPE_DECL@
+	StructType* LLVMOpaquePassRegistry;
+	StructType* LLVMOpaqueContext;
+	StructType* LLVMOpaqueDiagnosticInfo;
+	StructType* LLVMOpaqueAttributeRef;
+	StructType* LLVMOpaqueModule;
+	StructType* LLVMOpaqueModuleFlagEntry;
+	StructType* LLVMOpaqueMetadata;
+	StructType* LLVMOpaqueValue;
+	StructType* LLVMOpaqueType;
+	StructType* LLVMOpaqueValueMetadataEntry;
+	StructType* LLVMOpaqueUse;
+	StructType* LLVMOpaqueNamedMDNode;
+	StructType* LLVMOpaqueBasicBlock;
+	StructType* LLVMOpaqueBuilder;
+	StructType* LLVMOpaqueModuleProvider;
+	StructType* LLVMOpaqueMemoryBuffer;
+	StructType* LLVMOpaquePassManager;
+	StructType* LLVMOpaqueDIBuilder;
 
 	// LLVM primitive types
 	StructType* Void;
@@ -52,84 +69,11 @@ namespace Types
 	StructType* CastExprAST;
 	StructType* BlockExprAST;
 	StructType* StmtAST;
-
-	void create(LLVMContext& c)
-	{
-@		LLVM_TYPE_DEF@
-
-		Void = (StructType*)unwrap(LLVMVoidType());
-		VoidPtr = (StructType*)unwrap(LLVMPointerType(LLVMVoidType(), 0));
-		Int1 = (StructType*)unwrap(LLVMInt1Type());
-		Int1Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt1Type(), 0));
-		Int8 = (StructType*)unwrap(LLVMInt8Type());
-		Int8Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt8Type(), 0));
-		Int16 = (StructType*)unwrap(LLVMInt16Type());
-		Int16Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt16Type(), 0));
-		Int32 = (StructType*)unwrap(LLVMInt32Type());
-		Int32Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt32Type(), 0));
-		Int64 = (StructType*)unwrap(LLVMInt64Type());
-		Int64Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt64Type(), 0));
-		Half = (StructType*)unwrap(LLVMHalfType());
-		HalfPtr = (StructType*)unwrap(LLVMPointerType(LLVMHalfType(), 0));
-		Float = (StructType*)unwrap(LLVMFloatType());
-		FloatPtr = (StructType*)unwrap(LLVMPointerType(LLVMFloatType(), 0));
-		Double = (StructType*)unwrap(LLVMDoubleType());
-		DoublePtr = (StructType*)unwrap(LLVMPointerType(LLVMDoubleType(), 0));
-
-		LLVMType = StructType::create(c, "class.llvm::Type");
-		LLVMValue = StructType::create(c, "class.llvm::Value");
-		Value = StructType::create(c, "struct.Value");
-		Func = StructType::create(c, "struct.Func");
-		BaseType = StructType::create(c, "BaseType");
-		Variable = StructType::create("struct.Variable",
-			BaseType->getPointerTo(),
-			Value->getPointerTo()
-		);
-		BuiltinType = StructType::create("BuiltinType",
-			FunctionType::get(Type::getInt32Ty(c), true)->getPointerTo()->getPointerTo(),
-			VoidPtr,
-			LLVMOpaqueType->getPointerTo(),
-			Type::getInt32Ty(c),
-			Type::getInt32Ty(c),
-			Type::getInt64Ty(c)
-		)->getPointerTo();
-		BuiltinPtrType = StructType::create("BuiltinPtrType",
-			BuiltinType->getElementType(),
-			BuiltinType
-		)->getPointerTo();
-
-		Location = StructType::create("struct.Location",
-			Type::getInt8PtrTy(c),
-			Type::getInt32Ty(c),
-			Type::getInt32Ty(c),
-			Type::getInt32Ty(c),
-			Type::getInt32Ty(c)
-		);
-		ExprAST = StructType::create("class.ExprAST",
-			FunctionType::get(Type::getInt32Ty(c), true)->getPointerTo()->getPointerTo(),
-			Location,
-			Type::getInt32Ty(c),
-			Value->getPointerTo()
-		);
-		ExprListAST = StructType::create(c, "class.ExprListAST");
-		LiteralExprAST = StructType::create("class.LiteralExprAST",
-			ExprAST,
-			Type::getInt8PtrTy(c)
-		);
-		IdExprAST = StructType::create("class.IdExprAST",
-			ExprAST,
-			Type::getInt8PtrTy(c)
-		);
-		CastExprAST = StructType::create("class.CastExprAST",
-			ExprAST
-		);
-		BlockExprAST = StructType::create(c, "class.BlockExprAST");
-		StmtAST = StructType::create(c, "class.StmtAST");
-	}
 };
 
 namespace BuiltinTypes
 {
+	// Misc. types
 	BuiltinType* Base;
 	BuiltinType* Builtin;
 	BuiltinType* BuiltinPtr;

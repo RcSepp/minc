@@ -3,16 +3,25 @@
 #include <sstream>
 #include "api.h"
 #include "paws_types.h"
+#include "paws_subroutine.h"
 #include "paws_pkgmgr.h"
 
-struct PawsFunc
+Variable PawsFunc::call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& argExprs) const
 {
-	BaseType* returnType;
-	std::vector<BaseType*> argTypes;
-	std::vector<std::string> argNames;
-	BlockExprAST* body;
-};
-typedef PawsType<PawsFunc> PawsFunction;
+	// Define arguments in function body
+	for (size_t i = 0; i < argExprs.size(); ++i)
+		defineSymbol(body, argNames[i].c_str(), argTypes[i], codegenExpr(argExprs[i], parentBlock).value);
+
+	try
+	{
+		codegenExpr((ExprAST*)body, parentBlock);
+	}
+	catch (ReturnException err)
+	{
+		return err.result;
+	}
+	return Variable(PawsVoid::TYPE, nullptr);
+}
 
 PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
@@ -26,34 +35,36 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
 
-			PawsFunction* function = new PawsFunction();
-			function->val.returnType = returnType;
-			function->val.argTypes.reserve(argTypeExprs.size());
+			PawsFunc* func = new PawsFunc();
+			func->returnType = returnType;
+			func->argTypes.reserve(argTypeExprs.size());
 			for (ExprAST* argTypeExpr: argTypeExprs)
-				function->val.argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->val);
-			function->val.argNames.reserve(argNameExprs.size());
+				func->argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->val);
+			func->argNames.reserve(argNameExprs.size());
 			for (ExprAST* argNameExpr: argNameExprs)
-				function->val.argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
-			function->val.body = block;
+				func->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
+			func->body = block;
 
 			BaseType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);
-			defineSymbol(parentBlock, funcName, funcType, function);
+			defineSymbol(parentBlock, funcName, funcType, new PawsFunction(func));
 		}
 	);
 
 	// Define function call
 	defineExpr3(pkgScope, "$E<PawsFunction>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			const PawsFunc& func = ((PawsFunction*)codegenExpr(params[0], parentBlock).value)->val;
-			const std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
+			const PawsFunc* func = ((PawsFunction*)codegenExpr(params[0], parentBlock).value)->val;
+			std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 
-			if (func.argTypes.size() != argExprs.size())
+			// Check number of arguments
+			if (func->argTypes.size() != argExprs.size())
 				raiseCompileError("invalid number of function arguments", params[0]);
 
+			// Check argument types and perform inherent type casts
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				ExprAST* argExpr = argExprs[i];
-				BaseType *expectedType = func.argTypes[i], *gotType = getType(argExpr, parentBlock);
+				BaseType *expectedType = func->argTypes[i], *gotType = getType(argExpr, parentBlock);
 
 				if (expectedType != gotType)
 				{
@@ -66,21 +77,12 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 							argExpr
 						);
 					}
-					argExpr = castExpr;
+					argExprs[i] = castExpr;
 				}
-
-				defineSymbol(func.body, func.argNames[i].c_str(), func.argTypes[i], codegenExpr(argExpr, parentBlock).value);
 			}
 
-			try
-			{
-				codegenExpr((ExprAST*)func.body, parentBlock);
-			}
-			catch (ReturnException err)
-			{
-				return err.result;
-			}
-			return Variable(PawsVoid::TYPE, nullptr);
+			// Call function
+			return func->call(parentBlock, argExprs);
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
 			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;

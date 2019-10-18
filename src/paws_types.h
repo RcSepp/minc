@@ -1,6 +1,7 @@
 #ifndef __PAWS_TYPES_H
 #define __PAWS_TYPES_H
 
+#include <vector>
 #include <set>
 #include <map>
 #include <cstring>
@@ -138,6 +139,18 @@ struct ReturnException
 };
 
 void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr);
+
+struct PawsCodegenContext : public CodegenContext
+{
+private:
+	BlockExprAST* const expr;
+	BaseType* const type;
+	std::vector<Variable> blockParams;
+public:
+	PawsCodegenContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams);
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params);
+	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const;
+};
 
 // Templated version of defineStmt2():
 // defineStmt() codegen's all inputs and wraps the output in a Variable

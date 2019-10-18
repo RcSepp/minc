@@ -12,71 +12,6 @@ typedef PawsType<ExprMap> PawsExprMap;
 struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
 typedef PawsType<SymbolMap> PawsSymbolMap;
 
-struct StmtContext : public CodegenContext
-{
-private:
-	BlockExprAST* const stmt;
-	std::vector<Variable> blockParams;
-public:
-	StmtContext(BlockExprAST* stmt, const std::vector<Variable>& blockParams)
-		: stmt(stmt), blockParams(blockParams) {}
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
-	{
-		// Set block parameters
-		for (size_t i = 0; i < params.size(); ++i)
-			blockParams[i].value = new PawsExprAST(params[i]);
-		setBlockExprASTParams(stmt, blockParams);
-
-		defineSymbol(stmt, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
-
-		// Execute statement code block
-		codegenExpr((ExprAST*)stmt, parentBlock);
-
-		return getVoid();
-	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
-	{
-		return getVoid().type;
-	}
-};
-
-struct ExprContext : public CodegenContext
-{
-private:
-	BlockExprAST* const expr;
-	BaseType* const type;
-	std::vector<Variable> blockParams;
-public:
-	ExprContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams)
-		: expr(expr), type(type), blockParams(blockParams) {}
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
-	{
-		// Set block parameters
-		for (size_t i = 0; i < params.size(); ++i)
-			blockParams[i].value = new PawsExprAST(params[i]);
-		setBlockExprASTParams(expr, blockParams);
-
-		defineSymbol(expr, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
-
-		// Execute expression code block
-		try
-		{
-			codegenExpr((ExprAST*)expr, parentBlock);
-		}
-		catch (ReturnException err)
-		{
-			return err.result;
-		}
-		raiseCompileError("missing return statement in expression block", (ExprAST*)expr);
-
-		return getVoid();
-	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
-	{
-		return type;
-	}
-};
-
 void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> params, std::vector<Variable>& blockParams)
 {
 	blockParams.reserve(params.size());
@@ -169,11 +104,13 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			});
 		}
 	);
+
 	defineStmt2(pkgScope, "$E<PawsStmtMap>[$E ...] = $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->val;
 			BlockExprAST* const scope = stmts;
 			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[1]);
+			BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 			// Collect parameters
 			std::vector<ExprAST*> stmtParams;
@@ -184,9 +121,9 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			std::vector<Variable> blockParams;
 			getBlockParameterTypes(parentBlock, stmtParams, blockParams);
 
-			definePawsReturnStmt(scope, PawsVoid::TYPE);
+			definePawsReturnStmt(blockAST, PawsVoid::TYPE);
 
-			defineStmt3(scope, stmtParamsAST, new StmtContext((BlockExprAST*)params[2], blockParams));
+			defineStmt3(scope, stmtParamsAST, new PawsCodegenContext(blockAST, getVoid().type, blockParams));
 		}
 	);
 
@@ -217,6 +154,7 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			ExprAST* exprParamAST = params[1];
 			BaseType* exprType = (BaseType*)codegenExpr(params[2], parentBlock).value->getConstantValue();
 			//TODO: Check for errors
+			BlockExprAST* blockAST = (BlockExprAST*)params[3];
 
 			// Collect parameters
 			std::vector<ExprAST*> exprParams;
@@ -226,9 +164,9 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			std::vector<Variable> blockParams;
 			getBlockParameterTypes(parentBlock, exprParams, blockParams);
 
-			definePawsReturnStmt(scope, exprType);
+			definePawsReturnStmt(blockAST, exprType);
 
-			defineExpr5(scope, exprParamAST, new ExprContext((BlockExprAST*)params[3], exprType, blockParams));
+			defineExpr5(scope, exprParamAST, new PawsCodegenContext(blockAST, exprType, blockParams));
 		}
 	);
 

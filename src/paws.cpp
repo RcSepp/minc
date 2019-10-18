@@ -73,6 +73,38 @@ void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const
 	}
 }
 
+PawsCodegenContext::PawsCodegenContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams)
+	: expr(expr), type(type), blockParams(blockParams) {}
+
+Variable PawsCodegenContext::codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+{
+	// Set block parameters
+	for (size_t i = 0; i < params.size(); ++i)
+		blockParams[i].value = new PawsExprAST(params[i]);
+	setBlockExprASTParams(expr, blockParams);
+
+	defineSymbol(expr, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
+
+	// Execute expression code block
+	try
+	{
+		codegenExpr((ExprAST*)expr, parentBlock);
+	}
+	catch (ReturnException err)
+	{
+		return err.result;
+	}
+
+	if (type != getVoid().type && type != PawsVoid::TYPE)
+		raiseCompileError("missing return statement in expression block", (ExprAST*)expr);
+	return getVoid();
+}
+
+BaseType* PawsCodegenContext::getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+{
+	return type;
+}
+
 void defineStmt(BlockExprAST* scope, const char* tpltStr, void (*stmtFunc)())
 {
 	using StmtFunc = void (*)();

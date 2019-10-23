@@ -429,9 +429,9 @@ currentFunc = parentFunc;
 	return func;
 }
 
-struct PawsBuiltin : public PawsPackage
+struct PawsBootstrap : public PawsPackage
 {
-	PawsBuiltin() : PawsPackage("bootstrap") {}
+	PawsBootstrap() : PawsPackage("bootstrap") {}
 
 private:
 	void define(BlockExprAST* rootBlock)
@@ -1642,4 +1642,4 @@ private:
 			}
 		);
 	}
-} PAWS_BUILTIN;
+} PAWS_BOOTSTRAP;

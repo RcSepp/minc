@@ -759,7 +759,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
 				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
-			BaseType* type = getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			BaseType* type = getType(getDerivedExprAST(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);

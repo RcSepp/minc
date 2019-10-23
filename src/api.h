@@ -47,6 +47,7 @@ struct Cast
 	Cast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 		: fromType(fromType), toType(toType), context(context) {}
 	virtual int getCost() const = 0;
+	virtual Cast* derive() const = 0;
 };
 
 class IModule
@@ -115,6 +116,7 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr);
 	unsigned getExprEndLine(const ExprAST* expr);
 	unsigned getExprEndColumn(const ExprAST* expr);
+	ExprAST* getDerivedExprAST(ExprAST* expr);
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
 	BaseScopeType* getScopeType(const BlockExprAST* scope);

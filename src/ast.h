@@ -185,6 +185,7 @@ struct InheritanceCast : public Cast
 	InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 		: Cast(fromType, toType, context) {}
 	int getCost() const { return 0; }
+	Cast* derive() const { return nullptr; }
 };
 
 struct TypeCast : public Cast
@@ -192,6 +193,7 @@ struct TypeCast : public Cast
 	TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
 		: Cast(fromType, toType, context) {}
 	int getCost() const { return 1; }
+	Cast* derive() const { return new TypeCast(fromType, toType, context); }
 };
 
 class CastRegister
@@ -503,8 +505,14 @@ public:
 
 class CastExprAST : public ExprAST
 {
+	const Cast* const cast;
+
 public:
-	CastExprAST(const Location& loc) : ExprAST(loc, ExprAST::ExprType::CAST) {}
+	CastExprAST(const Cast* cast, ExprAST* source) : ExprAST(source->loc, ExprAST::ExprType::CAST), cast(cast)
+	{
+		resolvedContext = cast->context;
+		resolvedParams.push_back(source);
+	}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
 		assert(0);
@@ -512,6 +520,7 @@ public:
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
 	std::string str() const { assert(0); return ""; }
+	ExprAST* getDerivedExpr();
 };
 
 class PlchldExprAST : public ExprAST

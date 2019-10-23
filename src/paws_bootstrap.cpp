@@ -99,7 +99,7 @@ extern "C"
 	LLVMValueRef ImportSymbol(BlockExprAST* scope, IdExprAST* nameAST)
 	{
 		if (ExprASTIsCast((ExprAST*)nameAST))
-			nameAST = (IdExprAST*)getCastExprASTSource((CastExprAST*)nameAST);
+			nameAST = (IdExprAST*)getDerivedExprAST((ExprAST*)nameAST);
 		const Variable* var = importSymbol(scope, getIdExprASTName(nameAST));
 		return var == nullptr ? nullptr : wrap(((XXXValue*)var->value)->val);
 	}
@@ -272,8 +272,9 @@ void InitializedVarDeclStmt(BlockExprAST* parentBlock, std::vector<ExprAST*>& pa
 {
 	BuiltinType* varType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
 	const char* varTypeName = getTypeName(varType).c_str();
-	BuiltinType* exprType = (BuiltinType*)getType(params[2], parentBlock);
-	ExprAST* expr = params[2];
+	assert(ExprASTIsCast(params[2]));
+	ExprAST* expr = getDerivedExprAST(params[2]);
+	BuiltinType* exprType = (BuiltinType*)getType(expr, parentBlock);
 	if (varType != exprType)
 	{
 		expr = lookupCast(parentBlock, expr, varType);
@@ -610,9 +611,8 @@ private:
 		// Define function call
 		defineExpr3(rootBlock, "$E<BuiltinFunction>($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				ExprAST* funcAST = params[0];
-				assert(ExprASTIsCast(funcAST));
-				funcAST = getCastExprASTSource((CastExprAST*)funcAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* funcAST = getDerivedExprAST(params[0]);
 				Variable funcVar = codegenExpr(funcAST, parentBlock);
 				FuncType* funcType = (FuncType*)funcVar.type;
 				Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
@@ -650,9 +650,8 @@ private:
 		
 				return Variable(funcType->resultType, new XXXValue(builder->CreateCall(func, argValues)));
 			}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-				ExprAST* funcAST = params[0];
-				assert(ExprASTIsCast(funcAST));
-				funcAST = getCastExprASTSource((CastExprAST*)funcAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* funcAST = getDerivedExprAST(params[0]);
 				FuncType* funcType = (FuncType*)getType(funcAST, parentBlock);
 				return funcType == nullptr ? nullptr : funcType->resultType;
 			}
@@ -1057,9 +1056,8 @@ private:
 		// Define struct member getter
 		defineExpr3(rootBlock, "$E<BuiltinInstance>.$I",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				Variable structVar = codegenExpr(structAST, parentBlock);
 				ClassType* structType = (ClassType*)structVar.type;
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
@@ -1078,9 +1076,8 @@ private:
 				return Variable(variable->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				ClassType* structType = (ClassType*)getType(structAST, parentBlock);
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
 
@@ -1092,9 +1089,8 @@ private:
 		// Define struct member setter
 		defineExpr3(rootBlock, "$E<BuiltinInstance>.$I = $E<BuiltinValue>",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				Variable structVar = codegenExpr(structAST, parentBlock);
 				ClassType* structType = (ClassType*)structVar.type;
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
@@ -1107,9 +1103,8 @@ private:
 					raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(structType) + "'").c_str(), params[1]);
 				}
 
-				ExprAST* varExpr = params[2];
-				if (ExprASTIsCast(varExpr))
-					varExpr = getCastExprASTSource((CastExprAST*)varExpr);
+				assert(ExprASTIsCast(params[2]));
+				ExprAST* varExpr = getDerivedExprAST(params[2]);
 				BaseType *memberType = variable->second.type, *valueType = getType(varExpr, parentBlock);
 				if (memberType != valueType)
 				{
@@ -1133,9 +1128,8 @@ private:
 				return Variable(variable->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				ClassType* structType = (ClassType*)getType(structAST, parentBlock);
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
 
@@ -1220,9 +1214,8 @@ private:
 		/*// Define struct method call
 		defineExpr3(rootBlock, "$E<BuiltinInstance>.$I($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				Variable structVar = codegenExpr(structAST, parentBlock);
 				ClassType* structType = (ClassType*)structVar.type;
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
@@ -1238,9 +1231,8 @@ private:
 				return Variable(member->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-				ExprAST* structAST = params[0];
-				if (ExprASTIsCast(structAST))
-					structAST = getCastExprASTSource((CastExprAST*)structAST);
+				assert(ExprASTIsCast(params[0]));
+				ExprAST* structAST = getDerivedExprAST(params[0]);
 				ClassType* structType = (ClassType*)getType(structAST, parentBlock);
 				std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
 
@@ -1294,7 +1286,7 @@ private:
 		defineExpr3(rootBlock, "getconst($E<ExprAST>, $E<BlockExprAST>)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				assert(ExprASTIsCast(params[0]));
-				ExprAST* exprAST = getCastExprASTSource((CastExprAST*)params[0]);
+				ExprAST* exprAST = getDerivedExprAST(params[0]);
 				Variable expr = codegenExpr(exprAST, parentBlock);
 				const TpltType* exprType = dynamic_cast<const TpltType*>((const BuiltinType*)expr.type);
 				assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
@@ -1308,7 +1300,7 @@ private:
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 				assert(ExprASTIsCast(params[0]));
-				ExprAST* exprAST = getCastExprASTSource((CastExprAST*)params[0]);
+				ExprAST* exprAST = getDerivedExprAST(params[0]);
 				const TpltType* exprType = dynamic_cast<const TpltType*>((const BuiltinType*)getType(exprAST, parentBlock));
 				assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
 				return exprType->tpltType;
@@ -1599,7 +1591,8 @@ private:
 
 		defineExpr3(rootBlock, "$E<ExprListAST>[$E<long>]",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				Variable listVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+				assert(ExprASTIsCast(params[0]));
+				Variable listVar = codegenExpr(getDerivedExprAST(params[0]), parentBlock);
 				TpltType* listType = dynamic_cast<TpltType*>((BuiltinType*)listVar.type);
 				Variable idxVar = codegenExpr(params[1], parentBlock);
 
@@ -1624,7 +1617,7 @@ private:
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 				assert(ExprASTIsCast(params[0]));
-				ExprAST* arrAST = getCastExprASTSource((CastExprAST*)params[0]);
+				ExprAST* arrAST = getDerivedExprAST(params[0]);
 				TpltType* listType = dynamic_cast<TpltType*>((BuiltinType*)getType(arrAST, parentBlock));
 				assert(listType);
 				return listType->tpltType;

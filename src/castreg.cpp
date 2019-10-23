@@ -11,21 +11,20 @@ struct IndirectCast : public Cast, public CodegenContext
 	IndirectCast(Cast* first, Cast* second)
 		: Cast(first->fromType, second->toType, this), first(first), second(second) {}
 	int getCost() const { return first->getCost() + second->getCost(); }
+	Cast* derive() const
+	{
+		Cast* derivedSecond = second->derive();
+		return derivedSecond == nullptr ? first : new IndirectCast(first, derivedSecond);
+	}
 
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
-		ExprAST* castExpr = new CastExprAST(params[0]->loc);
-		castExpr->resolvedContext = first->context;
-		castExpr->resolvedParams.push_back(params[0]);
-		params[0] = castExpr;
-		return second->context->codegen(parentBlock, params);
+		std::vector<ExprAST*> _params(1, new CastExprAST(first, params[0])); //TODO: make params const and implement this inline (`codegen(parentBlock, { new CastExprAST(first, params[0]) });`)
+		return second->context->codegen(parentBlock, _params);
 	}
 	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
-		ExprAST* castExpr = new CastExprAST(params[0]->loc);
-		castExpr->resolvedContext = first->context;
-		castExpr->resolvedParams.push_back(params[0]);
-		return second->context->getType(parentBlock, { castExpr });
+		return second->context->getType(parentBlock, { new CastExprAST(first, params[0]) });
 	}
 };
 

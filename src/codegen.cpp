@@ -269,6 +269,11 @@ extern "C"
 	unsigned getExprEndLine(const ExprAST* expr) { return expr->loc.end_line; }
 	unsigned getExprEndColumn(const ExprAST* expr) { return expr->loc.end_col; }
 
+	ExprAST* getDerivedExprAST(ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::CAST ? ((CastExprAST*)expr)->getDerivedExpr() : expr;
+	}
+
 	BlockExprAST* getRootScope()
 	{
 		return rootBlock;
@@ -433,13 +438,7 @@ extern "C"
 			return expr;
 
 		const Cast* cast = scope->lookupCast(fromType, toType);
-		if (cast == nullptr)
-			return nullptr;
-
-		ExprAST* castExpr = new CastExprAST(expr->loc);
-		castExpr->resolvedContext = cast->context;
-		castExpr->resolvedParams.push_back(expr);
-		return castExpr;
+		return cast == nullptr ? nullptr : new CastExprAST(cast, expr);
 	}
 
 	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType)
@@ -727,6 +726,12 @@ Variable StmtAST::codegen(BlockExprAST* parentBlock)
 void ExprAST::resolveTypes(BlockExprAST* block)
 {
 	block->lookupExpr(this);
+}
+
+ExprAST* CastExprAST::getDerivedExpr()
+{
+	Cast* derivedCast = cast->derive();
+	return derivedCast ? new CastExprAST(derivedCast, resolvedParams[0]) : resolvedParams[0];
 }
 
 BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const

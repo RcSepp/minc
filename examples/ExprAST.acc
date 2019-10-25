@@ -19,7 +19,7 @@ stmtdef testExprASTMembers $E $L $I $B {
 	printf("parentBlock == 0x%lx\n", parentBlock);
 	printf("B3.parent == 0x%lx\n", B3.parent);
 	printf("$3.parent == 0x%lx\n", $3.parent);
-	//codegen($3, parentBlock);
+	//$3.codegen(parentBlock);
 	$3.parent = parentBlock;
 	printf("$3.parent == 0x%lx\n", $3.parent);
 	printf("B3.parent == 0x%lx\n", B3.parent);

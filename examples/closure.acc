@@ -8,7 +8,7 @@ stmtdef class $I $B {
 	}
 
 	printf(" <%i %i> \n", i, x);
-	codegen($1, parentBlock);
+	$1.codegen(parentBlock);
 	printf(" <%i %i> \n", i, x);
 }
 

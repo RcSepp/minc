@@ -18,7 +18,7 @@ stmtdef for(int $I = $E; $E; $E) $S {
 	// Allocate loop variable
 	LLVMValueRef loopVar = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(loopVar, 4);
-	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), loopVar), 4);
+	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), loopVar), 4);
 	addToScope(parentBlock, $0, int, loopVar); //TODO: Don't add loop variable to parent scope
 
 	// Create basic blocks
@@ -29,13 +29,13 @@ stmtdef for(int $I = $E; $E; $E) $S {
 
 	// Exit for loop if condition isn't met
 	LLVMPositionBuilder(forCondBlock);
-	LLVMValueRef forCond = codegen($2, parentBlock); // Codegen condition in global scope //TODO: Don't codegen condition in parent scope
+	LLVMValueRef forCond = $2.codegen(parentBlock); // Codegen condition in global scope //TODO: Don't codegen condition in parent scope
 
 	LLVMBuildCondBr(forCond, forBlock, endForBlock);
 
 	LLVMPositionBuilder(forBlock);
-	codegen($4, parentBlock); // Codegen loop statement in global scope
-	codegen($3, parentBlock); // Codegen update expression in global scope //TODO: Don't codegen update expression in parent scope
+	$4.codegen(parentBlock); // Codegen loop statement in global scope
+	$3.codegen(parentBlock); // Codegen update expression in global scope //TODO: Don't codegen update expression in parent scope
 
 	// Repeat for loop
 	LLVMBuildBr(forCondBlock);

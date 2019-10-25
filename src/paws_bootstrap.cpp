@@ -1241,8 +1241,8 @@ private:
 			}
 		);*/
 
-		// Define codegen($E<ExprAST>, $E<BlockExprAST>)
-		defineExpr2(rootBlock, "codegen($E<ExprAST>, $E<BlockExprAST>)",
+		// Define $E<ExprAST>.codegen($E<BlockExprAST>)
+		defineExpr2(rootBlock, "$E<ExprAST>.codegen($E<BlockExprAST>)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				XXXValue* exprVal = (XXXValue*)codegenExpr(params[0], parentBlock).value;
 				XXXValue* parentBlockVal = (XXXValue*)codegenExpr(params[1], parentBlock).value;
@@ -1254,11 +1254,12 @@ private:
 			BuiltinTypes::LLVMValueRef
 		);
 		// Define codegen() with invalid parameters
-		defineExpr2(rootBlock, "codegen($E, ...)",
+		defineExpr2(rootBlock, "$E.codegen($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[0]);
-				if (argExprs.size() != 2)
-					raiseCompileError("invalid number of function arguments", params[0]);
+				std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
+				if (argExprs.size() != 1)
+					raiseCompileError("invalid number of function arguments", params[1]);
+				argExprs.insert(argExprs.begin(), params[0]);
 
 				BaseType* const expectedTypes[] = { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST };
 				for (size_t i = 0; i < 2; ++i)

@@ -6,41 +6,41 @@ stmtdef BuiltinTypePtr $I {
 
 exprdef<BuiltinTypePtr> toBuiltinType($E) {
 	return LLVMBuildBitCast(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0),
 		""
 	);
 }
 
 exprdef<BuiltinTypePtr> $E<BuiltinTypePtr>.ptr = nullptr {
-	LLVMValueRef ptr = LLVMBuildStructGEP(codegen($0, parentBlock), 1, "gep");
+	LLVMValueRef ptr = LLVMBuildStructGEP($0.codegen(parentBlock), 1, "gep");
 	LLVMSetAlignment(LLVMBuildStore(LLVMConstNull(LLVMPointerType(LLVMVoidType(), 0)), ptr), 8);
 	ptr = LLVMBuildLoad(ptr, "ptr");
 	return ptr;
 }
 
 exprdef<LLVMTypeRef> $E<BuiltinTypePtr>.llvmtype {
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
+	LLVMValueRef llvmtype = LLVMBuildStructGEP($0.codegen(parentBlock), 2, "gep");
 	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
 	LLVMSetAlignment(llvmtype, 8);
 	return llvmtype;
 }
 exprdef<LLVMTypeRef> $E<BuiltinTypePtr>.llvmtype = $E<LLVMTypeRef> {
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep");
-	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), llvmtype), 8);
+	LLVMValueRef llvmtype = LLVMBuildStructGEP($0.codegen(parentBlock), 2, "gep");
+	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), llvmtype), 8);
 	llvmtype = LLVMBuildLoad(llvmtype, "llvmtype");
 	return llvmtype;
 }
 
 exprdef<int> $E<BuiltinTypePtr>.align {
-	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
+	LLVMValueRef align = LLVMBuildStructGEP($0.codegen(parentBlock), 3, "gep");
 	align = LLVMBuildLoad(align, "align");
 	LLVMSetAlignment(align, 4);
 	return align;
 }
 exprdef<int> $E<BuiltinTypePtr>.align = $E<int> {
-	LLVMValueRef align = LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep");
-	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), align), 4);
+	LLVMValueRef align = LLVMBuildStructGEP($0.codegen(parentBlock), 3, "gep");
+	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), align), 4);
 	align = LLVMBuildLoad(align, "align");
 	return align;
 }
@@ -58,10 +58,10 @@ exprdef<BuiltinType> BuiltinType($E<string>, $E<LLVMTypeRef>, $E<int>) {
 	LLVMSetAlignment(LLVMBuildStore(LLVMConstNull(LLVMPointerType(LLVMVoidType(), 0)), ptr), 8);
 
 	LLVMValueRef llvmtype = LLVMBuildStructGEP(t, 2, "gep");
-	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), llvmtype), 8);
+	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), llvmtype), 8);
 
 	LLVMValueRef align = LLVMBuildStructGEP(t, 3, "gep");
-	LLVMSetAlignment(LLVMBuildStore(codegen($2, parentBlock), align), 4);
+	LLVMSetAlignment(LLVMBuildStore($2.codegen(parentBlock), align), 4);
 
 	return t;
 }
@@ -78,15 +78,15 @@ typedef<BuiltinType> boool {
 return BuiltinType("boool", LLVMInt1Type(), 1);
 }
 castdef<boool> $E<int> {
-	return LLVMBuildIsNotNull(codegen($0, parentBlock), "");
+	return LLVMBuildIsNotNull($0.codegen(parentBlock), "");
 }
 castdef<int> $E<boool> {
-	return LLVMBuildZExt(codegen($0, parentBlock), LLVMInt32Type(), "");
+	return LLVMBuildZExt($0.codegen(parentBlock), LLVMInt32Type(), "");
 }
 
 stmtdef boool $I = $E<boool> {
 	LLVMValueRef foo = LLVMBuildAlloca(boool.llvmtype, "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, boool, foo);
 }
 boool b = 123;

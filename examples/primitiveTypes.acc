@@ -2,7 +2,7 @@ import <builtin.acc>;
 
 exprdef<BuiltinType> $E<BuiltinType>.ptr {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildCall(
 		LLVMGetNamedFunction("getPointerToBuiltinType"),
 		args,
@@ -15,7 +15,7 @@ exprdef<BuiltinType> $E<BuiltinType>.ptr {
 //int bar = foo;
 
 /*stmtdef printDouble $E<double> {
-	printf("%f\n", codegen($0, parentBlock));
+	printf("%f\n", $0.codegen(parentBlock));
 }
 printDouble foo;*/
 
@@ -23,7 +23,7 @@ printDouble foo;*/
 // 	/*// LLVMValueRef foo = ;
 // 	//printf("LLVMGetNamedFunction('printf') = %u\n", getfunc(printf));
 
-// 	LLVMValueRef value = codegen($0, parentBlock);
+// 	LLVMValueRef value = $0.codegen(parentBlock);
 
 // 	//LLVMValueRef formatStr = LLVMConstString("xxx", 3, 0);
 
@@ -37,7 +37,7 @@ printDouble foo;*/
 // 		""
 // 	);*/
 
-// 	LLVMValueRef value = codegen($0, parentBlock);
+// 	LLVMValueRef value = $0.codegen(parentBlock);
 // }
 
 return 123;

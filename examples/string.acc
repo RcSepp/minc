@@ -17,7 +17,7 @@ Depends on: LLVMValueRef $I = $E
 stmtdef string $I = $E {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(LLVMBuildStore(
-		codegen($1, parentBlock),
+		$1.codegen(parentBlock),
 		foo
 	), 8);
 	addToScope(parentBlock, $0, int, foo);

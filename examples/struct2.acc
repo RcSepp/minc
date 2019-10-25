@@ -15,7 +15,7 @@ stmtdef class2 $I $B {
 	}
 
 	// Generate struct-body code
-	codegen($1, parentBlock);
+	$1.codegen(parentBlock);
 
 	// Set struct member variable types
 	LLVMStructSetBody(structType, elementTypes, i, 0);

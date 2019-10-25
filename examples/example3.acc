@@ -40,7 +40,7 @@ int abc = foo;*/
 
 
 /*stmtdef LLVMValueRef $E {
-	LLVMBuildRet(codegen($0, parentBlock));
+	LLVMBuildRet($0.codegen(parentBlock));
 	//addToScope(parentBlock, $0, LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), ""));
 }
 
@@ -64,7 +64,7 @@ stmtdef func $I $E {
 	LLVMValueRef func = LLVMAddFunction($0.name, funcType);
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
 	LLVMPositionBuilder(entry);
-	LLVMBuildRet(codegen($1, parentBlock));
+	LLVMBuildRet($1.codegen(parentBlock));
 
 	addToScope(parentBlock, $0, int, func);
 }
@@ -85,7 +85,7 @@ return c;
 
 
 /*exprdef $I = $E {
-	return codegen($1, parentBlock);
+	return $1.codegen(parentBlock);
 }*/
 
 

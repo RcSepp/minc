@@ -4,7 +4,7 @@ Template: return $E
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef return $E<int> {
-	LLVMBuildRet(codegen($0, parentBlock));
+	LLVMBuildRet($0.codegen(parentBlock));
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -13,7 +13,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 inhtdef<ExprAST> $E<LiteralExprAST> {
 	return LLVMBuildBitCast(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
 		""
 	);
@@ -25,7 +25,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 inhtdef<ExprAST> $E<IdExprAST> {
 	return LLVMBuildBitCast(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
 		""
 	);
@@ -37,7 +37,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 inhtdef<ExprAST> $E<BlockExprAST> {
 	return LLVMBuildBitCast(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
 		""
 	);
@@ -49,7 +49,7 @@ Template: $B
 Depends on: none
 \* ---------------------------------------------------------------------------*/
 stmtdef $B {
-	codegen($0, parentBlock);
+	$0.codegen(parentBlock);
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -59,7 +59,7 @@ Depends on: return $E
 Notes: This expression does not check for errors and it does not return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<void> $I = $E {
-	LLVMBuildStore(codegen($1, parentBlock), LookupScope(parentBlock, $0));
+	LLVMBuildStore($1.codegen(parentBlock), LookupScope(parentBlock, $0));
 	return LLVMConstNull(LLVMVoidType());
 }
 
@@ -88,7 +88,7 @@ Depends on: LLVMValueRef $I
 stmtdef LLVMValueRef $I = $E<LLVMValueRef> {
 	LLVMValueRef foo;
 	foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMValueRef, foo);
 }
 
@@ -107,7 +107,7 @@ stmtdef LLVMValueRef $I[$E<int>] {
 	// Dynamic array:
 	LLVMValueRef array = LLVMBuildArrayAlloca(
 		LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0),
-		codegen($1, parentBlock),
+		$1.codegen(parentBlock),
 		""
 	);
 	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueValue"), 0), 0), "");
@@ -125,12 +125,12 @@ stmtdef LLVMValueRef $I[$E<int>] {
 
 //TODO: Generalize to `exprdef<gettype($2, parentBlock)> $E[$E<int>] = $E {`
 exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] = $E<LLVMValueRef> {
-	LLVMValueRef var = codegen($0, parentBlock);
-	LLVMValueRef idx = codegen($1, parentBlock);
+	LLVMValueRef var = $0.codegen(parentBlock);
+	LLVMValueRef idx = $1.codegen(parentBlock);
 
 	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 
-	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMValueRef expr = $2.codegen(parentBlock);
 	LLVMBuildStore(
 		expr,
 		gep
@@ -140,8 +140,8 @@ exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] = $E<LLVMValueRef> {
 
 //TODO: Untested
 exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] {
-	LLVMValueRef var = codegen($0, parentBlock);
-	LLVMValueRef idx = codegen($1, parentBlock);
+	LLVMValueRef var = $0.codegen(parentBlock);
+	LLVMValueRef idx = $1.codegen(parentBlock);
 
 	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 	LLVMValueRef val = LLVMBuildLoad(gep, "");
@@ -153,7 +153,7 @@ exprdef<LLVMValueRef> $E<LLVMValueRefPtr>[$E<int>] {
 Cast: LLVMValueRef to bool
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<bool> $E<LLVMValueRef> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+castdef<bool> $E<LLVMValueRef> { return LLVMBuildIsNotNull($0.codegen(parentBlock), ""); }
 
 /* ---------------------------------------------------------------------------*\
 Name: LLVMBasicBlockRef declaration
@@ -171,7 +171,7 @@ Depends on: LLVMBasicBlockRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueBasicBlock"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMBasicBlockRef, foo);
 }
 
@@ -191,7 +191,7 @@ Depends on: LLVMTypeRef $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LLVMTypeRef $I = $E<LLVMTypeRef> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, LLVMTypeRef, foo);
 }
 
@@ -210,7 +210,7 @@ stmtdef LLVMTypeRef $I[$E<int>] {
 	// Dynamic array:
 	LLVMValueRef array = LLVMBuildArrayAlloca(
 		LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0),
-		codegen($1, parentBlock),
+		$1.codegen(parentBlock),
 		""
 	);
 	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("struct.LLVMOpaqueType"), 0), 0), "");
@@ -227,12 +227,12 @@ stmtdef LLVMTypeRef $I[$E<int>] {
 }
 
 exprdef<LLVMTypeRef> $E<LLVMTypeRefPtr>[$E<int>] = $E<LLVMTypeRef> {
-	LLVMValueRef var = codegen($0, parentBlock);
-	LLVMValueRef idx = codegen($1, parentBlock);
+	LLVMValueRef var = $0.codegen(parentBlock);
+	LLVMValueRef idx = $1.codegen(parentBlock);
 
 	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 
-	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMValueRef expr = $2.codegen(parentBlock);
 	LLVMBuildStore(
 		expr,
 		gep
@@ -244,7 +244,7 @@ exprdef<LLVMTypeRef> $E<LLVMTypeRefPtr>[$E<int>] = $E<LLVMTypeRef> {
 Cast: LLVMMetadataRef to bool
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<bool> $E<LLVMMetadataRef> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+castdef<bool> $E<LLVMMetadataRef> { return LLVMBuildIsNotNull($0.codegen(parentBlock), ""); }
 
 /* ---------------------------------------------------------------------------*\
 Name: BuiltinType declaration
@@ -263,24 +263,24 @@ Template: BuiltinType $I = $E<BuiltinType>
 stmtdef BuiltinType $I = $E<BuiltinType> {
 	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
 	LLVMSetAlignment(storage, 8);
-	LLVMBuildStore(codegen($1, parentBlock), storage);
+	LLVMBuildStore($1.codegen(parentBlock), storage);
 	addToScope(parentBlock, $0, BuiltinType, storage);
 }
 
 exprdef<LLVMTypeRef> $E<BuiltinType>.llvmtype {
-	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 2, "gep"), "llvmtype");
+	return LLVMBuildLoad(LLVMBuildStructGEP($0.codegen(parentBlock), 2, "gep"), "llvmtype");
 }
 
 exprdef<int> $E<BuiltinType>.align {
-	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 3, "gep"), "align");
+	return LLVMBuildLoad(LLVMBuildStructGEP($0.codegen(parentBlock), 3, "gep"), "align");
 }
 
 exprdef<int> $E<BuiltinType>.encoding {
-	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 4, "gep"), "encoding");
+	return LLVMBuildLoad(LLVMBuildStructGEP($0.codegen(parentBlock), 4, "gep"), "encoding");
 }
 
 exprdef<long> $E<BuiltinType>.numbits {
-	return LLVMBuildLoad(LLVMBuildStructGEP(codegen($0, parentBlock), 5, "gep"), "numbits");
+	return LLVMBuildLoad(LLVMBuildStructGEP($0.codegen(parentBlock), 5, "gep"), "numbits");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -304,7 +304,7 @@ stmtdef $E<BuiltinType> $I = $E {
 	BuiltinType type = getconst($0, parentBlock);
 	LLVMValueRef storage = LLVMBuildAlloca(type.llvmtype, "");
 	LLVMSetAlignment(storage, type.align);
-	LLVMBuildStore(codegen($2, parentBlock), storage);
+	LLVMBuildStore($2.codegen(parentBlock), storage);
 	addToScope(parentBlock, $1, type, storage);
 }
 
@@ -325,7 +325,7 @@ Depends on: BaseType $I
 \* ---------------------------------------------------------------------------*/
 stmtdef BaseType $I = $E<BaseType> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("BaseType"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, BaseType, foo);
 }
 
@@ -353,7 +353,7 @@ Depends on: ExprAST $I
 \* ---------------------------------------------------------------------------*/
 stmtdef ExprAST $I = $E<ExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, ExprAST, foo);
 }
 
@@ -373,7 +373,7 @@ Depends on: LiteralExprAST $I
 \* ---------------------------------------------------------------------------*/
 stmtdef LiteralExprAST $I = $E<LiteralExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.LiteralExprAST"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, LiteralExprAST, foo);
 }
 
@@ -393,7 +393,7 @@ Depends on: IdExprAST $I
 \* ---------------------------------------------------------------------------*/
 stmtdef IdExprAST $I = $E<IdExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.IdExprAST"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, IdExprAST, foo);
 }
 
@@ -413,19 +413,19 @@ Depends on: BlockExprAST $I
 \* ---------------------------------------------------------------------------*/
 stmtdef BlockExprAST $I = $E<BlockExprAST> {
 	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.BlockExprAST"), 0), "");
-	LLVMBuildStore(codegen($1, parentBlock), foo);
+	LLVMBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, BlockExprAST, foo);
 }
 
 exprdef<Location> $E<ExprAST>.loc {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildCall(getExprLoc, args, 1, "");
 }
 
 exprdef<int> $E<ExprListAST>.size {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildTrunc(
 		LLVMBuildCall(getExprListASTSize, args, 1, ""),
 		LLVMInt32Type(),
@@ -435,26 +435,26 @@ exprdef<int> $E<ExprListAST>.size {
 
 exprdef<string> $E<LiteralExprAST>.value {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildCall(getLiteralExprASTValue, args, 1, "");
 }
 
 exprdef<string> $E<IdExprAST>.name {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildCall(getIdExprASTName, args, 1, "");
 }
 
 exprdef<BlockExprAST> $E<BlockExprAST>.parent {
 	LLVMValueRef args[1];
-	args[0] = codegen($0, parentBlock);
+	args[0] = $0.codegen(parentBlock);
 	return LLVMBuildCall(getBlockExprASTParent, args, 1, "");
 }
 
 exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 	LLVMValueRef args[2];
-	args[0] = codegen($0, parentBlock);
-	args[1] = codegen($1, parentBlock);
+	args[0] = $0.codegen(parentBlock);
+	args[1] = $1.codegen(parentBlock);
 	return LLVMBuildCall(setBlockExprASTParent, args, 2, "");
 }
 
@@ -462,7 +462,7 @@ exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 Cast: ExprAST to bool
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<bool> $E<ExprAST> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+castdef<bool> $E<ExprAST> { return LLVMBuildIsNotNull($0.codegen(parentBlock), ""); }
 
 
 /* ---------------------------------------------------------------------------*\
@@ -478,7 +478,7 @@ Template: !$E<bool>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<bool> !$E<bool> {
-	return LLVMBuildNot(codegen($0, parentBlock), "not");
+	return LLVMBuildNot($0.codegen(parentBlock), "not");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -487,7 +487,7 @@ Template: $E<bool> && $E<bool>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<bool> $E<bool> && $E<bool> {
-	return LLVMBuildAnd(codegen($0, parentBlock), codegen($1, parentBlock), "and");
+	return LLVMBuildAnd($0.codegen(parentBlock), $1.codegen(parentBlock), "and");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -496,15 +496,15 @@ Template: $E<bool> || $E<bool>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<bool> $E<bool> || $E<bool> {
-	return LLVMBuildOr(codegen($0, parentBlock), codegen($1, parentBlock), "or");
+	return LLVMBuildOr($0.codegen(parentBlock), $1.codegen(parentBlock), "or");
 }
 
 exprdef<bool> $E<bool> == $E<bool> {
-	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<bool> != $E<bool> {
-	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -512,8 +512,11 @@ Name: Integer addition
 Template: $E<int> + $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
+// exprdef<int> $E<int> + $E<int> {
+// 	return LLVMBuildAdd($0.codegen(parentBlock), $1.codegen(parentBlock), "add");
+// }
 exprdef<int> $E<int> + $E<int> {
-	return LLVMBuildAdd(codegen($0, parentBlock), codegen($1, parentBlock), "add");
+	return LLVMBuildAdd($0.codegen(parentBlock), $1.codegen(parentBlock), "add");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -522,7 +525,7 @@ Template: $E<int> - $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<int> $E<int> - $E<int> {
-	return LLVMBuildSub(codegen($0, parentBlock), codegen($1, parentBlock), "sub");
+	return LLVMBuildSub($0.codegen(parentBlock), $1.codegen(parentBlock), "sub");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -531,7 +534,7 @@ Template: $E<int> * $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<int> $E<int> * $E<int> {
-	return LLVMBuildMul(codegen($0, parentBlock), codegen($1, parentBlock), "mul");
+	return LLVMBuildMul($0.codegen(parentBlock), $1.codegen(parentBlock), "mul");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -540,15 +543,15 @@ Template: $E<int> / $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<int> $E<int> / $E<int> {
-	return LLVMBuildSDiv(codegen($0, parentBlock), codegen($1, parentBlock), "div");
+	return LLVMBuildSDiv($0.codegen(parentBlock), $1.codegen(parentBlock), "div");
 }
 
 exprdef<bool> $E<int> == $E<int> {
-	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<int> != $E<int> {
-	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -557,15 +560,15 @@ Template: $E<long> & $E<long>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<long> $E<long> & $E<long> {
-	return LLVMBuildAnd(codegen($0, parentBlock), codegen($1, parentBlock), "and");
+	return LLVMBuildAnd($0.codegen(parentBlock), $1.codegen(parentBlock), "and");
 }
 
 exprdef<bool> $E<long> == $E<long> {
-	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<long> != $E<long> {
-	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -574,7 +577,7 @@ Template: $E<double> + $E<double>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<double> $E<double> + $E<double> {
-	return LLVMBuildFAdd(codegen($0, parentBlock), codegen($1, parentBlock), "fadd");
+	return LLVMBuildFAdd($0.codegen(parentBlock), $1.codegen(parentBlock), "fadd");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -583,15 +586,15 @@ Template: $E<double> * $E<double>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 exprdef<double> $E<double> * $E<double> {
-	return LLVMBuildFMul(codegen($0, parentBlock), codegen($1, parentBlock), "fmul");
+	return LLVMBuildFMul($0.codegen(parentBlock), $1.codegen(parentBlock), "fmul");
 }
 
 exprdef<bool> $E<double> == $E<double> { //TODO: Untested
-	return LLVMBuildFCmp(LLVMRealOEQ, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
+	return LLVMBuildFCmp(LLVMRealOEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "fcmp");
 }
 
 exprdef<bool> $E<double> != $E<double> { //TODO: Untested
-	return LLVMBuildFCmp(LLVMRealONE, codegen($0, parentBlock), codegen($1, parentBlock), "fcmp");
+	return LLVMBuildFCmp(LLVMRealONE, $0.codegen(parentBlock), $1.codegen(parentBlock), "fcmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -600,7 +603,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<double> $E<int> {
 	return LLVMBuildSIToFP(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMDoubleType(),
 		""
 	);
@@ -612,7 +615,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<int> $E<double> {
 	return LLVMBuildFPToSI(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMInt32Type(),
 		""
 	);
@@ -624,7 +627,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<long> $E<double> {
 	return LLVMBuildFPToSI(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMInt64Type(),
 		""
 	);
@@ -636,7 +639,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<int> $E<bool> {
 	return LLVMBuildZExt(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMInt32Type(),
 		""
 	);
@@ -648,7 +651,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<int> $E<long> {
 	return LLVMBuildTrunc(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMInt32Type(),
 		""
 	);
@@ -658,7 +661,7 @@ castdef<int> $E<long> {
 Cast: int to bool
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-castdef<bool> $E<int> { return LLVMBuildIsNotNull(codegen($0, parentBlock), ""); }
+castdef<bool> $E<int> { return LLVMBuildIsNotNull($0.codegen(parentBlock), ""); }
 
 /* ---------------------------------------------------------------------------*\
 Cast: int to long
@@ -666,7 +669,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 castdef<long> $E<int> {
 	return LLVMBuildSExt(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMInt64Type(),
 		""
 	);
@@ -697,7 +700,7 @@ castdef<long> $E<int> {
 // stmtdef string $I = $E<string> {
 // 	LLVMValueRef storage = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 // 	LLVMSetAlignment(storage, 1);
-// 	LLVMBuildStore(codegen($1, parentBlock), storage);
+// 	LLVMBuildStore($1.codegen(parentBlock), storage);
 // 	addToScope(parentBlock, $0, string, storage);
 // }
 
@@ -714,7 +717,7 @@ Name: BuiltinType array declaration
 Template: BuiltinType $I[$E<int>]
 \* ---------------------------------------------------------------------------*/
 stmtdef BuiltinType $I[$E<int>] {
-	LLVMValueRef array = LLVMBuildArrayAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), codegen($1, parentBlock), "");
+	LLVMValueRef array = LLVMBuildArrayAlloca(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), $1.codegen(parentBlock), "");
 	LLVMValueRef arrayptr = LLVMBuildAlloca(LLVMPointerType(LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), 0), "");
 	LLVMBuildStore(array, arrayptr);
 	addToScope(parentBlock, $0, BuiltinTypePtr, arrayptr);
@@ -725,12 +728,12 @@ Name: BuiltinType array element setter
 Template: $E<BuiltinTypePtr>[$E<int>] = $E<BuiltinType>
 \* ---------------------------------------------------------------------------*/
 exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] = $E<BuiltinType> {
-	LLVMValueRef var = codegen($0, parentBlock);
-	LLVMValueRef idx = codegen($1, parentBlock);
+	LLVMValueRef var = $0.codegen(parentBlock);
+	LLVMValueRef idx = $1.codegen(parentBlock);
 
 	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 
-	LLVMValueRef expr = codegen($2, parentBlock);
+	LLVMValueRef expr = $2.codegen(parentBlock);
 	LLVMBuildStore(expr, gep);
 	return expr;
 }
@@ -740,8 +743,8 @@ Name: BuiltinType array element getter
 Template: $E<BuiltinTypePtr>[$E<int>]
 \* ---------------------------------------------------------------------------*/
 exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] {
-	LLVMValueRef var = codegen($0, parentBlock);
-	LLVMValueRef idx = codegen($1, parentBlock);
+	LLVMValueRef var = $0.codegen(parentBlock);
+	LLVMValueRef idx = $1.codegen(parentBlock);
 
 	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
 	LLVMValueRef val = LLVMBuildLoad(gep, "");
@@ -750,19 +753,19 @@ exprdef<BuiltinType> $E<BuiltinTypePtr>[$E<int>] {
 }
 
 exprdef<bool> $E<BuiltinType> == $E<BuiltinType> {
-	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BuiltinType> != $E<BuiltinType> {
-	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BaseType> == $E<BaseType> {
-	return LLVMBuildICmp(LLVMIntEQ, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<BaseType> != $E<BaseType> {
-	return LLVMBuildICmp(LLVMIntNE, codegen($0, parentBlock), codegen($1, parentBlock), "cmp");
+	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -771,7 +774,7 @@ Depends on: return $E
 \* ---------------------------------------------------------------------------*/
 inhtdef<BaseType> $E<BuiltinType> {
 	return LLVMBuildBitCast(
-		codegen($0, parentBlock),
+		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMGetTypeByName("BaseType"), 0),
 		""
 	);
@@ -792,13 +795,13 @@ Depends on: LLVMValueRef $I = $E<LLVMValueRef>
             LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef>
 \* ---------------------------------------------------------------------------*/
 stmtdef if($E<bool>) $S {
-	LLVMValueRef ifCond = codegen($0, parentBlock);
+	LLVMValueRef ifCond = $0.codegen(parentBlock);
 	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
 	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
 	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
 
 	LLVMPositionBuilder(ifBlock);
-	codegen($1, parentBlock);
+	$1.codegen(parentBlock);
 	LLVMBuildBr(elseBlock);
 
 	LLVMPositionBuilder(elseBlock);
@@ -811,18 +814,18 @@ Depends on: LLVMValueRef $I = $E<LLVMValueRef>
             LLVMBasicBlockRef $I = $E<LLVMBasicBlockRef>
 \* ---------------------------------------------------------------------------*/
 stmtdef if($E<bool>) $S else $S {
-	LLVMValueRef ifCond = codegen($0, parentBlock);
+	LLVMValueRef ifCond = $0.codegen(parentBlock);
 	LLVMBasicBlockRef ifBlock = LLVMAppendBasicBlock(function, "ifBlock");
 	LLVMBasicBlockRef elseBlock = LLVMAppendBasicBlock(function, "elseBlock");
 	LLVMBasicBlockRef endIfBlock = LLVMAppendBasicBlock(function, "endIfBlock");
 	LLVMBuildCondBr(ifCond, ifBlock, elseBlock);
 
 	LLVMPositionBuilder(ifBlock);
-	codegen($1, parentBlock);
+	$1.codegen(parentBlock);
 	LLVMBuildBr(endIfBlock);
 
 	LLVMPositionBuilder(elseBlock);
-	codegen($2, parentBlock);
+	$2.codegen(parentBlock);
 	LLVMBuildBr(endIfBlock);
 
 	LLVMPositionBuilder(endIfBlock);
@@ -835,7 +838,7 @@ stmtdef for(int $I = $E<int>; $E; $E) $B {
 	// Allocate loop variable
 	LLVMValueRef loopVar = LLVMBuildAlloca(LLVMInt32Type(), "");
 	LLVMSetAlignment(loopVar, 4);
-	LLVMSetAlignment(LLVMBuildStore(codegen($1, parentBlock), loopVar), 4);
+	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), loopVar), 4);
 	addToScope($4, $0, int, loopVar);
 
 	// Reresolve condition and update expressions to take loop variable into account
@@ -850,12 +853,12 @@ stmtdef for(int $I = $E<int>; $E; $E) $B {
 
 	// Exit for loop if condition isn't met
 	LLVMPositionBuilder(forCondBlock);
-	LLVMValueRef forCond = codegen($2, $4); // Codegen condition in loop block scope
+	LLVMValueRef forCond = $2.codegen($4); // Codegen condition in loop block scope
 	LLVMBuildCondBr(forCond, forBlock, endForBlock);
 
 	LLVMPositionBuilder(forBlock);
-	codegen($4, parentBlock); // Codegen loop block in global scope
-	codegen($3, $4); // Codegen update expression in loop block scope
+	$4.codegen(parentBlock); // Codegen loop block in global scope
+	$3.codegen($4); // Codegen update expression in loop block scope
 
 	// Repeat for loop
 	LLVMBuildBr(forCondBlock);
@@ -869,14 +872,14 @@ stmtdef while ($E<bool>) $S {
 	LLVMBasicBlockRef endWhileBlock = LLVMAppendBasicBlock(function, "endWhileBlock");
 
 	// Skip while loop if condition isn't met
-	LLVMValueRef whileCond = codegen($0, parentBlock);
+	LLVMValueRef whileCond = $0.codegen(parentBlock);
 	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
 
 	LLVMPositionBuilder(whileBlock);
-	codegen($1, parentBlock); // Codegen loop block
+	$1.codegen(parentBlock); // Codegen loop block
 
 	// Repeat while loop if condition is met
-	whileCond = codegen($0, parentBlock);
+	whileCond = $0.codegen(parentBlock);
 	LLVMBuildCondBr(whileCond, whileBlock, endWhileBlock);
 
 	LLVMPositionBuilder(endWhileBlock);
@@ -896,8 +899,8 @@ Template: throw CompileError($E<string>, $E<ExprAST>)
 \* ---------------------------------------------------------------------------*/
 stmtdef throw CompileError($E<string>, $E<ExprAST>) {
 	LLVMValueRef args[2];
-	args[0] = codegen($0, parentBlock);
-	args[1] = codegen($1, parentBlock);
+	args[0] = $0.codegen(parentBlock);
+	args[1] = $1.codegen(parentBlock);
 	LLVMBuildCall(raiseCompileError, args, 2, "");
 }
 
@@ -1054,7 +1057,7 @@ stmtdef $E<BuiltinType> $I = $E {
 	LLVMValueRef storage = LLVMAddGlobal(varType.llvmtype, $1.name);
 	LLVMSetInitializer(storage, LLVMConstNull(varType.llvmtype));
 	LLVMSetAlignment(storage, varType.align);
-	LLVMBuildStore(codegen(expr, parentBlock), storage);
+	LLVMBuildStore(expr.codegen(parentBlock), storage);
 	addToScope(parentBlock, $1, varType, storage);
 
 	if (dfile && varType.encoding != 0)
@@ -1116,7 +1119,7 @@ exprdef<gettype($0, parentBlock)> $I = $E {
 		throw CompileError(err, $0);
 	}
 
-	LLVMValueRef exprValue = codegen(expr, parentBlock);
+	LLVMValueRef exprValue = expr.codegen(parentBlock);
 	LLVMBuildStore(exprValue, varValue);
 	return exprValue;
 }

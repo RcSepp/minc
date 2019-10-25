@@ -152,12 +152,10 @@ castdef<int> $E<PyObject> {
 }
 
 exprdef<bool> $E<PyObject> == $E<PyObject> {
-int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<PyObject> != $E<PyObject> {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
@@ -190,7 +188,6 @@ exprdef<PyObject> $E<PyObject> / $E<PyObject> {
 }
 
 stmtdef for $I in $E<PyObject> $B {
-int LLVMIntNE = 33; //TODO: Implement LLVM-c enums as constants
 	LLVMValueRef args[256]; //TODO
 
 	// Add iterator variable to block scope
@@ -236,7 +233,6 @@ PyObject in(PyObject obj, PyObject key) //TODO: Implement as expr $<PyObject> in
 }
 
 exprdef<bool> IsNULL($E<PyObject>) {
-int LLVMIntEQ = 32; //TODO: Implement LLVM-c enums as constants
 	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0)), "");
 }
 

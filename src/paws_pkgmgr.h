@@ -33,6 +33,7 @@ public:
 	{
 		packages[pkgName] = package;
 	}
+	bool importPackage(BlockExprAST* scope, std::string pkgName) const;
 };
 PawsPackageManager& PAWS_PACKAGE_MANAGER();
 

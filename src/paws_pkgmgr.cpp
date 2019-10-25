@@ -43,10 +43,8 @@ void PawsPackageManager::define(BlockExprAST* pkgScope)
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsPackageManager* pkgMgr = (PawsPackageManager*)stmtArgs;
 			std::string pkgName = getIdExprASTName((IdExprAST*)params[0]);
-			auto pck = pkgMgr->packages.find(pkgName);
-			if (pck == pkgMgr->packages.end())
+			if (!pkgMgr->importPackage(parentBlock, pkgName))
 				raiseCompileError(("unknown paws package " + pkgName).c_str(), params[0]);
-			pck->second->import(parentBlock);
 		}, this
 	);
 
@@ -55,11 +53,21 @@ void PawsPackageManager::define(BlockExprAST* pkgScope)
 			BlockExprAST* block = ((PawsBlockExprAST*)codegenExpr(params[0], parentBlock).value)->val;
 			PawsPackageManager* pkgMgr = (PawsPackageManager*)exprArgs;
 			std::string pkgName = getIdExprASTName((IdExprAST*)params[1]);
-			auto pck = pkgMgr->packages.find(pkgName);
-			if (pck == pkgMgr->packages.end())
+			if (!pkgMgr->importPackage(block, pkgName))
 				raiseCompileError(("unknown paws package " + pkgName).c_str(), params[1]);
-			pck->second->import(block);
 			return Variable(PawsVoid::TYPE, nullptr);
 		}, PawsVoid::TYPE, this
 	);
+}
+
+bool PawsPackageManager::importPackage(BlockExprAST* scope, std::string pkgName) const
+{
+	auto pck = packages.find(pkgName);
+	if (pck != packages.end())
+	{
+		pck->second->import(scope);
+		return true;
+	}
+	else
+		return false;
 }

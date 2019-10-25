@@ -12,55 +12,6 @@ typedef PawsType<ExprMap> PawsExprMap;
 struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
 typedef PawsType<SymbolMap> PawsSymbolMap;
 
-void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> params, std::vector<Variable>& blockParams)
-{
-	blockParams.reserve(params.size());
-	for (ExprAST* param: params)
-	{
-		BaseType* paramType = PawsExprAST::TYPE;
-		if (ExprASTIsPlchld(param))
-		{
-			PlchldExprAST* plchldParam = (PlchldExprAST*)param;
-			switch (getPlchldExprASTLabel(plchldParam))
-			{
-			default: assert(0); //TODO: Throw exception
-			case 'L': paramType = PawsLiteralExprAST::TYPE; break;
-			case 'I': paramType = PawsIdExprAST::TYPE; break;
-			case 'B': paramType = PawsBlockExprAST::TYPE; break;
-			case 'S': break;
-			case 'E':
-				if (getPlchldExprASTSublabel(plchldParam) == nullptr)
-					break;
-				if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-					paramType = PawsTpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
-			}
-		}
-		else if (ExprASTIsList(param))
-		{
-			const std::vector<ExprAST*>& listParamExprs = getExprListASTExpressions((ExprListAST*)param);
-			if (listParamExprs.size() != 0)
-			{
-				PlchldExprAST* plchldParam = (PlchldExprAST*)listParamExprs.front();
-				switch (getPlchldExprASTLabel(plchldParam))
-				{
-				default: assert(0); //TODO: Throw exception
-				case 'L': paramType = PawsLiteralExprAST::TYPE; break;
-				case 'I': paramType = PawsIdExprAST::TYPE; break;
-				case 'B': paramType = PawsBlockExprAST::TYPE; break;
-				case 'S': break;
-				case 'E':
-					if (getPlchldExprASTSublabel(plchldParam) == nullptr)
-						break;
-					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-						paramType = PawsTpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
-				}
-				paramType = PawsTpltType::get(PawsExprListAST::TYPE, paramType);
-			}
-		}
-		blockParams.push_back(Variable(paramType, nullptr));
-	}
-}
-
 PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 	registerType<PawsStmtMap>(pkgScope, "PawsStmtMap");
 	registerType<PawsExprMap>(pkgScope, "PawsExprMap");

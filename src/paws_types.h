@@ -140,6 +140,8 @@ struct ReturnException
 
 void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr);
 
+void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> params, std::vector<Variable>& blockParams);
+
 struct PawsCodegenContext : public CodegenContext
 {
 private:

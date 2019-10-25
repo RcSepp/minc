@@ -38,6 +38,23 @@ PawsPackage PAWS_CASTREG("castreg", [](BlockExprAST* pkgScope) {
 		}
 	);
 
+	defineStmt2(pkgScope, "$E<PawsCastMap>[$E<PawsMetaType> -> $E<PawsMetaType>] = $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			CastMap const casts = ((PawsCastMap*)codegenExpr(params[0], parentBlock).value)->val;
+			BlockExprAST* const scope = casts;
+			BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
+			BaseType* toType = ((PawsMetaType*)codegenExpr(params[2], parentBlock).value)->val;
+			BlockExprAST* blockAST = (BlockExprAST*)params[3];
+
+			// Get block parameter types
+			std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
+
+			definePawsReturnStmt(blockAST, toType);
+
+			defineTypeCast3(parentBlock, fromType, toType, new PawsCodegenContext(blockAST, toType, blockParams));
+		}
+	);
+
 	defineExpr(pkgScope, "$E<PawsCast>.fromType",
 		+[](const Cast* cast) -> BaseType* {
 			return cast->fromType;

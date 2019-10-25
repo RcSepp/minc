@@ -433,7 +433,7 @@ extern "C"
 
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
 	{
-		BaseType* fromType = (expr->exprtype == ExprAST::ExprType::CAST ? expr->resolvedParams[0] : expr)->getType(scope);
+		BaseType* fromType = expr->getType(scope);
 		if (fromType == toType)
 			return expr;
 

@@ -376,6 +376,234 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 9)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 10)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 11)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 12)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 13)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
+		PawsType<P12>* p12 = (PawsType<P12>*)codegenExpr(params[12], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 14)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
+		PawsType<P12>* p12 = (PawsType<P12>*)codegenExpr(params[12], parentBlock).value;
+		PawsType<P13>* p13 = (PawsType<P13>*)codegenExpr(params[13], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 15)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
+		PawsType<P12>* p12 = (PawsType<P12>*)codegenExpr(params[12], parentBlock).value;
+		PawsType<P13>* p13 = (PawsType<P13>*)codegenExpr(params[13], parentBlock).value;
+		PawsType<P14>* p14 = (PawsType<P14>*)codegenExpr(params[14], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
+template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14, class P15> void defineExpr(BlockExprAST* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15))
+{
+	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		if (params.size() != 16)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
+		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
+		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
+		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
+		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
+		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
+		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
+		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
+		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
+		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
+		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
+		PawsType<P12>* p12 = (PawsType<P12>*)codegenExpr(params[12], parentBlock).value;
+		PawsType<P13>* p13 = (PawsType<P13>*)codegenExpr(params[13], parentBlock).value;
+		PawsType<P14>* p14 = (PawsType<P14>*)codegenExpr(params[14], parentBlock).value;
+		PawsType<P15>* p15 = (PawsType<P15>*)codegenExpr(params[15], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val, p15->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val, p15->val)));
+	};
+	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
+}
 
 // Templated version of defineExpr3():
 // defineExpr() codegen's all inputs

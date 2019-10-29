@@ -27,6 +27,7 @@ extern llvm::Value* closure;
 
 std::list<Func> llvm_c_functions;
 std::list<std::pair<std::string, const Variable>> capturedScope;
+BlockExprAST *defScope;
 
 namespace BuiltinScopes
 {
@@ -560,18 +561,25 @@ private:
 		defineType(rootBlock, "BuiltinInstance", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance);
 	//	defineType(rootBlock, "BuiltinInstancePtr", BuiltinTypes::Builtin, BuiltinTypes::BuiltinInstance->Ptr());
 
-		// Define LLVM-c extern functions
+		defScope = createEmptyBlockExprAST();
+		setBlockExprASTParent(defScope, rootBlock);
+
+		// Define LLVM-c constants in define blocks
+		defineSymbol(defScope, "LLVMIntEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 32));
+		defineSymbol(defScope, "LLVMIntNE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 33));
+		defineSymbol(defScope, "LLVMRealOEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 1)); //TODO: Untested
+		defineSymbol(defScope, "LLVMRealONE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 6)); //TODO: Untested
+
+		// Declare LLVM-C extern functions in define blocks
 		for (Func& func: llvm_c_functions)
 		{
-			defineSymbol(rootBlock, func.name, func.type, &func);
-			defineOpaqueInheritanceCast(rootBlock, func.type, BuiltinTypes::BuiltinFunction);
+			defineSymbol(defScope, func.name, func.type, &func);
+			defineOpaqueInheritanceCast(defScope, func.type, BuiltinTypes::BuiltinFunction);
 		}
 
-		// Define LLVM-c constants
-		defineSymbol(rootBlock, "LLVMIntEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 32));
-		defineSymbol(rootBlock, "LLVMIntNE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 33));
-		defineSymbol(rootBlock, "LLVMRealOEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 1)); //TODO: Untested
-		defineSymbol(rootBlock, "LLVMRealONE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 6)); //TODO: Untested
+		// Define variable declaration statements in define blocks
+		defineStmt2(defScope, "$E<BuiltinType> $I", VarDeclStmt);
+		defineStmt2(defScope, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 		// Define Minc extern functions
 		for (Func* func: {
@@ -699,8 +707,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, BuiltinTypes::Void);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 				capturedScope.clear();
@@ -733,8 +740,7 @@ private:
 
 	//			setScopeType(blockAST, BuiltinScopes::JitFunction);
 	//			defineReturnStmt(blockAST, BuiltinTypes::Void);
-	//			defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-	//			defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+	//			importBlock(blockAST, defScope);
 
 	// 			JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::Void, stmtParams, jitFuncName);
 	// 			capturedScope.clear();
@@ -778,8 +784,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 				capturedScope.clear();
@@ -803,8 +808,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, exprParams, jitFuncName);
 				capturedScope.clear();
@@ -857,8 +861,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
 				capturedScope.clear();
@@ -885,8 +888,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, BuiltinTypes::LLVMValueRef);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, BuiltinTypes::LLVMValueRef, castParams, jitFuncName);
 				capturedScope.clear();
@@ -921,8 +923,7 @@ private:
 
 				setScopeType(blockAST, BuiltinScopes::JitFunction);
 				defineReturnStmt(blockAST, metaType);
-				defineStmt2(blockAST, "$E<BuiltinType> $I", VarDeclStmt);
-				defineStmt2(blockAST, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+				importBlock(blockAST, defScope);
 
 				std::vector<ExprAST*> typeParams;
 				JitFunction* jitFunc = createJitFunction(parentBlock, blockAST, metaType, typeParams, jitFuncName);
@@ -1242,7 +1243,7 @@ private:
 		);*/
 
 		// Define $E<ExprAST>.codegen($E<BlockExprAST>)
-		defineExpr2(rootBlock, "$E<ExprAST>.codegen($E<BlockExprAST>)",
+		defineExpr2(defScope, "$E<ExprAST>.codegen($E<BlockExprAST>)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				XXXValue* exprVal = (XXXValue*)codegenExpr(params[0], parentBlock).value;
 				XXXValue* parentBlockVal = (XXXValue*)codegenExpr(params[1], parentBlock).value;
@@ -1254,7 +1255,7 @@ private:
 			BuiltinTypes::LLVMValueRef
 		);
 		// Define codegen() with invalid parameters
-		defineExpr2(rootBlock, "$E.codegen($E, ...)",
+		defineExpr2(defScope, "$E.codegen($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 				if (argExprs.size() != 1)

@@ -674,7 +674,11 @@ private:
 		// Define function call on non-function identifier
 		defineExpr2(rootBlock, "$I($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				raiseCompileError(("`" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` cannot be used as a function").c_str(), params[0]);
+				const char* name = getIdExprASTName((IdExprAST*)params[0]);
+				if (lookupSymbol(parentBlock, name) == nullptr)
+					raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
+				else
+					raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
 			},
 			BuiltinTypes::Void
 		);

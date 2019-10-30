@@ -1,58 +1,4 @@
 /* ---------------------------------------------------------------------------*\
-Name: Return statement
-Template: return $E
-Depends on: none
-\* ---------------------------------------------------------------------------*/
-stmtdef return $E<int> {
-	LLVMBuildRet($0.codegen(parentBlock));
-}
-
-/* ---------------------------------------------------------------------------*\
-Cast: LiteralExprAST to ExprAST
-Depends on: return $E
-\* ---------------------------------------------------------------------------*/
-inhtdef<ExprAST> $E<LiteralExprAST> {
-	return LLVMBuildBitCast(
-		$0.codegen(parentBlock),
-		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
-		""
-	);
-}
-
-/* ---------------------------------------------------------------------------*\
-Cast: IdExprAST to ExprAST
-Depends on: return $E
-\* ---------------------------------------------------------------------------*/
-inhtdef<ExprAST> $E<IdExprAST> {
-	return LLVMBuildBitCast(
-		$0.codegen(parentBlock),
-		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
-		""
-	);
-}
-
-/* ---------------------------------------------------------------------------*\
-Cast: BlockExprAST to ExprAST
-Depends on: return $E
-\* ---------------------------------------------------------------------------*/
-inhtdef<ExprAST> $E<BlockExprAST> {
-	return LLVMBuildBitCast(
-		$0.codegen(parentBlock),
-		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
-		""
-	);
-}
-
-/* ---------------------------------------------------------------------------*\
-Name: Context-free block statement
-Template: $B
-Depends on: none
-\* ---------------------------------------------------------------------------*/
-stmtdef $B {
-	$0.codegen(parentBlock);
-}
-
-/* ---------------------------------------------------------------------------*\
 Name: Simplified variable assignment
 Template: $I = $E
 Depends on: return $E
@@ -61,6 +7,44 @@ Notes: This expression does not check for errors and it does not return $E
 exprdef<void> $I = $E {
 	LLVMBuildStore($1.codegen(parentBlock), LookupScope(parentBlock, $0));
 	return LLVMConstNull(LLVMVoidType());
+}
+
+
+/* ---------------------------------------------------------------------------*\
+|                                                                              |
+|                              PAWS TO LLVM CASTS                              |
+|                                                                              |
+\* ---------------------------------------------------------------------------*/
+
+
+paws_castdef<int> PawsInt {
+	return LLVMConstInt(LLVMInt32Type(), $0.codegen(parentBlock), 1);
+}
+
+paws_castdef<half> PawsDouble {
+	return LLVMConstReal(LLVMHalfType(), $0.codegen(parentBlock));
+}
+paws_castdef<float> PawsDouble {
+	return LLVMConstReal(LLVMFloatType(), $0.codegen(parentBlock));
+}
+paws_castdef<double> PawsDouble {
+	return LLVMConstReal(LLVMDoubleType(), $0.codegen(parentBlock));
+}
+
+paws_castdef<string> PawsString {
+	str = $0.codegen(parentBlock);
+	glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), str.length + 1), "MY_CONSTANT");
+	LLVMSetLinkage(glob, 9);
+	LLVMSetGlobalConstant(glob, 1);
+	LLVMSetInitializer(glob, LLVMConstString(str, str.length + 1, 1));
+	LLVMSetUnnamedAddress(glob, 2);
+	LLVMSetAlignment(glob, 1);
+
+	return LLVMConstInBoundsGEP2(
+		glob,
+		LLVMConstInt(LLVMInt64Type(), 0, 0),
+		LLVMConstInt(LLVMInt64Type(), 0, 0)
+	);
 }
 
 
@@ -456,6 +440,42 @@ exprdef<BlockExprAST> $E<BlockExprAST>.parent = $E<BlockExprAST> {
 	args[0] = $0.codegen(parentBlock);
 	args[1] = $1.codegen(parentBlock);
 	return LLVMBuildCall(setBlockExprASTParent, args, 2, "");
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: LiteralExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+inhtdef<ExprAST> $E<LiteralExprAST> {
+	return LLVMBuildBitCast(
+		$0.codegen(parentBlock),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: IdExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+inhtdef<ExprAST> $E<IdExprAST> {
+	return LLVMBuildBitCast(
+		$0.codegen(parentBlock),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
+		""
+	);
+}
+
+/* ---------------------------------------------------------------------------*\
+Cast: BlockExprAST to ExprAST
+Depends on: return $E
+\* ---------------------------------------------------------------------------*/
+inhtdef<ExprAST> $E<BlockExprAST> {
+	return LLVMBuildBitCast(
+		$0.codegen(parentBlock),
+		LLVMPointerType(LLVMGetTypeByName("class.ExprAST"), 0),
+		""
+	);
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -892,6 +912,24 @@ stmtdef while ($E<bool>) $S {
 |                                                                              |
 \* ---------------------------------------------------------------------------*/
 
+
+/* ---------------------------------------------------------------------------*\
+Name: File-scope return statement
+Template: return $E
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef return $E<int> {
+	LLVMBuildRet($0.codegen(parentBlock));
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Context-free block statement
+Template: $B
+Depends on: none
+\* ---------------------------------------------------------------------------*/
+stmtdef $B {
+	$0.codegen(parentBlock);
+}
 
 /* ---------------------------------------------------------------------------*\
 Name: Compile exception statement

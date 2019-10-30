@@ -1661,51 +1661,6 @@ private:
 			}
 		);
 
-		defineTypeCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int1,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Int1, new XXXValue(unwrap(LLVMConstInt(LLVMInt1Type(), value->val, 1))));
-			}
-		);
-		defineTypeCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int32,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Int32, new XXXValue(unwrap(LLVMConstInt(LLVMInt32Type(), value->val, 1))));
-			}
-		);
-		defineTypeCast2(rootBlock, PawsInt::TYPE, BuiltinTypes::Int64,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsInt* value = (PawsInt*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Int64, new XXXValue(unwrap(LLVMConstInt(LLVMInt64Type(), value->val, 1))));
-			}
-		);
-
-		defineTypeCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Half,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Half, new XXXValue(unwrap(LLVMConstReal(LLVMHalfType(), value->val))));
-			}
-		);
-		defineTypeCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Float,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Float, new XXXValue(unwrap(LLVMConstReal(LLVMFloatType(), value->val))));
-			}
-		);
-		defineTypeCast2(rootBlock, PawsDouble::TYPE, BuiltinTypes::Double,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsDouble* value = (PawsDouble*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Double, new XXXValue(unwrap(LLVMConstReal(LLVMDoubleType(), value->val))));
-			}
-		);
-
-		defineTypeCast2(rootBlock, PawsString::TYPE, BuiltinTypes::Int8Ptr,
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				PawsString* value = (PawsString*)codegenExpr(params[0], parentBlock).value;
-				return Variable(BuiltinTypes::Int8Ptr, new XXXValue(createStringConstant(value->val, "MY_CONSTANT")));
-			}
-		);
-
 		defineExpr2(rootBlock, "FuncType($E<string>, $E<int>, $E<BaseType>, $E<BaseType>, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				Value* nameVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;

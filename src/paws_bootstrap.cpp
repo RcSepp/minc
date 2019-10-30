@@ -27,7 +27,7 @@ extern llvm::Value* closure;
 
 std::list<Func> llvm_c_functions;
 std::list<std::pair<std::string, const Variable>> capturedScope;
-BlockExprAST *defScope;
+BlockExprAST *defScope, *pawsDefScope;
 
 namespace BuiltinScopes
 {
@@ -173,13 +173,8 @@ void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, Bu
 	// Define type symbol in scope
 	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
 
-	// Define bit-cast from type to metaType
-	defineInheritanceCast2(scope, type, metaType,
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
-			return Variable((BuiltinType*)castArgs, new XXXValue(builder->CreateBitCast(((XXXValue*)codegenExpr(params[0], parentBlock).value)->val, unwrap(((BuiltinType*)castArgs)->llvmtype))));
-		},
-		metaType
-	);
+	// Make type a sub-class of metaType
+	defineOpaqueInheritanceCast(scope, type, metaType);
 }
 
 void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr)
@@ -431,6 +426,19 @@ currentFunc = parentFunc;
 	return func;
 }
 
+struct PawsBootstrapCodegenContext : public PawsCodegenContext
+{
+public:
+	PawsBootstrapCodegenContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams)
+		: PawsCodegenContext(expr, type, blockParams) {}
+	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	{
+		// Wrap result of PawsCodegenContext::codegen() into an XXXValue
+		Value* llvmValue = unwrap(((PawsType<LLVMValueRef>*)PawsCodegenContext::codegen(parentBlock, params).value)->val);
+		return Variable(type, new XXXValue(llvmValue));
+	}
+};
+
 struct PawsBootstrap : public PawsPackage
 {
 	PawsBootstrap() : PawsPackage("bootstrap") {}
@@ -580,6 +588,34 @@ private:
 		// Define variable declaration statements in define blocks
 		defineStmt2(defScope, "$E<BuiltinType> $I", VarDeclStmt);
 		defineStmt2(defScope, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
+
+		pawsDefScope = createEmptyBlockExprAST();
+		setBlockExprASTParent(pawsDefScope, rootBlock);
+
+		// Define LLVM-c constants in paws define blocks
+		defineSymbol(pawsDefScope, "LLVMIntEQ", PawsInt::TYPE, new PawsInt(32));
+		defineSymbol(pawsDefScope, "LLVMIntNE", PawsInt::TYPE, new PawsInt(33));
+		defineSymbol(pawsDefScope, "LLVMRealOEQ", PawsInt::TYPE, new PawsInt(1)); //TODO: Untested
+		defineSymbol(pawsDefScope, "LLVMRealONE", PawsInt::TYPE, new PawsInt(6)); //TODO: Untested
+
+		// Declare LLVM-C extern functions in paws define blocks
+		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "llvm");
+
+		// Cast all builtin- and base types to PawsType<LLVMValueRef> in paws define blocks
+		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Builtin, PawsType<LLVMValueRef>::TYPE,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+				XXXValue* llvmvalue = (XXXValue*)codegenExpr(params[0], parentBlock).value;
+				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(llvmvalue->val)));
+			},
+			PawsType<LLVMValueRef>::TYPE
+		);
+		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Base, PawsType<LLVMValueRef>::TYPE,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+				XXXValue* llvmvalue = (XXXValue*)codegenExpr(params[0], parentBlock).value;
+				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(llvmvalue->val)));
+			},
+			PawsType<LLVMValueRef>::TYPE
+		);
 
 		// Define Minc extern functions
 		for (Func* func: {
@@ -942,6 +978,121 @@ private:
 
 				defineType(getIdExprASTName(nameAST), type);
 				defineType(parentBlock, getIdExprASTName(nameAST), metaType, type);
+			}
+		);
+
+		// Define `stmtdef` from paws type
+		defineStmt2(rootBlock, "paws_stmtdef $E ... $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[0]);
+				BlockExprAST* blockAST = (BlockExprAST*)params[1];
+
+				setBlockExprASTParent(blockAST, parentBlock);
+
+				// Collect parameters
+				std::vector<ExprAST*> stmtParams;
+				for (ExprAST* stmtParam: stmtParamsAST)
+					collectParams(parentBlock, stmtParam, stmtParam, stmtParams);
+
+				// Get block parameter types
+				std::vector<Variable> blockParams;
+				getBlockParameterTypes(parentBlock, stmtParams, blockParams);
+
+				importBlock(blockAST, pawsDefScope);
+				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+
+				defineStmt3(parentBlock, stmtParamsAST, new PawsCodegenContext(blockAST, PawsVoid::TYPE, blockParams));
+			}
+		);
+
+		// Define `exprdef` from paws type
+		defineStmt2(rootBlock, "paws_exprdef<$I> $E $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BaseType* exprType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				ExprAST* exprAST = params[1];
+				BlockExprAST* blockAST = (BlockExprAST*)params[2];
+
+				setBlockExprASTParent(blockAST, parentBlock);
+
+				// Collect parameters
+				std::vector<ExprAST*> exprParams;
+				collectParams(parentBlock, exprAST, exprAST, exprParams);
+
+				// Get block parameter types
+				std::vector<Variable> blockParams;
+				getBlockParameterTypes(parentBlock, exprParams, blockParams);
+
+				importBlock(blockAST, pawsDefScope);
+				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+
+				defineExpr5(parentBlock, exprAST, new PawsBootstrapCodegenContext(blockAST, exprType, blockParams));
+			}
+		);
+		defineStmt2(rootBlock, "paws_exprdef<$E> $E $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				raiseCompileError("dynamically typed paws expressions not implemented", params[0]);
+			}
+		);
+
+		// Define `castdef` from paws type
+		defineStmt2(rootBlock, "paws_castdef<$I> $E<PawsMetaType> $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
+				BlockExprAST* blockAST = (BlockExprAST*)params[2];
+
+				// Get block parameter types
+				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
+
+				importBlock(blockAST, pawsDefScope);
+				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+
+				defineTypeCast3(parentBlock, fromType, toType, new PawsBootstrapCodegenContext(blockAST, toType, blockParams));
+			}
+		);
+
+		// Define `inhtdef` from paws type
+		defineStmt2(rootBlock, "paws_inhtdef<$I> $E<PawsMetaType> $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
+				BlockExprAST* blockAST = (BlockExprAST*)params[2];
+
+				// Get block parameter types
+				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
+
+				importBlock(blockAST, pawsDefScope);
+				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+
+				defineInheritanceCast3(parentBlock, fromType, toType, new PawsBootstrapCodegenContext(blockAST, toType, blockParams));
+			}
+		);
+
+		// Define `typedef` from paws type
+		defineStmt2(rootBlock, "paws_typedef<$I> $I $B",
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+				BuiltinType* metaType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				const char* name = getIdExprASTName((IdExprAST*)params[1]);
+				BlockExprAST* blockAST = (BlockExprAST*)params[2];
+
+				// Get block parameter types
+				std::vector<Variable> blockParams;
+
+				importBlock(blockAST, pawsDefScope);
+				definePawsReturnStmt(pawsDefScope, metaType);
+
+				// Execute typedef code block
+				try
+				{
+					codegenExpr((ExprAST*)blockAST, parentBlock);
+				}
+				catch (ReturnException err)
+				{
+					BuiltinType* type = (BuiltinType*)err.result.value;
+
+					defineType(name, type);
+					defineType(parentBlock, name, metaType, type);
+				}
 			}
 		);
 

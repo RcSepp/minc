@@ -144,7 +144,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 
 struct PawsCodegenContext : public CodegenContext
 {
-private:
+protected:
 	BlockExprAST* const expr;
 	BaseType* const type;
 	std::vector<Variable> blockParams;

@@ -413,6 +413,15 @@ extern "C"
 		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs)));
 	}
 
+	void defineTypeCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast)
+	{
+		scope->defineCast(new TypeCast(fromType, toType, cast));
+	}
+	void defineInheritanceCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, cast));
+	}
+
 	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
 	{
 		scope->defineCast(new TypeCast(fromType, toType, new OpaqueExprContext(toType)));

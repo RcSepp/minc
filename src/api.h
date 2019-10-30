@@ -136,9 +136,11 @@ extern "C"
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr);
 	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
+	void defineTypeCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
 	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 	void defineInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineInheritanceCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
+	void defineInheritanceCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
 	void defineOpaqueInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name);

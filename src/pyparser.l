@@ -40,6 +40,7 @@ AND			&&
 OR			\|\|
 NEW			new
 DM			->
+SR			::
 
 %%
 	int indent_caller = normal;
@@ -139,6 +140,7 @@ DM			->
 
 <normal>{NEW}							return token::NEW;
 <normal>{DM}							return token::DM;
+<normal>{SR}							return token::SR;
 <normal>{LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];

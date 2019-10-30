@@ -31,11 +31,13 @@ AND			&&
 OR			\|\|
 NEW			new
 DM			->
+SR			::
 
 %%
 
 {NEW}							return token::NEW;
 {DM}							return token::DM;
+{SR}							return token::SR;
 {LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];

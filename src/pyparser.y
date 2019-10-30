@@ -27,7 +27,7 @@
 
 %token NEWLINE INDENT OUTDENT
 %token ELLIPSIS
-%token EQ NE LEQ GEQ NEW DM
+%token EQ NE LEQ GEQ NEW DM SR
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
@@ -47,6 +47,7 @@
 %left '*' '/' '%'
 %left NEW
 %left '.' CALL SUBSCRIPT TPLT DM
+%left SR
 %left ENC
 
 %%
@@ -116,6 +117,7 @@ expr
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
 	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
 	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
+	| expr SR id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::SR, "::", $1, $3); }
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }

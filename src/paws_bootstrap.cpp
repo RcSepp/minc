@@ -1577,69 +1577,6 @@ private:
 			}
 		);
 
-		// Define throw
-		defineStmt2(rootBlock, "throw $E<string>",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				Value* msgVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-
-				// Allocate expr = ExprAST*
-				Value* locExprVal = builder->CreateAlloca(Types::ExprAST);
-
-				// Set expr->loc.filename
-				builder->CreateStore(
-					createStringConstant(getExprFilename(params[0]), ""),
-					builder->CreateInBoundsGEP(locExprVal, {
-						ConstantInt::get(Types::Int64, 0),
-						ConstantInt::get(Types::Int32, 1),
-						ConstantInt::get(Types::Int32, 0),
-					}, "gep")
-				)->setAlignment(8);
-
-				// Set expr->loc.begin_line
-				builder->CreateStore(
-					ConstantInt::get(Types::Int32, getExprLine(params[0])),
-					builder->CreateInBoundsGEP(locExprVal, {
-						ConstantInt::get(Types::Int64, 0),
-						ConstantInt::get(Types::Int32, 1),
-						ConstantInt::get(Types::Int32, 1),
-					}, "gep")
-				)->setAlignment(8);
-
-				// Set expr->loc.begin_col
-				builder->CreateStore(
-					ConstantInt::get(Types::Int32, getExprColumn(params[0])),
-					builder->CreateInBoundsGEP(locExprVal, {
-						ConstantInt::get(Types::Int64, 0),
-						ConstantInt::get(Types::Int32, 1),
-						ConstantInt::get(Types::Int32, 2),
-					}, "gep")
-				)->setAlignment(8);
-
-				// Set expr->loc.end_line
-				builder->CreateStore(
-					ConstantInt::get(Types::Int32, getExprEndLine(params[0])),
-					builder->CreateInBoundsGEP(locExprVal, {
-						ConstantInt::get(Types::Int64, 0),
-						ConstantInt::get(Types::Int32, 1),
-						ConstantInt::get(Types::Int32, 3),
-					}, "gep")
-				)->setAlignment(8);
-
-				// Set expr->loc.end_col
-				builder->CreateStore(
-					ConstantInt::get(Types::Int32, getExprEndColumn(params[0])),
-					builder->CreateInBoundsGEP(locExprVal, {
-						ConstantInt::get(Types::Int64, 0),
-						ConstantInt::get(Types::Int32, 1),
-						ConstantInt::get(Types::Int32, 4),
-					}, "gep")
-				)->setAlignment(8);
-
-				Function* raiseCompileErrorFunc = MincFunctions::raiseCompileError->getFunction(currentModule);
-				builder->CreateCall(raiseCompileErrorFunc, { msgVal, locExprVal });
-			}
-		);
-
 		/*// Define subscript
 		defineExpr2(rootBlock, "$E[$E]",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

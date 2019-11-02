@@ -942,6 +942,19 @@ stmtdef $B {
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: Throw statement
+Template: throw $E<string>
+\* ---------------------------------------------------------------------------*/
+stmtdef throw $E<string> {
+	exprdef<long> long($E<ExprAST>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+
+	LLVMValueRef args[2];
+	args[0] = $0.codegen(parentBlock);
+	args[1] = LLVMEXBuildIntToPtr(LLVMConstInt(LLVMInt64Type(), long($0), 0), ExprAST.llvmtype, "");
+	LLVMEXBuildCall(raiseCompileError, args, 2, "");
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: Compile exception statement
 Template: throw CompileError($E<string>, $E<ExprAST>)
 \* ---------------------------------------------------------------------------*/

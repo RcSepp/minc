@@ -529,7 +529,7 @@ public:
 	char p1;
 	char* p2;
 	bool allowCast;
-	PlchldExprAST(const Location& loc, char p1) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), p2(nullptr) {}
+	PlchldExprAST(const Location& loc, char p1) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), p2(nullptr), allowCast(false) {}
 	PlchldExprAST(const Location& loc, const char* p2) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p2[0])
 	{
 		size_t p2len = strlen(++p2);

@@ -446,10 +446,6 @@ struct PawsBootstrap : public PawsPackage
 private:
 	void define(BlockExprAST* rootBlock)
 	{
-		// >>> Create LLVM-c extern functions
-
-		create_llvm_c_functions(*context, llvm_c_functions);
-
 		// >>> Create Minc extern functions
 
 		MincFunctions::resolveExprAST = new Func("resolveExprAST", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST }, false);
@@ -503,12 +499,11 @@ private:
 		defineType(rootBlock, "bool", BuiltinTypes::Builtin, BuiltinTypes::Int1);
 		defineType(rootBlock, "char", BuiltinTypes::Builtin, BuiltinTypes::Int8);
 		defineType(rootBlock, "int", BuiltinTypes::Builtin, BuiltinTypes::Int32);
+		defineType(rootBlock, "intPtr", BuiltinTypes::Builtin, BuiltinTypes::Int32Ptr);
 		defineType(rootBlock, "long", BuiltinTypes::Builtin, BuiltinTypes::Int64);
-		defineType(rootBlock, "half", BuiltinTypes::Builtin, BuiltinTypes::Half);
-		defineType(rootBlock, "float", BuiltinTypes::Builtin, BuiltinTypes::Float);
-		defineType(rootBlock, "double", BuiltinTypes::Builtin, BuiltinTypes::Double);
-		defineType(rootBlock, "doublePtr", BuiltinTypes::Builtin, BuiltinTypes::DoublePtr);
+		defineType(rootBlock, "longPtr", BuiltinTypes::Builtin, BuiltinTypes::Int64Ptr);
 		defineType(rootBlock, "string", BuiltinTypes::Builtin, BuiltinTypes::Int8Ptr);
+		defineType(rootBlock, "stringPtr", BuiltinTypes::Builtin, BuiltinTypes::Int8Ptr->Ptr());
 		defineType(rootBlock, "Location", BuiltinTypes::Builtin, BuiltinTypes::Location);
 		defineType(rootBlock, "ExprAST", BuiltinTypes::Builtin, BuiltinTypes::ExprAST);
 		defineType(rootBlock, "ExprASTPtr", BuiltinTypes::Builtin, BuiltinTypes::ExprAST->Ptr());
@@ -519,20 +514,39 @@ private:
 		defineType(rootBlock, "BlockExprAST", BuiltinTypes::Builtin, BuiltinTypes::BlockExprAST);
 		defineType(rootBlock, "LLVMValueRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMValueRef);
 		defineType(rootBlock, "LLVMValueRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMValueRef->Ptr());
+		defineType(rootBlock, "LLVMAttributeRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMAttributeRef);
+		defineType(rootBlock, "LLVMAttributeRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMAttributeRef->Ptr());
+		defineType(rootBlock, "LLVMAttributeRefPtrPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMAttributeRef->Ptr()->Ptr());
 		defineType(rootBlock, "LLVMBasicBlockRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMBasicBlockRef);
+		defineType(rootBlock, "LLVMBasicBlockRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMBasicBlockRef->Ptr());
+		defineType(rootBlock, "LLVMBuilderRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMBuilderRef);
+		defineType(rootBlock, "LLVMContextRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMContextRef);
+		defineType(rootBlock, "LLVMDiagnosticInfoRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMDiagnosticInfoRef);
+		defineType(rootBlock, "LLVMDIBuilderRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMDIBuilderRef);
+		defineType(rootBlock, "LLVMMemoryBufferRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMMemoryBufferRef);
+		defineType(rootBlock, "LLVMMemoryBufferRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMMemoryBufferRef->Ptr());
+		defineType(rootBlock, "LLVMNamedMDNodeRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMNamedMDNodeRef);
+		defineType(rootBlock, "LLVMPassManagerRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMPassManagerRef);
+		defineType(rootBlock, "LLVMPassRegistryRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMPassRegistryRef);
 		defineType(rootBlock, "LLVMTypeRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMTypeRef);
 		defineType(rootBlock, "LLVMTypeRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMTypeRef->Ptr());
 		defineType(rootBlock, "LLVMMetadataRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef);
 		defineType(rootBlock, "LLVMMetadataRefPtr", BuiltinTypes::Builtin, BuiltinTypes::LLVMMetadataRef->Ptr());
+		defineType(rootBlock, "LLVMModuleRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMModuleRef);
+		defineType(rootBlock, "LLVMModuleFlagEntryRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMModuleFlagEntryRef);
+		defineType(rootBlock, "LLVMModuleProviderRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMModuleProviderRef);
+		defineType(rootBlock, "LLVMUseRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMUseRef);
+		defineType(rootBlock, "LLVMValueMetadataEntryRef", BuiltinTypes::Builtin, BuiltinTypes::LLVMValueMetadataEntryRef);
 
 		defineType(rootBlock, "BuiltinValue", BuiltinTypes::Builtin, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int1, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int8, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int32, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int32Ptr, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int64, BuiltinTypes::BuiltinValue);
-		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Double, BuiltinTypes::BuiltinValue);
-		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int64Ptr, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int8Ptr->Ptr(), BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprListAST, BuiltinTypes::BuiltinValue);
@@ -542,15 +556,35 @@ private:
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::BlockExprAST, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMValueRef, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMValueRef->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMAttributeRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMAttributeRef->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMAttributeRef->Ptr()->Ptr(), BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMBasicBlockRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMBasicBlockRef->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMBuilderRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMContextRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMDiagnosticInfoRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMDIBuilderRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMemoryBufferRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMemoryBufferRef->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMNamedMDNodeRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMPassManagerRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMPassRegistryRef, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMTypeRef, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMTypeRef->Ptr(), BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMetadataRef, BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMetadataRef->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMModuleRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMModuleFlagEntryRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMModuleProviderRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMUseRef, BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMValueMetadataEntryRef, BuiltinTypes::BuiltinValue);
 
 		defineType(rootBlock, "BuiltinPtr", BuiltinTypes::Builtin, BuiltinTypes::BuiltinPtr);
-		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::DoublePtr, BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int8Ptr, BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int8Ptr->Ptr(), BuiltinTypes::BuiltinValue);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int32Ptr, BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::Int64Ptr, BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprAST, BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::ExprListAST, BuiltinTypes::BuiltinPtr);
@@ -559,7 +593,11 @@ private:
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::CastExprAST, BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::BlockExprAST, BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMValueRef->Ptr(), BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMemoryBufferRef->Ptr(), BuiltinTypes::BuiltinPtr);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMTypeRef->Ptr(), BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMAttributeRef->Ptr(), BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMAttributeRef->Ptr()->Ptr(), BuiltinTypes::BuiltinPtr);
+		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMBasicBlockRef->Ptr(), BuiltinTypes::BuiltinValue);
 		defineOpaqueInheritanceCast(rootBlock, BuiltinTypes::LLVMMetadataRef->Ptr(), BuiltinTypes::BuiltinPtr);
 
 		defineType(rootBlock, "BuiltinFunction", BuiltinTypes::Builtin, BuiltinTypes::BuiltinFunction);
@@ -571,6 +609,7 @@ private:
 
 		defScope = createEmptyBlockExprAST();
 		setBlockExprASTParent(defScope, rootBlock);
+		defineSymbol(rootBlock, "defScope", PawsBlockExprAST::TYPE, new PawsBlockExprAST(defScope));
 
 		// Define LLVM-c constants in define blocks
 		defineSymbol(defScope, "LLVMIntEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 32));
@@ -578,19 +617,13 @@ private:
 		defineSymbol(defScope, "LLVMRealOEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 1)); //TODO: Untested
 		defineSymbol(defScope, "LLVMRealONE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 6)); //TODO: Untested
 
-		// Declare LLVM-C extern functions in define blocks
-		for (Func& func: llvm_c_functions)
-		{
-			defineSymbol(defScope, func.name, func.type, &func);
-			defineOpaqueInheritanceCast(defScope, func.type, BuiltinTypes::BuiltinFunction);
-		}
-
 		// Define variable declaration statements in define blocks
 		defineStmt2(defScope, "$E<BuiltinType> $I", VarDeclStmt);
 		defineStmt2(defScope, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
 
 		pawsDefScope = createEmptyBlockExprAST();
 		setBlockExprASTParent(pawsDefScope, rootBlock);
+		defineSymbol(rootBlock, "pawsDefScope", PawsBlockExprAST::TYPE, new PawsBlockExprAST(pawsDefScope));
 
 		// Define LLVM-c constants in paws define blocks
 		defineSymbol(pawsDefScope, "LLVMIntEQ", PawsInt::TYPE, new PawsInt(32));
@@ -1075,6 +1108,9 @@ private:
 				const char* name = getIdExprASTName((IdExprAST*)params[1]);
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
+				if (metaType == getVoid().type || metaType == PawsVoid::TYPE)
+					raiseCompileError("cannot define void type", params[0]);
+
 				// Get block parameter types
 				std::vector<Variable> blockParams;
 
@@ -1092,7 +1128,10 @@ private:
 
 					defineType(name, type);
 					defineType(parentBlock, name, metaType, type);
+					return;
 				}
+
+				raiseCompileError("missing return statement in typedef block", (ExprAST*)blockAST);
 			}
 		);
 
@@ -1661,46 +1700,6 @@ private:
 			}
 		);
 
-		defineExpr2(rootBlock, "FuncType($E<string>, $E<int>, $E<BaseType>, $E<BaseType>, ...)",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				Value* nameVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-				Value* isVarArgVal = builder->CreateBitCast(((XXXValue*)codegenExpr(params[1], parentBlock).value)->val, Types::Int8);
-				Value* resultTypeVal = ((XXXValue*)codegenExpr(params[2], parentBlock).value)->val;
-				std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[3]);
-
-				const size_t numArgTypes = argTypeExprs.size();
-				AllocaInst* argTypes = builder->CreateAlloca(ArrayType::get(Types::BaseType->getPointerTo(), numArgTypes), nullptr, "argTypes");
-				argTypes->setAlignment(8);
-				for (size_t i = 0; i < numArgTypes; ++i)
-					builder->CreateStore(((XXXValue*)codegenExpr(argTypeExprs[i], parentBlock).value)->val, builder->CreateConstInBoundsGEP2_64(argTypes, 0, i));
-				Value* numArgTypesVal = Constant::getIntegerValue(Types::Int32, APInt(32, numArgTypes, true));
-				Value* argTypesVal = builder->CreateConstInBoundsGEP2_64(argTypes, 0, 0);
-
-				Function* func = MincFunctions::createFuncType->getFunction(currentModule);
-				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(builder->CreateCall(func, { nameVal, isVarArgVal, resultTypeVal, argTypesVal, numArgTypesVal })));
-			},
-			BuiltinTypes::LLVMValueRef
-		);
-
-		/*defineExpr2(rootBlock, "$E<BaseType>.llvmtype",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				Value* typeVal = codegenExpr(params[0], parentBlock).value->val;
-
-				//TODO
-			},
-			BuiltinTypes::LLVMTypeRef
-		);*/
-
-	defineExpr2(rootBlock, "getfunc($E)",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable expr = codegenExpr(params[0], parentBlock);
-			LLVMValueRef func = wrap(((XXXValue*)expr.value)->getFunction(currentModule));
-
-			return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(Constant::getIntegerValue(Types::LLVMOpaqueValue->getPointerTo(), APInt(64, (uint64_t)func))));
-		},
-		BuiltinTypes::LLVMValueRef
-	);
-
 		defineExpr3(rootBlock, "$E<ExprListAST>[$E<long>]",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				assert(ExprASTIsCast(params[0]));
@@ -1735,6 +1734,39 @@ private:
 				return listType->tpltType;
 			}
 		);
+
+// registerType<PawsType<BuiltinType*>>(rootBlock, "PawsBuiltinType");
+// defineExpr(rootBlock, "_BuiltinType($E<PawsString>, $E<PawsLLVMTypeRef>, $E<PawsInt>)",
+// 	+[](std::string name, LLVMTypeRef llvmtype, int align) -> BuiltinType* {
+// 		return BuiltinType::get(name.c_str(), llvmtype, align, 0, 0);
+// 	}
+// );
+defineExpr2(rootBlock, "_BuiltinType($E<PawsLLVMTypeRef>, $E<PawsInt>, $E<PawsInt>, $E<PawsInt>)",
+	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+		PawsType<LLVMTypeRef>* llvmtype = (PawsType<LLVMTypeRef>*)codegenExpr(params[0], parentBlock).value;
+		PawsInt* align = (PawsInt*)codegenExpr(params[1], parentBlock).value;
+		PawsInt* encoding = (PawsInt*)codegenExpr(params[2], parentBlock).value;
+		PawsInt* numbits = (PawsInt*)codegenExpr(params[3], parentBlock).value;
+		return Variable(BuiltinTypes::Builtin, (BaseValue*)new BuiltinType(llvmtype->val, align->val, encoding->val, numbits->val));
+	},
+	BuiltinTypes::Builtin
+);
+
+defineSymbol(rootBlock, "PawsBlockExprAST", PawsMetaType::TYPE, new PawsMetaType(PawsBlockExprAST::TYPE)); //DELETE
+defineStmt2(rootBlock, "$E<BuiltinType> $E<PawsBlockExprAST>::$I($E<BuiltinType>, ...)",
+	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+		BuiltinType* returnType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+		BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->val;
+		const char* funcName = getIdExprASTName((IdExprAST*)params[2]);
+		std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[3]);
+
+		std::vector<BuiltinType*> argTypes; argTypes.reserve(argTypeExprs.size());
+		for (ExprAST* argTypeExpr: argTypeExprs)
+			argTypes.push_back((BuiltinType*)codegenExpr(argTypeExpr, parentBlock).value->getConstantValue());
+
+		defineFunction(scope, funcName, returnType, argTypes.data(), argTypeExprs.size(), false);
+	}
+);
 
 		defineImportRule(BuiltinScopes::File, BuiltinScopes::File, BuiltinTypes::BuiltinValue,
 			[](Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope) -> void {

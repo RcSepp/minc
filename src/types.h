@@ -23,7 +23,7 @@ private:
 	static std::map<std::string, BuiltinType*> builtinTypes;
 	PtrType* ptr;
 
-protected:
+public: //protected:
 	BuiltinType(LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits)
 		: ptr(nullptr), llvmtype(llvmtype), align(align), encoding(encoding), numbits(numbits) {}
 

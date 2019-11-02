@@ -1,0 +1,9 @@
+
+@ACC_LLVM_EXTERN_FUNC_DEF@
+void defScope::LLVMEXPositionBuilder(LLVMBasicBlockRef);
+LLVMValueRef defScope::LLVMEXBuildInBoundsGEP1(LLVMValueRef, LLVMValueRef, string);
+LLVMValueRef defScope::LLVMEXBuildInBoundsGEP2(LLVMValueRef, LLVMValueRef, LLVMValueRef, string);
+LLVMValueRef defScope::LLVMEXConstInBoundsGEP1(LLVMValueRef, LLVMValueRef);
+LLVMValueRef defScope::LLVMEXConstInBoundsGEP2(LLVMValueRef, LLVMValueRef, LLVMValueRef);
+LLVMMetadataRef defScope::LLVMEXDIBuilderCreateExpression();
+LLVMMetadataRef defScope::LLVMEXDIBuilderCreateDebugLocation(int, int, LLVMMetadataRef);

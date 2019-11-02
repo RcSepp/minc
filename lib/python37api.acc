@@ -10,28 +10,28 @@ string malloc(long size);
 exprdef<BuiltinType> BuiltinType($E<string>, $E<LLVMTypeRef>, $E<int>) {
 	LLVMValueRef args[1];
 	args[0] = LLVMConstInt(LLVMInt64Type(), 32, 1);
-	LLVMValueRef t = LLVMBuildCall(malloc, args, 1, "");
+	LLVMValueRef t = LLVMEXBuildCall(malloc, args, 1, "");
 
-	t = LLVMBuildBitCast(t, LLVMPointerType(LLVMGetTypeByName("BuiltinType"), 0), "");
+	t = LLVMEXBuildBitCast(t, LLVMPointerType(LLVMEXGetTypeByName("BuiltinType"), 0), "");
 
-	LLVMValueRef ptr = LLVMBuildStructGEP(t, 1, "gep");
-	LLVMSetAlignment(LLVMBuildStore(LLVMConstNull(LLVMPointerType(LLVMVoidType(), 0)), ptr), 8);
+	LLVMValueRef ptr = LLVMEXBuildStructGEP(t, 1, "gep");
+	LLVMSetAlignment(LLVMEXBuildStore(LLVMConstNull(LLVMPointerType(LLVMVoidType(), 0)), ptr), 8);
 
-	LLVMValueRef llvmtype = LLVMBuildStructGEP(t, 2, "gep");
-	LLVMSetAlignment(LLVMBuildStore($1.codegen(parentBlock), llvmtype), 8);
+	LLVMValueRef llvmtype = LLVMEXBuildStructGEP(t, 2, "gep");
+	LLVMSetAlignment(LLVMEXBuildStore($1.codegen(parentBlock), llvmtype), 8);
 
-	LLVMValueRef align = LLVMBuildStructGEP(t, 3, "gep");
-	LLVMSetAlignment(LLVMBuildStore($2.codegen(parentBlock), align), 4);
+	LLVMValueRef align = LLVMEXBuildStructGEP(t, 3, "gep");
+	LLVMSetAlignment(LLVMEXBuildStore($2.codegen(parentBlock), align), 4);
 
 	return t;
 }
 typedef<BuiltinType> PyTypeObject {
-	LLVMTypeRef pytpeobjtype = LLVMStructCreateNamed(LLVMGetModuleContext(), "class.PyTypeObject");
+	LLVMTypeRef pytpeobjtype = LLVMStructCreateNamed(LLVMEXGetModuleContext(), "class.PyTypeObject");
 	return BuiltinType("PyTypeObject", LLVMPointerType(pytpeobjtype, 0), 8);
 }
 typedef<BuiltinType> PyObject {
-	LLVMTypeRef pyobjtype = LLVMStructCreateNamed(LLVMGetModuleContext(), "class.PyObject");
-	LLVMTypeRef pytpeobjtype = LLVMGetTypeByName("class.PyTypeObject");
+	LLVMTypeRef pyobjtype = LLVMStructCreateNamed(LLVMEXGetModuleContext(), "class.PyObject");
+	LLVMTypeRef pytpeobjtype = LLVMEXGetTypeByName("class.PyTypeObject");
 	LLVMTypeRef pyobjSubtypes[2];
 	pyobjSubtypes[0] = LLVMInt64Type();
 	pyobjSubtypes[1] = LLVMPointerType(pytpeobjtype, 0);
@@ -40,8 +40,8 @@ typedef<BuiltinType> PyObject {
 }
 inhtdef<BuiltinValue> $E<PyObject>;
 exprdef<PyTypeObject> $E<PyObject>.ob_type {
-	LLVMValueRef llvmtype = LLVMBuildStructGEP($0.codegen(parentBlock), 1, "gep");
-	llvmtype = LLVMBuildLoad(llvmtype, "ob_type");
+	LLVMValueRef llvmtype = LLVMEXBuildStructGEP($0.codegen(parentBlock), 1, "gep");
+	llvmtype = LLVMEXBuildLoad(llvmtype, "ob_type");
 	LLVMSetAlignment(llvmtype, 8);
 	return llvmtype;
 }
@@ -109,121 +109,121 @@ PyObject PyImport_ImportModuleLevel(string name, PyObject globals, PyObject loca
 
 exprdef<PyObject> $I<NULL!> = $E<PyObject> {
 	LLVMValueRef expr = $1.codegen(parentBlock);
-	LLVMValueRef obj = LLVMAddGlobal(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0), $0.name);
-	LLVMSetInitializer(obj, LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0)));
-	LLVMBuildStore(expr, obj);
+	LLVMValueRef obj = LLVMEXAddGlobal(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0), $0.name);
+	LLVMSetInitializer(obj, LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0)));
+	LLVMEXBuildStore(expr, obj);
 	addToScope(parentBlock, $0, PyObject, obj);
 	return expr;
 }
 exprdef<PyObject> $I<PyObject!> = $E<PyObject> {
 	LLVMValueRef expr = $1.codegen(parentBlock);
 	LLVMValueRef obj = ImportSymbol(parentBlock, $0);
-	LLVMBuildStore(expr, obj);
+	LLVMEXBuildStore(expr, obj);
 	return expr;
 }
 
 castdef<PyObject> $E<string> {
 	LLVMValueRef args[1];
 	args[0] = $0.codegen(parentBlock);
-	return LLVMBuildCall(PyUnicode_FromString, args, 1, "");
+	return LLVMEXBuildCall(PyUnicode_FromString, args, 1, "");
 }
 
 castdef<PyObject> $E<long> {
 	LLVMValueRef args[1];
 	args[0] = $0.codegen(parentBlock);
-	return LLVMBuildCall(PyLong_FromLong, args, 1, "");
+	return LLVMEXBuildCall(PyLong_FromLong, args, 1, "");
 }
 
 castdef<PyObject> $E<int> {
 	LLVMValueRef args[1];
-	args[0] = LLVMBuildSExt($0.codegen(parentBlock), LLVMInt64Type(), "");
-	return LLVMBuildCall(PyLong_FromLong, args, 1, "");
+	args[0] = LLVMEXBuildSExt($0.codegen(parentBlock), LLVMInt64Type(), "");
+	return LLVMEXBuildCall(PyLong_FromLong, args, 1, "");
 }
 
 castdef<long> $E<PyObject> {
 	LLVMValueRef args[1];
 	args[0] = $0.codegen(parentBlock);
-	return LLVMBuildCall(PyLong_AsLong, args, 1, "");
+	return LLVMEXBuildCall(PyLong_AsLong, args, 1, "");
 }
 castdef<int> $E<PyObject> {
 	LLVMValueRef args[1];
 	args[0] = $0.codegen(parentBlock);
-	return LLVMBuildTrunc(LLVMBuildCall(PyLong_AsLong, args, 1, ""), LLVMInt32Type(), "");
+	return LLVMEXBuildTrunc(LLVMEXBuildCall(PyLong_AsLong, args, 1, ""), LLVMInt32Type(), "");
 }
 
 exprdef<bool> $E<PyObject> == $E<PyObject> {
-	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
+	return LLVMEXBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<bool> $E<PyObject> != $E<PyObject> {
-	return LLVMBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
+	return LLVMEXBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
 exprdef<PyObject> $E<PyObject> + $E<PyObject> {
 	LLVMValueRef args[2];
 	args[0] = $0.codegen(parentBlock);
 	args[1] = $1.codegen(parentBlock);
-	return LLVMBuildCall(PyNumber_Add, args, 2, "");
+	return LLVMEXBuildCall(PyNumber_Add, args, 2, "");
 }
 
 exprdef<PyObject> $E<PyObject> - $E<PyObject> {
 	LLVMValueRef args[2];
 	args[0] = $0.codegen(parentBlock);
 	args[1] = $1.codegen(parentBlock);
-	return LLVMBuildCall(PyNumber_Subtract, args, 2, "");
+	return LLVMEXBuildCall(PyNumber_Subtract, args, 2, "");
 }
 
 exprdef<PyObject> $E<PyObject> * $E<PyObject> {
 	LLVMValueRef args[2];
 	args[0] = $0.codegen(parentBlock);
 	args[1] = $1.codegen(parentBlock);
-	return LLVMBuildCall(PyNumber_Multiply, args, 2, "");
+	return LLVMEXBuildCall(PyNumber_Multiply, args, 2, "");
 }
 
 exprdef<PyObject> $E<PyObject> / $E<PyObject> {
 	LLVMValueRef args[2];
 	args[0] = $0.codegen(parentBlock);
 	args[1] = $1.codegen(parentBlock);
-	return LLVMBuildCall(PyNumber_TrueDivide, args, 2, "");
+	return LLVMEXBuildCall(PyNumber_TrueDivide, args, 2, "");
 }
 
 stmtdef for $I in $E<PyObject> $B {
 	LLVMValueRef args[256]; //TODO
 
 	// Add iterator variable to block scope
-	LLVMValueRef iterVar = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0), $0.name);
+	LLVMValueRef iterVar = LLVMEXBuildAlloca(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0), $0.name);
 	addToScope($2, $0, PyObject, iterVar);
 
 	// // TODO: Check if iterated object is supports iterator protocol
 	// args[0] = $1.codegen(parentBlock);
-	// LLVMValueRef isIter = LLVMBuildCall(PyIter_Check, args, 1, "");
+	// LLVMValueRef isIter = LLVMEXBuildCall(PyIter_Check, args, 1, "");
 	// //TODO: Raise exception if isIter is false
 
 	// Get iterator
 	args[0] = $1.codegen(parentBlock);
-	LLVMValueRef iter = LLVMBuildCall(PyObject_GetIter, args, 1, "");
+	LLVMValueRef iter = LLVMEXBuildCall(PyObject_GetIter, args, 1, "");
 
 	// Create basic blocks
 	LLVMBasicBlockRef forCondBlock = LLVMAppendBasicBlock(function, "forCondBlock");
 	LLVMBasicBlockRef forBlock = LLVMAppendBasicBlock(function, "forBlock");
 	LLVMBasicBlockRef endForBlock = LLVMAppendBasicBlock(function, "endForBlock");
-	LLVMBuildBr(forCondBlock);
+	LLVMEXBuildBr(forCondBlock);
 
 	// Exit for loop if condition isn't met
-	LLVMPositionBuilder(forCondBlock);
+	LLVMEXPositionBuilder(forCondBlock);
 	args[0] = iter;
-	iter = LLVMBuildCall(PyIter_Next, args, 1, "");
-	LLVMValueRef forCond = LLVMBuildICmp(LLVMIntNE, iter, LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0)), "");
-	LLVMBuildCondBr(forCond, forBlock, endForBlock);
+	iter = LLVMEXBuildCall(PyIter_Next, args, 1, "");
+	LLVMValueRef forCond = LLVMEXBuildICmp(LLVMIntNE, iter, LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0)), "");
+	LLVMEXBuildCondBr(forCond, forBlock, endForBlock);
 
-	LLVMPositionBuilder(forBlock);
-	LLVMBuildStore(iter, iterVar); // Set iterator variable value
+	LLVMEXPositionBuilder(forBlock);
+	LLVMEXBuildStore(iter, iterVar); // Set iterator variable value
 	$2.codegen(parentBlock); // Codegen loop block
 
 	// Repeat for loop
-	LLVMBuildBr(forCondBlock);
+	LLVMEXBuildBr(forCondBlock);
 
-	LLVMPositionBuilder(endForBlock);
+	LLVMEXPositionBuilder(endForBlock);
 }
 
 PyObject in(PyObject obj, PyObject key) //TODO: Implement as expr $<PyObject> in $E<PyObject>
@@ -233,7 +233,7 @@ PyObject in(PyObject obj, PyObject key) //TODO: Implement as expr $<PyObject> in
 }
 
 exprdef<bool> IsNULL($E<PyObject>) {
-	return LLVMBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0)), "");
+	return LLVMEXBuildICmp(LLVMIntEQ, $0.codegen(parentBlock), LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0)), "");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -245,7 +245,7 @@ Template: $E<PyObject>($E<PyObject>, ...)
 
 	LLVMValueRef argsTupleArgs[1];
 	argsTupleArgs[0] = LLVMConstInt(LLVMInt64Type(), numArgs, 1);
-	LLVMValueRef argsTuple = LLVMBuildCall(PyTuple_New, argsTupleArgs, 1, "");
+	LLVMValueRef argsTuple = LLVMEXBuildCall(PyTuple_New, argsTupleArgs, 1, "");
 
 
 	LLVMValueRef setItemArgs[3];
@@ -254,13 +254,13 @@ Template: $E<PyObject>($E<PyObject>, ...)
 	{
 		setItemArgs[1] = LLVMConstInt(LLVMInt64Type(), i, 1);
 		setItemArgs[2] = $1[i].codegen(parentBlock);
-		LLVMBuildCall(PyTuple_SetItem, setItemArgs, 3, "");
+		LLVMEXBuildCall(PyTuple_SetItem, setItemArgs, 3, "");
 	}
 
 	LLVMValueRef callObjectArgs[2];
 	callObjectArgs[0] = $0.codegen(parentBlock);
 	callObjectArgs[1] = argsTuple;
-	return LLVMBuildCall(PyObject_CallObject, callObjectArgs, 2, "");
+	return LLVMEXBuildCall(PyObject_CallObject, callObjectArgs, 2, "");
 }*/
 exprdef<PyObject> $E<PyObject!>($E<PyObject>, ...) {
 	int numArgs = $1.size;
@@ -270,8 +270,8 @@ exprdef<PyObject> $E<PyObject!>($E<PyObject>, ...) {
 	{
 		args[i + 1] = $1[i].codegen(parentBlock);
 	}
-	args[numArgs + 1] = LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0));
-	return LLVMBuildCall(PyObject_CallFunctionObjArgs, args, numArgs + 2, "");
+	args[numArgs + 1] = LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0));
+	return LLVMEXBuildCall(PyObject_CallFunctionObjArgs, args, numArgs + 2, "");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -280,20 +280,19 @@ Template: $E<PyObject>.$I
 \* ---------------------------------------------------------------------------*/
 exprdef<PyObject> $E<PyObject>.$I {
 	long strlen(string str);
-	LLVMValueRef glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($1.name)), "string");
+	LLVMValueRef glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($1.name)), "string");
 	LLVMSetLinkage(glob, 8);
 	LLVMSetGlobalConstant(glob, 1);
 	LLVMSetInitializer(glob, LLVMConstString($1.name, strlen($1.name), 0));
 
-	LLVMValueRef obj = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0), "");
 	LLVMValueRef args[2];
 	args[0] = $0.codegen(parentBlock);
-	args[1] = LLVMConstInBoundsGEP2(
+	args[1] = LLVMEXConstInBoundsGEP2(
 		glob,
 		LLVMConstInt(LLVMInt64Type(), 0, 0),
 		LLVMConstInt(LLVMInt64Type(), 0, 0)
 	);
-	return LLVMBuildCall(PyObject_GetAttrString, args, 2, "");
+	return LLVMEXBuildCall(PyObject_GetAttrString, args, 2, "");
 }
 
 /* ---------------------------------------------------------------------------*\
@@ -302,19 +301,19 @@ Template: import $I
 \* ---------------------------------------------------------------------------*/
 stmtdef import $I {
 	long strlen(string str);
-	LLVMValueRef glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($0.name)), "string");
+	LLVMValueRef glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($0.name)), "string");
 	LLVMSetLinkage(glob, 8);
 	LLVMSetGlobalConstant(glob, 1);
 	LLVMSetInitializer(glob, LLVMConstString($0.name, strlen($0.name), 0));
 
-	LLVMValueRef obj = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0), "");
+	LLVMValueRef obj = LLVMEXBuildAlloca(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0), "");
 	LLVMValueRef args[1];
-	args[0] = LLVMConstInBoundsGEP2(
+	args[0] = LLVMEXConstInBoundsGEP2(
 		glob,
 		LLVMConstInt(LLVMInt64Type(), 0, 0),
 		LLVMConstInt(LLVMInt64Type(), 0, 0)
 	);
-	LLVMBuildStore(LLVMBuildCall(PyImport_ImportModule, args, 1, ""), obj);
+	LLVMEXBuildStore(LLVMEXBuildCall(PyImport_ImportModule, args, 1, ""), obj);
 	addToScope(parentBlock, $0, PyObject, obj);
 }
 
@@ -329,63 +328,63 @@ stmtdef from $I import [$I, ...] {
 	// Create Python list fromList
 	int fromListSize = $1.size;
 	args[0] = LLVMConstInt(LLVMInt64Type(), fromListSize, 1);
-	LLVMValueRef fromList = LLVMBuildCall(PyList_New, args, 1, "");
+	LLVMValueRef fromList = LLVMEXBuildCall(PyList_New, args, 1, "");
 
 	// Fill Python list fromList with Python strings of all ids in $1
 	args[0] = fromList;
 	for (int i = 0; i != fromListSize; i = i + 1)
 	{
-		LLVMValueRef glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($1[i].name)), "string");
+		LLVMValueRef glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($1[i].name)), "string");
 		LLVMSetLinkage(glob, 8);
 		LLVMSetGlobalConstant(glob, 1);
 		LLVMSetInitializer(glob, LLVMConstString($1[i].name, strlen($1[i].name), 0));
 
 		LLVMValueRef pyUnicodeArgs[1];
-		pyUnicodeArgs[0] = LLVMConstInBoundsGEP2(
+		pyUnicodeArgs[0] = LLVMEXConstInBoundsGEP2(
 			glob,
 			LLVMConstInt(LLVMInt64Type(), 0, 0),
 			LLVMConstInt(LLVMInt64Type(), 0, 0)
 		);
 
 		args[1] = LLVMConstInt(LLVMInt64Type(), i, 1);
-		args[2] = LLVMBuildCall(PyUnicode_FromString, pyUnicodeArgs, 1, "");
-		LLVMBuildCall(PyList_SetItem, args, 3, "");
+		args[2] = LLVMEXBuildCall(PyUnicode_FromString, pyUnicodeArgs, 1, "");
+		LLVMEXBuildCall(PyList_SetItem, args, 3, "");
 	}
 
 	// Import fromList from module $0.name
-	LLVMValueRef glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($0.name)), "string");
+	LLVMValueRef glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen($0.name)), "string");
 	LLVMSetLinkage(glob, 8);
 	LLVMSetGlobalConstant(glob, 1);
 	LLVMSetInitializer(glob, LLVMConstString($0.name, strlen($0.name), 0));
 
-	args[0] = LLVMConstInBoundsGEP2(
+	args[0] = LLVMEXConstInBoundsGEP2(
 		glob,
 		LLVMConstInt(LLVMInt64Type(), 0, 0),
 		LLVMConstInt(LLVMInt64Type(), 0, 0)
 	);
-	args[1] = LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0));
-	args[2] = LLVMConstNull(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0));
+	args[1] = LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0));
+	args[2] = LLVMConstNull(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0));
 	args[3] = fromList;
 	args[4] = LLVMConstNull(LLVMInt32Type());
-	LLVMValueRef module = LLVMBuildCall(PyImport_ImportModuleLevel, args, 5, "");
+	LLVMValueRef module = LLVMEXBuildCall(PyImport_ImportModuleLevel, args, 5, "");
 
 	// Define symbols for each object in fromList
 	args[0] = module;
 	for (int i = 0; i != fromListSize; i = i + 1)
 	{
 		IdExprAST fromExpr = $1[i];
-		LLVMValueRef glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen(fromExpr.name)), "string");
+		LLVMValueRef glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), strlen(fromExpr.name)), "string");
 		LLVMSetLinkage(glob, 8);
 		LLVMSetGlobalConstant(glob, 1);
 		LLVMSetInitializer(glob, LLVMConstString(fromExpr.name, strlen(fromExpr.name), 0));
 
-		args[1] = LLVMConstInBoundsGEP2(
+		args[1] = LLVMEXConstInBoundsGEP2(
 			glob,
 			LLVMConstInt(LLVMInt64Type(), 0, 0),
 			LLVMConstInt(LLVMInt64Type(), 0, 0)
 		);
-		LLVMValueRef obj = LLVMBuildAlloca(LLVMPointerType(LLVMGetTypeByName("class.PyObject"), 0), "");
-		LLVMBuildStore(LLVMBuildCall(PyObject_GetAttrString, args, 2, ""), obj);
+		LLVMValueRef obj = LLVMEXBuildAlloca(LLVMPointerType(LLVMEXGetTypeByName("class.PyObject"), 0), "");
+		LLVMEXBuildStore(LLVMEXBuildCall(PyObject_GetAttrString, args, 2, ""), obj);
 		AddToScope(parentBlock, fromExpr, PyObject, obj);
 	}
 }

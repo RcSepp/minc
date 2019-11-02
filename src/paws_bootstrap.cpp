@@ -1503,20 +1503,6 @@ private:
 			}
 		);
 
-		// Define gettype($E<ExprAST>, $E<BlockExprAST>)
-		defineExpr2(rootBlock, "gettype($E<ExprAST>, $E<BlockExprAST>)",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				Value* exprVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-				Value* parentBlockVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
-
-				Function* func = MincFunctions::getType->getFunction(currentModule);
-				Value* resultVal = builder->CreateCall(func, { exprVal, parentBlockVal }); // resultVal = getType(exprVal, parentBlockVal)
-				resultVal = builder->CreateBitCast(resultVal, Types::BuiltinType); // resultVal = (BuiltinType*)resultVal //TODO: Return BaseType instead of BuiltinType
-				return Variable(BuiltinTypes::/*Base*/Builtin, new XXXValue(resultVal)); //TODO: Return BaseType instead of BuiltinType
-			},
-			BuiltinTypes::/*Base*/Builtin //TODO: Return BaseType instead of BuiltinType
-		);
-
 		// Define addToScope()
 		defineExpr2(rootBlock, "addToScope($E<BlockExprAST>, $E<IdExprAST>, $E<BaseType>, $E)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

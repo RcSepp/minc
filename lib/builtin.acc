@@ -942,6 +942,18 @@ stmtdef $B {
 }
 
 /* ---------------------------------------------------------------------------*\
+Name: Type lookup
+Template: gettype($E<ExprAST>, $E<BlockExprAST>)
+TODO: Return BaseType instead of BuiltinType
+\* ---------------------------------------------------------------------------*/
+exprdef<BuiltinType> gettype($E<ExprAST>, $E<BlockExprAST>) {
+	LLVMValueRef args[2];
+	args[0] = $0.codegen(parentBlock);
+	args[1] = $1.codegen(parentBlock);
+	return LLVMEXBuildBitCast(LLVMEXBuildCall(getType, args, 2, ""), BuiltinType.llvmtype, "");
+}
+
+/* ---------------------------------------------------------------------------*\
 Name: Throw statement
 Template: throw $E<string>
 \* ---------------------------------------------------------------------------*/

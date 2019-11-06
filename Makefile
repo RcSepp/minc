@@ -13,6 +13,7 @@ OBJS = \
 	paws_castreg.o \
 	paws_stmtreg.o \
 	paws_subroutine.o \
+	paws_array.o \
 	paws_bootstrap.o \
 	paws_pkgmgr.o \
 	codegen.o \

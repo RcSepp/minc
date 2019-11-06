@@ -19,6 +19,18 @@ exprdef<void> $I = $E {
 	return LLVMConstNull(LLVMVoidType());
 }
 
+paws_exprdef<void> addToScope($E<BlockExprAST>, $E<IdExprAST>, $E<BaseType>, $E<LLVMValueRef>) {
+	import paws.array;
+	args = [
+		$0.codegen(parentBlock),
+		$1.codegen(parentBlock),
+		$2.codegen(parentBlock),
+		$3.codegen(parentBlock)
+	];
+	LLVMBuildCall(AddToScope, args, 4, "");
+	return LLVMConstNull(LLVMVoidType());
+}
+
 
 /* ---------------------------------------------------------------------------*\
 |                                                                              |

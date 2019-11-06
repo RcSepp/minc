@@ -64,10 +64,8 @@ namespace MincFunctions
 	Func* getType;
 	//Func* defineStmt;
 	Func* getValueFunction;
-	Func* createFuncType;
 	Func* cppNew;
 	Func* raiseCompileError;
-	Func* defineFunction;
 }
 
 extern "C"
@@ -116,19 +114,12 @@ extern "C"
 		return value->getFunction(currentModule);
 	}
 
-	BaseType* createFuncType(const char* name, bool isVarArg, BaseType* resultType, BaseType** argTypes, int numArgTypes)
-	{
-		std::vector<BuiltinType*> builtinArgTypes;
-		for (int i = 0; i < numArgTypes; ++i)
-			builtinArgTypes.push_back((BuiltinType*)argTypes[i]);
-		return new FuncType(name, (BuiltinType*)resultType, builtinArgTypes, isVarArg);
-	}
-
 	Func* defineFunction(BlockExprAST* scope, const char* name, BuiltinType* resultType, BuiltinType** argTypes, size_t numArgTypes, bool isVarArg)
 	{
 		Func* func = new Func(name, resultType, std::vector<BuiltinType*>(argTypes, argTypes + numArgTypes), isVarArg);
 		defineSymbol(scope, name, func->type, func);
-		defineTypeCast2(scope, func->type, BuiltinTypes::LLVMValueRef,
+		defineOpaqueInheritanceCast(scope, func->type, BuiltinTypes::BuiltinFunction);
+		defineTypeCast2(defScope, func->type, BuiltinTypes::LLVMValueRef,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				Value* funcVal = Constant::getIntegerValue(Types::Func->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
 
@@ -137,7 +128,14 @@ extern "C"
 				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 			}
 		);
-		defineOpaqueInheritanceCast(scope, func->type, BuiltinTypes::BuiltinFunction);
+		defineTypeCast2(pawsDefScope, func->type, PawsType<LLVMValueRef>::TYPE,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+				Variable funcVar = codegenExpr(params[0], parentBlock);
+				FuncType* funcType = (FuncType*)funcVar.type;
+				Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
+				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(func)));
+			}
+		);
 	}
 }
 
@@ -474,10 +472,8 @@ private:
 		MincFunctions::getType = new Func("getType", BuiltinTypes::Base, { BuiltinTypes::ExprAST, BuiltinTypes::BlockExprAST }, false);
 		//MincFunctions::defineStmt = new Func("DefineStatement", BuiltinTypes::Void, { BuiltinTypes::BlockExprAST, BuiltinTypes::ExprAST->Ptr(), BuiltinTypes::Int32, TODO, BuiltinTypes::Int8Ptr }, false);
 		MincFunctions::getValueFunction = new Func("getValueFunction", BuiltinTypes::LLVMValueRef, { BuiltinTypes::Func }, false);
-		MincFunctions::createFuncType = new Func("createFuncType", BuiltinTypes::Base, { BuiltinTypes::Int8Ptr, BuiltinTypes::Int8, BuiltinTypes::Base, BuiltinTypes::Base->Ptr(), BuiltinTypes::Int32 }, false);
 		MincFunctions::cppNew = new Func("_Znwm", BuiltinTypes::Int8Ptr, { BuiltinTypes::Int64 }, false); //TODO: Replace hardcoded "_Znwm" with mangled "new"
 		MincFunctions::raiseCompileError = new Func("raiseCompileError", BuiltinTypes::Void, { BuiltinTypes::Int8Ptr, BuiltinTypes::ExprAST }, false);
-		MincFunctions::defineFunction = new Func("defineFunction", BuiltinTypes::Builtin, { BuiltinTypes::BlockExprAST, BuiltinTypes::Int8Ptr, BuiltinTypes::Builtin, BuiltinTypes::Builtin->Ptr(), BuiltinTypes::Int64, BuiltinTypes::Int1 }, false);
 
 
 		BuiltinScopes::File = FILE_SCOPE_TYPE;
@@ -650,6 +646,21 @@ private:
 			PawsType<LLVMValueRef>::TYPE
 		);
 
+		// Cast arrays of PawsType<LLVMValueRef> to PawsType<LLVMValueRef*> in paws define blocks
+defineSymbol(pawsDefScope, "PawsBase", PawsMetaType::TYPE, new PawsMetaType(PawsBase::TYPE)); //DELETE
+defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsInt::TYPE)); //DELETE
+		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "array");
+		defineTypeCast2(pawsDefScope, PawsTpltType::get(PawsType<std::vector<BaseValue*>>::TYPE, PawsType<LLVMValueRef>::TYPE), PawsType<LLVMValueRef*>::TYPE,
+			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+				std::vector<BaseValue*>& arr = ((PawsType<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->val;
+				LLVMValueRef* values = new LLVMValueRef[arr.size()];
+				for (size_t i = 0; i < arr.size(); ++i)
+					values[i] = ((PawsType<LLVMValueRef>*)arr[i])->val;
+				return Variable(PawsType<LLVMValueRef*>::TYPE, new PawsType<LLVMValueRef*>(values));
+			},
+			PawsType<LLVMValueRef*>::TYPE
+		);
+
 		// Define Minc extern functions
 		for (Func* func: {
 			MincFunctions::resolveExprAST,
@@ -668,12 +679,13 @@ private:
 			MincFunctions::lookupSymbol,
 			MincFunctions::importSymbol,
 			MincFunctions::lookupScopeType,
+			MincFunctions::getType,
 			MincFunctions::raiseCompileError,
-			MincFunctions::defineFunction,
 		})
 		{
 			defineSymbol(rootBlock, func->name, func->type, func);
-			defineTypeCast2(rootBlock, func->type, BuiltinTypes::LLVMValueRef,
+			defineOpaqueInheritanceCast(rootBlock, func->type, BuiltinTypes::BuiltinFunction);
+			defineTypeCast2(defScope, func->type, BuiltinTypes::LLVMValueRef,
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 					Value* funcVal = Constant::getIntegerValue(Types::Func->getPointerTo(), APInt(64, (uint64_t)codegenExpr(params[0], parentBlock).value, true));
 
@@ -682,7 +694,14 @@ private:
 					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 				}
 			);
-			defineOpaqueInheritanceCast(rootBlock, func->type, BuiltinTypes::BuiltinFunction);
+			defineTypeCast2(pawsDefScope, func->type, PawsType<LLVMValueRef>::TYPE,
+				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+					Variable funcVar = codegenExpr(params[0], parentBlock);
+					FuncType* funcType = (FuncType*)funcVar.type;
+					Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
+					return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(func)));
+				}
+			);
 		}
 
 		// Define function call
@@ -1501,28 +1520,6 @@ private:
 				assert(exprType != 0); //TODO: Non-template builtin types don't resolve to 0!
 				return exprType->tpltType;
 			}
-		);
-
-		// Define addToScope()
-		defineExpr2(rootBlock, "addToScope($E<BlockExprAST>, $E<IdExprAST>, $E<BaseType>, $E)",
-			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-				Value* parentBlockVal = ((XXXValue*)codegenExpr(params[0], parentBlock).value)->val;
-				Value* nameVal; //= ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
-				Value* typeVal = ((XXXValue*)codegenExpr(params[2], parentBlock).value)->val;
-				Value* valVal = ((XXXValue*)codegenExpr(params[3], parentBlock).value)->val;
-
-				if (ExprASTIsParam(params[1]))
-					nameVal = ((XXXValue*)codegenExpr(params[1], parentBlock).value)->val;
-				else if (ExprASTIsId(params[1]))
-					nameVal = builder->CreateBitCast(ConstantInt::get(*context, APInt(64, (uint64_t)params[1], true)), Types::ExprAST->getPointerTo());
-				else
-					assert(0);
-
-				Function* addToScopeFunc = MincFunctions::addToScope->getFunction(currentModule);
-				Value* resultVal = builder->CreateCall(addToScopeFunc, { parentBlockVal, nameVal, typeVal, valVal });
-				return Variable(nullptr, new XXXValue(Constant::getNullValue(Type::getVoidTy(*context)->getPointerTo())));
-			},
-			nullptr
 		);
 
 		// Define gettype()

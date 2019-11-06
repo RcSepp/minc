@@ -403,7 +403,8 @@ const std::pair<const ExprListAST, CodegenContext*>* BlockExprAST::lookupStateme
 {
 //TODO: Figure out logic for looking up expressions ahead of looking up statements
 for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
-	(*exprIter)->resolveTypes(const_cast<BlockExprAST*>(this));
+	if ((*exprIter)->resolvedContext == nullptr)
+		(*exprIter)->resolveTypes(const_cast<BlockExprAST*>(this));
 
 #ifdef DEBUG_STMTREG
 	std::vector<ExprAST*> _exprs;

@@ -126,7 +126,4 @@ namespace BuiltinTypes
 	extern BuiltinType* StmtAST;
 };
 
-void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm_c_constants);
-void create_llvm_c_functions(LLVMContext& c, std::list<Func>& llvm_c_functions);
-
 #endif

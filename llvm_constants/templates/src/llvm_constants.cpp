@@ -135,24 +135,6 @@ namespace BuiltinTypes
 	BuiltinType* StmtAST;
 };
 
-void create_llvm_c_constants(LLVMContext& c, std::map<std::string, Value*>& llvm_c_constants)
-{
-	llvm_c_constants["LLVMIntEQ"] = Constant::getIntegerValue(Types::Int32, APInt(32, 32, true));
-	llvm_c_constants["LLVMIntNE"] = Constant::getIntegerValue(Types::Int32, APInt(32, 33, true));
-}
-
-void create_llvm_c_functions(LLVMContext& c, std::list<Func>& llvm_c_functions)
-{
-@	LLVM_EXTERN_FUNC_DEF@
-	llvm_c_functions.push_back(Func("LLVMPositionBuilder", BuiltinTypes::Void, { BuiltinTypes::LLVMBasicBlockRef }, false, "LLVMEXPositionBuilder"));
-	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP1"));
-	llvm_c_functions.push_back(Func("LLVMBuildInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::Int8Ptr }, false, "LLVMEXBuildInBoundsGEP2"));
-	llvm_c_functions.push_back(Func("LLVMConstInBoundsGEP1", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef }, false, "LLVMEXConstInBoundsGEP1"));
-	llvm_c_functions.push_back(Func("LLVMConstInBoundsGEP2", BuiltinTypes::LLVMValueRef, { BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef, BuiltinTypes::LLVMValueRef }, false, "LLVMEXConstInBoundsGEP2"));
-	llvm_c_functions.push_back(Func("LLVMDIBuilderCreateExpression", BuiltinTypes::LLVMMetadataRef, { }, false, "LLVMEXDIBuilderCreateExpression"));
-	llvm_c_functions.push_back(Func("LLVMDIBuilderCreateDebugLocation", BuiltinTypes::LLVMMetadataRef, { BuiltinTypes::Int32, BuiltinTypes::Int32, BuiltinTypes::LLVMMetadataRef }, false, "LLVMEXDIBuilderCreateDebugLocation"));
-}
-
 extern "C"
 {
 @	MODIFIED_LLVM_EXTERN_FUNC_DEF@

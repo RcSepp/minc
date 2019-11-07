@@ -155,7 +155,7 @@ public:
 };
 
 // Templated version of defineStmt2():
-// defineStmt() codegen's all inputs and wraps the output in a Variable
+// defineStmt() codegen's all inputs
 void defineStmt(BlockExprAST* scope, const char* tpltStr, void (*stmtFunc)());
 template<class P0> void defineStmt(BlockExprAST* scope, const char* tpltStr, void (*stmtFunc)(P0))
 {
@@ -606,7 +606,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 }
 
 // Templated version of defineExpr3():
-// defineExpr() codegen's all inputs
+// defineExpr() codegen's all inputs and wraps the output in a Variable
 void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(), BaseType* (*exprTypeFunc)());
 template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0), BaseType* (*exprTypeFunc)(BaseType*))
 {
@@ -661,6 +661,46 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1, p2);
 	};
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+}
+
+// Templated version of defineTypeCast2():
+// defineTypeCast() codegen's all inputs and wraps the output in a Variable
+template<class R, class P0> void defineTypeCast(BlockExprAST* scope, R (*exprFunc)(P0))
+{
+	using CastFunc = R (*)(P0);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+		if (params.size() != 1)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(CastFunc*)castArgs)(p0->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->val)));
+	};
+	defineTypeCast2(scope, PawsType<P0>::TYPE, PawsType<R>::TYPE, codeBlock, new CastFunc(exprFunc));
+}
+
+// Templated version of defineInheritanceCast2():
+// defineInheritanceCast() codegen's all inputs and wraps the output in a Variable
+template<class R, class P0> void defineInheritanceCast(BlockExprAST* scope, R (*exprFunc)(P0))
+{
+	using CastFunc = R (*)(P0);
+	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
+		if (params.size() != 1)
+			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
+		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
+		if constexpr (std::is_void<R>::value)
+		{
+			(*(CastFunc*)castArgs)(p0->val);
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->val)));
+	};
+	defineInheritanceCast2(scope, PawsType<P0>::TYPE, PawsType<R>::TYPE, codeBlock, new CastFunc(exprFunc));
 }
 
 #endif

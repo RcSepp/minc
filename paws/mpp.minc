@@ -1,4 +1,5 @@
 import paws.stmtreg;
+import paws.time;
 
 APP_NAME = "minc";
 HELP_MESSAGE = "minc compiler\n";
@@ -53,11 +54,13 @@ if (rootBlock == NULL)
 // Compile AST
 initCompiler();
 module = createModule(realPath, "main", outputDebugSymbols);
-rootBlock.scopeType = FILE_SCOPE_TYPE;
-rootBlock.import(paws.bootstrap);
-rootBlock.symbols[FILE_SCOPE] = rootBlock;
-rootBlock.codegen(FILE_SCOPE);
-module.finalize();
+measure("compile time") {
+	rootBlock.scopeType = FILE_SCOPE_TYPE;
+	rootBlock.import(paws.bootstrap);
+	rootBlock.symbols[FILE_SCOPE] = rootBlock;
+	rootBlock.codegen(FILE_SCOPE);
+	module.finalize();
+}
 
 // Execute command
 if (command == "parse" || command == "debug")
@@ -78,6 +81,7 @@ if (command == "build")
 }
 if (command == "run" || command == "debug")
 {
-	result = module.run();
-	print("./minc Result: " + str(result));
+	measure("run time")
+		result = module.run();
+	print("exit code: " + str(result));
 }

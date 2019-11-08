@@ -12,9 +12,9 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			std::vector<ExprAST*>& values = getExprListASTExpressions((ExprListAST*)params[0]);
 			PawsArray* arr = new PawsArray(std::vector<BaseValue*>());
-			arr->val.reserve(values.size());
+			arr->get().reserve(values.size());
 			for (ExprAST* value: values)
-				arr->val.push_back(codegenExpr(value, parentBlock).value);
+				arr->get().push_back(codegenExpr(value, parentBlock).value);
 			return Variable(PawsTpltType::get(PawsArray::TYPE, getType(getDerivedExprAST(values[0]), parentBlock)), arr);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -35,7 +35,7 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			BaseType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
 			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
-			return Variable(valueType, arr->val[idx->val]);
+			return Variable(valueType, arr->get()[idx->get()]);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
@@ -70,7 +70,7 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 			}
 
 			BaseValue* value = codegenExpr(valueExpr, parentBlock).value;
-			arr->val[idx->val] = value;
+			arr->get()[idx->get()] = value;
 
 			return Variable(valueType, value);
 		},

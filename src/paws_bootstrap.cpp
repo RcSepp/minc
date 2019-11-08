@@ -432,7 +432,7 @@ public:
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		// Wrap result of PawsCodegenContext::codegen() into an XXXValue
-		Value* llvmValue = unwrap(((PawsType<LLVMValueRef>*)PawsCodegenContext::codegen(parentBlock, params).value)->val);
+		Value* llvmValue = unwrap(((PawsType<LLVMValueRef>*)PawsCodegenContext::codegen(parentBlock, params).value)->get());
 		return Variable(type, new XXXValue(llvmValue));
 	}
 };
@@ -652,10 +652,10 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "array");
 		defineTypeCast2(pawsDefScope, PawsTpltType::get(PawsType<std::vector<BaseValue*>>::TYPE, PawsType<LLVMValueRef>::TYPE), PawsType<LLVMValueRef*>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
-				std::vector<BaseValue*>& arr = ((PawsType<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->val;
+				std::vector<BaseValue*>& arr = ((PawsType<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->get();
 				LLVMValueRef* values = new LLVMValueRef[arr.size()];
 				for (size_t i = 0; i < arr.size(); ++i)
-					values[i] = ((PawsType<LLVMValueRef>*)arr[i])->val;
+					values[i] = ((PawsType<LLVMValueRef>*)arr[i])->get();
 				return Variable(PawsType<LLVMValueRef*>::TYPE, new PawsType<LLVMValueRef*>(values));
 			},
 			PawsType<LLVMValueRef*>::TYPE
@@ -1090,7 +1090,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		defineStmt2(rootBlock, "paws_castdef<$I> $E<PawsMetaType> $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
-				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
+				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 				// Get block parameter types
@@ -1107,7 +1107,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		defineStmt2(rootBlock, "paws_inhtdef<$I> $E<PawsMetaType> $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
-				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
+				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 				// Get block parameter types
@@ -1667,7 +1667,7 @@ defineExpr2(rootBlock, "_BuiltinType($E<PawsLLVMTypeRef>, $E<PawsInt>, $E<PawsIn
 		PawsInt* align = (PawsInt*)codegenExpr(params[1], parentBlock).value;
 		PawsInt* encoding = (PawsInt*)codegenExpr(params[2], parentBlock).value;
 		PawsInt* numbits = (PawsInt*)codegenExpr(params[3], parentBlock).value;
-		return Variable(BuiltinTypes::Builtin, (BaseValue*)new BuiltinType(llvmtype->val, align->val, encoding->val, numbits->val));
+		return Variable(BuiltinTypes::Builtin, (BaseValue*)new BuiltinType(llvmtype->get(), align->get(), encoding->get(), numbits->get()));
 	},
 	BuiltinTypes::Builtin
 );
@@ -1676,7 +1676,7 @@ defineSymbol(rootBlock, "PawsBlockExprAST", PawsMetaType::TYPE, new PawsMetaType
 defineStmt2(rootBlock, "$E<BuiltinType> $E<PawsBlockExprAST>::$I($E<BuiltinType>, ...)",
 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 		BuiltinType* returnType = (BuiltinType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
-		BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->val;
+		BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->get();
 		const char* funcName = getIdExprASTName((IdExprAST*)params[2]);
 		std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[3]);
 

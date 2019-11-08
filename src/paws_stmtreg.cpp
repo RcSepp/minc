@@ -49,8 +49,8 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			PawsType<const ExprListAST*> key, value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprListAST*>::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprListAST*>::TYPE, &value);
-			iterateBlockExprASTStmts(stmts->val, [&](const ExprListAST* tplt, const CodegenContext* stmt) {
-				key.val = tplt;
+			iterateBlockExprASTStmts(stmts->get(), [&](const ExprListAST* tplt, const CodegenContext* stmt) {
+				key.set(tplt);
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
 		}
@@ -58,7 +58,7 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 
 	defineStmt2(pkgScope, "$E<PawsStmtMap>[$E ...] = $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->val;
+			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = stmts;
 			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[1]);
 			BlockExprAST* blockAST = (BlockExprAST*)params[2];
@@ -92,15 +92,15 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			PawsType<const ExprAST*> key, value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprAST*>::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprAST*>::TYPE, &value);
-			iterateBlockExprASTExprs(exprs->val, [&](const ExprAST* tplt, const CodegenContext* expr) {
-				key.val = tplt;
+			iterateBlockExprASTExprs(exprs->get(), [&](const ExprAST* tplt, const CodegenContext* expr) {
+				key.set(tplt);
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
 		}
 	);
 	defineStmt2(pkgScope, "$E<PawsExprMap>[$E] = <$I> $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			ExprMap const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->val;
+			ExprMap const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = exprs;
 			ExprAST* exprParamAST = params[1];
 			BaseType* exprType = (BaseType*)codegenExpr(params[2], parentBlock).value->getConstantValue();
@@ -136,16 +136,16 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			PawsVariable value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsString::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsVariable::TYPE, &value);
-			iterateBlockExprASTSymbols(symbols->val, [&](const std::string& name, const Variable& symbol) {
-				key.val = name;
-				value.val = symbol;
+			iterateBlockExprASTSymbols(symbols->get(), [&](const std::string& name, const Variable& symbol) {
+				key.set(name);
+				value.set(symbol);
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
 		}
 	);
 	defineStmt2(pkgScope, "$E<PawsSymbolMap>[$I] = $E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			SymbolMap const symbols = ((PawsSymbolMap*)codegenExpr(params[0], parentBlock).value)->val;
+			SymbolMap const symbols = ((PawsSymbolMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = symbols;
 			IdExprAST* symbolNameAST = (IdExprAST*)params[1];
 			const Variable& symbol = codegenExpr(params[2], parentBlock);

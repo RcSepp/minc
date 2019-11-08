@@ -44,7 +44,7 @@ PawsPackage PAWS_TIME("time", [](BlockExprAST* pkgScope) {
 	// Define function to print measured runtime
 	defineStmt2(pkgScope, "measure($E<PawsString>) $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			const std::string& taskName = ((PawsString*)codegenExpr(params[0], parentBlock).value)->val;
+			const std::string& taskName = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
 			ExprAST* stmt = params[1];
 
 			// Measure runtime of stmt
@@ -62,7 +62,7 @@ PawsPackage PAWS_TIME("time", [](BlockExprAST* pkgScope) {
 	defineStmt2(pkgScope, "measure $I($E<PawsString>) $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* varName = getIdExprASTName((IdExprAST*)params[0]);
-			const std::string& taskName = ((PawsString*)codegenExpr(params[1], parentBlock).value)->val;
+			const std::string& taskName = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
 			ExprAST* stmt = params[2];
 
 			// Measure runtime of stmt

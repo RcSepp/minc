@@ -29,7 +29,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 	// Define function definition
 	defineStmt2(pkgScope, "$E<PawsMetaType> $I($E<PawsMetaType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			BaseType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->val;
+			BaseType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
 			const std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[2]);
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
@@ -39,7 +39,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 			func->returnType = returnType;
 			func->argTypes.reserve(argTypeExprs.size());
 			for (ExprAST* argTypeExpr: argTypeExprs)
-				func->argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->val);
+				func->argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->get());
 			func->argNames.reserve(argNameExprs.size());
 			for (ExprAST* argNameExpr: argNameExprs)
 				func->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
@@ -53,7 +53,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 	// Define function call
 	defineExpr3(pkgScope, "$E<PawsFunction>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			const PawsFunc* func = ((PawsFunction*)codegenExpr(params[0], parentBlock).value)->val;
+			const PawsFunc* func = ((PawsFunction*)codegenExpr(params[0], parentBlock).value)->get();
 			std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 
 			// Check number of arguments

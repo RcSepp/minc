@@ -27,7 +27,7 @@ paws_exprdef<void> addToScope($E<BlockExprAST>, $E<IdExprAST>, $E<BaseType>, $E<
 		$2.codegen(parentBlock),
 		$3.codegen(parentBlock)
 	];
-	LLVMBuildCall(AddToScope, args, 4, "");
+	LLVMEXBuildCall(AddToScope, args, 4, "");
 	return LLVMConstNull(LLVMVoidType());
 }
 
@@ -55,7 +55,7 @@ paws_castdef<double> PawsDouble {
 
 paws_castdef<string> PawsString {
 	str = $0.codegen(parentBlock);
-	glob = LLVMAddGlobal(LLVMArrayType(LLVMInt8Type(), str.length + 1), "MY_CONSTANT");
+	glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), str.length + 1), "MY_CONSTANT");
 	LLVMSetLinkage(glob, 9);
 	LLVMSetGlobalConstant(glob, 1);
 	LLVMSetInitializer(glob, LLVMConstString(str, str.length + 1, 1));

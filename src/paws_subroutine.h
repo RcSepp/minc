@@ -5,6 +5,10 @@ struct PawsFunc
 	std::vector<std::string> argNames;
 	BlockExprAST* body;
 	virtual Variable call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& args) const;
+
+	PawsFunc() = default;
+	PawsFunc(BaseType* returnType, std::vector<BaseType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+		: returnType(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
 };
 typedef PawsType<PawsFunc*> PawsFunction;
 
@@ -55,21 +59,31 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 
 	Variable call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& args) const
 	{
-		return Variable(
-			PawsType<R>::TYPE,
-			new PawsType<R>(
-				call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
-					typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-					PawsType<P>* p = (PawsType<P>*)codegenExpr(args[i], parentBlock).value;
-					return p->val;
-				})
-			)
-		);
+		if constexpr (std::is_void<R>::value)
+		{
+			call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
+				PawsType<P>* p = (PawsType<P>*)codegenExpr(args[i], parentBlock).value;
+				return p->get();
+			});
+			return Variable(PawsType<R>::TYPE, nullptr);
+		}
+		else
+			return Variable(
+				PawsType<R>::TYPE,
+				new PawsType<R>(
+					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
+						PawsType<P>* p = (PawsType<P>*)codegenExpr(args[i], parentBlock).value;
+						return p->get();
+					})
+				)
+			);
 	}
 };
 
 template<class F> void defineExternFunction(BlockExprAST* scope, const char* name, F func)
 {
 	PawsFunc* pawsFunc = new PawsExternFunc(func);
-	defineSymbol(scope, "test", PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }

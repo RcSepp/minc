@@ -31,8 +31,8 @@ PawsPackage PAWS_CASTREG("castreg", [](BlockExprAST* pkgScope) {
 			BlockExprAST* body = (BlockExprAST*)params[2];
 			PawsCast value;
 			defineSymbol(body, getIdExprASTName(castExpr), PawsCast::TYPE, &value);
-			iterateBlockExprASTCasts(casts->val, [&](const Cast* cast) {
-				value.val = cast;
+			iterateBlockExprASTCasts(casts->get(), [&](const Cast* cast) {
+				value.set(cast);
 				codegenExpr((ExprAST*)body, parentBlock);
 			});
 		}
@@ -40,10 +40,10 @@ PawsPackage PAWS_CASTREG("castreg", [](BlockExprAST* pkgScope) {
 
 	defineStmt2(pkgScope, "$E<PawsCastMap>[$E<PawsMetaType> -> $E<PawsMetaType>] = $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			CastMap const casts = ((PawsCastMap*)codegenExpr(params[0], parentBlock).value)->val;
+			CastMap const casts = ((PawsCastMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = casts;
-			BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->val;
-			BaseType* toType = ((PawsMetaType*)codegenExpr(params[2], parentBlock).value)->val;
+			BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
+			BaseType* toType = ((PawsMetaType*)codegenExpr(params[2], parentBlock).value)->get();
 			BlockExprAST* blockAST = (BlockExprAST*)params[3];
 
 			// Get block parameter types

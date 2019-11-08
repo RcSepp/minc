@@ -12,12 +12,17 @@ extern BaseScopeType* FILE_SCOPE_TYPE;
 
 template<typename T> struct PawsType : BaseValue
 {
-	typedef T CType;
+private:
 	T val;
+
+public:
+	typedef T CType;
 	static inline BaseType* TYPE = new BaseType();
 	PawsType() {}
 	PawsType(const T& val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
+	T& get() { return val; }
+	void set(const T& val) { this->val = val; }
 };
 template<> struct PawsType<void> : BaseValue
 {
@@ -164,7 +169,7 @@ template<class P0> void defineStmt(BlockExprAST* scope, const char* tpltStr, voi
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
-		(*(StmtFunc*)stmtArgs)(p0->val);
+		(*(StmtFunc*)stmtArgs)(p0->get());
 	};
 	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
 }
@@ -176,7 +181,7 @@ template<class P0, class P1> void defineStmt(BlockExprAST* scope, const char* tp
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
-		(*(StmtFunc*)stmtArgs)(p0->val, p1->val);
+		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get());
 	};
 	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
 }
@@ -189,7 +194,7 @@ template<class P0, class P1, class P2> void defineStmt(BlockExprAST* scope, cons
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
-		(*(StmtFunc*)stmtArgs)(p0->val, p1->val, p2->val);
+		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get(), p2->get());
 	};
 	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
 }
@@ -221,11 +226,11 @@ template<class R, class P0> void defineExpr(BlockExprAST* scope, const char* tpl
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val);
+			(*(ExprFunc*)exprArgs)(p0->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -239,11 +244,11 @@ template<class R, class P0, class P1> void defineExpr(BlockExprAST* scope, const
 		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -258,11 +263,11 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -278,11 +283,11 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(BlockE
 		PawsType<P3>* p3 = (PawsType<P3>*)codegenExpr(params[3], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -299,11 +304,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 		PawsType<P4>* p4 = (PawsType<P4>*)codegenExpr(params[4], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -321,11 +326,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 		PawsType<P5>* p5 = (PawsType<P5>*)codegenExpr(params[5], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -344,11 +349,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P6>* p6 = (PawsType<P6>*)codegenExpr(params[6], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -368,11 +373,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P7>* p7 = (PawsType<P7>*)codegenExpr(params[7], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -393,11 +398,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P8>* p8 = (PawsType<P8>*)codegenExpr(params[8], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -419,11 +424,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P9>* p9 = (PawsType<P9>*)codegenExpr(params[9], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -446,11 +451,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P10>* p10 = (PawsType<P10>*)codegenExpr(params[10], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -474,11 +479,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P11>* p11 = (PawsType<P11>*)codegenExpr(params[11], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -503,11 +508,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P12>* p12 = (PawsType<P12>*)codegenExpr(params[12], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -533,11 +538,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P13>* p13 = (PawsType<P13>*)codegenExpr(params[13], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -564,11 +569,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P14>* p14 = (PawsType<P14>*)codegenExpr(params[14], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -596,11 +601,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		PawsType<P15>* p15 = (PawsType<P15>*)codegenExpr(params[15], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val, p15->val);
+			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->val, p1->val, p2->val, p3->val, p4->val, p5->val, p6->val, p7->val, p8->val, p9->val, p10->val, p11->val, p12->val, p13->val, p14->val, p15->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get())));
 	};
 	defineExpr2(scope, tpltStr, codeBlock, PawsType<R>::TYPE, new ExprFunc(exprFunc));
 }
@@ -616,7 +621,7 @@ template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Var
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->val);
+		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 		BaseType* p0 = getType(params[0], parentBlock);
@@ -633,7 +638,7 @@ template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tp
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->val, p1->val);
+		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 		BaseType* p0 = getType(params[0], parentBlock);
@@ -652,7 +657,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsType<P1>* p1 = (PawsType<P1>*)codegenExpr(params[1], parentBlock).value;
  		PawsType<P2>* p2 = (PawsType<P2>*)codegenExpr(params[2], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->val, p1->val, p2->val);
+		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get(), p2->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 		BaseType* p0 = getType(params[0], parentBlock);
@@ -674,11 +679,11 @@ template<class R, class P0> void defineTypeCast(BlockExprAST* scope, R (*exprFun
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(CastFunc*)castArgs)(p0->val);
+			(*(CastFunc*)castArgs)(p0->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->get())));
 	};
 	defineTypeCast2(scope, PawsType<P0>::TYPE, PawsType<R>::TYPE, codeBlock, new CastFunc(exprFunc));
 }
@@ -694,11 +699,11 @@ template<class R, class P0> void defineInheritanceCast(BlockExprAST* scope, R (*
 		PawsType<P0>* p0 = (PawsType<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
-			(*(CastFunc*)castArgs)(p0->val);
+			(*(CastFunc*)castArgs)(p0->get());
 			return Variable(PawsType<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->val)));
+			return Variable(PawsType<R>::TYPE, new PawsType<R>((*(CastFunc*)castArgs)(p0->get())));
 	};
 	defineInheritanceCast2(scope, PawsType<P0>::TYPE, PawsType<R>::TYPE, codeBlock, new CastFunc(exprFunc));
 }

@@ -12,8 +12,8 @@ PawsPackage PAWS_FILEIO("fileio", [](BlockExprAST* pkgScope) {
 	defineStmt2(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* varname = getIdExprASTName((IdExprAST*)params[0]);
-			const std::string& filename = ((PawsString*)codegenExpr(params[1], parentBlock).value)->val;
-			const std::string& mode = ((PawsString*)codegenExpr(params[2], parentBlock).value)->val;
+			const std::string& filename = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
+			const std::string& mode = ((PawsString*)codegenExpr(params[2], parentBlock).value)->get();
 			BlockExprAST* block = (BlockExprAST*)params[3];
 
 			std::ios_base::openmode openmode = (std::ios_base::openmode)0;

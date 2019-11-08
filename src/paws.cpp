@@ -193,7 +193,7 @@ void importFile(BlockExprAST* parentBlock, std::string importPath)
 	BlockExprAST* importBlock = parseCFile(importRealPath);
 
 	// Codegen imported module
-	const int outputDebugSymbols = ((PawsInt*)importSymbol(parentBlock, "outputDebugSymbols")->value)->val;
+	const int outputDebugSymbols = ((PawsInt*)importSymbol(parentBlock, "outputDebugSymbols")->value)->get();
 	IModule* importModule = createModule(importRealPath, importPath + ":main", outputDebugSymbols);
 	setScopeType(importBlock, FILE_SCOPE_TYPE);
 	defineSymbol(importBlock, "FILE_SCOPE", PawsBlockExprAST::TYPE, new PawsBlockExprAST(importBlock));
@@ -207,7 +207,7 @@ void importFile(BlockExprAST* parentBlock, std::string importPath)
 	::importBlock(parentBlock, importBlock);
 
 	// Execute command on imported module
-	const std::string& command = ((PawsString*)importSymbol(parentBlock, "command")->value)->val;
+	const std::string& command = ((PawsString*)importSymbol(parentBlock, "command")->value)->get();
 	if (command == "parse" || command == "debug")
 		importModule->print(importPath + ".ll");
 	if (command == "build")
@@ -501,8 +501,8 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	defineExpr2(block, "$E<PawsInt> && $E<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(
-					((PawsInt*)codegenExpr(params[0], parentBlock).value)->val &&
-					((PawsInt*)codegenExpr(params[1], parentBlock).value)->val
+					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() &&
+					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsInt::TYPE
@@ -510,8 +510,8 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	defineExpr2(block, "$E<PawsInt> || $E<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(
-					((PawsInt*)codegenExpr(params[0], parentBlock).value)->val ||
-					((PawsInt*)codegenExpr(params[1], parentBlock).value)->val
+					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ||
+					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsInt::TYPE
@@ -565,7 +565,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	defineStmt2(block, "if($E<PawsInt>) $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
-			if (condition->val)
+			if (condition->get())
 				codegenExpr(params[1], parentBlock);
 		}
 	);
@@ -574,7 +574,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	defineStmt2(block, "if($E<PawsInt>) $S else $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
-			if (condition->val)
+			if (condition->get())
 				codegenExpr(params[1], parentBlock);
 			else
 				codegenExpr(params[2], parentBlock);
@@ -584,7 +584,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	// Define inline if expression
 	defineExpr3(block, "$E<PawsInt> ? $E : $E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->val ? 1 : 2], parentBlock);
+			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			BaseType* ta = getType(params[1], parentBlock);
@@ -605,10 +605,10 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			PawsString key, value;
 			defineSymbol(body, getIdExprASTName(keyExpr), PawsString::TYPE, &key);
 			defineSymbol(body, getIdExprASTName(valueExpr), PawsString::TYPE, &value);
-			for (std::pair<const std::string, std::string> pair: map->val)
+			for (std::pair<const std::string, std::string> pair: map->get())
 			{
-				key.val = pair.first;
-				value.val = pair.second;
+				key.set(pair.first);
+				value.set(pair.second);
 				codegenExpr((ExprAST*)body, parentBlock);
 			}
 		}
@@ -619,7 +619,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			return Variable(PawsString::TYPE, new PawsString(getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->val)));
+			return Variable(PawsString::TYPE, new PawsString(getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get())));
 		},
 		PawsString::TYPE
 	);
@@ -663,7 +663,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			std::cout << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->val) << '\n';
+			std::cout << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get()) << '\n';
 			return Variable(PawsVoid::TYPE, nullptr);
 		},
 		PawsVoid::TYPE
@@ -673,7 +673,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			std::cerr << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->val) << '\n';
+			std::cerr << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get()) << '\n';
 			return Variable(PawsVoid::TYPE, nullptr);
 		},
 		PawsVoid::TYPE
@@ -714,7 +714,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			std::vector<ExprAST*>& values = getExprListASTExpressions((ExprListAST*)params[1]);
 			std::map<std::string, std::string> map;
 			for (size_t i = 0; i < keys.size(); ++i)
-				map[((PawsString*)codegenExpr(keys[i], parentBlock).value)->val] = ((PawsString*)codegenExpr(values[i], parentBlock).value)->val;
+				map[((PawsString*)codegenExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)codegenExpr(values[i], parentBlock).value)->get();
 			return Variable(PawsStringMap::TYPE, new PawsStringMap(map));
 		},
 		PawsStringMap::TYPE
@@ -796,8 +796,8 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	// Define codegen
 	defineExpr3(block, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->val;
-			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->val;
+			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->get();
+			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->get();
 			if (!ExprASTIsCast(params[0]))
 			{
 				codegenExpr(expr, scope);
@@ -857,13 +857,13 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
 			Variable exprsVar = codegenExpr(params[1], parentBlock);
-			const std::vector<BlockExprAST*>& exprs = ((PawsConstBlockExprASTList*)exprsVar.value)->val;
+			const std::vector<BlockExprAST*>& exprs = ((PawsConstBlockExprASTList*)exprsVar.value)->get();
 			BlockExprAST* body = (BlockExprAST*)params[2];
 			PawsBlockExprAST iter;
 			defineSymbol(body, getIdExprASTName(iterExpr), PawsBlockExprAST::TYPE, &iter);
 			for (BlockExprAST* expr: exprs)
 			{
-				iter.val = expr;
+				iter.set(expr);
 				codegenExpr((ExprAST*)body, parentBlock);
 			}
 		}
@@ -885,8 +885,8 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			assert(ExprASTIsCast(params[0]));
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
-			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->val;
-			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->val;
+			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->get();
+			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
 			return Variable(((PawsTpltType*)exprsVar.type)->tpltType, new PawsExprAST(getExprListASTExpressions(exprs)[idx]));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -900,14 +900,14 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			assert(ExprASTIsCast(params[1]));
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[1]), parentBlock);
-			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->val;
+			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->get();
 			BaseType* exprType = ((PawsTpltType*)exprsVar.type)->tpltType;
 			BlockExprAST* body = (BlockExprAST*)params[2];
 			PawsExprAST iter;
 			defineSymbol(body, getIdExprASTName(iterExpr), exprType, &iter);
 			for (ExprAST* expr: getExprListASTExpressions(exprs))
 			{
-				iter.val = expr;
+				iter.set(expr);
 				codegenExpr((ExprAST*)body, parentBlock);
 			}
 		}
@@ -978,7 +978,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	// Define import statement
 	defineStmt2(block, "import $E<PawsString>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			std::string importPath = ((PawsString*)codegenExpr(params[0], parentBlock).value)->val;
+			std::string importPath = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
 			importFile(parentBlock, importPath);
 		}
 	);
@@ -997,7 +997,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	}
 	catch (ReturnException err)
 	{
-		return ((PawsInt*)err.result.value)->val;
+		return ((PawsInt*)err.result.value)->get();
 	}
 	return 0;
 }

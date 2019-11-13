@@ -464,11 +464,11 @@ registerType<PawsType<const unsigned*>>(pkgScope, "ConstPawsIntPtr");
 
 	std::map<std::string, PawsFunc> llvmFunctions;
 @	PAWS_LLVM_EXTERN_FUNC_DEF@
-	defineExternFunction(pkgScope, "LLVMPositionBuilder", LLVMEXPositionBuilder);
-	defineExternFunction(pkgScope, "LLVMBuildInBoundsGEP1", LLVMEXBuildInBoundsGEP1);
-	defineExternFunction(pkgScope, "LLVMBuildInBoundsGEP2", LLVMEXBuildInBoundsGEP2);
-	defineExternFunction(pkgScope, "LLVMConstInBoundsGEP1", LLVMEXConstInBoundsGEP1);
-	defineExternFunction(pkgScope, "LLVMConstInBoundsGEP2", LLVMEXConstInBoundsGEP2);
-	defineExternFunction(pkgScope, "LLVMDIBuilderCreateExpression", LLVMEXDIBuilderCreateExpression);
-	defineExternFunction(pkgScope, "LLVMDIBuilderCreateDebugLocation", LLVMEXDIBuilderCreateDebugLocation);
+	defineExternFunction(pkgScope, "LLVMEXPositionBuilder", LLVMEXPositionBuilder);
+	defineExternFunction(pkgScope, "LLVMEXBuildInBoundsGEP1", LLVMEXBuildInBoundsGEP1);
+	defineExternFunction(pkgScope, "LLVMEXBuildInBoundsGEP2", LLVMEXBuildInBoundsGEP2);
+	defineExternFunction(pkgScope, "LLVMEXConstInBoundsGEP1", LLVMEXConstInBoundsGEP1);
+	defineExternFunction(pkgScope, "LLVMEXConstInBoundsGEP2", LLVMEXConstInBoundsGEP2);
+	defineExternFunction(pkgScope, "LLVMEXDIBuilderCreateExpression", LLVMEXDIBuilderCreateExpression);
+	defineExternFunction(pkgScope, "LLVMEXDIBuilderCreateDebugLocation", LLVMEXDIBuilderCreateDebugLocation);
 });

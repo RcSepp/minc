@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import re
 
@@ -333,10 +334,12 @@ REPLACE_PARAMS = {
     'LLVMDIBuilderRef Builder': 'wrap(dbuilder)',
     'LLVMContextRef Ctx': 'LLVMGetGlobalContext()',
 }
-for decl in decls.values():
+for decl in list(decls.values()):
     for c_arg in decl.c_args:
         if c_arg in REPLACE_PARAMS:
-            decl.is_modified = True
+            modified_decl = deepcopy(decl)
+            modified_decl.is_modified = True
+            decls[decl.name + "_modified"] = modified_decl
             break
 
 for filedir, subdirs, filenames in os.walk('./templates'):
@@ -369,7 +372,7 @@ for filedir, subdirs, filenames in os.walk('./templates'):
                     # Convert c types to paws types
                     try:
                         paws_restype = get_paws_type(decl.restype)
-                        paws_argtypes = [get_paws_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if c_arg not in REPLACE_PARAMS]
+                        paws_argtypes = [get_paws_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if not decl.is_modified or c_arg not in REPLACE_PARAMS]
                     except UnknownTypeException as err:
                         unknown_types.add(err.typestr)
                         continue
@@ -377,7 +380,7 @@ for filedir, subdirs, filenames in os.walk('./templates'):
                     # Convert c types to paws c types
                     try:
                         paws_c_restype = get_paws_c_type(decl.restype)
-                        paws_c_argtypes = [get_paws_c_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if c_arg not in REPLACE_PARAMS]
+                        paws_c_argtypes = [get_paws_c_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if not decl.is_modified or c_arg not in REPLACE_PARAMS]
                     except UnknownTypeException as err:
                         unknown_types.add(err.typestr)
                         continue
@@ -385,14 +388,14 @@ for filedir, subdirs, filenames in os.walk('./templates'):
                     # Convert c types to acc types
                     try:
                         acc_restype = get_acc_type(decl.restype)
-                        acc_argtypes = [get_acc_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if c_arg not in REPLACE_PARAMS]
+                        acc_argtypes = [get_acc_type(typestr) for typestr, c_arg in zip(decl.argtypes, decl.c_args) if not decl.is_modified or c_arg not in REPLACE_PARAMS]
                     except UnknownTypeException as err:
                         unknown_types.add(err.typestr)
                         continue
 
-                    c_args = [c_arg for c_arg in decl.c_args if c_arg not in REPLACE_PARAMS]
-                    c_argvals = [c_arg[len(c_argtype):].strip(' []') for c_arg, c_argtype in zip(decl.c_args, decl.c_argtypes) if c_arg not in REPLACE_PARAMS]
-                    c_argtypes = [c_argtype for c_arg, c_argtype in zip(decl.c_args, decl.c_argtypes) if c_arg not in REPLACE_PARAMS]
+                    c_args = [c_arg for c_arg in decl.c_args if not decl.is_modified or c_arg not in REPLACE_PARAMS]
+                    c_argvals = [c_arg[len(c_argtype):].strip(' []') for c_arg, c_argtype in zip(decl.c_args, decl.c_argtypes) if not decl.is_modified or c_arg not in REPLACE_PARAMS]
+                    c_argtypes = [c_argtype for c_arg, c_argtype in zip(decl.c_args, decl.c_argtypes) if not decl.is_modified or c_arg not in REPLACE_PARAMS]
                     output.append(
                         extern_func_tplt
                         .format(

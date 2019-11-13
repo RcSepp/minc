@@ -399,6 +399,20 @@ public:
 	LLVMDIFlags get() { return (LLVMDIFlags)val; }
 	void set(LLVMDIFlags val) { this->val = (int)val; }
 };
+template<> struct PawsType<LLVMDWARFSourceLanguage> : BaseValue
+{
+private:
+	int val;
+
+public:
+	typedef LLVMDWARFSourceLanguage CType;
+	static inline BaseType* TYPE = PawsType<int>::TYPE;
+	PawsType() {}
+	PawsType(const LLVMDWARFSourceLanguage val) : val(val) {}
+	uint64_t getConstantValue() { return 0; }
+	LLVMDWARFSourceLanguage get() { return (LLVMDWARFSourceLanguage)val; }
+	void set(LLVMDWARFSourceLanguage val) { this->val = (int)val; }
+};
 template<> struct PawsType<LLVMDWARFEmissionKind> : BaseValue
 {
 private:

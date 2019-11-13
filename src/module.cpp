@@ -63,7 +63,7 @@ extern DIFile* dfile;
 extern Value* closure;
 
 // Singletons
-LLVMContext* context;
+LLVMContext* context = nullptr;
 IRBuilder<> *builder;
 Module* currentModule;
 Function *currentFunc;
@@ -153,6 +153,9 @@ extern "C"
 {
 	void initCompiler()
 	{
+		if (context != nullptr)
+			return; // Compiler already initialized
+
 		context = unwrap(LLVMGetGlobalContext());//new LLVMContext();
 		builder = new IRBuilder<>(*context);
 
@@ -360,6 +363,9 @@ extern "C"
 
 	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols)
 	{
+		if (context == nullptr)
+			throw CompileError("initCompiler() hasn't been called", { sourcePath.c_str(), 1, 1, 1, 1 });
+
 		// Unbind parseCFile filename parameter lifetime from local filename parameter
 		char* path = new char[sourcePath.size() + 1];
 		strcpy(path, sourcePath.c_str());
@@ -369,6 +375,9 @@ extern "C"
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
 	{
+		if (context == nullptr)
+			throw CompileError("initCompiler() hasn't been called", blockAST->loc);
+
 		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
 	}
 

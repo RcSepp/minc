@@ -476,6 +476,17 @@ registerType<PawsType<const unsigned*>>(pkgScope, "ConstPawsIntPtr");
 		PawsType<LLVMTypeRef*>::TYPE
 	);
 
+	defineExpr2(pkgScope, "[ $E<PawsLLVMMetadataRef>, ... ]",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			std::vector<ExprAST*>& elements = getExprListASTExpressions((ExprListAST*)params[0]);
+			LLVMMetadataRef* arr = new LLVMMetadataRef[elements.size()];
+			for (size_t i = 0; i < elements.size(); ++i)
+				arr[i] = ((PawsType<LLVMMetadataRef>*)codegenExpr(elements[i], parentBlock).value)->get();
+			return Variable(PawsType<LLVMMetadataRef*>::TYPE, new PawsType<LLVMMetadataRef*>(arr));
+		},
+		PawsType<LLVMMetadataRef*>::TYPE
+	);
+
 	std::map<std::string, PawsFunc> llvmFunctions;
 @	PAWS_LLVM_EXTERN_FUNC_DEF@
 	defineExternFunction(pkgScope, "LLVMEXPositionBuilder", LLVMEXPositionBuilder);

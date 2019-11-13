@@ -1,6 +1,7 @@
 #include <map>
 #include <llvm-c/Core.h>
 #include <llvm-c/DebugInfo.h>
+#include "llvm-c/ExecutionEngine.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -60,6 +61,12 @@ typedef PawsType<LLVMMemoryBufferRef> PawsLLVMMemoryBufferRef;
 typedef PawsType<LLVMMemoryBufferRef*> PawsLLVMMemoryBufferRefArray;
 typedef PawsType<LLVMPassManagerRef> PawsLLVMPassManagerRef;
 typedef PawsType<LLVMDIBuilderRef> PawsLLVMDIBuilderRef;
+typedef PawsType<LLVMExecutionEngineRef> PawsLLVMExecutionEngineRef;
+typedef PawsType<LLVMExecutionEngineRef*> PawsLLVMExecutionEngineRefArray;
+typedef PawsType<LLVMGenericValueRef> PawsLLVMGenericValueRef;
+typedef PawsType<LLVMTargetDataRef> PawsLLVMTargetDataRef;
+typedef PawsType<LLVMTargetMachineRef> PawsLLVMTargetMachineRef;
+typedef PawsType<LLVMJITEventListenerRef> PawsLLVMJITEventListenerRef;
 
 template<> struct PawsType<char*> : BaseValue
 {
@@ -464,6 +471,12 @@ registerType<PawsType<const unsigned*>>(pkgScope, "ConstPawsIntPtr");
 	registerType<PawsLLVMMemoryBufferRefArray>(pkgScope, "PawsLLVMMemoryBufferRefArray");
 	registerType<PawsLLVMPassManagerRef>(pkgScope, "PawsLLVMPassManagerRef");
 	registerType<PawsLLVMDIBuilderRef>(pkgScope, "PawsLLVMDIBuilderRef");
+	registerType<PawsLLVMExecutionEngineRef>(pkgScope, "PawsLLVMExecutionEngineRef");
+	registerType<PawsLLVMExecutionEngineRefArray>(pkgScope, "PawsLLVMExecutionEngineRefArray");
+	registerType<PawsLLVMGenericValueRef>(pkgScope, "PawsLLVMGenericValueRef");
+	registerType<PawsLLVMTargetDataRef>(pkgScope, "PawsLLVMTargetDataRef");
+	registerType<PawsLLVMTargetMachineRef>(pkgScope, "PawsLLVMTargetMachineRef");
+	registerType<PawsLLVMJITEventListenerRef>(pkgScope, "PawsLLVMJITEventListenerRef");
 
 	defineExpr2(pkgScope, "[ $E<PawsLLVMTypeRef>, ... ]",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

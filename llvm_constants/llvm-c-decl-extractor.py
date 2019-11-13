@@ -215,7 +215,7 @@ def get_c_type(c_typestr):
 ################################################################################
 
 missing_decls = set()
-for filename in ['Core.ll', 'CloneModule.ll', 'DebugInfo.ll']:
+for filename in ['Core.ll', 'CloneModule.ll', 'DebugInfo.ll', 'ExecutionEngineBindings.ll']:
     with open(filename, 'r') as file:
         for line in file:
             line = line.strip('\n')
@@ -237,7 +237,7 @@ for filename in ['Core.ll', 'CloneModule.ll', 'DebugInfo.ll']:
 # Parse header files
 ################################################################################
 
-for filename in ['Core.cpp', 'DebugInfo.cpp', 'CloneModule.cpp']:
+for filename in ['Core.cpp', 'DebugInfo.cpp', 'CloneModule.cpp', 'ExecutionEngineBindings.cpp']:
     with open(filename, 'r') as file:
         for match in C_FUNCDEF_REGEX.finditer(file.read()):
             decl_name = match.group(2)

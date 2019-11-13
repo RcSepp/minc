@@ -1,4 +1,4 @@
-all: Core.ll CloneModule.ll DebugInfo.ll
+all: Core.ll CloneModule.ll DebugInfo.ll ExecutionEngineBindings.ll
 
 clean:
 	-rm *.ll

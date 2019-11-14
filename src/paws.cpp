@@ -10,7 +10,7 @@
 
 BaseScopeType* FILE_SCOPE_TYPE = new BaseScopeType();
 
-template<> uint64_t PawsValue<BaseType*>::getConstantValue() { return (uint64_t)val; }
+template<> uint64_t PawsValue<PawsType*>::getConstantValue() { return (uint64_t)val; }
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 {
@@ -78,7 +78,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 	blockParams.reserve(params.size());
 	for (ExprAST* param: params)
 	{
-		BaseType* paramType = PawsExprAST::TYPE;
+		PawsType* paramType = PawsExprAST::TYPE;
 		if (ExprASTIsPlchld(param))
 		{
 			PlchldExprAST* plchldParam = (PlchldExprAST*)param;
@@ -93,7 +93,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 				if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 					break;
 				if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-					paramType = PawsTpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
+					paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value->getConstantValue());
 			}
 		}
 		else if (ExprASTIsList(param))
@@ -113,7 +113,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 					if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 						break;
 					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-						paramType = PawsTpltType::get(PawsExprAST::TYPE, (BaseType*)var->value->getConstantValue());
+						paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value->getConstantValue());
 				}
 				paramType = PawsTpltType::get(PawsExprListAST::TYPE, paramType);
 			}
@@ -164,10 +164,10 @@ void defineStmt(BlockExprAST* scope, const char* tpltStr, void (*stmtFunc)())
 	};
 	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
 }
-void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(), BaseType* (*exprTypeFunc)())
+void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(), PawsType* (*exprTypeFunc)())
 {
 	using ExprFunc = Variable (*)();
-	using ExprTypeFunc = BaseType* (*)();
+	using ExprTypeFunc = PawsType* (*)();
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 		if (params.size() != 0)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
@@ -703,7 +703,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			return Variable(PawsMetaType::TYPE, new PawsMetaType(getType(exprAST, parentBlock)));
+			return Variable(PawsMetaType::TYPE, new PawsMetaType((PawsType*)getType(exprAST, parentBlock)));
 		},
 		PawsMetaType::TYPE
 	);
@@ -808,7 +808,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
 				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
-			BaseType* type = getType(getDerivedExprAST(params[0]), parentBlock);
+			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);
@@ -901,7 +901,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[1]), parentBlock);
 			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->get();
-			BaseType* exprType = ((PawsTpltType*)exprsVar.type)->tpltType;
+			PawsType* exprType = ((PawsTpltType*)exprsVar.type)->tpltType;
 			BlockExprAST* body = (BlockExprAST*)params[2];
 			PawsExprAST iter;
 			defineSymbol(body, getIdExprASTName(iterExpr), exprType, &iter);

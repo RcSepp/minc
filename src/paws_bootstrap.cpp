@@ -166,7 +166,7 @@ std::string mangle(const std::string& className, const std::string& funcName, Bu
 	return mangled.str();
 }
 
-void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BuiltinType* type)
+void defineType(BlockExprAST* scope, const char* name, BuiltinType* metaType, BaseType* type)
 {
 	// Define type symbol in scope
 	defineSymbol(scope, name, metaType, new XXXValue(unwrap(metaType->llvmtype), (uint64_t)type));
@@ -903,7 +903,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		// Define `exprdef`
 		defineStmt2(rootBlock, "exprdef<$I> $E $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				BaseType* exprType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				PawsType* exprType = (PawsType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
 				//TODO: Check for errors
 				ExprAST* exprAST = params[1];
 				BlockExprAST* blockAST = (BlockExprAST*)params.back();
@@ -1100,7 +1100,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		// Define `exprdef` from paws type
 		defineStmt2(rootBlock, "paws_exprdef<$I> $E $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				BaseType* exprType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
+				PawsType* exprType = (PawsType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
 				ExprAST* exprAST = params[1];
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
@@ -1130,7 +1130,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		defineStmt2(rootBlock, "paws_castdef<$I> $E<PawsMetaType> $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
-				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
+				PawsType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 				// Get block parameter types
@@ -1147,7 +1147,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		defineStmt2(rootBlock, "paws_inhtdef<$I> $E<PawsMetaType> $B",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
-				BaseType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
+				PawsType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 				// Get block parameter types
@@ -1167,7 +1167,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				const char* name = getIdExprASTName((IdExprAST*)params[1]);
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
-				if (metaType == getVoid().type || metaType == PawsVoid::TYPE)
+				if (metaType == getVoid().type)
 					raiseCompileError("cannot define void type", params[0]);
 
 				// Get block parameter types
@@ -1183,7 +1183,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				}
 				catch (ReturnException err)
 				{
-					BuiltinType* type = (BuiltinType*)err.result.value;
+					BaseType* type = (BaseType*)err.result.value;
 
 					defineType(name, type);
 					defineType(parentBlock, name, metaType, type);

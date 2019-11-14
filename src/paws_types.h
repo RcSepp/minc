@@ -10,6 +10,10 @@ struct BaseScopeType;
 
 extern BaseScopeType* FILE_SCOPE_TYPE;
 
+struct PawsType : public BaseType
+{
+};
+
 template<typename T> struct PawsValue : BaseValue
 {
 private:
@@ -17,7 +21,7 @@ private:
 
 public:
 	typedef T CType;
-	static inline BaseType* TYPE = new BaseType();
+	static inline PawsType* TYPE = new PawsType();
 	PawsValue() {}
 	PawsValue(const T& val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -27,7 +31,7 @@ public:
 template<> struct PawsValue<void> : BaseValue
 {
 	typedef void CType;
-	static inline BaseType* TYPE = new BaseType();
+	static inline PawsType* TYPE = new PawsType();
 	PawsValue() {}
 	uint64_t getConstantValue() { return 0; }
 };
@@ -42,18 +46,18 @@ namespace std
 template<int T> struct PawsOpaqueValue
 {
 	typedef void CType;
-	static inline BaseType* TYPE = new BaseType();
+	static inline PawsType* TYPE = new PawsType();
 };
 
-struct PawsTpltType : BaseType
+struct PawsTpltType : PawsType
 {
 private:
 	static std::set<PawsTpltType> tpltTypes;
-	PawsTpltType(BaseType* baseType, BaseType* tpltType) : baseType(baseType), tpltType(tpltType) {}
+	PawsTpltType(PawsType* baseType, PawsType* tpltType) : baseType(baseType), tpltType(tpltType) {}
 
 public:
-	BaseType *const baseType, *const tpltType;
-	static PawsTpltType* get(BaseType* baseType, BaseType* tpltType)
+	PawsType *const baseType, *const tpltType;
+	static PawsTpltType* get(PawsType* baseType, PawsType* tpltType)
 	{
 		std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
 		if (iter == tpltTypes.end())
@@ -71,7 +75,7 @@ bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs);
 
 typedef PawsOpaqueValue<0> PawsBase;
 typedef PawsValue<void> PawsVoid;
-typedef PawsValue<BaseType*> PawsMetaType;
+typedef PawsValue<PawsType*> PawsMetaType;
 typedef PawsValue<int> PawsInt;
 typedef PawsValue<double> PawsDouble;
 typedef PawsValue<std::string> PawsString;
@@ -612,11 +616,11 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 
 // Templated version of defineExpr3():
 // defineExpr() codegen's all inputs and wraps the output in a Variable
-void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(), BaseType* (*exprTypeFunc)());
-template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0), BaseType* (*exprTypeFunc)(BaseType*))
+void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(), PawsType* (*exprTypeFunc)());
+template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0), PawsType* (*exprTypeFunc)(PawsType*))
 {
 	using ExprFunc = Variable (*)(P0);
-	using ExprTypeFunc = BaseType* (*)(BaseType*);
+	using ExprTypeFunc = PawsType* (*)(PawsType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
@@ -624,15 +628,15 @@ template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Var
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-		BaseType* p0 = getType(params[0], parentBlock);
+		PawsType* p0 = getType(params[0], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0);
 	};
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
-template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0, P1), BaseType* (*exprTypeFunc)(BaseType*, BaseType*))
+template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0, P1), PawsType* (*exprTypeFunc)(PawsType*, PawsType*))
 {
 	using ExprFunc = Variable (*)(P0, P1);
-	using ExprTypeFunc = BaseType* (*)(BaseType*, BaseType*);
+	using ExprTypeFunc = PawsType* (*)(PawsType*, PawsType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 		if (params.size() != 2)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
@@ -641,16 +645,16 @@ template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tp
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-		BaseType* p0 = getType(params[0], parentBlock);
-		BaseType* p1 = getType(params[1], parentBlock);
+		PawsType* p0 = getType(params[0], parentBlock);
+		PawsType* p1 = getType(params[1], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1);
 	};
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
-template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0, P1, P2), BaseType* (*exprTypeFunc)(BaseType*, BaseType*, BaseType*))
+template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)(P0, P1, P2), PawsType* (*exprTypeFunc)(PawsType*, PawsType*, PawsType*))
 {
 	using ExprFunc = Variable (*)(P0, P1, P2);
-	using ExprTypeFunc = BaseType* (*)(BaseType*, BaseType*, BaseType*);
+	using ExprTypeFunc = PawsType* (*)(PawsType*, PawsType*, PawsType*);
 	ExprBlock codeBlock = [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 		if (params.size() != 3)
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
@@ -660,9 +664,9 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get(), p2->get());
 	};
 	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-		BaseType* p0 = getType(params[0], parentBlock);
-		BaseType* p1 = getType(params[1], parentBlock);
-		BaseType* p2 = getType(params[2], parentBlock);
+		PawsType* p0 = getType(params[0], parentBlock);
+		PawsType* p1 = getType(params[1], parentBlock);
+		PawsType* p2 = getType(params[2], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1, p2);
 	};
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));

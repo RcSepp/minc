@@ -29,7 +29,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 	// Define function definition
 	defineStmt2(pkgScope, "$E<PawsMetaType> $I($E<PawsMetaType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			BaseType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
 			const std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[2]);
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
@@ -45,7 +45,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 				func->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
 			func->body = block;
 
-			BaseType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);
+			PawsType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);
 			defineSymbol(parentBlock, funcName, funcType, new PawsFunction(func));
 		}
 	);
@@ -90,7 +90,7 @@ PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
 	);
 
 	defineExpr(pkgScope, "PawsFunction<$E<PawsMetaType>>",
-		+[](BaseType* returnType) -> BaseType* {
+		+[](PawsType* returnType) -> BaseType* {
 			return PawsTpltType::get(PawsFunction::TYPE, returnType);
 		}
 	);

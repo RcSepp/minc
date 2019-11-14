@@ -75,7 +75,7 @@ private:
 
 public:
 	typedef char* CType;
-	static inline BaseType* TYPE = PawsValue<std::string>::TYPE;
+	static inline PawsType* TYPE = PawsValue<std::string>::TYPE;
 	PawsValue() {}
 	PawsValue(char* val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -89,7 +89,7 @@ private:
 
 public:
 	typedef const char* CType;
-	static inline BaseType* TYPE = PawsValue<std::string>::TYPE;
+	static inline PawsType* TYPE = PawsValue<std::string>::TYPE;
 	PawsValue() {}
 	PawsValue(const char* val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -104,7 +104,7 @@ private:
 
 public:
 	typedef uint32_t CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const uint32_t val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -118,7 +118,7 @@ private:
 
 public:
 	typedef uint64_t CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const uint64_t val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -132,7 +132,7 @@ private:
 
 public:
 	typedef unsigned long long CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const unsigned long long val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -146,7 +146,7 @@ private:
 
 public:
 	typedef long long CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const long long val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -161,7 +161,7 @@ private:
 
 public:
 	typedef LLVMOpcode CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMOpcode val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -175,7 +175,7 @@ private:
 
 public:
 	typedef LLVMTypeKind CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMTypeKind val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -189,7 +189,7 @@ private:
 
 public:
 	typedef LLVMLinkage CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMLinkage val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -203,7 +203,7 @@ private:
 
 public:
 	typedef LLVMVisibility CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMVisibility val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -217,7 +217,7 @@ private:
 
 public:
 	typedef LLVMUnnamedAddr CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMUnnamedAddr val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -231,7 +231,7 @@ private:
 
 public:
 	typedef LLVMDLLStorageClass CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDLLStorageClass val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -245,7 +245,7 @@ private:
 
 public:
 	typedef LLVMCallConv CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMCallConv val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -259,7 +259,7 @@ private:
 
 public:
 	typedef LLVMValueKind CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMValueKind val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -273,7 +273,7 @@ private:
 
 public:
 	typedef LLVMIntPredicate CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMIntPredicate val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -287,7 +287,7 @@ private:
 
 public:
 	typedef LLVMRealPredicate CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMRealPredicate val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -301,7 +301,7 @@ private:
 
 public:
 	typedef LLVMLandingPadClauseTy CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMLandingPadClauseTy val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -315,7 +315,7 @@ private:
 
 public:
 	typedef LLVMThreadLocalMode CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMThreadLocalMode val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -329,7 +329,7 @@ private:
 
 public:
 	typedef LLVMAtomicOrdering CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMAtomicOrdering val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -343,7 +343,7 @@ private:
 
 public:
 	typedef LLVMAtomicRMWBinOp CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMAtomicRMWBinOp val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -357,7 +357,7 @@ private:
 
 public:
 	typedef LLVMDiagnosticSeverity CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDiagnosticSeverity val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -371,7 +371,7 @@ private:
 
 public:
 	typedef LLVMInlineAsmDialect CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMInlineAsmDialect val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -385,7 +385,7 @@ private:
 
 public:
 	typedef LLVMModuleFlagBehavior CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMModuleFlagBehavior val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -399,7 +399,7 @@ private:
 
 public:
 	typedef LLVMDIFlags CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDIFlags val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -413,7 +413,7 @@ private:
 
 public:
 	typedef LLVMDWARFSourceLanguage CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDWARFSourceLanguage val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
@@ -427,7 +427,7 @@ private:
 
 public:
 	typedef LLVMDWARFEmissionKind CType;
-	static inline BaseType* TYPE = PawsValue<int>::TYPE;
+	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDWARFEmissionKind val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }

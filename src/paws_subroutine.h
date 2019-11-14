@@ -1,13 +1,13 @@
 struct PawsFunc
 {
-	BaseType* returnType;
-	std::vector<BaseType*> argTypes;
+	PawsType* returnType;
+	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
 	BlockExprAST* body;
 	virtual Variable call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& args) const;
 
 	PawsFunc() = default;
-	PawsFunc(BaseType* returnType, std::vector<BaseType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
 		: returnType(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
 };
 typedef PawsValue<PawsFunc*> PawsFunction;

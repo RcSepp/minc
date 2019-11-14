@@ -15,15 +15,15 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 			arr->get().reserve(values.size());
 			for (ExprAST* value: values)
 				arr->get().push_back(codegenExpr(value, parentBlock).value);
-			return Variable(PawsTpltType::get(PawsArray::TYPE, getType(getDerivedExprAST(values[0]), parentBlock)), arr);
+			return Variable(PawsTpltType::get(PawsArray::TYPE, (PawsType*)getType(getDerivedExprAST(values[0]), parentBlock)), arr);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
 			std::vector<ExprAST*>& values = getExprListASTExpressions((ExprListAST*)params[0]);
-			std::vector<BaseType*> valueTypes;
+			std::vector<PawsType*> valueTypes;
 			valueTypes.reserve(values.size());
 			for (ExprAST* value: values)
-				valueTypes.push_back(getType(getDerivedExprAST(value), parentBlock));
+				valueTypes.push_back((PawsType*)getType(getDerivedExprAST(value), parentBlock));
 			return PawsTpltType::get(PawsArray::TYPE, valueTypes[0]);
 		}
 	);
@@ -33,14 +33,14 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable arrVar = codegenExpr(getDerivedExprAST(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
-			BaseType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
+			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
 			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
 			return Variable(valueType, arr->get()[idx->get()]);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
 				raiseCompileError("attempting to access array of unspecified type", params[0]);
-			BaseType* type = getType(getDerivedExprAST(params[0]), parentBlock);
+			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);
@@ -50,7 +50,7 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable arrVar = codegenExpr(getDerivedExprAST(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
-			BaseType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
+			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
 			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
 			ExprAST* valueExpr = params[2];
 
@@ -77,7 +77,7 @@ PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			if (!ExprASTIsCast(params[0]))
 				raiseCompileError("attempting to access array of unspecified type", params[0]);
-			BaseType* type = getType(getDerivedExprAST(params[0]), parentBlock);
+			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);

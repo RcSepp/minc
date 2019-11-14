@@ -2,7 +2,7 @@
 #include "paws_types.h"
 #include "paws_pkgmgr.h"
 
-typedef PawsType<std::vector<BaseValue*>> PawsArray;
+typedef PawsValue<std::vector<BaseValue*>> PawsArray;
 
 PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
 	registerType<PawsArray>(pkgScope, "PawsArray");

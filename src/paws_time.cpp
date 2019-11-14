@@ -6,7 +6,7 @@
 #include <iostream>
 
 typedef std::chrono::duration<double> duration;
-typedef PawsType<duration> PawsDuration;
+typedef PawsValue<duration> PawsDuration;
 
 PawsPackage PAWS_TIME("time", [](BlockExprAST* pkgScope) {
 	registerType<PawsDuration>(pkgScope, "PawsDuration");

@@ -3,10 +3,10 @@
 #include "paws_types.h"
 #include "paws_pkgmgr.h"
 
-typedef PawsType<const Cast*> PawsCast;
+typedef PawsValue<const Cast*> PawsCast;
 
 struct CastMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<CastMap> PawsCastMap;
+typedef PawsValue<CastMap> PawsCastMap;
 
 PawsPackage PAWS_CASTREG("castreg", [](BlockExprAST* pkgScope) {
 	registerType<PawsCastMap>(pkgScope, "PawsCastMap");

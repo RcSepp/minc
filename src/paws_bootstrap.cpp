@@ -128,12 +128,12 @@ extern "C"
 				return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 			}
 		);
-		defineTypeCast2(pawsDefScope, func->type, PawsType<LLVMValueRef>::TYPE,
+		defineTypeCast2(pawsDefScope, func->type, PawsValue<LLVMValueRef>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				Variable funcVar = codegenExpr(params[0], parentBlock);
 				FuncType* funcType = (FuncType*)funcVar.type;
 				Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
-				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(func)));
+				return Variable(PawsValue<LLVMValueRef>::TYPE, new PawsValue<LLVMValueRef>(wrap(func)));
 			}
 		);
 	}
@@ -432,7 +432,7 @@ public:
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		// Wrap result of PawsCodegenContext::codegen() into an XXXValue
-		Value* llvmValue = unwrap(((PawsType<LLVMValueRef>*)PawsCodegenContext::codegen(parentBlock, params).value)->get());
+		Value* llvmValue = unwrap(((PawsValue<LLVMValueRef>*)PawsCodegenContext::codegen(parentBlock, params).value)->get());
 		return Variable(type, new XXXValue(llvmValue));
 	}
 };
@@ -670,35 +670,35 @@ private:
 		// Declare LLVM-C extern functions in paws define blocks
 		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "llvm");
 
-		// Cast all builtin- and base types to PawsType<LLVMValueRef> in paws define blocks
-		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Builtin, PawsType<LLVMValueRef>::TYPE,
+		// Cast all builtin- and base types to PawsValue<LLVMValueRef> in paws define blocks
+		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Builtin, PawsValue<LLVMValueRef>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				XXXValue* llvmvalue = (XXXValue*)codegenExpr(params[0], parentBlock).value;
-				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(llvmvalue->val)));
+				return Variable(PawsValue<LLVMValueRef>::TYPE, new PawsValue<LLVMValueRef>(wrap(llvmvalue->val)));
 			},
-			PawsType<LLVMValueRef>::TYPE
+			PawsValue<LLVMValueRef>::TYPE
 		);
-		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Base, PawsType<LLVMValueRef>::TYPE,
+		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Base, PawsValue<LLVMValueRef>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				XXXValue* llvmvalue = (XXXValue*)codegenExpr(params[0], parentBlock).value;
-				return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(llvmvalue->val)));
+				return Variable(PawsValue<LLVMValueRef>::TYPE, new PawsValue<LLVMValueRef>(wrap(llvmvalue->val)));
 			},
-			PawsType<LLVMValueRef>::TYPE
+			PawsValue<LLVMValueRef>::TYPE
 		);
 
-		// Cast arrays of PawsType<LLVMValueRef> to PawsType<LLVMValueRef*> in paws define blocks
+		// Cast arrays of PawsValue<LLVMValueRef> to PawsValue<LLVMValueRef*> in paws define blocks
 defineSymbol(pawsDefScope, "PawsBase", PawsMetaType::TYPE, new PawsMetaType(PawsBase::TYPE)); //DELETE
 defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsInt::TYPE)); //DELETE
 		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "array");
-		defineTypeCast2(pawsDefScope, PawsTpltType::get(PawsType<std::vector<BaseValue*>>::TYPE, PawsType<LLVMValueRef>::TYPE), PawsType<LLVMValueRef*>::TYPE,
+		defineTypeCast2(pawsDefScope, PawsTpltType::get(PawsValue<std::vector<BaseValue*>>::TYPE, PawsValue<LLVMValueRef>::TYPE), PawsValue<LLVMValueRef*>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
-				std::vector<BaseValue*>& arr = ((PawsType<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->get();
+				std::vector<BaseValue*>& arr = ((PawsValue<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->get();
 				LLVMValueRef* values = new LLVMValueRef[arr.size()];
 				for (size_t i = 0; i < arr.size(); ++i)
-					values[i] = ((PawsType<LLVMValueRef>*)arr[i])->get();
-				return Variable(PawsType<LLVMValueRef*>::TYPE, new PawsType<LLVMValueRef*>(values));
+					values[i] = ((PawsValue<LLVMValueRef>*)arr[i])->get();
+				return Variable(PawsValue<LLVMValueRef*>::TYPE, new PawsValue<LLVMValueRef*>(values));
 			},
-			PawsType<LLVMValueRef*>::TYPE
+			PawsValue<LLVMValueRef*>::TYPE
 		);
 
 		// Define Minc extern functions
@@ -734,12 +734,12 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					return Variable(BuiltinTypes::LLVMValueRef, new XXXValue(resultVal));
 				}
 			);
-			defineTypeCast2(pawsDefScope, func->type, PawsType<LLVMValueRef>::TYPE,
+			defineTypeCast2(pawsDefScope, func->type, PawsValue<LLVMValueRef>::TYPE,
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 					Variable funcVar = codegenExpr(params[0], parentBlock);
 					FuncType* funcType = (FuncType*)funcVar.type;
 					Function* func = ((Func*)funcVar.value)->getFunction(currentModule);
-					return Variable(PawsType<LLVMValueRef>::TYPE, new PawsType<LLVMValueRef>(wrap(func)));
+					return Variable(PawsValue<LLVMValueRef>::TYPE, new PawsValue<LLVMValueRef>(wrap(func)));
 				}
 			);
 		}
@@ -1091,7 +1091,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				getBlockParameterTypes(parentBlock, stmtParams, blockParams);
 
 				importBlock(blockAST, pawsDefScope);
-				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+				definePawsReturnStmt(pawsDefScope, PawsValue<LLVMValueRef>::TYPE);
 
 				defineStmt3(parentBlock, stmtParamsAST, new PawsCodegenContext(blockAST, PawsVoid::TYPE, blockParams));
 			}
@@ -1115,7 +1115,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				getBlockParameterTypes(parentBlock, exprParams, blockParams);
 
 				importBlock(blockAST, pawsDefScope);
-				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+				definePawsReturnStmt(pawsDefScope, PawsValue<LLVMValueRef>::TYPE);
 
 				defineExpr5(parentBlock, exprAST, new PawsBootstrapCodegenContext(blockAST, exprType, blockParams));
 			}
@@ -1137,7 +1137,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
 
 				importBlock(blockAST, pawsDefScope);
-				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+				definePawsReturnStmt(pawsDefScope, PawsValue<LLVMValueRef>::TYPE);
 
 				defineTypeCast3(parentBlock, fromType, toType, new PawsBootstrapCodegenContext(blockAST, toType, blockParams));
 			}
@@ -1154,7 +1154,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
 
 				importBlock(blockAST, pawsDefScope);
-				definePawsReturnStmt(pawsDefScope, PawsType<LLVMValueRef>::TYPE);
+				definePawsReturnStmt(pawsDefScope, PawsValue<LLVMValueRef>::TYPE);
 
 				defineInheritanceCast3(parentBlock, fromType, toType, new PawsBootstrapCodegenContext(blockAST, toType, blockParams));
 			}
@@ -1695,7 +1695,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 			}
 		);
 
-// registerType<PawsType<BuiltinType*>>(rootBlock, "PawsBuiltinType");
+// registerType<PawsValue<BuiltinType*>>(rootBlock, "PawsBuiltinType");
 // defineExpr(rootBlock, "_BuiltinType($E<PawsString>, $E<PawsLLVMTypeRef>, $E<PawsInt>)",
 // 	+[](std::string name, LLVMTypeRef llvmtype, int align) -> BuiltinType* {
 // 		return BuiltinType::get(name.c_str(), llvmtype, align, 0, 0);
@@ -1703,7 +1703,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 // );
 defineExpr2(rootBlock, "_BuiltinType($E<PawsLLVMTypeRef>, $E<PawsInt>, $E<PawsInt>, $E<PawsInt>)",
 	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-		PawsType<LLVMTypeRef>* llvmtype = (PawsType<LLVMTypeRef>*)codegenExpr(params[0], parentBlock).value;
+		PawsValue<LLVMTypeRef>* llvmtype = (PawsValue<LLVMTypeRef>*)codegenExpr(params[0], parentBlock).value;
 		PawsInt* align = (PawsInt*)codegenExpr(params[1], parentBlock).value;
 		PawsInt* encoding = (PawsInt*)codegenExpr(params[2], parentBlock).value;
 		PawsInt* numbits = (PawsInt*)codegenExpr(params[3], parentBlock).value;

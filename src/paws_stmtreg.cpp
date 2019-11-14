@@ -4,13 +4,13 @@
 #include "paws_pkgmgr.h"
 
 struct StmtMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<StmtMap> PawsStmtMap;
+typedef PawsValue<StmtMap> PawsStmtMap;
 
 struct ExprMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<ExprMap> PawsExprMap;
+typedef PawsValue<ExprMap> PawsExprMap;
 
 struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
-typedef PawsType<SymbolMap> PawsSymbolMap;
+typedef PawsValue<SymbolMap> PawsSymbolMap;
 
 PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 	registerType<PawsStmtMap>(pkgScope, "PawsStmtMap");
@@ -46,9 +46,9 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			IdExprAST* valueExpr = (IdExprAST*)params[1];
 			PawsStmtMap* stmts = (PawsStmtMap*)codegenExpr(params[2], parentBlock).value;
 			BlockExprAST* body = (BlockExprAST*)params[3];
-			PawsType<const ExprListAST*> key, value;
-			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprListAST*>::TYPE, &key);
-			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprListAST*>::TYPE, &value);
+			PawsValue<const ExprListAST*> key, value;
+			defineSymbol(body, getIdExprASTName(keyExpr), PawsValue<const ExprListAST*>::TYPE, &key);
+			defineSymbol(body, getIdExprASTName(valueExpr), PawsValue<const ExprListAST*>::TYPE, &value);
 			iterateBlockExprASTStmts(stmts->get(), [&](const ExprListAST* tplt, const CodegenContext* stmt) {
 				key.set(tplt);
 				codegenExpr((ExprAST*)body, parentBlock);
@@ -89,9 +89,9 @@ PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
 			IdExprAST* valueExpr = (IdExprAST*)params[1];
 			PawsExprMap* exprs = (PawsExprMap*)codegenExpr(params[2], parentBlock).value;
 			BlockExprAST* body = (BlockExprAST*)params[3];
-			PawsType<const ExprAST*> key, value;
-			defineSymbol(body, getIdExprASTName(keyExpr), PawsType<const ExprAST*>::TYPE, &key);
-			defineSymbol(body, getIdExprASTName(valueExpr), PawsType<const ExprAST*>::TYPE, &value);
+			PawsValue<const ExprAST*> key, value;
+			defineSymbol(body, getIdExprASTName(keyExpr), PawsValue<const ExprAST*>::TYPE, &key);
+			defineSymbol(body, getIdExprASTName(valueExpr), PawsValue<const ExprAST*>::TYPE, &value);
 			iterateBlockExprASTExprs(exprs->get(), [&](const ExprAST* tplt, const CodegenContext* expr) {
 				key.set(tplt);
 				codegenExpr((ExprAST*)body, parentBlock);

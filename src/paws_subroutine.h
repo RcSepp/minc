@@ -10,7 +10,7 @@ struct PawsFunc
 	PawsFunc(BaseType* returnType, std::vector<BaseType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
 		: returnType(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
 };
-typedef PawsType<PawsFunc*> PawsFunction;
+typedef PawsValue<PawsFunc*> PawsFunction;
 
 
 template<std::size_t...Is, class L>
@@ -46,11 +46,11 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 	F* func;
 	PawsExternFunc(F func) : func(func)
 	{
-		returnType = PawsType<R>::TYPE;
+		returnType = PawsValue<R>::TYPE;
 
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 			typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-			argTypes.push_back(PawsType<P>::TYPE);
+			argTypes.push_back(PawsValue<P>::TYPE);
 			argNames.push_back("a" + std::to_string(i));
 		});
 
@@ -63,18 +63,18 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 		{
 			call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsType<P>* p = (PawsType<P>*)codegenExpr(args[i], parentBlock).value;
+				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], parentBlock).value;
 				return p->get();
 			});
-			return Variable(PawsType<R>::TYPE, nullptr);
+			return Variable(PawsValue<R>::TYPE, nullptr);
 		}
 		else
 			return Variable(
-				PawsType<R>::TYPE,
-				new PawsType<R>(
+				PawsValue<R>::TYPE,
+				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsType<P>* p = (PawsType<P>*)codegenExpr(args[i], parentBlock).value;
+						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], parentBlock).value;
 						return p->get();
 					})
 				)

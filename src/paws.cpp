@@ -10,7 +10,7 @@
 
 BaseScopeType* FILE_SCOPE_TYPE = new BaseScopeType();
 
-template<> uint64_t PawsType<BaseType*>::getConstantValue() { return (uint64_t)val; }
+template<> uint64_t PawsValue<BaseType*>::getConstantValue() { return (uint64_t)val; }
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 {

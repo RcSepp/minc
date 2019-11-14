@@ -4,7 +4,7 @@
 #include "paws_types.h"
 #include "paws_pkgmgr.h"
 
-typedef PawsType<std::fstream&> PawsFile;
+typedef PawsValue<std::fstream&> PawsFile;
 
 PawsPackage PAWS_FILEIO("fileio", [](BlockExprAST* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");

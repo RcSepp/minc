@@ -613,6 +613,26 @@ private:
 		defineSymbol(defScope, "LLVMRealOEQ", BuiltinTypes::Int32, new XXXValue(Types::Int32, 1)); //TODO: Untested
 		defineSymbol(defScope, "LLVMRealONE", BuiltinTypes::Int32, new XXXValue(Types::Int32, 6)); //TODO: Untested
 
+		// DWARF attribute type encodings
+		defineSymbol(defScope, "DW_ATE_address", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x01));
+		defineSymbol(defScope, "DW_ATE_boolean", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x02));
+		defineSymbol(defScope, "DW_ATE_complex_float", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x03));
+		defineSymbol(defScope, "DW_ATE_float", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x04));
+		defineSymbol(defScope, "DW_ATE_signed", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x05));
+		defineSymbol(defScope, "DW_ATE_signed_char", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x06));
+		defineSymbol(defScope, "DW_ATE_unsigned", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x07));
+		defineSymbol(defScope, "DW_ATE_unsigned_char", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x08));
+		defineSymbol(defScope, "DW_ATE_imaginary_float", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x09));
+		defineSymbol(defScope, "DW_ATE_packed_decimal", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0a));
+		defineSymbol(defScope, "DW_ATE_numeric_string", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0b));
+		defineSymbol(defScope, "DW_ATE_edited", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0c));
+		defineSymbol(defScope, "DW_ATE_signed_fixed", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0d));
+		defineSymbol(defScope, "DW_ATE_unsigned_fixed", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0e));
+		defineSymbol(defScope, "DW_ATE_decimal_float", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x0f));
+		defineSymbol(defScope, "DW_ATE_UTF", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x10));
+		defineSymbol(defScope, "DW_ATE_UCS", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x11));
+		defineSymbol(defScope, "DW_ATE_ASCII", BuiltinTypes::Int32, new XXXValue(Types::Int32, 0x12));
+
 		// Define variable declaration statements in define blocks
 		defineStmt2(defScope, "$E<BuiltinType> $I", VarDeclStmt);
 		defineStmt2(defScope, "$E<BuiltinType> $I = $E<BuiltinValue>", InitializedVarDeclStmt);
@@ -626,6 +646,26 @@ private:
 		defineSymbol(pawsDefScope, "LLVMIntNE", PawsInt::TYPE, new PawsInt(33));
 		defineSymbol(pawsDefScope, "LLVMRealOEQ", PawsInt::TYPE, new PawsInt(1)); //TODO: Untested
 		defineSymbol(pawsDefScope, "LLVMRealONE", PawsInt::TYPE, new PawsInt(6)); //TODO: Untested
+
+		// DWARF attribute type encodings
+		defineSymbol(pawsDefScope, "DW_ATE_address", PawsInt::TYPE, new PawsInt(0x01));
+		defineSymbol(pawsDefScope, "DW_ATE_boolean", PawsInt::TYPE, new PawsInt(0x02));
+		defineSymbol(pawsDefScope, "DW_ATE_complex_float", PawsInt::TYPE, new PawsInt(0x03));
+		defineSymbol(pawsDefScope, "DW_ATE_float", PawsInt::TYPE, new PawsInt(0x04));
+		defineSymbol(pawsDefScope, "DW_ATE_signed", PawsInt::TYPE, new PawsInt(0x05));
+		defineSymbol(pawsDefScope, "DW_ATE_signed_char", PawsInt::TYPE, new PawsInt(0x06));
+		defineSymbol(pawsDefScope, "DW_ATE_unsigned", PawsInt::TYPE, new PawsInt(0x07));
+		defineSymbol(pawsDefScope, "DW_ATE_unsigned_char", PawsInt::TYPE, new PawsInt(0x08));
+		defineSymbol(pawsDefScope, "DW_ATE_imaginary_float", PawsInt::TYPE, new PawsInt(0x09));
+		defineSymbol(pawsDefScope, "DW_ATE_packed_decimal", PawsInt::TYPE, new PawsInt(0x0a));
+		defineSymbol(pawsDefScope, "DW_ATE_numeric_string", PawsInt::TYPE, new PawsInt(0x0b));
+		defineSymbol(pawsDefScope, "DW_ATE_edited", PawsInt::TYPE, new PawsInt(0x0c));
+		defineSymbol(pawsDefScope, "DW_ATE_signed_fixed", PawsInt::TYPE, new PawsInt(0x0d));
+		defineSymbol(pawsDefScope, "DW_ATE_unsigned_fixed", PawsInt::TYPE, new PawsInt(0x0e));
+		defineSymbol(pawsDefScope, "DW_ATE_decimal_float", PawsInt::TYPE, new PawsInt(0x0f));
+		defineSymbol(pawsDefScope, "DW_ATE_UTF", PawsInt::TYPE, new PawsInt(0x10));
+		defineSymbol(pawsDefScope, "DW_ATE_UCS", PawsInt::TYPE, new PawsInt(0x11));
+		defineSymbol(pawsDefScope, "DW_ATE_ASCII", PawsInt::TYPE, new PawsInt(0x12));
 
 		// Declare LLVM-C extern functions in paws define blocks
 		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "llvm");

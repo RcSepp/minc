@@ -44,7 +44,7 @@
 %left '<' LEQ '>' GEQ
 %left '+' '-'
 %left '*' '/' '%'
-%left NEW
+%right NEW REF
 %left '.' CALL SUBSCRIPT TPLT DM
 %left SR
 %left ENC
@@ -133,6 +133,7 @@ expr
 	// Unary operators
 	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
+	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
 	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
 ;

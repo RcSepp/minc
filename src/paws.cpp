@@ -991,6 +991,19 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
+	// Define address-of expression
+	defineExpr3(block, "& $E<PawsBase>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable value = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			BaseValue* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)value.value)->get());
+			return Variable(((PawsType*)value.type)->ptrType, ptr);
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			assert(ExprASTIsCast(params[0]));
+			return ((PawsType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->ptrType;
+		}
+	);
+
 	try
 	{
 		codegenExpr((ExprAST*)block, nullptr);

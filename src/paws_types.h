@@ -12,6 +12,8 @@ extern BaseScopeType* FILE_SCOPE_TYPE;
 
 struct PawsType : public BaseType
 {
+	PawsType *valType, *ptrType;
+	PawsType() : valType(nullptr), ptrType(nullptr) {}
 };
 
 template<typename T> struct PawsValue : BaseValue
@@ -102,6 +104,25 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 	{
 		// Let type derive from PawsBase
 		defineOpaqueInheritanceCast(scope, T::TYPE, PawsBase::TYPE);
+
+		// Register pointer-relationship
+		typedef PawsValue<typename std::add_pointer<typename T::CType>::type> ptrT;
+		if (getTypeName(ptrT::TYPE) != "UNKNOWN_TYPE") //TODO: Replace with something like hasType(...)
+		{
+			T::TYPE->ptrType = ptrT::TYPE;
+			ptrT::TYPE->valType = T::TYPE;
+		}
+		if constexpr (
+			!std::is_same<typename T::CType, typename std::remove_pointer<typename T::CType>::type>() // If T::CType is pointer type
+			&& std::is_constructible<typename std::remove_pointer<typename T::CType>::type>::value) // If *T::CType is not an incomplete type
+		{
+			typedef PawsValue<typename std::remove_pointer<typename T::CType>::type> valT;
+			if (getTypeName(valT::TYPE) != "UNKNOWN_TYPE") //TODO: Replace with something like hasType(...)
+			{
+				valT::TYPE->ptrType = T::TYPE;
+				T::TYPE->valType = valT::TYPE;
+			}
+		}
 
 		// Define ExprAST type hierarchy
 		typedef typename std::remove_pointer<typename T::CType>::type baseCType; // Pointer-less T::CType

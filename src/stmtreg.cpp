@@ -90,6 +90,56 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
 		}
+		else if (expr[0]->exprtype == ExprAST::ExprType::BINOP && tplt + 1 != tpltEnd)
+		{
+			BinOpExprAST* binopExpr = (BinOpExprAST*)expr[0];
+
+			// Match non-ellipsis template expression against binop expression
+			MatchScore binopScore = score;
+			if (!tplt[0]->match(block, expr[0], binopScore))
+				binopScore = -0x80000000;
+
+			// Match non-ellipsis template expression against binop.a/binop.b_pre expression
+			MatchScore preopScore = score;
+			if(!(tplt[0]->match(block, binopExpr->a, preopScore) && tplt[1]->match(block, &binopExpr->b_pre, preopScore)))
+				preopScore = -0x80000000;
+
+			// Match non-ellipsis template expression against binop.a_post/binop.b expression
+			MatchScore postopScore = score;
+			if(!(tplt[0]->match(block, &binopExpr->a_post, postopScore) && tplt[1]->match(block, binopExpr->b, postopScore)))
+				postopScore = -0x80000000;
+
+			if (binopScore == -0x80000000 && preopScore == -0x80000000 && postopScore == -0x80000000)
+				return false; // Neither binop, nor binop.a/binop.b_pre or binop.a_post/binop.b matched
+
+			// Set score to max(binopScore, preopScore, postopScore) and advance tplt and expr pointers
+			if (preopScore > binopScore)
+			{
+				if (postopScore > preopScore)
+				{
+					score = postopScore;
+					++tplt;
+				}
+				else
+				{
+					score = preopScore;
+					++tplt;
+				}
+			}
+			else
+			{
+				if (postopScore > binopScore)
+				{
+					score = postopScore;
+					++tplt;
+				}
+				else
+				{
+					score = binopScore;
+				}
+			}
+			++tplt, ++expr;
+		}
 		else
 		{
 			// Match non-ellipsis template expression
@@ -189,6 +239,53 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 			storeParam(stmt, params, paramIdx++);
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
+		}
+		else if (expr[0]->exprtype == ExprAST::ExprType::BINOP && tplt + 1 != tpltEnd)
+		{
+			BinOpExprAST* binopExpr = (BinOpExprAST*)expr[0];
+
+			// Match non-ellipsis template expression against binop expression
+			MatchScore binopScore = score;
+			if (!tplt[0]->match(block, expr[0], binopScore))
+				binopScore = -0x80000000;
+
+			// Match non-ellipsis template expression against binop.a/binop.b_pre expression
+			MatchScore preopScore = score;
+			if(!(tplt[0]->match(block, binopExpr->a, preopScore) && tplt[1]->match(block, &binopExpr->b_pre, preopScore)))
+				preopScore = -0x80000000;
+
+			// Match non-ellipsis template expression against binop.a_post/binop.b expression
+			MatchScore postopScore = score;
+			if(!(tplt[0]->match(block, &binopExpr->a_post, postopScore) && tplt[1]->match(block, binopExpr->b, postopScore)))
+				postopScore = -0x80000000;
+
+			// Set score to max(binopScore, preopScore, postopScore) and advance tplt and expr pointers
+			if (preopScore > binopScore)
+			{
+				if (postopScore > preopScore)
+				{
+					tplt[0]->collectParams(block, &binopExpr->a_post, params, paramIdx);
+					(++tplt)[0]->collectParams(block, binopExpr->b, params, paramIdx);
+				}
+				else
+				{
+					tplt[0]->collectParams(block, binopExpr->a, params, paramIdx);
+					(++tplt)[0]->collectParams(block, &binopExpr->b_pre, params, paramIdx);
+				}
+			}
+			else
+			{
+				if (postopScore > binopScore)
+				{
+					tplt[0]->collectParams(block, &binopExpr->a_post, params, paramIdx);
+					(++tplt)[0]->collectParams(block, binopExpr->b, params, paramIdx);
+				}
+				else
+				{
+					tplt[0]->collectParams(block, expr[0], params, paramIdx);
+				}
+			}
+			++tplt, ++expr;
 		}
 		else
 		{

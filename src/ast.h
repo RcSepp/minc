@@ -742,42 +742,6 @@ public:
 	}
 };
 
-class BinOpExprAST : public ExprAST
-{
-public:
-	int op;
-	ExprAST *a, *b;
-	const std::string opstr;
-	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b) : ExprAST(loc, ExprAST::ExprType::BINOP), op(op), a(a), b(b), opstr(opstr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score) && b->match(block, ((BinOpExprAST*)expr)->b, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-	{
-		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
-		b->collectParams(block, ((BinOpExprAST*)expr)->b, params, paramIdx);
-	}
-	void resolveTypes(BlockExprAST* block)
-	{
-		a->resolveTypes(block);
-		b->resolveTypes(block);
-		ExprAST::resolveTypes(block);
-	}
-	std::string str() const { return a->str() + " " + opstr + " " + b->str(); }
-	int comp(const ExprAST* other) const
-	{
-		int c = ExprAST::comp(other);
-		if (c) return c;
-		const BinOpExprAST* _other = (const BinOpExprAST*)other;
-		c = this->op - _other->op;
-		if (c) return c;
-		c = this->a->comp(_other->a);
-		if (c) return c;
-		return this->b->comp(_other->b);
-	}
-};
-
 class PrefixExprAST : public ExprAST
 {
 public:
@@ -787,11 +751,11 @@ public:
 	PrefixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a) : ExprAST(loc, ExprAST::ExprType::PREOP), op(op), a(a), opstr(opstr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score);
+		return expr->exprtype == this->exprtype && ((PrefixExprAST*)expr)->op == this->op && a->match(block, ((PrefixExprAST*)expr)->a, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 	{
-		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
+		a->collectParams(block, ((PrefixExprAST*)expr)->a, params, paramIdx);
 	}
 	void resolveTypes(BlockExprAST* block)
 	{
@@ -819,11 +783,11 @@ public:
 	PostfixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a) : ExprAST(loc, ExprAST::ExprType::POSTOP), op(op), a(a), opstr(opstr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score);
+		return expr->exprtype == this->exprtype && ((PostfixExprAST*)expr)->op == this->op && a->match(block, ((PostfixExprAST*)expr)->a, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 	{
-		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
+		a->collectParams(block, ((PostfixExprAST*)expr)->a, params, paramIdx);
 	}
 	void resolveTypes(BlockExprAST* block)
 	{
@@ -839,6 +803,47 @@ public:
 		c = this->op - _other->op;
 		if (c) return c;
 		return this->a->comp(_other->a);
+	}
+};
+
+class BinOpExprAST : public ExprAST
+{
+public:
+	int op;
+	ExprAST *a, *b;
+	const std::string opstr;
+	PostfixExprAST a_post;
+	PrefixExprAST b_pre;
+	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b)
+		: ExprAST(loc, ExprAST::ExprType::BINOP), op(op), a(a), b(b), opstr(opstr), a_post(a->loc, op, opstr, a), b_pre(b->loc, op, opstr, b) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		return expr->exprtype == this->exprtype && ((BinOpExprAST*)expr)->op == this->op && a->match(block, ((BinOpExprAST*)expr)->a, score) && b->match(block, ((BinOpExprAST*)expr)->b, score);
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+	{
+		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
+		b->collectParams(block, ((BinOpExprAST*)expr)->b, params, paramIdx);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		a->resolveTypes(block);
+		b->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+		a_post.resolveTypes(block);
+		b_pre.resolveTypes(block);
+	}
+	std::string str() const { return a->str() + " " + opstr + " " + b->str(); }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const BinOpExprAST* _other = (const BinOpExprAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
+		c = this->a->comp(_other->a);
+		if (c) return c;
+		return this->b->comp(_other->b);
 	}
 };
 

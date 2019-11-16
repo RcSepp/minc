@@ -26,7 +26,7 @@
 %}
 
 %token ELLIPSIS
-%token EQ NE LEQ GEQ NEW DM SR
+%token EQ NE LEQ GEQ NEW DM SR INC DEC
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
@@ -44,8 +44,8 @@
 %left '<' LEQ '>' GEQ
 %left '+' '-'
 %left '*' '/' '%'
-%right NEW REF
-%left '.' CALL SUBSCRIPT TPLT DM
+%right NEW REF PREINC
+%left '.' CALL SUBSCRIPT TPLT DM POSTINC
 %left SR
 %left ENC
 
@@ -137,6 +137,10 @@ expr
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
 	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
+	| INC expr %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }
+	| DEC expr %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::DEC, "--", $2); }
+	| expr INC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::INC, "++", $1); }
+	| expr DEC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::DEC, "--", $1); }
 ;
 
 %%

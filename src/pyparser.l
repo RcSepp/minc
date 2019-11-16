@@ -41,6 +41,8 @@ OR			\|\|
 NEW			new
 DM			->
 SR			::
+INC			\+\+
+DEC			--
 
 %%
 	int indent_caller = normal;
@@ -141,6 +143,8 @@ SR			::
 <normal>{NEW}							return token::NEW;
 <normal>{DM}							return token::DM;
 <normal>{SR}							return token::SR;
+<normal>{INC}							return token::INC;
+<normal>{DEC}							return token::DEC;
 <normal>{LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];

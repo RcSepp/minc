@@ -447,6 +447,44 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
+	// Define integer prefix increment
+	defineExpr2(block, "++$I<PawsInt>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+			++((PawsInt*)var->value)->get();
+			return *var;
+		},
+		PawsInt::TYPE
+	);
+
+	// Define integer prefix decrement
+	defineExpr2(block, "--$I<PawsInt>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+			--((PawsInt*)var->value)->get();
+			return *var;
+		},
+		PawsInt::TYPE
+	);
+
+	// Define integer postfix increment
+	defineExpr2(block, "$I<PawsInt>++",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()++));
+		},
+		PawsInt::TYPE
+	);
+
+	// Define integer postfix decrement
+	defineExpr2(block, "$I<PawsInt>--",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()--));
+		},
+		PawsInt::TYPE
+	);
+
 	// Define integer addition
 	defineExpr(block, "$E<PawsInt> + $E<PawsInt>",
 		+[](int a, int b) -> int {

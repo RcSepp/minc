@@ -549,14 +549,67 @@ exprdef<bool> $E<bool> != $E<bool> {
 	return LLVMEXBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
+// /* ---------------------------------------------------------------------------*\
+// Name: Integer prefix increment
+// Template: ++$I<int>
+// \* ---------------------------------------------------------------------------*/
+// exprdef<int> ++$I<int> {
+// 	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+
+// 	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+// 	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
+// 	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(1), 1), "inc");
+// 	LLVMEXBuildStore(var, storage);
+// 	return var;
+// }
+
+// /* ---------------------------------------------------------------------------*\
+// Name: Integer prefix decrement
+// Template: --$I<int>
+// \* ---------------------------------------------------------------------------*/
+// exprdef<int> --$I<int> {
+// 	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+
+// 	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+// 	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
+// 	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(-1), 1), "dec");
+// 	LLVMEXBuildStore(var, storage);
+// 	return var;
+// }
+
+/* ---------------------------------------------------------------------------*\
+Name: Integer postfix increment
+Template: $I<int>++
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $I<int>++ {
+	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+
+	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+	LLVMValueRef pre = LLVMEXBuildLoad(storage, "");
+	LLVMValueRef post = LLVMEXBuildNSWAdd(pre, LLVMConstInt(LLVMInt32Type(), long(1), 1), "inc");
+	LLVMEXBuildStore(post, storage);
+	return pre;
+}
+
+/* ---------------------------------------------------------------------------*\
+Name: Integer postfix decrement
+Template: $I<int>--
+\* ---------------------------------------------------------------------------*/
+exprdef<int> $I<int>-- {
+	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+
+	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+	LLVMValueRef pre = LLVMEXBuildLoad(storage, "");
+	LLVMValueRef post = LLVMEXBuildNSWAdd(pre, LLVMConstInt(LLVMInt32Type(), long(-1), 1), "dec");
+	LLVMEXBuildStore(post, storage);
+	return pre;
+}
+
 /* ---------------------------------------------------------------------------*\
 Name: Integer addition
 Template: $E<int> + $E<int>
 Depends on: return $E
 \* ---------------------------------------------------------------------------*/
-// exprdef<int> $E<int> + $E<int> {
-// 	return LLVMEXBuildAdd($0.codegen(parentBlock), $1.codegen(parentBlock), "add");
-// }
 exprdef<int> $E<int> + $E<int> {
 	return LLVMEXBuildAdd($0.codegen(parentBlock), $1.codegen(parentBlock), "add");
 }

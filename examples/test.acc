@@ -15,6 +15,17 @@ stmtdef runCompileTimeTests() {
 	{ a = 1; }
 	assert(a == 1);
 
+	// Test integer arithmetic
+	a = 0;
+	assert(0 == a++);
+	assert(1 == a);
+	assert(1 == a--);
+	assert(0 == a);
+	// assert(1 == ++a);
+	// assert(1 == a);
+	// assert(0 == --a);
+	// assert(0 == a);
+
 	// Test if statement
 	a = 0;
 	if (1) a = 1; assert(a == 1);

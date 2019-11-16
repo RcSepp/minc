@@ -3,28 +3,28 @@ import <builtin.acc>;
 string malloc(long size);
 
 stmtdef double* $I = $E<doublePtr> {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), "");
+	LLVMValueRef foo = LLVMEXBuildAlloca(LLVMPointerType(LLVMDoubleType(), 0), "");
 	LLVMSetAlignment(foo, 8);
-	LLVMBuildStore($1.codegen(parentBlock), foo);
+	LLVMEXBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, doublePtr, foo);
 }
 
 stmtdef char* $I = $E {
-	LLVMValueRef foo = LLVMBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
+	LLVMValueRef foo = LLVMEXBuildAlloca(LLVMPointerType(LLVMInt8Type(), 0), "");
 	LLVMSetAlignment(foo, 8);
-	LLVMBuildStore($1.codegen(parentBlock), foo);
+	LLVMEXBuildStore($1.codegen(parentBlock), foo);
 	addToScope(parentBlock, $0, string, foo);
 }
 
 exprdef<doublePtr> toDoublePtr($E) {
-	return LLVMBuildBitCast(
+	return LLVMEXBuildBitCast(
 		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMDoubleType(), 0),
 		""
 	);
 }
 exprdef<string> toCharPtr($E) {
-	return LLVMBuildBitCast(
+	return LLVMEXBuildBitCast(
 		$0.codegen(parentBlock),
 		LLVMPointerType(LLVMInt8Type(), 0),
 		""
@@ -35,18 +35,18 @@ exprdef<double> $E[$E<int>] = $E<double> {
 	LLVMValueRef var = $0.codegen(parentBlock);
 	LLVMValueRef idx = $1.codegen(parentBlock);
 
-	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
+	LLVMValueRef gep = LLVMEXBuildInBoundsGEP1(var, idx, "");
 
 	LLVMValueRef expr = $2.codegen(parentBlock);
-	LLVMBuildStore(expr, gep);
+	LLVMEXBuildStore(expr, gep);
 	return expr;
 }
 exprdef<double> $E[$E<int>] {
 	LLVMValueRef var = $0.codegen(parentBlock);
 	LLVMValueRef idx = $1.codegen(parentBlock);
 
-	LLVMValueRef gep = LLVMBuildInBoundsGEP1(var, idx, "");
-	LLVMValueRef val = LLVMBuildLoad(gep, "");
+	LLVMValueRef gep = LLVMEXBuildInBoundsGEP1(var, idx, "");
+	LLVMValueRef val = LLVMEXBuildLoad(gep, "");
 	LLVMSetAlignment(val, 8);
 	return val;
 }
@@ -64,19 +64,19 @@ int dgemm()
 	double* A = toDoublePtr(malloc(NN * 8));
 	double* B = toDoublePtr(malloc(NN * 8));
 	double* C = toDoublePtr(malloc(NN * 8));
-	for (int i = 0; i != NN; i = i + 1) {
+	for (int i = 0; i != NN; i++) {
 		A[i] = i;
 	}
-	for (int i = 0; i != NN; i = i + 1) {
+	for (int i = 0; i != NN; i++) {
 		B[i] = i;
 	}
-	for (int i = 0; i != NN; i = i + 1) {
+	for (int i = 0; i != NN; i++) {
 		C[i] = 0.0;
 	}
 
-	for (int i = 0; i != N; i = i + 1) {
-		for (int j = 0; j != N; j = j + 1) {
-			for (int k = 0; k != N; k = k + 1) {
+	for (int i = 0; i != N; i++) {
+		for (int j = 0; j != N; j++) {
+			for (int k = 0; k != N; k++) {
 				C[i * N + j] = C[i * N + j] + A[i * N + k] * B[k * N + j];
 			}
 		}

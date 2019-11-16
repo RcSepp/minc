@@ -549,33 +549,33 @@ exprdef<bool> $E<bool> != $E<bool> {
 	return LLVMEXBuildICmp(LLVMIntNE, $0.codegen(parentBlock), $1.codegen(parentBlock), "cmp");
 }
 
-// /* ---------------------------------------------------------------------------*\
-// Name: Integer prefix increment
-// Template: ++$I<int>
-// \* ---------------------------------------------------------------------------*/
-// exprdef<int> ++$I<int> {
-// 	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+/* ---------------------------------------------------------------------------*\
+Name: Integer prefix increment
+Template: ++$I<int>
+\* ---------------------------------------------------------------------------*/
+exprdef<int> ++$I<int> {
+	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
 
-// 	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
-// 	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
-// 	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(1), 1), "inc");
-// 	LLVMEXBuildStore(var, storage);
-// 	return var;
-// }
+	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
+	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(1), 1), "inc");
+	LLVMEXBuildStore(var, storage);
+	return var;
+}
 
-// /* ---------------------------------------------------------------------------*\
-// Name: Integer prefix decrement
-// Template: --$I<int>
-// \* ---------------------------------------------------------------------------*/
-// exprdef<int> --$I<int> {
-// 	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
+/* ---------------------------------------------------------------------------*\
+Name: Integer prefix decrement
+Template: --$I<int>
+\* ---------------------------------------------------------------------------*/
+exprdef<int> --$I<int> {
+	exprdef<long> long($E<int>) { return LLVMEXBuildPtrToInt($0.codegen(parentBlock), long.llvmtype, ""); }
 
-// 	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
-// 	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
-// 	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(-1), 1), "dec");
-// 	LLVMEXBuildStore(var, storage);
-// 	return var;
-// }
+	LLVMValueRef storage = ImportSymbol(parentBlock, $0);
+	LLVMValueRef var = LLVMEXBuildLoad(storage, "");
+	var = LLVMEXBuildNSWAdd(var, LLVMConstInt(LLVMInt32Type(), long(-1), 1), "dec");
+	LLVMEXBuildStore(var, storage);
+	return var;
+}
 
 /* ---------------------------------------------------------------------------*\
 Name: Integer postfix increment

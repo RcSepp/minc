@@ -21,10 +21,10 @@ stmtdef runCompileTimeTests() {
 	assert(1 == a);
 	assert(1 == a--);
 	assert(0 == a);
-	// assert(1 == ++a);
-	// assert(1 == a);
-	// assert(0 == --a);
-	// assert(0 == a);
+	assert(1 == ++a);
+	assert(1 == a);
+	assert(0 == --a);
+	assert(0 == a);
 
 	// Test if statement
 	a = 0;

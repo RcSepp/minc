@@ -116,6 +116,7 @@ expr
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
 	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
+	| expr '.' ELLIPSIS { $$ = new VarBinOpExprAST(getloc(@1, @3), (int)'.', ".", $1); }
 	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
 	| expr SR id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::SR, "::", $1, $3); }
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
@@ -134,10 +135,10 @@ expr
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
 	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
-	| INC expr %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }
-	| DEC expr %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::DEC, "--", $2); }
-	| expr INC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::INC, "++", $1); }
-	| expr DEC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::DEC, "--", $1); }
+	| INC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }
+	| DEC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::DEC, "--", $2); }
+	| id_or_plchld INC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::INC, "++", $1); }
+	| id_or_plchld DEC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::DEC, "--", $1); }
 ;
 
 %%

@@ -67,7 +67,7 @@ class ExprAST
 public:
 	const Location loc;
 	enum ExprType {
-		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ARGOP, ENCOP, TEROP, BINOP, PREOP, POSTOP, BLOCK,
+		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ARGOP, ENCOP, TEROP, BINOP, VARBINOP, PREOP, POSTOP, BLOCK,
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
@@ -844,6 +844,54 @@ public:
 		c = this->a->comp(_other->a);
 		if (c) return c;
 		return this->b->comp(_other->b);
+	}
+};
+
+class VarBinOpExprAST : public ExprAST
+{
+public:
+	int op;
+	ExprAST *a;
+	const std::string opstr;
+	VarBinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a)
+		: ExprAST(loc, ExprAST::ExprType::VARBINOP), op(op), a(a), opstr(opstr) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+	{
+		if (expr->exprtype == this->exprtype)
+			return ((VarBinOpExprAST*)expr)->op == this->op && a->match(block, ((VarBinOpExprAST*)expr)->a, score);
+		else if (expr->exprtype == ExprAST::ExprType::BINOP)
+			((BinOpExprAST*)expr)->op == this->op && this->match(block, ((BinOpExprAST*)expr)->a, score) && this->match(block, ((BinOpExprAST*)expr)->b, score);
+		else
+			a->match(block, expr, score);
+	}
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+	{
+		if (expr->exprtype == this->exprtype)
+			a->collectParams(block, ((VarBinOpExprAST*)expr)->a, params, paramIdx);
+		else if (expr->exprtype == ExprAST::ExprType::BINOP)
+		{
+			size_t& paramIdx1 = paramIdx, paramIdx2 = paramIdx;
+			this->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx1);
+			this->collectParams(block, ((BinOpExprAST*)expr)->b, params, paramIdx2);
+			paramIdx = paramIdx1 > paramIdx2 ? paramIdx1 : paramIdx2;
+		}
+		else
+			a->collectParams(block, expr, params, paramIdx);
+	}
+	void resolveTypes(BlockExprAST* block)
+	{
+		a->resolveTypes(block);
+		ExprAST::resolveTypes(block);
+	}
+	std::string str() const { return a->str() + " " + opstr + " ..."; }
+	int comp(const ExprAST* other) const
+	{
+		int c = ExprAST::comp(other);
+		if (c) return c;
+		const VarBinOpExprAST* _other = (const VarBinOpExprAST*)other;
+		c = this->op - _other->op;
+		if (c) return c;
+		return this->a->comp(_other->a);
 	}
 };
 

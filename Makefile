@@ -8,6 +8,7 @@ OBJS = \
 	stmtreg.o \
 	castreg.o \
 	paws.o \
+	paws_int.o \
 	paws_string.o \
 	paws_fileio.o \
 	paws_time.o \

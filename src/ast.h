@@ -866,6 +866,7 @@ public:
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 	{
+		size_t paramBegin = paramIdx;
 		if (expr->exprtype == this->exprtype)
 			a->collectParams(block, ((VarBinOpExprAST*)expr)->a, params, paramIdx);
 		else if (expr->exprtype == ExprAST::ExprType::BINOP)
@@ -877,6 +878,12 @@ public:
 		}
 		else
 			a->collectParams(block, expr, params, paramIdx);
+
+		// Replace all non-list parameters within this VarBinOpExprAST with single-element lists,
+		// because ellipsis parameters are expected to always be lists
+		for (size_t i = paramBegin; i < paramIdx; ++i)
+			if (params[i]->exprtype != ExprAST::ExprType::LIST)
+				params[i] = new ExprListAST('\0', { params[i] });
 	}
 	void resolveTypes(BlockExprAST* block)
 	{

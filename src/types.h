@@ -1,7 +1,7 @@
 #ifndef __INCLUDE_H
 #define __INCLUDE_H
 
-#include "api.h"
+#include "minc_api.h"
 
 namespace llvm {
 	class Value;

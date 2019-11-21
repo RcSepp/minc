@@ -17,7 +17,12 @@
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
-            "environment": [],
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/bin"
+                }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [

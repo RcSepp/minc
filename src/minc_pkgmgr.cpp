@@ -1,5 +1,5 @@
 #include <cstring>
-#include "api.h"
+#include "minc_api.h"
 #include "minc_pkgmgr.h"
 
 MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc)

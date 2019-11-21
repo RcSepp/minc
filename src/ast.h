@@ -13,7 +13,7 @@
 #include <regex>
 #include <iostream>
 
-#include "api.h"
+#include "minc_api.h"
 
 typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
 typedef int MatchScore;

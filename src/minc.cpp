@@ -8,7 +8,7 @@
 // Local includes
 #include "cparser.h"
 #include "pyparser.h"
-#include "api.h"
+#include "minc_api.h"
 #include "minc_pkgmgr.h"
 
 int ARGC;

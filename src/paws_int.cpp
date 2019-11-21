@@ -1,4 +1,4 @@
-#include "api.h"
+#include "minc_api.h"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 

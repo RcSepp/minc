@@ -3,10 +3,21 @@ SRC_DIR = src/
 TEMP_DIR = tmp/
 BIN_DIR = bin/
 
-OBJS = \
-	minc.o \
+LIBMINC_OBJS = \
 	stmtreg.o \
 	castreg.o \
+	codegen.o \
+	module.o \
+	llvm_constants.o \
+	types.o \
+	cparser.o \
+	cparser.yy.o \
+	pyparser.o \
+	pyparser.yy.o \
+
+MINC_OBJS = \
+	minc.o \
+	minc_pkgmgr.o \
 	paws.o \
 	paws_int.o \
 	paws_string.o \
@@ -18,32 +29,30 @@ OBJS = \
 	paws_subroutine.o \
 	paws_array.o \
 	paws_bootstrap.o \
-	minc_pkgmgr.o \
-	codegen.o \
-	module.o \
-	llvm_constants.o \
-	types.o \
-	cparser.o \
-	cparser.yy.o \
-	pyparser.o \
-	pyparser.yy.o \
 
 YACC = bison
 CPPFLAGS = -g -std=c++1z
 LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -fexceptions -rdynamic
 
-OBJPATHS = $(addprefix ${TEMP_DIR}, ${OBJS})
+LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
+MINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${MINC_OBJS})
 
 all: ${BIN_DIR}minc
 
 clean:
-	-rm -r ${TEMP_DIR}* ${BIN_DIR}minc
+	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}minc
 
-# Final binary
+# minc binary
 
-${BIN_DIR}minc: ${OBJPATHS}
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${OBJPATHS} ${LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc ${LIBS}
+
+# libminc.so library
+
+${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
+	-mkdir -p ${BIN_DIR}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS} ${LIBS}
 
 # Parser code
 
@@ -59,14 +68,14 @@ ${TEMP_DIR}%.cc: ${SRC_DIR}%.y
 
 ${TEMP_DIR}%.o: ${TEMP_DIR}%.cc
 	-mkdir -p ${TEMP_DIR}
-	$(CXX) ${CPPFLAGS} -o $@ -c $<
+	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
 
 # Compiler code
 
 ${TEMP_DIR}%.o: ${SRC_DIR}%.cpp
 	-mkdir -p ${TEMP_DIR}
-	$(CXX) ${CPPFLAGS} -o $@ -c $<
+	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
 
 ${TEMP_DIR}minc.o: ${SRC_DIR}minc.cpp ${TEMP_DIR}cparser.cc ${TEMP_DIR}pyparser.cc
 	-mkdir -p ${TEMP_DIR}
-	$(CXX) ${CPPFLAGS} -o $@ -c $<
+	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<

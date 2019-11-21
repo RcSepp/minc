@@ -1,6 +1,6 @@
 #include "api.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -8,7 +8,7 @@
 typedef std::chrono::duration<double> duration;
 typedef PawsValue<duration> PawsDuration;
 
-PawsPackage PAWS_TIME("time", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_TIME("paws.time", [](BlockExprAST* pkgScope) {
 	registerType<PawsDuration>(pkgScope, "PawsDuration");
 
 	// Define PawsDuration getters

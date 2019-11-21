@@ -9,23 +9,54 @@
 #include "cparser.h"
 #include "pyparser.h"
 #include "api.h"
-#include "paws.h"
+#include "minc_pkgmgr.h"
 
-int main(int argc, char **argv)
+int ARGC;
+char **ARGV;
+void getCommandLineArgs(int* argc, char*** argv)
+{
+	*argc = ARGC;
+	*argv = ARGV;
+}
+
+struct ExitException
+{
+	const int code;
+	ExitException(int code) : code(code) {}
+};
+void exit(int code)
+{
+	throw ExitException(code);
+}
+
+int main(int argc, char** argv)
 {
 	const bool use_stdin = argc == 1;
+	const char* path = use_stdin ? nullptr : argv[1];
+
+	// Remove source file path from command line arguments
+	if (!use_stdin)
+	{
+		argv[1] = argv[0];
+		++argv;
+		--argc;
+	}
+
+	// Store command line arguments
+	ARGC = argc;
+	ARGV = argv;
 
 	// Open source file
-	std::istream* in = use_stdin ? &std::cin : new std::ifstream(argv[1]);
+	std::istream* in = use_stdin ? &std::cin : new std::ifstream(path);
 	if (!in->good())
 	{
-		std::cerr << "\e[31merror:\e[0m " << std::string(argv[1]) << ": No such file or directory\n";
+		std::cerr << "\e[31merror:\e[0m " << std::string(path) << ": No such file or directory\n";
 		return -1;
 	}
 
 	// Get absolute path to source file
 	char buf[1024];
-	const char* realPath = use_stdin ? nullptr : realpath(argv[1], buf);
+	const char* realPath = use_stdin ? nullptr : realpath(path, buf);
 
 	// >>> Parse source code from file or stdin into AST
 
@@ -42,12 +73,14 @@ int main(int argc, char **argv)
 
 	//printf("%s\n", rootBlock->str().c_str());
 
-	// >>> Compile AST
+	// >>> Execute source file
 
 	int result = 0;
 	try {
-		argv[1] = argv[0];
-		result = PAWRun(rootBlock, --argc, ++argv);
+		MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
+		codegenExpr((ExprAST*)rootBlock, nullptr);
+	} catch (ExitException err) {
+		result = err.code;
 	} catch (CompileError err) {
 		err.print(std::cerr);
 		if (!use_stdin) ((std::ifstream*)in)->close();

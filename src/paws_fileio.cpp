@@ -2,11 +2,11 @@
 #include <sstream>
 #include "api.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 typedef PawsValue<std::fstream&> PawsFile;
 
-PawsPackage PAWS_FILEIO("fileio", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_FILEIO("paws.fileio", [](BlockExprAST* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
 
 	defineStmt2(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",

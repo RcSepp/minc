@@ -10,7 +10,7 @@
 #include "api.h"
 #include "paws_types.h"
 #include "paws_subroutine.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 using namespace llvm;
 
@@ -436,8 +436,8 @@ public:
 };
 
 
-PawsPackage PAWS_LLVM("llvm", [](BlockExprAST* pkgScope) {
-	PAWS_PACKAGE_MANAGER().importPackage(pkgScope, "subroutine");
+MincPackage PAWS_LLVM("paws.llvm", [](BlockExprAST* pkgScope) {
+	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.subroutine");
 
 	registerType<PawsVoidPtr>(pkgScope, "PawsVoidPtr");
 	registerType<PawsIntArray>(pkgScope, "PawsIntArray");

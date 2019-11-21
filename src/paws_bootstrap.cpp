@@ -14,7 +14,7 @@
 
 #include "llvm_constants.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 extern llvm::LLVMContext* context;
 extern llvm::IRBuilder<>* builder;
@@ -437,9 +437,9 @@ public:
 	}
 };
 
-struct PawsBootstrap : public PawsPackage
+struct PawsBootstrap : public MincPackage
 {
-	PawsBootstrap() : PawsPackage("bootstrap") {}
+	PawsBootstrap() : MincPackage("paws.bootstrap") {}
 
 private:
 	void define(BlockExprAST* rootBlock)
@@ -668,7 +668,7 @@ private:
 		defineSymbol(pawsDefScope, "DW_ATE_ASCII", PawsInt::TYPE, new PawsInt(0x12));
 
 		// Declare LLVM-C extern functions in paws define blocks
-		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "llvm");
+		MINC_PACKAGE_MANAGER().importPackage(pawsDefScope, "paws.llvm");
 
 		// Cast all builtin- and base types to PawsValue<LLVMValueRef> in paws define blocks
 		defineInheritanceCast2(pawsDefScope, BuiltinTypes::Builtin, PawsValue<LLVMValueRef>::TYPE,
@@ -689,7 +689,7 @@ private:
 		// Cast arrays of PawsValue<LLVMValueRef> to PawsValue<LLVMValueRef*> in paws define blocks
 defineSymbol(pawsDefScope, "PawsBase", PawsMetaType::TYPE, new PawsMetaType(PawsBase::TYPE)); //DELETE
 defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsInt::TYPE)); //DELETE
-		PAWS_PACKAGE_MANAGER().importPackage(pawsDefScope, "array");
+		MINC_PACKAGE_MANAGER().importPackage(pawsDefScope, "paws.array");
 		defineTypeCast2(pawsDefScope, PawsTpltType::get(PawsValue<std::vector<BaseValue*>>::TYPE, PawsValue<LLVMValueRef>::TYPE), PawsValue<LLVMValueRef*>::TYPE,
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* castArgs) -> Variable {
 				std::vector<BaseValue*>& arr = ((PawsValue<std::vector<BaseValue*>>*)codegenExpr(params[0], parentBlock).value)->get();

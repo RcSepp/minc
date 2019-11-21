@@ -4,7 +4,7 @@
 #include "api.h"
 #include "paws_types.h"
 #include "paws_subroutine.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 Variable PawsFunc::call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& argExprs) const
 {
@@ -23,7 +23,7 @@ Variable PawsFunc::call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& 
 	return Variable(PawsVoid::TYPE, nullptr);
 }
 
-PawsPackage PAWS_SUBROUTINE("subroutine", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
 
 	// Define function definition

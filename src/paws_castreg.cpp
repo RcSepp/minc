@@ -1,14 +1,14 @@
 #include <cassert>
 #include "api.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 typedef PawsValue<const Cast*> PawsCast;
 
 struct CastMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
 typedef PawsValue<CastMap> PawsCastMap;
 
-PawsPackage PAWS_CASTREG("castreg", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_CASTREG("paws.castreg", [](BlockExprAST* pkgScope) {
 	registerType<PawsCastMap>(pkgScope, "PawsCastMap");
 	registerType<PawsCast>(pkgScope, "PawsCast");
 

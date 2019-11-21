@@ -1,7 +1,7 @@
 #include <cassert>
 #include "api.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 struct StmtMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
 typedef PawsValue<StmtMap> PawsStmtMap;
@@ -12,7 +12,7 @@ typedef PawsValue<ExprMap> PawsExprMap;
 struct SymbolMap { BlockExprAST* block; operator BlockExprAST*() const { return block; } };
 typedef PawsValue<SymbolMap> PawsSymbolMap;
 
-PawsPackage PAWS_STMTREG("stmtreg", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_STMTREG("paws.stmtreg", [](BlockExprAST* pkgScope) {
 	registerType<PawsStmtMap>(pkgScope, "PawsStmtMap");
 	registerType<PawsExprMap>(pkgScope, "PawsExprMap");
 	registerType<PawsSymbolMap>(pkgScope, "PawsSymbolMap");

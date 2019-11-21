@@ -1,10 +1,10 @@
 #include "api.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 typedef PawsValue<std::vector<BaseValue*>> PawsArray;
 
-PawsPackage PAWS_ARRAY("array", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 	registerType<PawsArray>(pkgScope, "PawsArray");
 
 	// Inline array declaration

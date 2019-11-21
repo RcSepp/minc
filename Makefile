@@ -16,7 +16,7 @@ OBJS = \
 	paws_subroutine.o \
 	paws_array.o \
 	paws_bootstrap.o \
-	paws_pkgmgr.o \
+	minc_pkgmgr.o \
 	codegen.o \
 	module.o \
 	llvm_constants.o \

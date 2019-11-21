@@ -58,7 +58,7 @@ measure("compile time") {
 	rootBlock.scopeType = FILE_SCOPE_TYPE;
 	rootBlock.import(paws.bootstrap);
 	rootBlock.symbols[FILE_SCOPE] = rootBlock;
-	rootBlock.codegen(FILE_SCOPE);
+	rootBlock.codegen(getFileScope());
 	module.finalize();
 }
 

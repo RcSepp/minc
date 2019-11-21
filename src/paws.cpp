@@ -5,8 +5,9 @@
 #include <iostream>
 #include <functional>
 #include "api.h"
+#include "minc_cli.h"
 #include "paws_types.h"
-#include "paws_pkgmgr.h"
+#include "minc_pkgmgr.h"
 
 BaseScopeType* FILE_SCOPE_TYPE = new BaseScopeType();
 
@@ -218,59 +219,65 @@ void importFile(BlockExprAST* parentBlock, std::string importPath)
 	}
 }
 
-int PAWRun(BlockExprAST* block, int argc, char **argv)
-{
-	registerType<PawsBase>(block, "PawsBase");
-	registerType<PawsVoid>(block, "PawsVoid");
-	registerType<PawsMetaType>(block, "PawsMetaType");
-	registerType<PawsInt>(block, "PawsInt");
-	registerType<PawsDouble>(block, "PawsDouble");
-	registerType<PawsString>(block, "PawsString");
-	registerType<PawsExprAST>(block, "PawsExprAST");
-	registerType<PawsBlockExprAST>(block, "PawsBlockExprAST");
-	registerType<PawsConstBlockExprASTList>(block, "PawsConstBlockExprASTList");
-	registerType<PawsExprListAST>(block, "PawsExprListAST");
-	registerType<PawsLiteralExprAST>(block, "PawsLiteralExprAST");
-	registerType<PawsIdExprAST>(block, "PawsIdExprAST");
-	registerType<PawsModule>(block, "PawsModule");
-	registerType<PawsVariable>(block, "PawsVariable");
-	registerType<PawsScopeType>(block, "PawsScopeType");
-	registerType<PawsStringMap>(block, "PawsStringMap");
+MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
+	registerType<PawsBase>(pkgScope, "PawsBase");
+	registerType<PawsVoid>(pkgScope, "PawsVoid");
+	registerType<PawsMetaType>(pkgScope, "PawsMetaType");
+	registerType<PawsInt>(pkgScope, "PawsInt");
+	registerType<PawsDouble>(pkgScope, "PawsDouble");
+	registerType<PawsString>(pkgScope, "PawsString");
+	registerType<PawsExprAST>(pkgScope, "PawsExprAST");
+	registerType<PawsBlockExprAST>(pkgScope, "PawsBlockExprAST");
+	registerType<PawsConstBlockExprASTList>(pkgScope, "PawsConstBlockExprASTList");
+	registerType<PawsExprListAST>(pkgScope, "PawsExprListAST");
+	registerType<PawsLiteralExprAST>(pkgScope, "PawsLiteralExprAST");
+	registerType<PawsIdExprAST>(pkgScope, "PawsIdExprAST");
+	registerType<PawsModule>(pkgScope, "PawsModule");
+	registerType<PawsVariable>(pkgScope, "PawsVariable");
+	registerType<PawsScopeType>(pkgScope, "PawsScopeType");
+	registerType<PawsStringMap>(pkgScope, "PawsStringMap");
 
+	int argc;
+	char** argv;
+	getCommandLineArgs(&argc, &argv);
 	std::vector<Variable> blockParams;
 	blockParams.reserve(argc);
 	for (int i = 0; i < argc; ++i)
 		blockParams.push_back(Variable(PawsString::TYPE, new PawsString(std::string(argv[i]))));
-	setBlockExprASTParams(block, blockParams);
+	setBlockExprASTParams(pkgScope, blockParams);
 
-	PAWS_PACKAGE_MANAGER().import(block);
+	defineExpr2(pkgScope, "getFileScope()",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			return Variable(PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
+		},
+		PawsBlockExprAST::TYPE
+	);
 
-	defineSymbol(block, "FILE_SCOPE", PawsBlockExprAST::TYPE, new PawsBlockExprAST(block));
-	defineSymbol(block, "FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(FILE_SCOPE_TYPE));
+	defineSymbol(pkgScope, "FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(FILE_SCOPE_TYPE));
 
 	// Define single-expr statement
-	defineStmt2(block, "$E<PawsBase>",
+	defineStmt2(pkgScope, "$E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			codegenExpr(params[0], parentBlock);
 		}
 	);
 
 	// Define single-expr statement
-	defineStmt2(block, "$E",
+	defineStmt2(pkgScope, "$E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			codegenExpr(params[0], parentBlock);
 		}
 	);
 
-	// Define context-free block statement
-	defineStmt2(block, "$B",
+	// Define context-free pkgScope statement
+	defineStmt2(pkgScope, "$B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			codegenExpr(params[0], parentBlock);
 		}
 	);
 
 	// Define general bracketed expression
-	defineExpr3(block, "($E)",
+	defineExpr3(pkgScope, "($E)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return codegenExpr(params[0], parentBlock);
 		},
@@ -280,10 +287,17 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define return statement
-	definePawsReturnStmt(block, PawsInt::TYPE);
+	definePawsReturnStmt(pkgScope, PawsInt::TYPE);
+
+	// Overwrite return statement with correct type in function scope to call exit() instead of raising ReturnException
+	defineStmt(pkgScope, "return $E<PawsInt>",
+		+[](int returnCode) {
+			exit(returnCode);
+		}
+	);
 
 	// Define variable lookup
-	defineExpr3(block, "$I",
+	defineExpr3(pkgScope, "$I",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			const Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			if (var == nullptr)
@@ -297,7 +311,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define literal definition
-	defineExpr3(block, "$L",
+	defineExpr3(pkgScope, "$L",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
@@ -333,7 +347,7 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 	);
 
 	// Define variable assignment
-	defineExpr3(block, "$I<PawsBase> = $E<PawsBase>",
+	defineExpr3(pkgScope, "$I<PawsBase> = $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[1];
 			if (ExprASTIsCast(exprAST))
@@ -360,8 +374,8 @@ int PAWRun(BlockExprAST* block, int argc, char **argv)
 			return getType(exprAST, parentBlock);
 		}
 	);
-defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` for both paws and builtin.cpp
-	defineExpr3(block, "$I<_NULL> = $E<PawsBase>",
+defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` for both paws and builtin.cpp
+	defineExpr3(pkgScope, "$I<_NULL> = $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[1];
 			if (ExprASTIsCast(exprAST))
@@ -380,45 +394,45 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define string concatenation
-	defineExpr(block, "$E<PawsString> + $E<PawsString>",
+	defineExpr(pkgScope, "$E<PawsString> + $E<PawsString>",
 		+[](std::string a, std::string b) -> std::string {
 			return a + b;
 		}
 	);
 
 	// Define string length getter
-	defineExpr(block, "$E<PawsString>.length",
+	defineExpr(pkgScope, "$E<PawsString>.length",
 		+[](std::string a) -> int {
 			return a.length();
 		}
 	);
 
 	// Define substring
-	defineExpr(block, "$E<PawsString>.substr($E<PawsInt>)",
+	defineExpr(pkgScope, "$E<PawsString>.substr($E<PawsInt>)",
 		+[](std::string a, int b) -> std::string {
 			return a.substr(b);
 		}
 	);
-	defineExpr(block, "$E<PawsString>.substr($E<PawsInt>, $E<PawsInt>)",
+	defineExpr(pkgScope, "$E<PawsString>.substr($E<PawsInt>, $E<PawsInt>)",
 		+[](std::string a, int b, int c) -> std::string {
 			return a.substr(b, c);
 		}
 	);
 
 	// Define substring finder
-	defineExpr(block, "$E<PawsString>.find($E<PawsString>)",
+	defineExpr(pkgScope, "$E<PawsString>.find($E<PawsString>)",
 		+[](std::string a, std::string b) -> int {
 			return a.find(b);
 		}
 	);
-	defineExpr(block, "$E<PawsString>.rfind($E<PawsString>)",
+	defineExpr(pkgScope, "$E<PawsString>.rfind($E<PawsString>)",
 		+[](std::string a, std::string b) -> int {
 			return a.rfind(b);
 		}
 	);
 
 	// Define string concatenation
-	defineExpr(block, "$E<PawsInt> * $E<PawsString>",
+	defineExpr(pkgScope, "$E<PawsInt> * $E<PawsString>",
 		+[](int a, std::string b) -> std::string {
 			std::string result;
 			for (int i = 0; i < a; ++i)
@@ -426,7 +440,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			return result;
 		}
 	);
-	defineExpr(block, "$E<PawsString> * $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsString> * $E<PawsInt>",
 		+[](std::string a, int b) -> std::string {
 			std::string result;
 			for (int i = 0; i < b; ++i)
@@ -436,19 +450,19 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define string relations
-	defineExpr(block, "$E<PawsString> == $E<PawsString>",
+	defineExpr(pkgScope, "$E<PawsString> == $E<PawsString>",
 		+[](std::string a, std::string b) -> int {
 			return a == b;
 		}
 	);
-	defineExpr(block, "$E<PawsString> != $E<PawsString>",
+	defineExpr(pkgScope, "$E<PawsString> != $E<PawsString>",
 		+[](std::string a, std::string b) -> int {
 			return a != b;
 		}
 	);
 
 	// Define integer prefix increment
-	defineExpr2(block, "++$I<PawsInt>",
+	defineExpr2(pkgScope, "++$I<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			++((PawsInt*)var->value)->get();
@@ -458,7 +472,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define integer prefix decrement
-	defineExpr2(block, "--$I<PawsInt>",
+	defineExpr2(pkgScope, "--$I<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			--((PawsInt*)var->value)->get();
@@ -468,7 +482,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define integer postfix increment
-	defineExpr2(block, "$I<PawsInt>++",
+	defineExpr2(pkgScope, "$I<PawsInt>++",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()++));
@@ -477,7 +491,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define integer postfix decrement
-	defineExpr2(block, "$I<PawsInt>--",
+	defineExpr2(pkgScope, "$I<PawsInt>--",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()--));
@@ -486,57 +500,57 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define integer addition
-	defineExpr(block, "$E<PawsInt> + $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> + $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a + b;
 		}
 	);
 
 	// Define integer subtraction
-	defineExpr(block, "$E<PawsInt> - $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> - $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a - b;
 		}
 	);
 
 	// Define integer minimum
-	defineExpr(block, "min($E<PawsInt>, $E<PawsInt>)",
+	defineExpr(pkgScope, "min($E<PawsInt>, $E<PawsInt>)",
 		+[](int a, int b) -> int {
 			return a < b ? a : b;
 		}
 	);
 
 	// Define integer maximum
-	defineExpr(block, "max($E<PawsInt>, $E<PawsInt>)",
+	defineExpr(pkgScope, "max($E<PawsInt>, $E<PawsInt>)",
 		+[](int a, int b) -> int {
 			return a > b ? a : b;
 		}
 	);
 
 	// Define integer relations
-	defineExpr(block, "$E<PawsInt> == $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> == $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a == b;
 		}
 	);
-	defineExpr(block, "$E<PawsInt> != $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> != $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a != b;
 		}
 	);
-	defineExpr(block, "$E<PawsInt> <= $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> <= $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a <= b;
 		}
 	);
-	defineExpr(block, "$E<PawsInt> >= $E<PawsInt>",
+	defineExpr(pkgScope, "$E<PawsInt> >= $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a >= b;
 		}
 	);
 
 	// Define logical operators
-	defineExpr2(block, "$E<PawsInt> && $E<PawsInt>",
+	defineExpr2(pkgScope, "$E<PawsInt> && $E<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() &&
@@ -545,7 +559,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		},
 		PawsInt::TYPE
 	);
-	defineExpr2(block, "$E<PawsInt> || $E<PawsInt>",
+	defineExpr2(pkgScope, "$E<PawsInt> || $E<PawsInt>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ||
@@ -556,20 +570,20 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define boolean negation
-	defineExpr(block, "!$E<PawsInt>",
+	defineExpr(pkgScope, "!$E<PawsInt>",
 		+[](int a) -> int {
 			return !a;
 		}
 	);
 
 	// Define is-NULL
-	defineExpr2(block, "$E == NULL",
+	defineExpr2(pkgScope, "$E == NULL",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) == nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
 		},
 		PawsInt::TYPE
 	);
-	defineExpr2(block, "$E != NULL",
+	defineExpr2(pkgScope, "$E != NULL",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return Variable(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) != nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
 		},
@@ -578,29 +592,29 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 
 	// Define pointer equivalence operators
 	//TODO: Generalize this beyond PawsConstExprAST
-	defineExpr(block, "$E<PawsConstExprAST> == NULL",
+	defineExpr(pkgScope, "$E<PawsConstExprAST> == NULL",
 		+[](const ExprAST* a) -> int {
 			return a == nullptr;
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST> != NULL",
+	defineExpr(pkgScope, "$E<PawsConstExprAST> != NULL",
 		+[](const ExprAST* a) -> int {
 			return a != nullptr;
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST> == $E<PawsConstExprAST>",
+	defineExpr(pkgScope, "$E<PawsConstExprAST> == $E<PawsConstExprAST>",
 		+[](const ExprAST* a, const ExprAST* b) -> int {
 			return a == b;
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST> != $E<PawsConstExprAST>",
+	defineExpr(pkgScope, "$E<PawsConstExprAST> != $E<PawsConstExprAST>",
 		+[](const ExprAST* a, const ExprAST* b) -> int {
 			return a != b;
 		}
 	);
 
 	// Define if statement
-	defineStmt2(block, "if($E<PawsInt>) $S",
+	defineStmt2(pkgScope, "if($E<PawsInt>) $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
 			if (condition->get())
@@ -609,7 +623,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define if/else statement
-	defineStmt2(block, "if($E<PawsInt>) $S else $S",
+	defineStmt2(pkgScope, "if($E<PawsInt>) $S else $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
 			if (condition->get())
@@ -620,7 +634,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define inline if expression
-	defineExpr3(block, "$E<PawsInt> ? $E : $E",
+	defineExpr3(pkgScope, "$E<PawsInt> ? $E : $E",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
 		},
@@ -634,7 +648,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define map iterating for statement
-	defineStmt2(block, "for ($I, $I: $E<PawsStringMap>) $B",
+	defineStmt2(pkgScope, "for ($I, $I: $E<PawsStringMap>) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			IdExprAST* keyExpr = (IdExprAST*)params[0];
 			IdExprAST* valueExpr = (IdExprAST*)params[1];
@@ -652,7 +666,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineExpr2(block, "str($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "str($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
@@ -661,22 +675,22 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		},
 		PawsString::TYPE
 	);
-	defineExpr(block, "str($E<PawsInt>)",
+	defineExpr(pkgScope, "str($E<PawsInt>)",
 		+[](int value) -> std::string {
 			return std::to_string(value);
 		}
 	);
-	defineExpr(block, "str($E<PawsString>)",
+	defineExpr(pkgScope, "str($E<PawsString>)",
 		+[](std::string value) -> std::string {
 			return value;
 		}
 	);
-	defineExpr(block, "str($E<PawsConstExprAST>)",
+	defineExpr(pkgScope, "str($E<PawsConstExprAST>)",
 		+[](const ExprAST* value) -> std::string {
 			return ExprASTToString(value);
 		}
 	);
-	defineExpr(block, "str($E<PawsStringMap>)",
+	defineExpr(pkgScope, "str($E<PawsStringMap>)",
 		+[](std::map<std::string, std::string> value) -> std::string {
 			//TODO: Use stringstream instead
 			std::string str = "{";
@@ -686,17 +700,17 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			return str;
 		}
 	);
-	defineExpr(block, "print()",
+	defineExpr(pkgScope, "print()",
 		+[]() -> void {
 			std::cout << '\n';
 		}
 	);
-	defineExpr(block, "printerr()",
+	defineExpr(pkgScope, "printerr()",
 		+[]() -> void {
 			std::cerr << '\n';
 		}
 	);
-	defineExpr2(block, "print($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "print($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
@@ -706,7 +720,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		},
 		PawsVoid::TYPE
 	);
-	defineExpr2(block, "printerr($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "printerr($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
@@ -716,27 +730,27 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		},
 		PawsVoid::TYPE
 	);
-	defineExpr(block, "print($E<PawsString>)",
+	defineExpr(pkgScope, "print($E<PawsString>)",
 		+[](std::string value) -> void {
 			std::cout << value << '\n';
 		}
 	);
-	defineExpr(block, "printerr($E<PawsString>)",
+	defineExpr(pkgScope, "printerr($E<PawsString>)",
 		+[](std::string value) -> void {
 			std::cerr << value << '\n';
 		}
 	);
-	defineExpr(block, "print($E<PawsInt>)",
+	defineExpr(pkgScope, "print($E<PawsInt>)",
 		+[](int value) -> void {
 			std::cout << value << '\n';
 		}
 	);
-	defineExpr(block, "printerr($E<PawsInt>)",
+	defineExpr(pkgScope, "printerr($E<PawsInt>)",
 		+[](int value) -> void {
 			std::cerr << value << '\n';
 		}
 	);
-	defineExpr2(block, "type($E<PawsBase>)",
+	defineExpr2(pkgScope, "type($E<PawsBase>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
@@ -746,7 +760,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		PawsMetaType::TYPE
 	);
 
-	defineExpr2(block, "map($E<PawsString>: $E<PawsString>, ...)",
+	defineExpr2(pkgScope, "map($E<PawsString>: $E<PawsString>, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			std::vector<ExprAST*>& keys = getExprListASTExpressions((ExprListAST*)params[0]);
 			std::vector<ExprAST*>& values = getExprListASTExpressions((ExprListAST*)params[1]);
@@ -758,19 +772,19 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		PawsStringMap::TYPE
 	);
 
-	defineExpr(block, "$E<PawsStringMap>.contains($E<PawsString>)",
+	defineExpr(pkgScope, "$E<PawsStringMap>.contains($E<PawsString>)",
 		+[](std::map<std::string, std::string> map, std::string key) -> int {
 			return map.find(key) != map.end();
 		}
 	);
-	defineExpr(block, "$E<PawsStringMap>[$E<PawsString>]",
+	defineExpr(pkgScope, "$E<PawsStringMap>[$E<PawsString>]",
 		+[](std::map<std::string, std::string> map, std::string key) -> std::string {
 			auto pair = map.find(key);
 			return pair == map.end() ? nullptr : pair->second;
 		}
 	);
 
-	defineExpr(block, "parseCFile($E<PawsString>)",
+	defineExpr(pkgScope, "parseCFile($E<PawsString>)",
 		+[](std::string filename) -> BlockExprAST* {
 			// Unbind parseCFile filename parameter lifetime from local filename parameter
 			char* fname = new char[filename.size() + 1];
@@ -779,7 +793,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineExpr(block, "parsePythonFile($E<PawsString>)",
+	defineExpr(pkgScope, "parsePythonFile($E<PawsString>)",
 		+[](std::string filename) -> BlockExprAST* {
 			// Unbind parseCFile filename parameter lifetime from local filename parameter
 			char* fname = new char[filename.size() + 1];
@@ -788,51 +802,51 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstExprAST>.filename",
+	defineExpr(pkgScope, "$E<PawsConstExprAST>.filename",
 		+[](const ExprAST* expr) -> std::string {
 			return getExprFilename(expr);
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST>.line",
+	defineExpr(pkgScope, "$E<PawsConstExprAST>.line",
 		+[](const ExprAST* expr) -> int {
 			return getExprLine(expr);
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST>.column",
+	defineExpr(pkgScope, "$E<PawsConstExprAST>.column",
 		+[](const ExprAST* expr) -> int {
 			return getExprColumn(expr);
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST>.endLine",
+	defineExpr(pkgScope, "$E<PawsConstExprAST>.endLine",
 		+[](const ExprAST* expr) -> int {
 			return getExprEndLine(expr);
 		}
 	);
-	defineExpr(block, "$E<PawsConstExprAST>.endColumn",
+	defineExpr(pkgScope, "$E<PawsConstExprAST>.endColumn",
 		+[](const ExprAST* expr) -> int {
 			return getExprEndColumn(expr);
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstBlockExprAST>.parent",
-		+[](const BlockExprAST* block) -> BlockExprAST* {
-			return getBlockExprASTParent(block);
+	defineExpr(pkgScope, "$E<PawsConstBlockExprAST>.parent",
+		+[](const BlockExprAST* pkgScope) -> BlockExprAST* {
+			return getBlockExprASTParent(pkgScope);
 		}
 	);
-	defineExpr(block, "$E<PawsBlockExprAST>.parent = $E<PawsBlockExprAST>",
-		+[](BlockExprAST* block, BlockExprAST* parent) -> void {
-			setBlockExprASTParent(block, parent);
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.parent = $E<PawsBlockExprAST>",
+		+[](BlockExprAST* pkgScope, BlockExprAST* parent) -> void {
+			setBlockExprASTParent(pkgScope, parent);
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstBlockExprAST>.references",
-		+[](const BlockExprAST* block) -> const std::vector<BlockExprAST*>& {
-			return getBlockExprASTReferences(block);
+	defineExpr(pkgScope, "$E<PawsConstBlockExprAST>.references",
+		+[](const BlockExprAST* pkgScope) -> const std::vector<BlockExprAST*>& {
+			return getBlockExprASTReferences(pkgScope);
 		}
 	);
 
 	// Define codegen
-	defineExpr3(block, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
+	defineExpr3(pkgScope, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->get();
@@ -850,48 +864,48 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);
-	defineExpr(block, "$E<PawsBlockExprAST>.codegen($E<PawsBlockExprAST>)",
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.codegen($E<PawsBlockExprAST>)",
 		+[](ExprAST* expr, BlockExprAST* scope) -> void {
 			codegenExpr(expr, scope);
 		}
 	);
-	defineExpr(block, "$E<PawsBlockExprAST>.codegen(NULL)",
-		+[](BlockExprAST* block) -> void {
-			codegenExpr((ExprAST*)block, nullptr);
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.codegen(NULL)",
+		+[](BlockExprAST* pkgScope) -> void {
+			codegenExpr((ExprAST*)pkgScope, nullptr);
 		}
 	);
 
-	defineExpr(block, "$E<PawsBlockExprAST>.import($E<PawsBlockExprAST>)",
-		+[](BlockExprAST* scope, BlockExprAST* block) -> void {
-			importBlock(scope, block);
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.import($E<PawsBlockExprAST>)",
+		+[](BlockExprAST* scope, BlockExprAST* pkgScope) -> void {
+			importBlock(scope, pkgScope);
 		}
 	);
 
-	defineExpr(block, "$E<PawsBlockExprAST>.scopeType",
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.scopeType",
 		+[](BlockExprAST* scope) -> BaseScopeType* {
 			return getScopeType(scope);
 		}
 	);
-	defineExpr(block, "$E<PawsBlockExprAST>.scopeType = $E<PawsScopeType>",
+	defineExpr(pkgScope, "$E<PawsBlockExprAST>.scopeType = $E<PawsScopeType>",
 		+[](BlockExprAST* scope, BaseScopeType* scopeType) -> BaseScopeType* {
 			setScopeType(scope, scopeType);
 			return scopeType;
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstBlockExprASTList>[$E<PawsInt>]",
+	defineExpr(pkgScope, "$E<PawsConstBlockExprASTList>[$E<PawsInt>]",
 		+[](const std::vector<BlockExprAST*>& blocks, int idx) -> BlockExprAST* {
 			return blocks[idx];
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstBlockExprASTList>.length",
+	defineExpr(pkgScope, "$E<PawsConstBlockExprASTList>.length",
 		+[](const std::vector<BlockExprAST*>& blocks) -> int {
 			return blocks.size();
 		}
 	);
 
-	defineStmt2(block, "for ($I: $E<PawsConstBlockExprASTList>) $B",
+	defineStmt2(pkgScope, "for ($I: $E<PawsConstBlockExprASTList>) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
 			Variable exprsVar = codegenExpr(params[1], parentBlock);
@@ -907,19 +921,19 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstLiteralExprAST>.value",
+	defineExpr(pkgScope, "$E<PawsConstLiteralExprAST>.value",
 		+[](const LiteralExprAST* expr) -> std::string {
 			return getLiteralExprASTValue(expr);
 		}
 	);
 
-	defineExpr(block, "$E<PawsConstIdExprAST>.name",
+	defineExpr(pkgScope, "$E<PawsConstIdExprAST>.name",
 		+[](const IdExprAST* expr) -> std::string {
 			return getIdExprASTName(expr);
 		}
 	);
 
-	defineExpr3(block, "$E<PawsExprListAST>[$E<PawsInt>]",
+	defineExpr3(pkgScope, "$E<PawsExprListAST>[$E<PawsInt>]",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			assert(ExprASTIsCast(params[0]));
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
@@ -933,7 +947,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineStmt2(block, "for ($I: $E<PawsExprListAST>) $B",
+	defineStmt2(pkgScope, "for ($I: $E<PawsExprListAST>) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			assert(ExprASTIsCast(params[1]));
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
@@ -951,61 +965,61 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
-	defineExpr(block, "initCompiler()",
+	defineExpr(pkgScope, "initCompiler()",
 		+[]() -> void {
 			initCompiler();
 		}
 	);
 
-	defineExpr(block, "createModule($E<PawsString>, $E<PawsString>, $E<PawsInt>)",
+	defineExpr(pkgScope, "createModule($E<PawsString>, $E<PawsString>, $E<PawsInt>)",
 		+[](std::string sourcePath, std::string moduleFuncName, int outputDebugSymbols) -> IModule* {
 			return createModule(sourcePath, moduleFuncName, outputDebugSymbols);
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.print($E<PawsString>)",
+	defineExpr(pkgScope, "$E<PawsModule>.print($E<PawsString>)",
 		+[](IModule* module, std::string outputPath) -> void {
 			module->print(outputPath);
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.print()",
+	defineExpr(pkgScope, "$E<PawsModule>.print()",
 		+[](IModule* module) -> void {
 			module->print();
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.compile($E<PawsString>, $E<PawsString>)",
+	defineExpr(pkgScope, "$E<PawsModule>.compile($E<PawsString>, $E<PawsString>)",
 		+[](IModule* module, std::string outputPath, std::string errStr) -> int {
 			return module->compile(outputPath, errStr);
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.run()",
+	defineExpr(pkgScope, "$E<PawsModule>.run()",
 		+[](IModule* module) -> int {
 			return module->run();
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.buildRun()",
+	defineExpr(pkgScope, "$E<PawsModule>.buildRun()",
 		+[](IModule* module) -> void {
 			module->buildRun();
 		}
 	);
 
-	defineExpr(block, "$E<PawsModule>.finalize()",
+	defineExpr(pkgScope, "$E<PawsModule>.finalize()",
 		+[](IModule* module) -> void {
 			module->finalize();
 		}
 	);
 
-	defineExpr(block, "$E<PawsVariable>.type",
+	defineExpr(pkgScope, "$E<PawsVariable>.type",
 		+[](Variable var) -> BaseType* {
 			return var.type;
 		}
 	);
 
-	defineExpr(block, "realpath($E<PawsString>)",
+	defineExpr(pkgScope, "realpath($E<PawsString>)",
 		+[](std::string path) -> std::string {
 			char realPath[1024];
 			realpath(path.c_str(), realPath);
@@ -1013,8 +1027,25 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 		}
 	);
 
+	// Define MINC package manager import with target scope
+	defineExpr2(pkgScope, "$E<PawsBlockExprAST>.import($I. ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			BlockExprAST* block = ((PawsBlockExprAST*)codegenExpr(params[0], parentBlock).value)->get();
+			MincPackageManager* pkgMgr = (MincPackageManager*)exprArgs;
+			std::vector<ExprAST*>& pkgPath = getExprListASTExpressions((ExprListAST*)params[1]);
+			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
+			for (size_t i = 1; i < pkgPath.size(); ++i)
+				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);
+
+			// Import package
+			if (!pkgMgr->tryImportPackage(block, pkgName))
+				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
+			return Variable(PawsVoid::TYPE, nullptr);
+		}, PawsVoid::TYPE, &MINC_PACKAGE_MANAGER()
+	);
+
 	// Define import statement
-	defineStmt2(block, "import $E<PawsString>",
+	defineStmt2(pkgScope, "import $E<PawsString>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			std::string importPath = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
 			importFile(parentBlock, importPath);
@@ -1022,7 +1053,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define library import statement
-	defineStmt2(block, "import <$I.$I>",
+	defineStmt2(pkgScope, "import <$I.$I>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			std::string importPath = "../lib/" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "." + std::string(getIdExprASTName((IdExprAST*)params[1]));
 			importFile(parentBlock, importPath);
@@ -1030,7 +1061,7 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 	);
 
 	// Define address-of expression
-	defineExpr3(block, "& $E<PawsBase>",
+	defineExpr3(pkgScope, "& $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable value = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
 			BaseValue* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)value.value)->get());
@@ -1041,14 +1072,4 @@ defineSymbol(block, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` fo
 			return ((PawsType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->ptrType;
 		}
 	);
-
-	try
-	{
-		codegenExpr((ExprAST*)block, nullptr);
-	}
-	catch (ReturnException err)
-	{
-		return ((PawsInt*)err.result.value)->get();
-	}
-	return 0;
-}
+});

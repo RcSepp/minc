@@ -93,6 +93,16 @@ MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 			return a >= b;
 		}
 	);
+	defineExpr(pkgScope, "$E<PawsInt> << $E<PawsInt>",
+		+[](int a, int b) -> int {
+			return a < b;
+		}
+	);
+	defineExpr(pkgScope, "$E<PawsInt> >> $E<PawsInt>",
+		+[](int a, int b) -> int {
+			return a > b;
+		}
+	);
 
 	// Define logical operators
 	defineExpr2(pkgScope, "$E<PawsInt> && $E<PawsInt>",

@@ -26,7 +26,7 @@
 %}
 
 %token ELLIPSIS
-%token EQ NE LEQ GEQ NEW DM SR INC DEC
+%token EQ NE GEQ LEQ GR LE NEW DM SR INC DEC
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
@@ -41,7 +41,7 @@
 %left AND
 %left '&'
 %left EQ NE
-%left '<' LEQ '>' GEQ
+%left GEQ LEQ GR LE
 %left '+' '-'
 %left '*' '/' '%'
 %right NEW REF PREINC
@@ -126,8 +126,10 @@ expr
 	| expr '&' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'&', "&", $1, $3); }
 	| expr EQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::EQ, "==", $1, $3); }
 	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
-	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
 	| expr GEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
+	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
+	| expr GR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GR, ">>", $1, $3); }
+	| expr LE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LE, "<<", $1, $3); }
 	| expr AND expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
 	| expr OR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
 

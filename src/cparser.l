@@ -27,6 +27,8 @@ EQ			==
 NE			!=
 GEQ			>=
 LEQ			<=
+GR			>>
+LE			<<
 AND			&&
 OR			\|\|
 NEW			new
@@ -109,6 +111,8 @@ DEC			--
 {NE}							return token::NE;
 {GEQ}							return token::GEQ;
 {LEQ}							return token::LEQ;
+{GR}							return token::GR;
+{LE}							return token::LE;
 {AND}							return token::AND;
 {OR}							return token::OR;
 

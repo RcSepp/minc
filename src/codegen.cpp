@@ -347,23 +347,24 @@ extern "C"
 		CLexer lexer(ss, std::cout);
 		BlockExprAST* tpltBlock;
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse() || tpltBlock->exprs->size() < 2)
+		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
 
 		// Remove appended STOP expr if last expr is $B
 		assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
-		const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-		if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
-			tpltBlock->exprs->pop_back();
+		if (tpltBlock->exprs->size() >= 2)
+		{
+			const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
+				tpltBlock->exprs->pop_back();
+		}
 	
 		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
-		if (tplt.empty())
-			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
-		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		if (tplt.empty() || tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
 		{
 			std::vector<ExprAST*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new StopExprAST(Location{}));

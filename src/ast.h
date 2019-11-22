@@ -234,7 +234,7 @@ void resolveTypes(BlockExprAST* block) { assert(0); }
 			return "";
 		std::string result = (*begin)->str();
 		for (ExprASTIter expr = begin; ++expr != end;)
-			result += ' ' + (*expr)->str();
+			result += (*expr)->exprtype == ExprAST::ExprType::STOP ? (*expr)->str() : ' ' + (*expr)->str();
 		return result;
 	}
 	int comp(const ExprAST* other) const

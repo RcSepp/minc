@@ -548,7 +548,12 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 	if (context)
 		exprs = stmtEnd;
 	else
-		while (exprs != exprEnd && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs++)->exprtype != ExprAST::ExprType::BLOCK) {}
+	{
+		while (exprs != exprEnd && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs)->exprtype != ExprAST::ExprType::BLOCK)
+			++exprs;
+		if (exprs != exprEnd)
+			++exprs;
+	}
 
 	return context;
 }
@@ -567,10 +572,12 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 
 	switch(p1)
 	{
-	case 'I': if (expr->exprtype != ExprAST::ExprType::ID) return false;
+	case 'I':
+		if (expr->exprtype != ExprAST::ExprType::ID) return false;
 		score += 1; // Reward $I (over $E or $S)
 		break;
-	case 'L': if (expr->exprtype != ExprAST::ExprType::LITERAL) return false;
+	case 'L':
+		if (expr->exprtype != ExprAST::ExprType::LITERAL) return false;
 		if (p2 == nullptr)
 		{
 			score += 6; // Reward vague match
@@ -597,6 +604,7 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	case 'V': score += 6; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
 	case 'E':
 	case 'S':
+		if (expr->exprtype == ExprAST::ExprType::STOP) return false;
 		break;
 	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
 	}

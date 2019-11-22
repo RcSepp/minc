@@ -325,9 +325,7 @@ extern "C"
 
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
 	{
-		if (tplt.empty())
-			assert(0); //TODO: throw CompileError("error parsing template " + std::string(tplt.str()), tplt.loc);
-		if (tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		if (tplt.empty() || tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
 		{
 			std::vector<ExprAST*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new StopExprAST(Location{}));

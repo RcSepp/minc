@@ -290,6 +290,9 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 		}
 	);
 
+	// Define empty statement
+	defineStmt2(pkgScope, "", [](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {});
+
 	// Define return statement
 	definePawsReturnStmt(pkgScope, PawsInt::TYPE);
 

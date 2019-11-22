@@ -32,7 +32,7 @@
 %token<int> PARAM
 %type<BlockExprAST*> block
 %type<std::vector<ExprAST*>*> stmt_string
-%type<ExprListAST*> expr_string expr_list expr_lists optional_expr_lists
+%type<ExprListAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
 %type<ExprAST*> id_or_plchld expr
 
 %start file
@@ -61,14 +61,19 @@ block
 
 stmt_string
 	: %empty { $$ = new std::vector<ExprAST*>(); }
-	| stmt_string expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
-	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
+	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
+	| stmt_string optional_expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
 ;
 
 expr_string
 	: expr { $$ = new ExprListAST('\0'); $$->exprs.push_back($1); }
 	| expr_string expr { ($$ = $1)->exprs.push_back($2); }
 	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
+;
+
+optional_expr_string
+	: %empty { $$ = new ExprListAST('\0'); }
+	| expr_string { $$ = $1; }
 ;
 
 expr_list

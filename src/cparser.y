@@ -62,7 +62,7 @@ block
 stmt_string
 	: %empty { $$ = new std::vector<ExprAST*>(); }
 	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
-	| stmt_string optional_expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
+	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
 ;
 
 expr_string

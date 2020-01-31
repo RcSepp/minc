@@ -174,6 +174,11 @@ extern "C"
 		return new BlockExprAST({0}, {});
 	}
 
+	BlockExprAST* cloneBlockExprAST(BlockExprAST* expr)
+	{
+		return new BlockExprAST(expr->loc, expr->exprs);
+	}
+
 	void removeBlockExprAST(BlockExprAST* expr)
 	{
 		delete expr;

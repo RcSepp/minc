@@ -64,7 +64,7 @@ public:
 	}
 };*/
 
-typedef CALLBACK_TYPE std::function<void()>;
+typedef std::function<void()> CALLBACK_TYPE;
 
 class EventLoop;
 thread_local EventLoop* currentEventLoop;
@@ -86,7 +86,7 @@ private:
 	priority_queue<EventQueueValueType, vector<EventQueueValueType>, EventQueueCompare> eventQueue;
 
 public:
-	EventLoop() : lk(cv_m)
+	EventLoop() : lk(cv_m), running(true)
 	{
 		currentEventLoop = this;
 	}
@@ -108,7 +108,7 @@ public:
 			eventQueue.pop();
 			front.second();
 
-			if (eventQueue.empty()) cv.wait(lk); //TODO: Make atomic
+			if (running && eventQueue.empty()) cv.wait(lk); //TODO: Make atomic
 		}
 	}
 
@@ -138,8 +138,8 @@ void timerThreadFunc(int tid)
 
 void thread1(EventLoop* eventLoop)
 {
-	eventLoop->post([]() { cout << "foo"; }, 1.0f);
-	auto foo = bind(&EventLoop::close, &eventLoop);
+	eventLoop->post([]() { cout << "foo\n"; }, 1.0f);
+	auto foo = bind(&EventLoop::close, eventLoop);
 	eventLoop->post(foo, 2.5f);
 	eventLoop->run();
 	pthread_exit(NULL);
@@ -151,7 +151,7 @@ void thread2(EventLoop* eventLoop)
 	pthread_exit(NULL);
 }
 
-int main ()
+int main()
 {
 	//thread timerThread(timerThreadFunc, 1);
 	//timerThread.join();

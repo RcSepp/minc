@@ -10,6 +10,7 @@
 #include "cparser.h"
 
 #define DETECT_REDEFINED_TYPES
+// #define DISABLE_RESULT_CACHING
 
 class KaleidoscopeJIT;
 class FileModule;
@@ -687,19 +688,28 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 			const ExprASTIter endExpr = iter;
 
 			StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
-
-			if (stmtContext)
-			{
-				stmt.collectParams(this, stmtContext->first);
-				stmt.codegen(this);
-			}
-			else
+			if (stmtContext == nullptr)
 				throw UndefinedStmtException(&stmt);
+
+			stmt.collectParams(this, stmtContext->first);
+			stmt.codegen(this);
+
+#ifndef DISABLE_RESULT_CACHING
+			// Clear cached expressions
+			// Coroutines exit codegen() without clearing resultCache by throwing an exception
+			// They use the resultCache on reentry to avoid reexecuting expressions
+			for (Variable* cachedResult: resultCache)
+				if (cachedResult)
+					delete cachedResult;
+			resultCache.clear();
+			resultCacheIdx = 0;
+#endif
 		}
 	}
 	catch (...)
 	{
 		exprIdx = beginExpr - exprs->cbegin();
+		resultCacheIdx = 0;
 
 		// raiseStepEvent(nullptr); //TODO: Uncommenting this causes missing debug locations in LLVM IR code
 		// The missing debug locations throw the following errors during test.acc:
@@ -736,17 +746,36 @@ BlockExprAST* BlockExprAST::clone()
 	clone->exprs = this->exprs;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
+	clone->resultCache = this->resultCache;
+	clone->resultCacheIdx = this->resultCacheIdx;
 	clone->exprIdx = this->exprIdx;
 	return clone;
 }
 
 void BlockExprAST::reset()
 {
+	resultCache.clear();
+	resultCacheIdx = 0;
 	exprIdx = 0;
 }
 
 Variable ExprAST::codegen(BlockExprAST* parentBlock)
 {
+#ifndef DISABLE_RESULT_CACHING
+	// Handle expression caching for coroutines
+	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+	{
+		if (parentBlock->resultCache[parentBlock->resultCacheIdx])
+			return *parentBlock->resultCache[parentBlock->resultCacheIdx++]; // Return cached expression
+	}
+	else
+	{
+		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+		parentBlock->resultCache.push_back(nullptr);
+	}
+	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+#endif
+
 	if (!resolvedContext)
 		parentBlock->lookupExpr(this);
 
@@ -762,6 +791,22 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 				this->loc
 			);
 		}
+
+#ifndef DISABLE_RESULT_CACHING
+		// Cache expression result for coroutines
+		parentBlock->resultCache[resultCacheIdx] = new Variable(var);
+
+assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypothesis
+//TODO: If this hypothesis stays true, then the following delete-loop and erase() can be replaced with a delete if-block and pop_back()!
+		for (std::vector<Variable*>::iterator cachedResult = parentBlock->resultCache.begin() + resultCacheIdx + 1; cachedResult != parentBlock->resultCache.end(); ++cachedResult)
+		{
+			--parentBlock->resultCacheIdx;
+			if (*cachedResult)
+				delete *cachedResult;
+		}
+		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+#endif
+
 		return var;
 	}
 	else

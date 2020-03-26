@@ -860,9 +860,9 @@ public:
 		if (expr->exprtype == this->exprtype)
 			return ((VarBinOpExprAST*)expr)->op == this->op && a->match(block, ((VarBinOpExprAST*)expr)->a, score);
 		else if (expr->exprtype == ExprAST::ExprType::BINOP)
-			((BinOpExprAST*)expr)->op == this->op && this->match(block, ((BinOpExprAST*)expr)->a, score) && this->match(block, ((BinOpExprAST*)expr)->b, score);
+			return ((BinOpExprAST*)expr)->op == this->op && this->match(block, ((BinOpExprAST*)expr)->a, score) && this->match(block, ((BinOpExprAST*)expr)->b, score);
 		else
-			a->match(block, expr, score);
+			return a->match(block, expr, score);
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
 	{

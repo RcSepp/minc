@@ -40,6 +40,7 @@ GR			>>
 LE			<<
 AND			&&
 OR			\|\|
+AWT			await
 NEW			new
 DM			->
 SR			::
@@ -142,6 +143,7 @@ DEC			--
 					}
 				}
 
+<normal>{AWT}							return token::AWT;
 <normal>{NEW}							return token::NEW;
 <normal>{DM}							return token::DM;
 <normal>{SR}							return token::SR;

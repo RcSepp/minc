@@ -31,6 +31,7 @@ GR			>>
 LE			<<
 AND			&&
 OR			\|\|
+AWT			await
 NEW			new
 DM			->
 SR			::
@@ -39,6 +40,7 @@ DEC			--
 
 %%
 
+{AWT}							return token::AWT;
 {NEW}							return token::NEW;
 {DM}							return token::DM;
 {SR}							return token::SR;

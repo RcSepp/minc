@@ -142,6 +142,7 @@ Variable PawsCodegenContext::codegen(BlockExprAST* parentBlock, std::vector<Expr
 	}
 	catch (ReturnException err)
 	{
+		resetBlockExprAST(expr);
 		return err.result;
 	}
 

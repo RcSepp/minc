@@ -176,7 +176,12 @@ extern "C"
 
 	BlockExprAST* cloneBlockExprAST(BlockExprAST* expr)
 	{
-		return new BlockExprAST(expr->loc, expr->exprs);
+		return expr->clone();
+	}
+
+	void resetBlockExprAST(BlockExprAST* expr)
+	{
+		expr->reset();
 	}
 
 	void removeBlockExprAST(BlockExprAST* expr)
@@ -669,22 +674,47 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	if (fileBlock == nullptr)
 		fileBlock = this;
 
-	for (ExprASTIter iter = exprs->cbegin(); iter != exprs->cend();)
+	if (exprIdx >= exprs->size())
+		exprIdx = 0;
+
+	ExprASTIter beginExpr = exprs->cbegin() + exprIdx;
+	try
 	{
-		const ExprASTIter beginExpr = iter;
-		const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
-		const ExprASTIter endExpr = iter;
-
-		StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
-
-		if (stmtContext)
+		for (ExprASTIter iter = beginExpr; iter != exprs->cend();)
 		{
-			stmt.collectParams(this, stmtContext->first);
-			stmt.codegen(this);
+			beginExpr = iter;
+			const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
+			const ExprASTIter endExpr = iter;
+
+			StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
+
+			if (stmtContext)
+			{
+				stmt.collectParams(this, stmtContext->first);
+				stmt.codegen(this);
+			}
+			else
+				throw UndefinedStmtException(&stmt);
 		}
-		else
-			throw UndefinedStmtException(&stmt);
 	}
+	catch (...)
+	{
+		exprIdx = beginExpr - exprs->cbegin();
+
+		// raiseStepEvent(nullptr); //TODO: Uncommenting this causes missing debug locations in LLVM IR code
+		// The missing debug locations throw the following errors during test.acc:
+		// "inlinable function call in a function with debug info must have a !dbg location"
+
+		if (rootBlock == this)
+			rootBlock = oldRootBlock;
+
+		if (fileBlock == this)
+			fileBlock = oldFileBlock;
+
+		throw;
+	}
+
+	exprIdx = 0;
 
 	raiseStepEvent(nullptr);
 
@@ -696,6 +726,23 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	// parent = nullptr;
 	return VOID;
+}
+
+BlockExprAST* BlockExprAST::clone()
+{
+	BlockExprAST* clone = new BlockExprAST(this->loc, this->exprs);
+	clone->parent = this->parent;
+	clone->references = this->references;
+	clone->exprs = this->exprs;
+	clone->scopeType = this->scopeType;
+	clone->blockParams = this->blockParams;
+	clone->exprIdx = this->exprIdx;
+	return clone;
+}
+
+void BlockExprAST::reset()
+{
+	exprIdx = 0;
 }
 
 Variable ExprAST::codegen(BlockExprAST* parentBlock)

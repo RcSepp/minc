@@ -267,10 +267,11 @@ public:
 	BlockExprAST* parent;
 	std::vector<BlockExprAST*> references;
 	std::vector<ExprAST*>* exprs;
+	size_t exprIdx;
 	BaseScopeType* scopeType;
 	std::vector<Variable> blockParams;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), scopeType(nullptr) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
@@ -452,6 +453,8 @@ public:
 		}
 		return 0;
 	}
+	BlockExprAST* clone();
+	void reset();
 };
 
 class StopExprAST : public ExprAST

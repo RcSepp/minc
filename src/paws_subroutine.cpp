@@ -18,6 +18,7 @@ Variable PawsFunc::call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& 
 	}
 	catch (ReturnException err)
 	{
+		resetBlockExprAST(body);
 		return err.result;
 	}
 	return Variable(PawsVoid::TYPE, nullptr);

@@ -93,6 +93,7 @@ extern "C"
 	BlockExprAST* wrapExprAST(ExprAST* expr);
 	BlockExprAST* createEmptyBlockExprAST();
 	BlockExprAST* cloneBlockExprAST(BlockExprAST* block);
+	void resetBlockExprAST(BlockExprAST* block);
 	void removeBlockExprAST(BlockExprAST* expr);
 	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);

@@ -1183,6 +1183,8 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				}
 				catch (ReturnException err)
 				{
+					resetBlockExprAST(blockAST);
+
 					BaseType* type = (BaseType*)err.result.value;
 
 					defineType(name, type);

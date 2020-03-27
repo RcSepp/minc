@@ -136,6 +136,7 @@ extern "C"
 				return Variable(PawsValue<LLVMValueRef>::TYPE, new PawsValue<LLVMValueRef>(wrap(func)));
 			}
 		);
+		return func;
 	}
 }
 
@@ -796,8 +797,9 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 		defineExpr2(rootBlock, "$E($E, ...)",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 				raiseCompileError("expression cannot be used as a function", params[0]);
+				return Variable(BuiltinTypes::Base, nullptr); // Unreachable
 			},
-			BuiltinTypes::Void
+			BuiltinTypes::Base
 		);
 		// Define function call on non-function identifier
 		defineExpr2(rootBlock, "$I($E, ...)",
@@ -807,8 +809,9 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
 				else
 					raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
+				return Variable(BuiltinTypes::Base, nullptr); // Unreachable
 			},
-			BuiltinTypes::Void
+			BuiltinTypes::Base
 		);
 
 		// Define `stmtdef`
@@ -1451,6 +1454,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					return Variable(structType->Ptr(), new XXXValue(val));
 				}
 				raiseCompileError("TODO: no constructor found that takes numArgs arguments", params[0]);
+				return Variable(BuiltinTypes::Base, nullptr); // Unreachable
 
 				// auto member = structType->members.find(memberName);
 				// if (member == structType->members.end())
@@ -1535,6 +1539,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 						argExprs[i] = castExpr;
 					}
 				}
+				return Variable(BuiltinTypes::LLVMValueRef, nullptr); // Unreachable
 			},
 			BuiltinTypes::LLVMValueRef
 		);

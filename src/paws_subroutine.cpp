@@ -6,21 +6,25 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
-Variable PawsFunc::call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& argExprs) const
+Variable PawsFunc::call(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs) const
 {
-	// Define arguments in function body
+	BlockExprAST* instance = cloneBlockExprAST(body);
+
+	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
-		defineSymbol(body, argNames[i].c_str(), argTypes[i], codegenExpr(argExprs[i], parentBlock).value);
+		defineSymbol(instance, argNames[i].c_str(), argTypes[i], codegenExpr(argExprs[i], callerScope).value);
 
 	try
 	{
-		codegenExpr((ExprAST*)body, parentBlock);
+		codegenExpr((ExprAST*)instance, body);
 	}
 	catch (ReturnException err)
 	{
-		resetBlockExprAST(body);
+		resetBlockExprAST(instance);
+		removeBlockExprAST(instance);
 		return err.result;
 	}
+	removeBlockExprAST(instance);
 	return Variable(PawsVoid::TYPE, nullptr);
 }
 
@@ -35,6 +39,12 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			const std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[2]);
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
+
+			// Set function parent to function definition scope
+			setBlockExprASTParent(block, parentBlock);
+
+			// Define return statement in function scope
+			definePawsReturnStmt(block, returnType);
 
 			PawsFunc* func = new PawsFunc();
 			func->returnType = returnType;

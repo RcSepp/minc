@@ -4,7 +4,7 @@ struct PawsFunc
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
 	BlockExprAST* body;
-	virtual Variable call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& args) const;
+	virtual Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const;
 
 	PawsFunc() = default;
 	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
@@ -57,13 +57,13 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 		body = nullptr;
 	}
 
-	Variable call(BlockExprAST* parentBlock, const std::vector<ExprAST*>& args) const
+	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const
 	{
 		if constexpr (std::is_void<R>::value)
 		{
 			call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], parentBlock).value;
+				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
 				return p->get();
 			});
 			return Variable(PawsValue<R>::TYPE, nullptr);
@@ -74,7 +74,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], parentBlock).value;
+						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
 						return p->get();
 					})
 				)

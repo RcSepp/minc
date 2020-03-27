@@ -1,4 +1,5 @@
 #define OUTPUT_JIT_CODE
+#define JITCOMPILE_USING_EXEC_ENGINE
 const bool ENABLE_JIT_CODE_DEBUG_SYMBOLS = false;
 const bool OPTIMIZE_JIT_CODE = true;
 
@@ -828,6 +829,10 @@ new GlobalVariable(
 );
 }*/
 
+#ifdef JITCOMPILE_USING_EXEC_ENGINE
+	ExecutionEngine* EE = EngineBuilder(std::unique_ptr<Module>(module.get())).create();
+	return EE->getFunctionAddress(name);
+#else
 	// Compile module
 	jitModuleKey = jit->addModule(std::move(module));
 	auto jitFunctionSymbol = jit->findSymbol(name);
@@ -838,6 +843,7 @@ new GlobalVariable(
 		return *jitFunctionPointer;
 	else
 		throw CompileError("error linking JIT function\n" + toString(jitFunctionPointer.takeError()), loc);
+#endif
 }
 
 void JitFunction::removeCompiledModule()

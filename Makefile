@@ -43,6 +43,15 @@ all: ${BIN_DIR}minc
 clean:
 	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}minc
 
+depend: $(LIBMINC_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+
+# Dependency management
+
+${TEMP_DIR}%.d: ${SRC_DIR}%.cpp
+	$(CXX) $(CPPFLAGS) -MM -MT ${TEMP_DIR}$*.o $^ > $@;
+
+-include $(LIBMINC_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+
 # minc binary
 
 ${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so
@@ -73,7 +82,7 @@ ${TEMP_DIR}%.o: ${TEMP_DIR}%.cc
 
 # Compiler code
 
-${TEMP_DIR}%.o: ${SRC_DIR}%.cpp
+${TEMP_DIR}%.o:
 	-mkdir -p ${TEMP_DIR}
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
 

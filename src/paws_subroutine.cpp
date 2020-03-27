@@ -99,6 +99,26 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
 		}
 	);
+	// Define function call on non-function expression
+	defineExpr2(pkgScope, "$E($E, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			raiseCompileError("expression cannot be used as a function", params[0]);
+			return Variable(PawsBase::TYPE, nullptr); // Unreachable
+		},
+		PawsBase::TYPE
+	);
+	// Define function call on non-function identifier
+	defineExpr2(pkgScope, "$I($E, ...)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			const char* name = getIdExprASTName((IdExprAST*)params[0]);
+			if (lookupSymbol(parentBlock, name) == nullptr)
+				raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
+			else
+				raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
+			return Variable(PawsBase::TYPE, nullptr); // Unreachable
+		},
+		PawsBase::TYPE
+	);
 
 	defineExpr(pkgScope, "PawsFunction<$E<PawsMetaType>>",
 		+[](PawsType* returnType) -> BaseType* {

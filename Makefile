@@ -27,6 +27,7 @@ MINC_OBJS = \
 	paws_castreg.o \
 	paws_stmtreg.o \
 	paws_subroutine.o \
+	paws_frame.o \
 	paws_array.o \
 	paws_bootstrap.o \
 

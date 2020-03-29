@@ -44,6 +44,7 @@ typedef PawsValue<Frame*> PawsFrame;
 struct FrameInstance : public Awaitable
 {
 private:
+	const Frame* frame;
 	BlockExprAST* instance;
 	Awaitable* blocker;
 
@@ -69,7 +70,7 @@ struct SleepInstance : public Awaitable
 };
 
 FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs)
-	: instance(cloneBlockExprAST(frame->body)), blocker(nullptr)
+	: frame(frame), instance(cloneBlockExprAST(frame->body)), blocker(nullptr)
 {
 	instance->parent = frame->body;
 
@@ -115,6 +116,8 @@ void FrameInstance::resume()
 	try
 	{
 		codegenExpr((ExprAST*)instance, getBlockExprASTParent(instance));
+		if (frame->returnType != getVoid().type && frame->returnType != PawsVoid::TYPE)
+			raiseCompileError("missing return statement in frame body", (ExprAST*)instance);
 		setDone(Variable(PawsVoid::TYPE, nullptr));
 	}
 	catch (ReturnException err)

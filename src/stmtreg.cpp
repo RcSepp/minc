@@ -367,6 +367,11 @@ const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupSt
 		printf("\n");
 #endif
 	}
+	if (antiStmt != nullptr && bestScore == -2147483648)
+	{
+		bestScore = 2147483647;
+		return new std::pair<const ExprListAST, CodegenContext*>(ExprListAST('\0'), antiStmt);
+	}
 	return bestStmt;
 }
 
@@ -415,6 +420,11 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 		}
 		printf("\n");
 #endif
+	}
+	if (antiExpr != nullptr && bestScore == -2147483648)
+	{
+		bestScore = 2147483647;
+		return new std::pair<const ExprAST*const, CodegenContext*>(nullptr, antiExpr);
 	}
 	return bestExpr;
 }

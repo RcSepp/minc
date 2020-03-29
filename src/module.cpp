@@ -336,6 +336,11 @@ extern "C"
 			scope->defineStatement(tplt, new DynamicStmtContext(func, stmtArgs));
 	}
 
+	void defineAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs)
+	{
+		scope->defineAntiStatement(func == nullptr ? nullptr : new DynamicStmtContext(func, stmtArgs));
+	}
+
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
 	{
 		targetBlock->defineStatement(std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
@@ -349,6 +354,16 @@ extern "C"
 	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
 	{
 		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
+	}
+
+	void defineAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type)
+	{
+		scope->defineAntiExpr(func == nullptr ? nullptr : new DynamicExprContext(func, type));
+	}
+
+	void defineAntiExpr4(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc)
+	{
+		scope->defineAntiExpr(func == nullptr ? nullptr : new DynamicExprContext2(func, typeFunc));
 	}
 
 	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)

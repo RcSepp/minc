@@ -163,7 +163,9 @@ class StatementRegister
 private:
 	std::map<const ExprListAST, CodegenContext*> stmtreg;
 	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
+	CodegenContext *antiStmt, *antiExpr;
 public:
+	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[ExprListAST('\0', tplt)] = stmt; }
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
 	size_t countStatements() const { return stmtreg.size(); }
@@ -172,12 +174,14 @@ public:
 		for (const std::pair<const ExprListAST, CodegenContext*>& iter: stmtreg)
 			cbk(&iter.first, iter.second);
 	}
+	void defineAntiStatement(CodegenContext* stmt) { antiStmt = stmt; }
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr) { exprreg[tplt->exprtype][tplt] = expr; }
 	const std::pair<const ExprAST*const, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
+	void defineAntiExpr(CodegenContext* expr) { antiExpr = expr; }
 };
 
 struct InheritanceCast : public Cast
@@ -284,6 +288,7 @@ public:
 	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
 	size_t countStatements() const { return stmtreg.countStatements(); }
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }
+	void defineAntiStatement(CodegenContext* stmt) { stmtreg.defineAntiStatement(stmt); }
 
 	void defineExpr(ExprAST* tplt, CodegenContext* expr)
 	{
@@ -302,6 +307,7 @@ public:
 	}
 	size_t countExprs() const { return stmtreg.countExprs(); }
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const { stmtreg.iterateExprs(cbk); }
+	void defineAntiExpr(CodegenContext* expr) { stmtreg.defineAntiExpr(expr); }
 
 	void defineCast(Cast* cast)
 	{

@@ -385,6 +385,16 @@ extern "C"
 			scope->defineStatement(tplt, stmt);
 	}
 
+	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs)
+	{
+		scope->defineAntiStatement(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
+	}
+
+	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt)
+	{
+		scope->defineAntiStatement(stmt);
+	}
+
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
 	{
 		std::stringstream ss(tpltStr);
@@ -414,6 +424,21 @@ extern "C"
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr)
 	{
 		scope->defineExpr(tplt, expr);
+	}
+
+	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, BaseType* type, void* exprArgs)
+	{
+		scope->defineAntiExpr(codeBlock == nullptr ? nullptr : new StaticExprContext(codeBlock, type, exprArgs));
+	}
+
+	void defineAntiExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs)
+	{
+		scope->defineAntiExpr(codeBlock == nullptr ? nullptr : new StaticExprContext2(codeBlock, typeBlock, exprArgs));
+	}
+
+	void defineAntiExpr5(BlockExprAST* scope, CodegenContext* expr)
+	{
+		scope->defineAntiExpr(expr);
 	}
 
 	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)

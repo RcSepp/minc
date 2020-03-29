@@ -7,12 +7,45 @@
 #include <limits> // For NaN
 #include <cmath> // For isnan()
 
-struct Awaitable
+struct Awaitable : public PawsType
+{
+private:
+	static std::set<Awaitable> awaitableTypes;
+
+protected:
+	Awaitable(PawsType* returnType)
+		: returnType(returnType) {}
+
+public:
+	PawsType* returnType;
+	static Awaitable* get(PawsType* returnType);
+	Awaitable() = default;
+};
+std::set<Awaitable> Awaitable::awaitableTypes;
+bool operator<(const Awaitable& lhs, const Awaitable& rhs)
+{
+	return lhs.returnType < rhs.returnType;
+}
+typedef PawsValue<Awaitable*> PawsAwaitable;
+
+struct Frame : public Awaitable
+{
+	std::vector<PawsType*> argTypes;
+	std::vector<std::string> argNames;
+	BlockExprAST* body;
+
+	Frame() = default;
+	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
+};
+typedef PawsValue<Frame*> PawsFrame;
+
+struct AwaitableInstance
 {
 	Variable result;
 	double delay; //TODO: Replace delays with timestamps
 
-	Awaitable(double delay = 0.0) : delay(delay), result(nullptr, nullptr)
+	AwaitableInstance(double delay = 0.0) : delay(delay), result(nullptr, nullptr)
 	{
 		if (std::isnan(delay))
 			throw std::invalid_argument("Trying to create awaitable with NaN delay");
@@ -26,48 +59,49 @@ struct Awaitable
 		this->delay = std::numeric_limits<double>::quiet_NaN();
 	}
 };
-typedef PawsValue<Awaitable*> PawsAwaitable;
+typedef PawsValue<AwaitableInstance*> PawsAwaitableInstance;
 
-struct Frame
-{
-	PawsType* returnType;
-	std::vector<PawsType*> argTypes;
-	std::vector<std::string> argNames;
-	BlockExprAST* body;
-
-	Frame() = default;
-	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
-		: returnType(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
-};
-typedef PawsValue<Frame*> PawsFrame;
-
-struct FrameInstance : public Awaitable
+struct FrameInstance : public AwaitableInstance
 {
 private:
 	const Frame* frame;
 	BlockExprAST* instance;
-	Awaitable* blocker;
+	AwaitableInstance* blocker;
 
 public:
 	FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs);
 	~FrameInstance() { removeBlockExprAST(instance); }
 	void resume();
 };
+typedef PawsValue<FrameInstance*> PawsFrameInstance;
 
-struct AwaitException
+struct SleepInstance : public AwaitableInstance
 {
-	Awaitable* blocker;
-	AwaitException(Awaitable* blocker) : blocker(blocker) {}
-};
-
-struct SleepInstance : public Awaitable
-{
-	SleepInstance(double duration) : Awaitable(duration) {}
+	SleepInstance(double duration) : AwaitableInstance(duration) {}
 	void resume()
 	{
 		setDone(Variable(PawsVoid::TYPE, nullptr));
 	}
 };
+
+struct AwaitException
+{
+	AwaitableInstance* blocker;
+	AwaitException(AwaitableInstance* blocker) : blocker(blocker) {}
+};
+
+Awaitable* Awaitable::get(PawsType* returnType)
+{
+	std::set<Awaitable>::iterator iter = awaitableTypes.find(Awaitable(returnType));
+	if (iter == awaitableTypes.end())
+	{
+		iter = awaitableTypes.insert(Awaitable(returnType)).first;
+		Awaitable* t = const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
+		defineType(("Awaitable<" + getTypeName(returnType) + '>').c_str(), t);
+		defineOpaqueInheritanceCast(getRootScope(), t, PawsAwaitableInstance::TYPE);
+	}
+	return const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
+}
 
 FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs)
 	: frame(frame), instance(cloneBlockExprAST(frame->body)), blocker(nullptr)
@@ -79,9 +113,9 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], codegenExpr(argExprs[i], callerScope).value);
 
 	// Define await statement in frame instance scope
-	defineExpr3(instance, "await $E<PawsAwaitable>",
+	defineExpr3(instance, "await $E<PawsAwaitableInstance>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Awaitable* blocker = ((PawsAwaitable*)codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock).value)->get();
+			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock).value)->get();
 			if (blocker->isDone())
 			{
 				Variable result = blocker->result;
@@ -91,7 +125,8 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 				throw AwaitException(blocker);
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
-			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
+			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			return event->returnType;
 		}
 	);
 }
@@ -134,16 +169,30 @@ void FrameInstance::resume()
 MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.subroutine");
 
+	// >>> Type hierarchy
+	//
+	// Frame instance:		frame -> PawsFrameInstance -\
+	//													|--> PawsAwaitableInstance
+	// Awaitable instance:	PawsAwaitable<returnType> --/
+	//
+	// Frame class:			PawsFrame<frame> -> PawsFrame -> PawsAwaitable -> PawsMetaType
+	//
+
 	registerType<PawsAwaitable>(pkgScope, "PawsAwaitable");
 	registerType<PawsFrame>(pkgScope, "PawsFrame");
 	defineOpaqueInheritanceCast(pkgScope, PawsFrame::TYPE, PawsAwaitable::TYPE);
+	defineOpaqueInheritanceCast(pkgScope, PawsAwaitable::TYPE, PawsMetaType::TYPE);
+
+	registerType<PawsAwaitableInstance>(pkgScope, "PawsAwaitableInstance");
+	registerType<PawsFrameInstance>(pkgScope, "PawsFrameInstance");
+	defineOpaqueInheritanceCast(pkgScope, PawsFrameInstance::TYPE, PawsAwaitableInstance::TYPE);
 
 	// Define sleep function
-	defineConstantFunction(pkgScope, "sleep", PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), { PawsDouble::TYPE }, { "duration" },
+	defineConstantFunction(pkgScope, "sleep", Awaitable::get(PawsVoid::TYPE), { PawsDouble::TYPE }, { "duration" },
 		[](BlockExprAST* callerScope, const std::vector<ExprAST*>& args, void* funcArgs) -> Variable
 		{
 			double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
-			return Variable(PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), new PawsAwaitable(new SleepInstance(duration)));
+			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new SleepInstance(duration)));
 		}
 	);
 
@@ -172,15 +221,17 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 				frame->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
 			frame->body = block;
 
-			PawsType* frameType = PawsTpltType::get(PawsFrame::TYPE, returnType);
-			defineSymbol(parentBlock, frameName, frameType, new PawsFrame(frame));
+			defineType(frameName, frame);
+			defineOpaqueInheritanceCast(parentBlock, frame, PawsFrameInstance::TYPE);
+			defineOpaqueInheritanceCast(parentBlock, PawsTpltType::get(PawsFrame::TYPE, frame), PawsMetaType::TYPE);
+			defineSymbol(parentBlock, frameName, PawsTpltType::get(PawsFrame::TYPE, frame), new PawsFrame(frame));
 		}
 	);
 
 	// Define frame call
 	defineExpr3(pkgScope, "$E<PawsFrame>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			const Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
+			Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
 			std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[1]);
 
 			// Check number of arguments
@@ -212,13 +263,11 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 			FrameInstance* instance = new FrameInstance(frame, parentBlock, argExprs);
 			instance->resume();
 
-			PawsType* const awaitableType = PawsTpltType::get(PawsAwaitable::TYPE, frame->returnType);
-			return Variable(awaitableType, new PawsAwaitable(instance));
+			return Variable(frame, new PawsFrameInstance(instance));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
-			PawsTpltType* const frameType = (PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
-			PawsTpltType* const awaitableType = PawsTpltType::get(PawsAwaitable::TYPE, frameType->tpltType);
-			return awaitableType;
+			Frame* frame = (Frame*)((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
+			return frame;
 		}
 	);
 
@@ -227,7 +276,7 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			const Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
 			std::vector<ExprAST*> argExprs;
-			Awaitable* awaitable = new FrameInstance(frame, parentBlock, argExprs);
+			AwaitableInstance* awaitable = new FrameInstance(frame, parentBlock, argExprs);
 			Variable result(PawsVoid::TYPE, nullptr);
 			CompileError* error = nullptr;
 
@@ -263,7 +312,8 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 				return result;
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
-			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
+			const Frame* frame = (Frame*)((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
+			return frame->returnType;
 		}
 	);
 });

@@ -3,15 +3,39 @@ struct PawsFunc
 	PawsType* returnType;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
-	BlockExprAST* body;
-	virtual Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const;
+	virtual Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const = 0;
 
 	PawsFunc() = default;
-	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
-		: returnType(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
+	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
+		: returnType(returnType), argTypes(argTypes), argNames(argNames) {}
 };
 typedef PawsValue<PawsFunc*> PawsFunction;
 
+struct PawsRegularFunc : public PawsFunc
+{
+	BlockExprAST* body;
+	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const;
+
+	PawsRegularFunc() = default;
+	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+		: PawsFunc(returnType, argTypes, argNames), body(body) {}
+};
+typedef PawsValue<PawsFunc*> PawsFunction;
+
+typedef Variable (*FuncBlock)(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, void* funcArgs);
+struct PawsConstFunc : public PawsFunc
+{
+	FuncBlock body;
+	void* funcArgs;
+	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs) const
+	{
+		return body(callerScope, argExprs, funcArgs);
+	}
+
+	PawsConstFunc() = default;
+	PawsConstFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr)
+		: PawsFunc(returnType, argTypes, argNames), body(body), funcArgs(funcArgs) {}
+};
 
 template<std::size_t...Is, class L>
 constexpr auto for_each(std::index_sequence<Is...>, L&& cbk) noexcept(true)
@@ -53,8 +77,6 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 			argTypes.push_back(PawsValue<P>::TYPE);
 			argNames.push_back("a" + std::to_string(i));
 		});
-
-		body = nullptr;
 	}
 
 	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const
@@ -82,6 +104,8 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
 	}
 };
 
+void defineFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body);
+void defineConstantFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr);
 template<class F> void defineExternFunction(BlockExprAST* scope, const char* name, F func)
 {
 	PawsFunc* pawsFunc = new PawsExternFunc(func);

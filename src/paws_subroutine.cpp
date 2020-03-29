@@ -6,7 +6,7 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
-Variable PawsFunc::call(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs) const
+Variable PawsRegularFunc::call(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs) const
 {
 	BlockExprAST* instance = cloneBlockExprAST(body);
 
@@ -28,6 +28,18 @@ Variable PawsFunc::call(BlockExprAST* callerScope, const std::vector<ExprAST*>& 
 	return Variable(PawsVoid::TYPE, nullptr);
 }
 
+void defineFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+{
+	PawsFunc* pawsFunc = new PawsRegularFunc(returnType, argTypes, argNames, body);
+	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+}
+
+void defineConstantFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs)
+{
+	PawsFunc* pawsFunc = new PawsConstFunc(returnType, argTypes, argNames, body, funcArgs);
+	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+}
+
 MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
 
@@ -46,7 +58,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			// Define return statement in function scope
 			definePawsReturnStmt(block, returnType);
 
-			PawsFunc* func = new PawsFunc();
+			PawsRegularFunc* func = new PawsRegularFunc();
 			func->returnType = returnType;
 			func->argTypes.reserve(argTypeExprs.size());
 			for (ExprAST* argTypeExpr: argTypeExprs)

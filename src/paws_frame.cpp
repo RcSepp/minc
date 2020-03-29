@@ -68,16 +68,6 @@ struct SleepInstance : public Awaitable
 	}
 };
 
-struct SleepFunc : public PawsFunc //TODO: Create definePawsFunction() in paws_subroutine.h and use instead of SleepFunc class
-{
-	SleepFunc() : PawsFunc(PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), { PawsDouble::TYPE }, { "duration" }, nullptr) {}
-	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const
-	{
-		double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
-		return Variable(PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), new PawsAwaitable(new SleepInstance(duration)));
-	}
-};
-
 FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs)
 	: instance(cloneBlockExprAST(frame->body)), blocker(nullptr)
 {
@@ -146,8 +136,13 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 	defineOpaqueInheritanceCast(pkgScope, PawsFrame::TYPE, PawsAwaitable::TYPE);
 
 	// Define sleep function
-	SleepFunc* sleep = new SleepFunc();
-	defineSymbol(pkgScope, "sleep", PawsTpltType::get(PawsFunction::TYPE, sleep->returnType), new PawsFunction(sleep));
+	defineConstantFunction(pkgScope, "sleep", PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), { PawsDouble::TYPE }, { "duration" },
+		[](BlockExprAST* callerScope, const std::vector<ExprAST*>& args, void* funcArgs) -> Variable
+		{
+			double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
+			return Variable(PawsTpltType::get(PawsAwaitable::TYPE, PawsVoid::TYPE), new PawsAwaitable(new SleepInstance(duration)));
+		}
+	);
 
 	// Define frame definition
 	defineStmt2(pkgScope, "$E<PawsMetaType> frame $I($E<PawsMetaType> $I, ...) $B",

@@ -500,7 +500,7 @@ registerType<PawsValue<const unsigned*>>(pkgScope, "ConstPawsIntPtr");
 		PawsValue<LLVMMetadataRef*>::TYPE
 	);
 
-	std::map<std::string, PawsFunc> llvmFunctions;
+	std::map<std::string, PawsRegularFunc> llvmFunctions;
 @	PAWS_LLVM_EXTERN_FUNC_DEF@
 	defineExternFunction(pkgScope, "LLVMEXPositionBuilder", LLVMEXPositionBuilder);
 	defineExternFunction(pkgScope, "LLVMEXBuildInBoundsGEP1", LLVMEXBuildInBoundsGEP1);

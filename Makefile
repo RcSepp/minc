@@ -82,7 +82,7 @@ ${TEMP_DIR}%.o: ${TEMP_DIR}%.cc
 
 # Compiler code
 
-${TEMP_DIR}%.o:
+${TEMP_DIR}%.o: ${SRC_DIR}%.cpp
 	-mkdir -p ${TEMP_DIR}
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
 

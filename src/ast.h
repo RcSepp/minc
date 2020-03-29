@@ -773,7 +773,7 @@ public:
 		a->resolveTypes(block);
 		ExprAST::resolveTypes(block);
 	}
-	std::string str() const { return opstr + a->str(); }
+	std::string str() const { return (std::isalpha(opstr.back()) ? opstr + ' ' : opstr) + a->str(); }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);
@@ -805,7 +805,7 @@ public:
 		a->resolveTypes(block);
 		ExprAST::resolveTypes(block);
 	}
-	std::string str() const { return a->str() + opstr; }
+	std::string str() const { return a->str() + (std::isalpha(opstr.front()) ? opstr + ' ' : opstr); }
 	int comp(const ExprAST* other) const
 	{
 		int c = ExprAST::comp(other);

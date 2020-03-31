@@ -177,7 +177,7 @@ extern "C"
 
 	BlockExprAST* cloneBlockExprAST(BlockExprAST* expr)
 	{
-		return expr->clone();
+		return (BlockExprAST*)expr->clone();
 	}
 
 	void resetBlockExprAST(BlockExprAST* expr)
@@ -767,12 +767,14 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	return VOID;
 }
 
-BlockExprAST* BlockExprAST::clone()
+ExprAST* BlockExprAST::clone()
 {
 	BlockExprAST* clone = new BlockExprAST(this->loc, this->exprs);
 	clone->parent = this->parent;
 	clone->references = this->references;
-	clone->exprs = this->exprs;
+	clone->exprs = new std::vector<ExprAST*>();
+	for (ExprAST* expr: *this->exprs)
+		clone->exprs->push_back(expr->clone());
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
 	clone->resultCache = this->resultCache;

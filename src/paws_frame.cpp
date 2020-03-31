@@ -1,11 +1,13 @@
 #include "paws_frame_eventloop.h"
 #include <cassert>
+#include <vector>
+#include <list>
+#include <limits> // For NaN
+#include <cmath> // For isnan()
 #include "ast.h" // Including "ast.h" instead of "minc_api.h" for CompileError
 #include "paws_types.h"
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
-#include <limits> // For NaN
-#include <cmath> // For isnan()
 
 struct Awaitable : public PawsType
 {
@@ -42,45 +44,99 @@ typedef PawsValue<Frame*> PawsFrame;
 
 struct AwaitableInstance
 {
+private:
+	std::list<AwaitableInstance*>* blocked;
+	std::mutex mutex;
+
+public:
 	Variable result;
 	double delay; //TODO: Replace delays with timestamps
 
-	AwaitableInstance(double delay = 0.0) : delay(delay), result(nullptr, nullptr)
+	AwaitableInstance(double delay = 0.0) : blocked(new std::list<AwaitableInstance*>()), delay(delay), result(nullptr, nullptr)
 	{
 		if (std::isnan(delay))
 			throw std::invalid_argument("Trying to create awaitable with NaN delay");
 	}
-	virtual void resume() = 0;
+	~AwaitableInstance()
+	{
+		delete blocked;
+	}
 
 	bool isDone() { return std::isnan(delay); }
-	void setDone(const Variable& result)
+	void wakeup()
 	{
-		this->result = result;
-		this->delay = std::numeric_limits<double>::quiet_NaN();
+		Variable result;
+		if (resume(&result))
+		{
+			mutex.lock();
+			this->result = result;
+			this->delay = std::numeric_limits<double>::quiet_NaN();
+			std::list<AwaitableInstance*>* blocked = this->blocked;
+			this->blocked = new std::list<AwaitableInstance*>();
+			mutex.unlock();
+			for (AwaitableInstance* awaitable: *blocked)
+				awaitable->wakeup();
+			delete blocked;
+		}
 	}
+	bool awaitResult(AwaitableInstance* awaitable, Variable* result)
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		if (isDone())
+		{
+			*result = this->result;
+			return true;
+		}
+		else
+		{
+			blocked->push_back(awaitable);
+			return false;
+		}
+	}
+
+protected:
+	virtual bool resume(Variable* result) = 0;
 };
 typedef PawsValue<AwaitableInstance*> PawsAwaitableInstance;
+
+struct TopLevelInstance : public AwaitableInstance
+{
+	EventPool* const eventPool;
+	TopLevelInstance(EventPool* eventPool) : eventPool(eventPool) {}
+protected:
+	bool resume(Variable* result)
+	{
+		eventPool->close();
+		*result = Variable(PawsVoid::TYPE, nullptr);
+		return true;
+	}
+};
 
 struct FrameInstance : public AwaitableInstance
 {
 private:
 	const Frame* frame;
 	BlockExprAST* instance;
-	AwaitableInstance* blocker;
 
 public:
+	std::map<std::string, BaseValue*> variables;
+
 	FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs);
 	~FrameInstance() { removeBlockExprAST(instance); }
-	void resume();
+
+protected:
+	bool resume(Variable* result);
 };
 typedef PawsValue<FrameInstance*> PawsFrameInstance;
 
 struct SleepInstance : public AwaitableInstance
 {
 	SleepInstance(double duration) : AwaitableInstance(duration) {}
-	void resume()
+protected:
+	bool resume(Variable* result)
 	{
-		setDone(Variable(PawsVoid::TYPE, nullptr));
+		*result = Variable(PawsVoid::TYPE, nullptr);
+		return true;
 	}
 };
 
@@ -98,13 +154,14 @@ Awaitable* Awaitable::get(PawsType* returnType)
 		iter = awaitableTypes.insert(Awaitable(returnType)).first;
 		Awaitable* t = const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
 		defineType(("Awaitable<" + getTypeName(returnType) + '>').c_str(), t);
+		defineOpaqueInheritanceCast(getRootScope(), t, PawsOpaqueValue<0>::TYPE);
 		defineOpaqueInheritanceCast(getRootScope(), t, PawsAwaitableInstance::TYPE);
 	}
 	return const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
 }
 
 FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs)
-	: frame(frame), instance(cloneBlockExprAST(frame->body)), blocker(nullptr)
+	: frame(frame), instance(cloneBlockExprAST(frame->body))
 {
 	instance->parent = frame->body;
 
@@ -116,57 +173,59 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 	defineExpr3(instance, "await $E<PawsAwaitableInstance>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock).value)->get();
-			if (blocker->isDone())
-			{
-				Variable result = blocker->result;
-				return result;
-			}
+			Variable blockerResult;
+			if (blocker->awaitResult((FrameInstance*)exprArgs, &blockerResult))
+				return blockerResult;
 			else
 				throw AwaitException(blocker);
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
 			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
 			return event->returnType;
-		}
+		}, this
 	);
 }
 
-void FrameInstance::resume()
+bool FrameInstance::resume(Variable* result)
 {
-	// Execute blocking awaitable
-	if (blocker != nullptr)
-	{
-		blocker->resume();
-		if (blocker->isDone()) // If blocking awaitable finished, ...
-			blocker = nullptr; // Remove blocking awaitable
-			// Resume frame instance
-		else // If blocking awaitable is still blocking, ...
-		{
-			delay = blocker->delay; // Update frame instance delay to new blocker delay
-			return; // Frame instance is blocked. Don't resume it
-		}
-	}
-
-	// Resume frame instance
 	try
 	{
 		codegenExpr((ExprAST*)instance, getBlockExprASTParent(instance));
-		if (frame->returnType != getVoid().type && frame->returnType != PawsVoid::TYPE)
-			raiseCompileError("missing return statement in frame body", (ExprAST*)instance);
-		setDone(Variable(PawsVoid::TYPE, nullptr));
 	}
 	catch (ReturnException err)
 	{
-		setDone(err.result);
+		*result = err.result;
+		return true;
 	}
 	catch (AwaitException err)
 	{
-		blocker = err.blocker;
-		delay = blocker->delay; // Update frame instance delay to blocker delay
+		return false;
 	}
+
+	if (frame->returnType != getVoid().type && frame->returnType != PawsVoid::TYPE)
+		raiseCompileError("missing return statement in frame body", (ExprAST*)instance);
+	*result = Variable(PawsVoid::TYPE, nullptr);
+	return true;
 }
 
-MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
+class PawsFramePackage : public MincPackage
+{
+private:
+	EventPool* eventPool;
+	void define(BlockExprAST* pkgScope);
+public:
+	PawsFramePackage() : MincPackage("paws.frame"), eventPool(nullptr) {}
+	~PawsFramePackage()
+	{
+		if (eventPool != nullptr)
+			delete eventPool;
+	}
+} PAWS_FRAME;
+
+void PawsFramePackage::define(BlockExprAST* pkgScope)
+{
+	eventPool = new EventPool(1);
+
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.subroutine");
 
 	// >>> Type hierarchy
@@ -192,8 +251,10 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* callerScope, const std::vector<ExprAST*>& args, void* funcArgs) -> Variable
 		{
 			double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
-			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new SleepInstance(duration)));
-		}
+			SleepInstance* instance = new SleepInstance(duration);
+			((EventPool*)funcArgs)->post(bind(&SleepInstance::wakeup, instance), duration);
+			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(instance));
+		}, eventPool
 	);
 
 	// Define frame definition
@@ -261,59 +322,30 @@ MincPackage PAWS_FRAME("paws.frame", [](BlockExprAST* pkgScope) {
 
 			// Call frame
 			FrameInstance* instance = new FrameInstance(frame, parentBlock, argExprs);
-			instance->resume();
+			((EventPool*)exprArgs)->post(bind(&FrameInstance::wakeup, instance), 0.0f);
 
 			return Variable(frame, new PawsFrameInstance(instance));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
 			Frame* frame = (Frame*)((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
 			return frame;
-		}
+		}, eventPool
 	);
 
-	// Define frames-main
-	defineExpr3(pkgScope, "frames.main($E<PawsFrame>)",
+	// Define top-level await statement
+	defineExpr3(pkgScope, "await $E<PawsAwaitableInstance>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			const Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
-			std::vector<ExprAST*> argExprs;
-			AwaitableInstance* awaitable = new FrameInstance(frame, parentBlock, argExprs);
-			Variable result(PawsVoid::TYPE, nullptr);
-			CompileError* error = nullptr;
+			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock).value)->get();
+			EventPool* eventPool = (EventPool*)exprArgs;
+			Variable result;
 
-			EventLoop eventloop;
-			std::function<void(void)> cbk = [&]() {
-				try
-				{
-					awaitable->resume();
-				}
-				catch (CompileError err)
-				{
-					error = new CompileError(err.msg, Location(err.loc));
-					eventloop.post(bind(&EventLoop::close, &eventloop), 0.0f);
-					return;
-				}
-
-				if (awaitable->isDone())
-				{
-					result = awaitable->result;
-					eventloop.post(bind(&EventLoop::close, &eventloop), 0.0f);
-				}
-				else
-					eventloop.post(cbk, awaitable->delay);
-			};
-			eventloop.post(cbk, 0.0f);
-			eventloop.run();
-
-			delete awaitable;
-
-			if (error)
-				throw *error;
-			else
-				return result;
+			blocker->awaitResult(new TopLevelInstance(eventPool), &blocker->result);
+			eventPool->run();
+			return blocker->result;
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
-			const Frame* frame = (Frame*)((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
-			return frame->returnType;
-		}
+			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			return event->returnType;
+		}, eventPool
 	);
-});
+}

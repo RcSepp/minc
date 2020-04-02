@@ -785,6 +785,9 @@ ExprAST* BlockExprAST::clone()
 
 void BlockExprAST::reset()
 {
+	for (Variable* cachedResult: resultCache)
+		if (cachedResult)
+			delete cachedResult;
 	resultCache.clear();
 	resultCacheIdx = 0;
 	exprIdx = 0;
@@ -857,7 +860,39 @@ bool operator<(const ExprAST& left, const ExprAST& right)
 Variable StmtAST::codegen(BlockExprAST* parentBlock)
 {
 	raiseStepEvent(this);
+
+#ifndef DISABLE_RESULT_CACHING
+	// Handle expression caching for coroutines
+	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+	{
+		if (parentBlock->resultCache[parentBlock->resultCacheIdx])
+			return *parentBlock->resultCache[parentBlock->resultCacheIdx++]; // Return cached expression
+	}
+	else
+	{
+		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+		parentBlock->resultCache.push_back(nullptr);
+	}
+	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+#endif
+
 	resolvedContext->codegen(parentBlock, resolvedParams);
+
+#ifndef DISABLE_RESULT_CACHING
+	// Cache expression result for coroutines
+	parentBlock->resultCache[resultCacheIdx] = new Variable(VOID);
+
+assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypothesis
+//TODO: If this hypothesis stays true, then the following delete-loop and erase() can be replaced with a delete if-block and pop_back()!
+	for (std::vector<Variable*>::iterator cachedResult = parentBlock->resultCache.begin() + resultCacheIdx + 1; cachedResult != parentBlock->resultCache.end(); ++cachedResult)
+	{
+		--parentBlock->resultCacheIdx;
+		if (*cachedResult)
+			delete *cachedResult;
+	}
+	parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+#endif
+
 	return VOID;
 }
 

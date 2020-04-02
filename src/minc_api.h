@@ -127,7 +127,7 @@ extern "C"
 	const std::string& getTypeName(const BaseType* type);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
-	void defineType(const char* name, BaseType* type);
+	void defineType(const char* name, const BaseType* type);
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);

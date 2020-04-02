@@ -339,7 +339,7 @@ extern "C"
 		scope->defineSymbol(name, type, value);
 	}
 
-	void defineType(const char* name, BaseType* type)
+	void defineType(const char* name, const BaseType* type)
 	{
 #ifdef DETECT_REDEFINED_TYPES
 		if (typereg.find(type) != typereg.end())

@@ -475,8 +475,13 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 	// Define while statement
 	defineStmt2(pkgScope, "while($E<PawsInt>) $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			size_t cs = getBlockExprASTCacheState(parentBlock);
 			while (((PawsInt*)codegenExpr(params[0], parentBlock).value)->get())
+			{
 				codegenExpr(params[1], parentBlock);
+				resetBlockExprASTCache(parentBlock, cs); // Reset result cache to the state before the while loop to avoid rerunning
+														 // previous loop iterations when resuming a coroutine within the loop block
+			}
 		}
 	);
 

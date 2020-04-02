@@ -185,6 +185,15 @@ extern "C"
 		expr->reset();
 	}
 
+	size_t getBlockExprASTCacheState(BlockExprAST* block)
+	{
+		return block->resultCacheIdx;
+	}
+	void resetBlockExprASTCache(BlockExprAST* block, size_t targetState)
+	{
+		block->clearCache(targetState);
+	}
+
 	void removeBlockExprAST(BlockExprAST* expr)
 	{
 		delete expr;
@@ -791,6 +800,18 @@ void BlockExprAST::reset()
 	resultCache.clear();
 	resultCacheIdx = 0;
 	exprIdx = 0;
+}
+
+void BlockExprAST::clearCache(size_t targetSize)
+{
+	if (targetSize > resultCache.size())
+		targetSize = resultCache.size();
+
+	resultCacheIdx = targetSize;
+	for (std::vector<Variable*>::iterator cachedResult = resultCache.begin() + targetSize; cachedResult != resultCache.end(); ++cachedResult)
+		if (*cachedResult)
+			delete *cachedResult;
+	resultCache.erase(resultCache.begin() + targetSize, resultCache.end());
 }
 
 Variable ExprAST::codegen(BlockExprAST* parentBlock)

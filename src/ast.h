@@ -472,6 +472,7 @@ public:
 	}
 	ExprAST* clone();
 	void reset();
+	void clearCache(size_t targetSize);
 };
 
 class StopExprAST : public ExprAST

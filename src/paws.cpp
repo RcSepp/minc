@@ -472,6 +472,14 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
+	// Define while statement
+	defineStmt2(pkgScope, "while($E<PawsInt>) $S",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			while (((PawsInt*)codegenExpr(params[0], parentBlock).value)->get())
+				codegenExpr(params[1], parentBlock);
+		}
+	);
+
 	defineExpr2(pkgScope, "str($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
@@ -483,6 +491,11 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 	);
 	defineExpr(pkgScope, "str($E<PawsInt>)",
 		+[](int value) -> std::string {
+			return std::to_string(value);
+		}
+	);
+	defineExpr(pkgScope, "str($E<PawsDouble>)",
+		+[](double value) -> std::string {
 			return std::to_string(value);
 		}
 	);
@@ -551,8 +564,18 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			std::cout << value << '\n';
 		}
 	);
+	defineExpr(pkgScope, "print($E<PawsDouble>)",
+		+[](double value) -> void {
+			std::cout << value << '\n';
+		}
+	);
 	defineExpr(pkgScope, "printerr($E<PawsInt>)",
 		+[](int value) -> void {
+			std::cerr << value << '\n';
+		}
+	);
+	defineExpr(pkgScope, "printerr($E<PawsDouble>)",
+		+[](double value) -> void {
 			std::cerr << value << '\n';
 		}
 	);

@@ -12,7 +12,7 @@ Variable PawsRegularFunc::call(BlockExprAST* callerScope, const std::vector<Expr
 
 	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
-		defineSymbol(instance, argNames[i].c_str(), argTypes[i], codegenExpr(argExprs[i], callerScope).value);
+		defineSymbol(instance, argNames[i].c_str(), argTypes[i], ((PawsBase*)codegenExpr(argExprs[i], callerScope).value)->copy());
 
 	try
 	{

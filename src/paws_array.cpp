@@ -46,7 +46,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 	);
 
 	// Array setter
-	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>] = $E",
+	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>] = $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable arrVar = codegenExpr(getDerivedExprAST(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
@@ -69,7 +69,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 				valueExpr = castExpr;
 			}
 
-			BaseValue* value = codegenExpr(valueExpr, parentBlock).value;
+			BaseValue* value = ((PawsBase*)codegenExpr(valueExpr, parentBlock).value)->copy();
 			arr->get()[idx->get()] = value;
 
 			return Variable(valueType, value);

@@ -367,10 +367,10 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 				varAST = getCastExprASTSource((CastExprAST*)varAST);
 			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)varAST));
 			if (var == nullptr)
-				defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)varAST), expr.type, expr.value);
+				defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)varAST), expr.type, ((PawsBase*)expr.value)->copy());
 			else
 			{
-				var->value = expr.value;
+				var->value = ((PawsBase*)expr.value)->copy();
 				var->type = expr.type;
 			}
 			return expr;
@@ -390,7 +390,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
 			Variable expr = codegenExpr(exprAST, parentBlock);
 
-			defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), expr.type, expr.value);
+			defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), expr.type, ((PawsBase*)expr.value)->copy());
 			return expr;
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {

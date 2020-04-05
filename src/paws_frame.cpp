@@ -286,7 +286,7 @@ Awaitable* Awaitable::get(PawsType* returnType)
 		iter = awaitableTypes.insert(Awaitable(returnType)).first;
 		Awaitable* t = const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
 		defineType(("Awaitable<" + getTypeName(returnType) + '>').c_str(), t);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsOpaqueValue<0>::TYPE);
+		defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE);
 		defineOpaqueInheritanceCast(getRootScope(), t, PawsAwaitableInstance::TYPE);
 	}
 	return const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
@@ -300,7 +300,7 @@ Event* Event::get(PawsType* msgType)
 		iter = eventTypes.insert(Event(msgType)).first;
 		Event* t = const_cast<Event*>(&*iter); //TODO: Find a way to avoid const_cast
 		defineType(("Event<" + getTypeName(msgType) + '>').c_str(), t);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsOpaqueValue<0>::TYPE);
+		defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE);
 		defineOpaqueInheritanceCast(getRootScope(), t, PawsEventInstance::TYPE);
 defineOpaqueInheritanceCast(getRootScope(), PawsEventInstance::TYPE, PawsAwaitableInstance::TYPE); //TODO: This shouldn't be necessary
 	}
@@ -314,7 +314,7 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
-		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], codegenExpr(argExprs[i], callerScope).value);
+		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], ((PawsBase*)codegenExpr(argExprs[i], callerScope).value)->copy());
 
 	// Initialize and define frame variables in frame instance
 	for (const std::pair<const std::string, Frame::Variable>& pair: frame->variables)

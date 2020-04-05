@@ -16,7 +16,15 @@ struct PawsType : public BaseType
 	PawsType() : valType(nullptr), ptrType(nullptr) {}
 };
 
-template<typename T> struct PawsValue : BaseValue
+struct PawsBase : BaseValue
+{
+	typedef void CType;
+	static inline PawsType* TYPE = new PawsType();
+	virtual uint64_t getConstantValue() { return 0; }
+	virtual PawsBase* copy() { return new PawsBase(); }
+};
+
+template<typename T> struct PawsValue : PawsBase
 {
 private:
 	T val;
@@ -27,15 +35,17 @@ public:
 	PawsValue() {}
 	PawsValue(const T& val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
+	virtual PawsBase* copy() { return new PawsValue<T>(val); }
 	T& get() { return val; }
 	void set(const T& val) { this->val = val; }
 };
-template<> struct PawsValue<void> : BaseValue
+template<> struct PawsValue<void> : PawsBase
 {
 	typedef void CType;
 	static inline PawsType* TYPE = new PawsType();
 	PawsValue() {}
 	uint64_t getConstantValue() { return 0; }
+	virtual PawsBase* copy() { return new PawsValue<void>(); }
 };
 namespace std
 {
@@ -44,12 +54,6 @@ namespace std
 		bool operator()(const PawsValue<T>* lhs, const PawsValue<T>* rhs) const { return lhs->val < rhs->val; }
 	};
 }
-
-template<int T> struct PawsOpaqueValue
-{
-	typedef void CType;
-	static inline PawsType* TYPE = new PawsType();
-};
 
 struct PawsTpltType : PawsType
 {
@@ -67,7 +71,7 @@ public:
 			iter = tpltTypes.insert(PawsTpltType(baseType, tpltType)).first;
 			PawsTpltType* t = const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
 			defineType((getTypeName(baseType) + '<' + getTypeName(tpltType) + '>').c_str(), t);
-			defineOpaqueInheritanceCast(getRootScope(), t, PawsOpaqueValue<0>::TYPE); // Let baseType<tpltType> derive from PawsBase
+			defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
 			defineOpaqueInheritanceCast(getRootScope(), t, baseType); // Let baseType<tpltType> derive from baseType
 		}
 		return const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
@@ -75,7 +79,6 @@ public:
 };
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs);
 
-typedef PawsOpaqueValue<0> PawsBase;
 typedef PawsValue<void> PawsVoid;
 typedef PawsValue<PawsType*> PawsMetaType;
 typedef PawsValue<int> PawsInt;

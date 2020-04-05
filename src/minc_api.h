@@ -65,7 +65,7 @@ typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& para
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
 typedef void (*ImptBlock)(Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
-typedef void (*StepEvent)(const ExprAST* loc);
+typedef void (*StepEvent)(const ExprAST* loc, void* eventArgs);
 
 extern "C"
 {
@@ -166,7 +166,7 @@ extern "C"
 
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 
-	void registerStepEventListener(StepEvent listener);
+	void registerStepEventListener(StepEvent listener, void* eventArgs=nullptr);
 	void deregisterStepEventListener(StepEvent listener);
 
 	// >>> Compiler

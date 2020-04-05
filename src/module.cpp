@@ -162,7 +162,7 @@ extern "C"
 
 		JitFunction::init();
 
-		registerStepEventListener([](const ExprAST* loc) {
+		registerStepEventListener([](const ExprAST* loc, void* eventArgs) {
 			if (dbuilder)
 				builder->SetCurrentDebugLocation(
 					loc == nullptr

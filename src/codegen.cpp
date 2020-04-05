@@ -22,7 +22,7 @@ BlockExprAST* rootBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
 std::map<const BaseType*, TypeDescription> typereg;
 std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<BaseType*, ImptBlock>> importRules;
-std::set<StepEvent> stepEventListeners;
+std::map<StepEvent, void*> stepEventListeners;
 const std::string NULL_TYPE = "NULL";
 const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
@@ -540,9 +540,9 @@ extern "C"
 		throw CompileError(msg, loc->loc);
 	}
 
-	void registerStepEventListener(StepEvent listener)
+	void registerStepEventListener(StepEvent listener, void* eventArgs)
 	{
-		stepEventListeners.insert(listener);
+		stepEventListeners[listener] = eventArgs;
 	}
 
 	void deregisterStepEventListener(StepEvent listener)
@@ -553,8 +553,8 @@ extern "C"
 
 void raiseStepEvent(const ExprAST* loc)
 {
-	for (StepEvent listener: stepEventListeners)
-		listener(loc);
+	for (const std::pair<StepEvent, void*>& listener: stepEventListeners)
+		listener.first(loc, listener.second);
 }
 
 void CompileError::print(std::ostream& out)

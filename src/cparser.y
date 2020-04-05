@@ -30,7 +30,7 @@
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
-%type<BlockExprAST*> block
+%type<std::vector<ExprAST*>*> block
 %type<std::vector<ExprAST*>*> stmt_string
 %type<ExprListAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
 %type<ExprAST*> id_or_plchld expr
@@ -52,17 +52,17 @@
 %%
 
 file
-	: block { *rootBlock = $1; }
+	: block { *rootBlock = new BlockExprAST(getloc(@1, @1), $1); }
 ;
 
 block
-	: stmt_string { $$ = new BlockExprAST(getloc(@1, @1), $1); }
+	: stmt_string { $$ = $1; }
 ;
 
 stmt_string
 	: %empty { $$ = new std::vector<ExprAST*>(); }
 	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
-	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($4); }
+	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new BlockExprAST(getloc(@3, @5), $4)); }
 ;
 
 expr_string
@@ -108,7 +108,7 @@ expr
 	| '(' optional_expr_lists ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
 	| '[' optional_expr_lists ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
 	| '<' optional_expr_lists '>' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'<', "<", ">", $2); }
-	| '{' block '}' { $$ = $2; }
+	| '{' block '}' { $$ = new BlockExprAST(getloc(@1, @3), $2); }
 
 	// Parameterized expressions
 	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }

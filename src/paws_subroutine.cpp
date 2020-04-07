@@ -52,6 +52,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
 
+			// Name function block
+			setBlockExprASTName(block, funcName);
+
 			// Set function parent to function definition scope
 			setBlockExprASTParent(block, parentBlock);
 

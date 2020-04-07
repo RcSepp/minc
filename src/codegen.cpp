@@ -269,6 +269,14 @@ extern "C"
 	{
 		expr->blockParams = blockParams;
 	}
+	const std::string& getBlockExprASTName(const BlockExprAST* expr)
+	{
+		return expr->name;
+	}
+	void setBlockExprASTName(BlockExprAST* expr, std::string name)
+	{
+		expr->name = name;
+	}
 	ExprAST* getCastExprASTSource(const CastExprAST* expr)
 	{
 		return expr->resolvedParams[0];
@@ -784,6 +792,7 @@ ExprAST* BlockExprAST::clone()
 	clone->exprs = new std::vector<ExprAST*>();
 	for (ExprAST* expr: *this->exprs)
 		clone->exprs->push_back(expr->clone());
+	clone->name = this->name;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
 	clone->resultCache = this->resultCache;

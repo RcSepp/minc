@@ -69,6 +69,18 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	// Name root block
+	if (!use_stdin)
+	{
+		std::string rootBlockName = std::max(realPath, std::max(strrchr(realPath, '/') + 1, strrchr(realPath, '\\') + 1));
+		const size_t dt = rootBlockName.rfind(".");
+		if (dt != -1) rootBlockName = rootBlockName.substr(0, dt);
+
+		setBlockExprASTName(rootBlock, rootBlockName);
+	}
+	else
+		setBlockExprASTName(rootBlock, "stdin");
+
 	// >>> Print AST
 
 	//printf("%s\n", rootBlock->str().c_str());

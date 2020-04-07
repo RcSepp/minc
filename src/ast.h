@@ -280,6 +280,7 @@ public:
 	BlockExprAST* parent;
 	std::vector<BlockExprAST*> references;
 	std::vector<ExprAST*>* exprs;
+	std::string name;
 	size_t exprIdx;
 	BaseScopeType* scopeType;
 	std::vector<Variable> blockParams;

@@ -151,6 +151,10 @@ extern "C"
 	{
 		return expr->exprtype == ExprAST::ExprType::BLOCK;
 	}
+	bool ExprASTIsStmt(const ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::STMT;
+	}
 	bool ExprASTIsList(const ExprAST* expr)
 	{
 		return expr->exprtype == ExprAST::ExprType::LIST;

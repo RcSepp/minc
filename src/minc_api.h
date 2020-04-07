@@ -87,6 +87,7 @@ extern "C"
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);
 	bool ExprASTIsBlock(const ExprAST* expr);
+	bool ExprASTIsStmt(const ExprAST* expr);
 	bool ExprASTIsList(const ExprAST* expr);
 	bool ExprASTIsPlchld(const ExprAST* expr);
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);

@@ -22,6 +22,8 @@ class ExprListAST;
 class StmtAST;
 class BlockExprAST;
 
+enum StepEventType { STEP_IN, STEP_OUT, STEP_SUSPEND, STEP_RESUME };
+
 struct Variable
 {
 	BaseType* type;
@@ -65,7 +67,7 @@ typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& para
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
 typedef void (*ImptBlock)(Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
-typedef void (*StepEvent)(const ExprAST* loc, void* eventArgs);
+typedef void (*StepEvent)(const ExprAST* loc, StepEventType type, void* eventArgs);
 
 extern "C"
 {

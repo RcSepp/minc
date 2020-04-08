@@ -162,13 +162,14 @@ extern "C"
 
 		JitFunction::init();
 
-		registerStepEventListener([](const ExprAST* loc, void* eventArgs) {
+		registerStepEventListener([](const ExprAST* loc, StepEventType type, void* eventArgs) {
 			if (dbuilder)
-				builder->SetCurrentDebugLocation(
-					loc == nullptr
-					? DebugLoc()
-					: DebugLoc::get(getExprLine(loc), getExprColumn(loc), currentFunc->getSubprogram())
-				);
+			{
+				if (type == STEP_IN || type == STEP_RESUME)
+					builder->SetCurrentDebugLocation(DebugLoc::get(getExprLine(loc), getExprColumn(loc), currentFunc->getSubprogram()));
+				else if (type == STEP_OUT && loc->exprtype == ExprAST::ExprType::BLOCK)
+					builder->SetCurrentDebugLocation(DebugLoc());
+			}
 		});
 
 		// >>> Create LLVM types

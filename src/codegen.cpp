@@ -563,10 +563,10 @@ extern "C"
 	}
 }
 
-void raiseStepEvent(const ExprAST* loc)
+void raiseStepEvent(const ExprAST* loc, StepEventType type)
 {
 	for (const std::pair<StepEvent, void*>& listener: stepEventListeners)
-		listener.first(loc, listener.second);
+		listener.first(loc, type, listener.second);
 }
 
 void CompileError::print(std::ostream& out)
@@ -711,6 +711,19 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
+
+	try
+	{
+		raiseStepEvent(this, isBlockSuspended ? STEP_RESUME : STEP_IN);
+	}
+	catch (...)
+	{
+		isBlockSuspended = true;
+		raiseStepEvent(this, STEP_SUSPEND);
+		throw;
+	}
+	isBlockSuspended = false;
+
 	parent = parentBlock;
 
 	BlockExprAST* oldRootBlock = rootBlock;
@@ -761,22 +774,19 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		exprIdx = beginExpr - exprs->cbegin();
 		resultCacheIdx = 0;
 
-		// raiseStepEvent(nullptr); //TODO: Uncommenting this causes missing debug locations in LLVM IR code
-		// The missing debug locations throw the following errors during test.acc:
-		// "inlinable function call in a function with debug info must have a !dbg location"
-
 		if (rootBlock == this)
 			rootBlock = oldRootBlock;
 
 		if (fileBlock == this)
 			fileBlock = oldFileBlock;
 
+		isBlockSuspended = true;
+		raiseStepEvent(this, STEP_SUSPEND);
+
 		throw;
 	}
 
 	exprIdx = 0;
-
-	raiseStepEvent(nullptr);
 
 	if (rootBlock == this)
 		rootBlock = oldRootBlock;
@@ -785,6 +795,9 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		fileBlock = oldFileBlock;
 
 	// parent = nullptr;
+
+	raiseStepEvent(this, STEP_OUT);
+
 	return VOID;
 }
 
@@ -802,6 +815,9 @@ ExprAST* BlockExprAST::clone()
 	clone->resultCache = this->resultCache;
 	clone->resultCacheIdx = this->resultCacheIdx;
 	clone->exprIdx = this->exprIdx;
+	clone->isBlockSuspended = this->isBlockSuspended;
+	clone->isStmtSuspended = this->isStmtSuspended;
+	clone->isExprSuspended = this->isExprSuspended;
 	return clone;
 }
 
@@ -813,6 +829,9 @@ void BlockExprAST::reset()
 	resultCache.clear();
 	resultCacheIdx = 0;
 	exprIdx = 0;
+	isBlockSuspended = false;
+	isStmtSuspended = false;
+	isExprSuspended = false;
 }
 
 void BlockExprAST::clearCache(size_t targetSize)
@@ -849,8 +868,20 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 
 	if (resolvedContext)
 	{
-		raiseStepEvent(this);
-		const Variable var = resolvedContext->codegen(parentBlock, resolvedParams);
+		Variable var;
+		try
+		{
+			raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+			var = resolvedContext->codegen(parentBlock, resolvedParams);
+		}
+		catch (...)
+		{
+			parentBlock->isStmtSuspended = true;
+			raiseStepEvent(this, STEP_SUSPEND);
+			throw;
+		}
+		parentBlock->isStmtSuspended = false;
+
 		const BaseType *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
 		{
@@ -875,6 +906,8 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 #endif
 
+		raiseStepEvent(this, STEP_OUT);
+
 		return var;
 	}
 	else
@@ -893,7 +926,6 @@ bool operator<(const ExprAST& left, const ExprAST& right)
 
 Variable StmtAST::codegen(BlockExprAST* parentBlock)
 {
-	raiseStepEvent(this);
 
 #ifndef DISABLE_RESULT_CACHING
 	// Handle expression caching for coroutines
@@ -910,7 +942,18 @@ Variable StmtAST::codegen(BlockExprAST* parentBlock)
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 #endif
 
-	resolvedContext->codegen(parentBlock, resolvedParams);
+	try
+	{
+		raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+		resolvedContext->codegen(parentBlock, resolvedParams);
+	}
+	catch (...)
+	{
+		parentBlock->isExprSuspended = true;
+		raiseStepEvent(this, STEP_SUSPEND);
+		throw;
+	}
+	parentBlock->isExprSuspended = false;
 
 #ifndef DISABLE_RESULT_CACHING
 	// Cache expression result for coroutines
@@ -926,6 +969,8 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 	}
 	parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 #endif
+
+	raiseStepEvent(this, STEP_OUT);
 
 	return VOID;
 }
@@ -953,11 +998,26 @@ BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 
 Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 {
+	try
+	{
+		raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+	}
+	catch (...)
+	{
+		parentBlock->isStmtSuspended = true;
+		raiseStepEvent(this, STEP_SUSPEND);
+		throw;
+	}
+	parentBlock->isStmtSuspended = false;
+
 	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr)
 		throw CompileError("invalid use of parameter expression in parameterless scope", loc);
 	if (idx >= blockParams->size())
 		throw CompileError("parameter index out of bounds", loc);
+
+	raiseStepEvent(this, STEP_OUT);
+
 	return blockParams->at(idx);
 }
 

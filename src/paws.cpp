@@ -485,6 +485,48 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
+	// Define for statement
+	defineStmt2(pkgScope, "for($E; $E; $E) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			BlockExprAST* forBlock = (BlockExprAST*)params[3];
+
+			// Inherent global scope into loop block scope
+			setBlockExprASTParent(forBlock, parentBlock);
+
+			// Codegen init expression in loop block scope
+			codegenExpr(params[0], forBlock);
+
+			// Reresolve condition and update expressions to take loop variable into account
+			resolveExprAST(forBlock, params[1]);
+			resolveExprAST(forBlock, params[2]);
+
+			// Cast condition expression to PawsInt
+			ExprAST* condExpr = params[1];
+			BaseType* condType = getType(condExpr, forBlock);
+			if (condType != PawsInt::TYPE)
+			{
+				condExpr = lookupCast(parentBlock, condExpr, PawsInt::TYPE);
+				if (condExpr == nullptr)
+				{
+					std::string candidateReport = reportExprCandidates(parentBlock, params[1]);
+					raiseCompileError(
+						("invalid for condition type: " + ExprASTToString(params[1]) + "<" + getTypeName(condType) + ">, expected: <" + getTypeName(PawsInt::TYPE) + ">\n" + candidateReport).c_str(),
+						params[1]
+					);
+				}
+			}
+
+			while (((PawsInt*)codegenExpr(condExpr, forBlock).value)->get()) // Codegen condition expression in loop block scope
+			{
+				// Codegen loop block in parent scope
+				codegenExpr((ExprAST*)forBlock, parentBlock);
+
+				// Codegen update expression in loop block scope
+				codegenExpr(params[2], forBlock);
+			}
+		}
+	);
+
 	defineExpr2(pkgScope, "str($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];

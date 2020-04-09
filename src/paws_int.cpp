@@ -2,6 +2,11 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+template<> const std::string PawsInt::toString() const
+{
+	return std::to_string(val);
+}
+
 MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 
 	// >>> PawsInt expressions

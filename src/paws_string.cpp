@@ -2,6 +2,21 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+template<> const std::string PawsString::toString() const
+{
+	return '"' + val + '"';
+}
+
+template<> const std::string PawsStringMap::toString() const
+{
+	//TODO: Use stringstream instead
+	std::string str = "{";
+	for (const std::pair<const std::string, std::string>& pair: val)
+		str += "TODO ";
+	str += "}";
+	return str;
+}
+
 MincPackage PAWS_STRING("paws.string", [](BlockExprAST* pkgScope) {
 
 	// >>> PawsString expressions

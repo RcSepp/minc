@@ -6,10 +6,42 @@
 #include <functional>
 #include "minc_api.h"
 #include "minc_cli.h"
+#include "minc_dbg.h"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
 BaseScopeType* FILE_SCOPE_TYPE = new BaseScopeType();
+
+const std::string PawsBase::toString() const
+{
+	static const char* HEX_DIGITS = "0123456789abcdef";
+	static const size_t POINTER_SIZE = 2 * sizeof(void*);
+	uint64_t ptr = (uint64_t)this;
+	std::string str = "0x";
+
+	uint8_t digit = 0, i = POINTER_SIZE;
+
+	// Find most significant digit
+	while (i-- && digit == 0)
+		digit = (ptr >> (4 * i)) & 0x0F;
+	
+	if (digit) // If ptr != 0x0
+	{
+		// Append most significant digit
+		str.push_back(HEX_DIGITS[digit]);
+
+		// Append remaining digits
+		while (i--)
+		{
+			digit = (ptr >> (4 * i)) & 0x0F;
+			str.push_back(HEX_DIGITS[digit]);
+		}
+	}
+	else // If ptr == 0x0
+		str.push_back('0');
+
+	return str;
+}
 
 template<> uint64_t PawsValue<PawsType*>::getConstantValue() { return (uint64_t)val; }
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
@@ -181,6 +213,32 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
+bool getPawsValueStr(const BaseValue* value, std::string* valueStr)
+{
+	const PawsBase* pawsValue = dynamic_cast<const PawsBase*>(value);
+	if (pawsValue != nullptr)
+	{
+		*valueStr = pawsValue->toString();
+		return true;
+	}
+	return false;
+}
+
+template<> const std::string PawsMetaType::toString() const
+{
+	return getTypeName(val);
+}
+
+template<> const std::string PawsDouble::toString() const
+{
+	return std::to_string(val);
+}
+
+template<> const std::string PawsValue<const ExprAST*>::toString() const
+{
+	return ExprASTToString(val);
+}
+
 void importFile(BlockExprAST* parentBlock, std::string importPath)
 {
 	char buf[1024];
@@ -221,6 +279,7 @@ void importFile(BlockExprAST* parentBlock, std::string importPath)
 }
 
 MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
+	registerValueSerializer(getPawsValueStr);
 	registerType<PawsBase>(pkgScope, "PawsBase");
 	registerType<PawsVoid>(pkgScope, "PawsVoid");
 	registerType<PawsMetaType>(pkgScope, "PawsMetaType");
@@ -527,105 +586,71 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
-	defineExpr2(pkgScope, "str($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "str($E<PawsBase>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			return Variable(PawsString::TYPE, new PawsString(getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get())));
+			PawsBase* value = (PawsBase*)codegenExpr(exprAST, parentBlock).value;
+
+			// Do not use PawsString::toString(), because it surrounds the value string with quotes
+			PawsString* strValue;
+			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
+				return Variable(PawsString::TYPE, new PawsString(strValue->get()));
+			else
+				return Variable(PawsString::TYPE, new PawsString(value->toString()));
 		},
 		PawsString::TYPE
 	);
-	defineExpr(pkgScope, "str($E<PawsInt>)",
-		+[](int value) -> std::string {
-			return std::to_string(value);
-		}
-	);
-	defineExpr(pkgScope, "str($E<PawsDouble>)",
-		+[](double value) -> std::string {
-			return std::to_string(value);
-		}
-	);
-	defineExpr(pkgScope, "str($E<PawsString>)",
-		+[](std::string value) -> std::string {
-			return value;
-		}
-	);
-	defineExpr(pkgScope, "str($E<PawsConstExprAST>)",
-		+[](const ExprAST* value) -> std::string {
-			return ExprASTToString(value);
-		}
-	);
-	defineExpr(pkgScope, "str($E<PawsStringMap>)",
-		+[](std::map<std::string, std::string> value) -> std::string {
-			//TODO: Use stringstream instead
-			std::string str = "{";
-			for (std::pair<const std::string, std::string>& pair: value)
-				str += "TODO ";
-			str += "}";
-			return str;
-		}
-	);
+
 	defineExpr(pkgScope, "print()",
 		+[]() -> void {
 			std::cout << '\n';
 		}
 	);
-	defineExpr(pkgScope, "printerr()",
-		+[]() -> void {
-			std::cerr << '\n';
-		}
-	);
-	defineExpr2(pkgScope, "print($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "print($E<PawsBase>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			std::cout << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get()) << '\n';
+			PawsBase* value = (PawsBase*)codegenExpr(exprAST, parentBlock).value;
+
+			// Do not use PawsString::toString(), because it surrounds the value string with quotes
+			PawsString* strValue;
+			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
+				std::cout << strValue->get() << '\n';
+			else
+				std::cout << value->toString() << '\n';
+
 			return Variable(PawsVoid::TYPE, nullptr);
 		},
 		PawsVoid::TYPE
+	);
+
+	defineExpr(pkgScope, "printerr()",
+		+[]() -> void {
+			std::cerr << '\n';
+		}
 	);
 	defineExpr2(pkgScope, "printerr($E<PawsMetaType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			std::cerr << getTypeName(((PawsMetaType*)codegenExpr(exprAST, parentBlock).value)->get()) << '\n';
+			PawsBase* value = (PawsBase*)codegenExpr(exprAST, parentBlock).value;
+
+			// Do not use PawsString::toString(), because it surrounds the value string with quotes
+			PawsString* strValue;
+			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
+				std::cerr << strValue->get() << '\n';
+			else
+				std::cerr << value->toString() << '\n';
+
 			return Variable(PawsVoid::TYPE, nullptr);
 		},
 		PawsVoid::TYPE
 	);
-	defineExpr(pkgScope, "print($E<PawsString>)",
-		+[](std::string value) -> void {
-			std::cout << value << '\n';
-		}
-	);
-	defineExpr(pkgScope, "printerr($E<PawsString>)",
-		+[](std::string value) -> void {
-			std::cerr << value << '\n';
-		}
-	);
-	defineExpr(pkgScope, "print($E<PawsInt>)",
-		+[](int value) -> void {
-			std::cout << value << '\n';
-		}
-	);
-	defineExpr(pkgScope, "print($E<PawsDouble>)",
-		+[](double value) -> void {
-			std::cout << value << '\n';
-		}
-	);
-	defineExpr(pkgScope, "printerr($E<PawsInt>)",
-		+[](int value) -> void {
-			std::cerr << value << '\n';
-		}
-	);
-	defineExpr(pkgScope, "printerr($E<PawsDouble>)",
-		+[](double value) -> void {
-			std::cerr << value << '\n';
-		}
-	);
+
 	defineExpr2(pkgScope, "type($E<PawsBase>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];

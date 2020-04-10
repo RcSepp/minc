@@ -1,3 +1,74 @@
+//paws_typedef<BuiltinType> int { return _BuiltinType(LLVMInt32Type(), 4, DW_ATE_signed, 32); }
+
+// paws_typedef<BuiltinType> long { return _BuiltinType(LLVMInt64Type(), 8, DW_ATE_signed, 64); }
+// inhtdef<BuiltinValue> $E<long>;
+
+// paws_typedef<BuiltinType> longPtr { return _BuiltinType(LLVMPointerType(LLVMInt64Type(), 0), 8, DW_ATE_address, 64); }
+// inhtdef<BuiltinValue> $E<longPtr>;
+// inhtdef<BuiltinPtr> $E<longPtr>;
+
+paws_typedef<BuiltinType> half { return _BuiltinType(LLVMHalfType(), 2, DW_ATE_float, 16); }
+inhtdef<BuiltinValue> $E<half>;
+
+paws_typedef<BuiltinType> halfPtr { return _BuiltinType(LLVMPointerType(LLVMHalfType(), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<halfPtr>;
+inhtdef<BuiltinPtr> $E<halfPtr>;
+
+paws_typedef<BuiltinType> float { return _BuiltinType(LLVMFloatType(), 8, DW_ATE_float, 64); }
+inhtdef<BuiltinValue> $E<float>;
+
+paws_typedef<BuiltinType> floatPtr { return _BuiltinType(LLVMPointerType(LLVMFloatType(), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<floatPtr>;
+inhtdef<BuiltinPtr> $E<floatPtr>;
+
+paws_typedef<BuiltinType> double { return _BuiltinType(LLVMDoubleType(), 8, DW_ATE_float, 64); }
+inhtdef<BuiltinValue> $E<double>;
+
+paws_typedef<BuiltinType> doublePtr { return _BuiltinType(LLVMPointerType(LLVMDoubleType(), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<doublePtr>;
+inhtdef<BuiltinPtr> $E<doublePtr>;
+
+paws_typedef<BuiltinType> LLVMModuleRefPtr { return _BuiltinType(LLVMPointerType(LLVMPointerType(LLVMEXGetTypeByName("struct.LLVMOpaqueModule"), 0), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMModuleRefPtr>;
+inhtdef<BuiltinPtr> $E<LLVMModuleRefPtr>;
+
+paws_typedef<BuiltinType> LLVMGenericValueRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueGenericValue"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMGenericValueRef>;
+
+paws_typedef<BuiltinType> LLVMGenericValueRefPtr { return _BuiltinType(LLVMPointerType(LLVMPointerType(LLVMEXGetTypeByName("struct.LLVMOpaqueGenericValue"), 0), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMGenericValueRefPtr>;
+inhtdef<BuiltinPtr> $E<LLVMGenericValueRefPtr>;
+
+paws_typedef<BuiltinType> LLVMExecutionEngineRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueExecutionEngine"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMExecutionEngineRef>;
+
+paws_typedef<BuiltinType> LLVMExecutionEngineRefPtr { return _BuiltinType(LLVMPointerType(LLVMPointerType(LLVMEXGetTypeByName("struct.LLVMOpaqueExecutionEngine"), 0), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMExecutionEngineRefPtr>;
+inhtdef<BuiltinPtr> $E<LLVMExecutionEngineRefPtr>;
+
+paws_typedef<BuiltinType> LLVMMCJITCompilerOptionsPtr { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMMCJITCompilerOptions"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMMCJITCompilerOptionsPtr>;
+inhtdef<BuiltinPtr> $E<LLVMMCJITCompilerOptionsPtr>;
+
+paws_typedef<BuiltinType> LLVMTargetDataRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueTargetData"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMTargetDataRef>;
+
+paws_typedef<BuiltinType> LLVMTargetMachineRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueTargetMachine"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMTargetMachineRef>;
+
+paws_typedef<BuiltinType> LLVMMCJITMemoryManagerRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueMCJITMemoryManager"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMMCJITMemoryManagerRef>;
+
+paws_typedef<BuiltinType> LLVMJITEventListenerRef { return _BuiltinType(LLVMPointerType(LLVMStructCreateNamed(LLVMEXGetModuleContext(), "struct.LLVMOpaqueJITEventListener"), 0), 8, DW_ATE_address, 64); }
+inhtdef<BuiltinValue> $E<LLVMJITEventListenerRef>;
+
+void defScope::resolveExprAST(BlockExprAST, ExprAST);
+string defScope::getLiteralExprASTValue(LiteralExprAST);
+BuiltinType defScope::defineFunction(BlockExprAST, string, BuiltinType, BuiltinTypePtr, long, bool);
+LLVMValueRef defScope::LookupScope(BlockExprAST, IdExprAST);
+LLVMValueRef defScope::ImportSymbol(BlockExprAST, IdExprAST);
+
+
 /* ---------------------------------------------------------------------------*\
 |                                                                              |
 |                               LLVM-C FUNCTIONS                               |
@@ -62,7 +133,7 @@ paws_castdef<string> PawsString {
 	LLVMSetUnnamedAddress(glob, 2);
 	LLVMSetAlignment(glob, 1);
 
-	return LLVMConstInBoundsGEP2(
+	return LLVMEXConstInBoundsGEP2(
 		glob,
 		LLVMConstInt(LLVMInt64Type(), 0, 0),
 		LLVMConstInt(LLVMInt64Type(), 0, 0)

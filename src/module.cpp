@@ -205,12 +205,12 @@ extern "C"
 		Types::Int32Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt32Type(), 0));
 		Types::Int64 = (StructType*)unwrap(LLVMInt64Type());
 		Types::Int64Ptr = (StructType*)unwrap(LLVMPointerType(LLVMInt64Type(), 0));
-		Types::Half = (StructType*)unwrap(LLVMHalfType());
-		Types::HalfPtr = (StructType*)unwrap(LLVMPointerType(LLVMHalfType(), 0));
-		Types::Float = (StructType*)unwrap(LLVMFloatType());
-		Types::FloatPtr = (StructType*)unwrap(LLVMPointerType(LLVMFloatType(), 0));
-		Types::Double = (StructType*)unwrap(LLVMDoubleType());
-		Types::DoublePtr = (StructType*)unwrap(LLVMPointerType(LLVMDoubleType(), 0));
+		// Types::Half = (StructType*)unwrap(LLVMHalfType());
+		// Types::HalfPtr = (StructType*)unwrap(LLVMPointerType(LLVMHalfType(), 0));
+		// Types::Float = (StructType*)unwrap(LLVMFloatType());
+		// Types::FloatPtr = (StructType*)unwrap(LLVMPointerType(LLVMFloatType(), 0));
+		// Types::Double = (StructType*)unwrap(LLVMDoubleType());
+		// Types::DoublePtr = (StructType*)unwrap(LLVMPointerType(LLVMDoubleType(), 0));
 
 		Types::LLVMType = StructType::create(*context, "class.llvm::Type");
 		Types::LLVMValue = StructType::create(*context, "class.llvm::Value");
@@ -287,12 +287,6 @@ extern "C"
 		BuiltinTypes::Int32Ptr = BuiltinTypes::Int32->Ptr();
 		BuiltinTypes::Int64 = BuiltinType::get("long", wrap(Types::Int64), 8, dwarf::DW_ATE_signed, 64);
 		BuiltinTypes::Int64Ptr = BuiltinTypes::Int64->Ptr();
-		BuiltinTypes::Half = BuiltinType::get("half", LLVMHalfType(), 2, dwarf::DW_ATE_float, 16);
-		BuiltinTypes::HalfPtr = BuiltinTypes::Half->Ptr();
-		BuiltinTypes::Float = BuiltinType::get("float", LLVMFloatType(), 4, dwarf::DW_ATE_float, 32);
-		BuiltinTypes::FloatPtr = BuiltinTypes::Float->Ptr();
-		BuiltinTypes::Double = BuiltinType::get("double", LLVMDoubleType(), 8, dwarf::DW_ATE_float, 64);
-		BuiltinTypes::DoublePtr = BuiltinTypes::Double->Ptr();
 
 		// LLVM types
 		BuiltinTypes::LLVMAttributeRef = BuiltinType::get("LLVMAttributeRef", wrap(Types::LLVMOpaqueAttributeRef->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
@@ -312,7 +306,7 @@ extern "C"
 		BuiltinTypes::LLVMTypeRef = BuiltinType::get("LLVMTypeRef", wrap(Types::LLVMOpaqueType->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 		BuiltinTypes::LLVMUseRef = BuiltinType::get("LLVMUseRef", wrap(Types::LLVMOpaqueUse->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 		BuiltinTypes::LLVMValueRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValue->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
-		BuiltinTypes::LLVMValueMetadataEntryRef = BuiltinType::get("LLVMValueRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
+		BuiltinTypes::LLVMValueMetadataEntryRef = BuiltinType::get("LLVMValueMetadataEntryRef", wrap(Types::LLVMOpaqueValueMetadataEntry->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 
 		// AST types
 		BuiltinTypes::Location = BuiltinType::get("Location", wrap(Types::Location->getPointerTo()), 8, dwarf::DW_ATE_address, 64);

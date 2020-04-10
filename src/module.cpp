@@ -46,11 +46,10 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
 
-#include "ast.h"
+#include "minc_api.h"
 #include "llvm_constants.h"
 #include "KaleidoscopeJIT.h"
 #include "module.h"
-#include "cparser.h"
 
 using namespace llvm;
 
@@ -167,7 +166,7 @@ extern "C"
 			{
 				if (type == STEP_IN || type == STEP_RESUME)
 					builder->SetCurrentDebugLocation(DebugLoc::get(getExprLine(loc), getExprColumn(loc), currentFunc->getSubprogram()));
-				else if (type == STEP_OUT && loc->exprtype == ExprAST::ExprType::BLOCK)
+				else if (type == STEP_OUT && ExprASTIsBlock(loc))
 					builder->SetCurrentDebugLocation(DebugLoc());
 			}
 		});
@@ -321,59 +320,52 @@ extern "C"
 
 	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
 	{
-		if (tplt.empty() || tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
-		{
-			std::vector<ExprAST*> stoppedTplt(tplt);
-			stoppedTplt.push_back(new StopExprAST(Location{}));
-			scope->defineStatement(stoppedTplt, new DynamicStmtContext(func, stmtArgs));
-		}
-		else
-			scope->defineStatement(tplt, new DynamicStmtContext(func, stmtArgs));
+		defineStmt3(scope, tplt, new DynamicStmtContext(func, stmtArgs));
 	}
 
 	void defineAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs)
 	{
-		scope->defineAntiStatement(func == nullptr ? nullptr : new DynamicStmtContext(func, stmtArgs));
+		defineAntiStmt3(scope, func == nullptr ? nullptr : new DynamicStmtContext(func, stmtArgs));
 	}
 
 	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
 	{
-		targetBlock->defineStatement(std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
+		defineAntiStmt3(targetBlock, std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
 	}*/
 
 	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
 	{
-		scope->defineExpr(tplt, new DynamicExprContext(func, type));
+		defineExpr5(scope, tplt, new DynamicExprContext(func, type));
 	}
 
 	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
 	{
-		scope->defineExpr(tplt, new DynamicExprContext2(func, typeFunc));
+		defineExpr5(scope, tplt, new DynamicExprContext2(func, typeFunc));
 	}
 
 	void defineAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type)
 	{
-		scope->defineAntiExpr(func == nullptr ? nullptr : new DynamicExprContext(func, type));
+		defineAntiExpr5(scope, func == nullptr ? nullptr : new DynamicExprContext(func, type));
 	}
 
 	void defineAntiExpr4(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc)
 	{
-		scope->defineAntiExpr(func == nullptr ? nullptr : new DynamicExprContext2(func, typeFunc));
+		defineAntiExpr5(scope, func == nullptr ? nullptr : new DynamicExprContext2(func, typeFunc));
 	}
 
 	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
-		scope->defineCast(new TypeCast(fromType, toType, new DynamicExprContext(func, toType)));
+		defineTypeCast3(scope, fromType, toType, new DynamicExprContext(func, toType));
 	}
 	void defineInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
-		scope->defineCast(new InheritanceCast(fromType, toType, new DynamicExprContext(func, toType)));
+		defineInheritanceCast3(scope, fromType, toType, new DynamicExprContext(func, toType));
 	}
 
 	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols)
 	{
 		if (context == nullptr)
-			throw CompileError("initCompiler() hasn't been called", { sourcePath.c_str(), 1, 1, 1, 1 });
+			raiseCompileError("initCompiler() hasn't been called", createLoc(sourcePath.c_str()));
 
 		// Unbind parseCFile filename parameter lifetime from local filename parameter
 		char* path = new char[sourcePath.size() + 1];
@@ -385,7 +377,7 @@ extern "C"
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name)
 	{
 		if (context == nullptr)
-			throw CompileError("initCompiler() hasn't been called", blockAST->loc);
+			raiseCompileError("initCompiler() hasn't been called", (ExprAST*)blockAST);
 
 		return new JitFunction(scope, blockAST, unwrap(((BuiltinType*)returnType)->llvmtype), params, name);
 	}
@@ -406,7 +398,7 @@ extern "C"
 	}
 }
 
-XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode)
+XXXModule::XXXModule(const std::string& moduleName, const ExprAST* loc, bool outputDebugSymbols, bool optimizeCode)
 	: prevModule(currentModule), prevXXXModule(currentXXXModule), prevDbuilder(dbuilder), prevDfile(dfile), prevFunc(currentFunc), prevBB(currentBB), loc(loc)
 {
 	// Create module
@@ -421,9 +413,9 @@ XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool ou
 		currentModule->addModuleFlag(Module::Warning, "Debug Info Version", DEBUG_METADATA_VERSION);
 		dbuilder = new DIBuilder(*currentModule);
 		DIFile* difile = nullptr;
-		if (strcmp(loc.filename, "-") != 0)
+		if (strcmp(getExprFilename(loc), "-") != 0)
 		{
-			const std::string sourcePath = loc.filename;
+			const std::string sourcePath = getExprFilename(loc);
 			size_t slpos = sourcePath.find_last_of("/\\");
 			difile = dbuilder->createFile(sourcePath.substr(slpos + 1), sourcePath.substr(0, slpos));
 		}
@@ -502,10 +494,11 @@ void XXXModule::finalize()
 
 	if (haserr && errstr[0] != '\0')
 	{
-		char* errFilename = new char[strlen(loc.filename) + 1];
-		strcpy(errFilename, loc.filename);
-		Location* errloc = new Location{errFilename, loc.begin_line, loc.begin_col, loc.end_line, loc.end_col};
-		throw CompileError("error compiling module\n" + errstr, *errloc);
+print("error.ll");
+		char* errFilename = new char[strlen(getExprFilename(loc)) + 1];
+		strcpy(errFilename, getExprFilename(loc));
+		const ExprAST* errloc = createLoc(errFilename, getExprLine(loc), getExprColumn(loc), getExprEndLine(loc), getExprEndColumn(loc));
+		raiseCompileError(("error compiling module\n" + errstr).c_str(), errloc);
 	}
 }
 
@@ -562,7 +555,7 @@ void XXXModule::buildRun()
 }
 
 FileModule::FileModule(const char* sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols, bool optimizeCode)
-	: XXXModule(sourcePath == "-" ? "main" : sourcePath, { sourcePath, 1, 1, 1, 1 }, outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
+	: XXXModule(sourcePath == "-" ? "main" : sourcePath, createLoc(sourcePath), outputDebugSymbols, optimizeCode), prevSourcePath(currentSourcePath = sourcePath)
 {
 	// Generate main function
 	FunctionType *mainType = FunctionType::get(Types::Int32, {}, false);
@@ -595,13 +588,7 @@ void FileModule::finalize()
 	currentSourcePath = prevSourcePath;
 //		XXXModule::finalize();
 
-try {
 	XXXModule::finalize();
-}
-catch (CompileError err) {
-	print("error.ll");
-	throw;
-}
 }
 
 void loadLibrary(const char* filename)
@@ -661,7 +648,7 @@ InitializeNativeTarget();
 }
 
 JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name)
-	: XXXModule("module", blockAST->loc, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), jitModuleKey(0), name(name), closureType(StructType::create(*context, "closureType"))
+	: XXXModule("module", (ExprAST*)blockAST, ENABLE_JIT_CODE_DEBUG_SYMBOLS, OPTIMIZE_JIT_CODE), jitModuleKey(0), name(name), closureType(StructType::create(*context, "closureType"))
 {
 	closureType->setBody(ArrayRef<Type*>());
 
@@ -681,14 +668,14 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 
 	if (dbuilder)
 	{
-		unsigned ScopeLine = blockAST->loc.begin_line;
+		unsigned ScopeLine = getExprLine((ExprAST*)blockAST);
 		DISubprogram *SP = dbuilder->createFunction(
-			dfile, name, StringRef(), dfile, loc.begin_line,
+			dfile, name, StringRef(), dfile, getExprLine(loc),
 			dbuilder->createSubroutineType(dbuilder->getOrCreateTypeArray(SmallVector<Metadata*, 8>({ }))),
 			ScopeLine, DINode::FlagPrototyped, DISubprogram::SPFlagDefinition)
 		;
 		currentFunc->setSubprogram(SP);
-		builder->SetCurrentDebugLocation(DebugLoc::get(loc.begin_line, 1, SP));
+		builder->SetCurrentDebugLocation(DebugLoc::get(getExprLine(loc), 1, SP));
 	}
 	else
 		builder->SetCurrentDebugLocation(DebugLoc());
@@ -700,31 +687,31 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 	AllocaInst* builderPtr = builder->CreateAlloca(Types::LLVMOpaqueBuilder->getPointerTo(), nullptr, "builder");
 	builderPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin(), builderPtr)->setAlignment(8);
-	blockAST->defineSymbol("builder", BuiltinTypes::LLVMBuilderRef, new XXXValue(builderPtr));
+	defineSymbol(blockAST, "builder", BuiltinTypes::LLVMBuilderRef, new XXXValue(builderPtr));
 
 	AllocaInst* modulePtr = builder->CreateAlloca(Types::LLVMOpaqueModule->getPointerTo(), nullptr, "module");
 	modulePtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 1, modulePtr)->setAlignment(8);
-	blockAST->defineSymbol("module", BuiltinTypes::LLVMModuleRef, new XXXValue(modulePtr));
+	defineSymbol(blockAST, "module", BuiltinTypes::LLVMModuleRef, new XXXValue(modulePtr));
 
 	AllocaInst* functionPtr = builder->CreateAlloca(Types::LLVMOpaqueValue->getPointerTo(), nullptr, "function");
 	functionPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 2, functionPtr)->setAlignment(8);
-	blockAST->defineSymbol("function", BuiltinTypes::LLVMValueRef, new XXXValue(functionPtr));
+	defineSymbol(blockAST, "function", BuiltinTypes::LLVMValueRef, new XXXValue(functionPtr));
 
 	AllocaInst* parentBlockPtr = builder->CreateAlloca(Types::BlockExprAST->getPointerTo(), nullptr, "parentBlock");
 	parentBlockPtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(8);
-	blockAST->defineSymbol("parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
+	defineSymbol(blockAST, "parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
 
 	AllocaInst* dfilePtr = builder->CreateAlloca(Types::LLVMOpaqueMetadata->getPointerTo(), nullptr, "dfile");
 	dfilePtr->setAlignment(8);
 	builder->CreateStore(currentFunc->args().begin() + 4, dfilePtr)->setAlignment(8);
-	blockAST->defineSymbol("dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
+	defineSymbol(blockAST, "dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
 
 	Value* paramsVal = currentFunc->args().begin() + 5;
 	paramsVal->setName("params");
-	blockAST->blockParams.clear();
+	std::vector<Variable> blockParams;
 	int i = 0;
 	for (ExprAST* blockParamExpr: params)
 	{
@@ -733,10 +720,10 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 		param->setAlignment(8);
 
 		Variable paramVar = Variable(BuiltinTypes::ExprAST, new XXXValue(param));
-		if (blockParamExpr->exprtype == ExprAST::ExprType::PLCHLD)
+		if (ExprASTIsPlchld(blockParamExpr))
 		{
 			PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamExpr;
-			switch(blockParamPlchldExpr->p1)
+			switch(getPlchldExprASTLabel(blockParamPlchldExpr))
 			{
 			default: assert(0); //TODO: Throw exception
 			case 'L': paramVar = Variable(BuiltinTypes::LiteralExprAST, new XXXValue(builder->CreateBitCast(param, Types::LiteralExprAST->getPointerTo()))); break;
@@ -744,24 +731,24 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 			case 'B': paramVar = Variable(BuiltinTypes::BlockExprAST, new XXXValue(builder->CreateBitCast(param, Types::BlockExprAST->getPointerTo()))); break;
 			case 'S': break;
 			case 'E':
-				if (blockParamPlchldExpr->p2 == nullptr)
+				if (getPlchldExprASTSublabel(blockParamPlchldExpr) == nullptr)
 					break;
-				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
+				if (const Variable* var = importSymbol(parentBlock, getPlchldExprASTSublabel(blockParamPlchldExpr)))
 				{
 					BuiltinType* codegenType = (BuiltinType*)var->value->getConstantValue();
-					paramVar = Variable(TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
+					paramVar = Variable(TpltType::get("ExprAST<" + std::string(getPlchldExprASTSublabel(blockParamPlchldExpr)) + ">", BuiltinTypes::ExprAST, codegenType), new XXXValue(param));
 					break;
 				}
 			}
 		}
-		else if (blockParamExpr->exprtype == ExprAST::ExprType::LIST)
+		else if (ExprASTIsList(blockParamExpr))
 		{
-			ExprListAST* blockParamListExpr = (ExprListAST*)blockParamExpr;
-			assert(blockParamListExpr->exprs.size());
+			std::vector<ExprAST*>& blockParamListExprs = getExprListASTExpressions((ExprListAST*)blockParamExpr);
+			assert(blockParamListExprs.size());
 
 			BuiltinType* exprType = BuiltinTypes::ExprAST;
-			PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamListExpr->exprs.front();
-			switch(blockParamPlchldExpr->p1)
+			PlchldExprAST* blockParamPlchldExpr = (PlchldExprAST*)blockParamListExprs.front();
+			switch(getPlchldExprASTLabel(blockParamPlchldExpr))
 			{
 			default: assert(0); //TODO: Throw exception
 			case 'L': exprType = BuiltinTypes::LiteralExprAST; break;
@@ -769,12 +756,12 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 			case 'B': exprType = BuiltinTypes::BlockExprAST; break;
 			case 'S': break;
 			case 'E':
-				if (blockParamPlchldExpr->p2 == nullptr)
+				if (getPlchldExprASTSublabel(blockParamPlchldExpr) == nullptr)
 					break;
-				if (const Variable* var = parentBlock->importSymbol(blockParamPlchldExpr->p2))
+				if (const Variable* var = importSymbol(parentBlock, getPlchldExprASTSublabel(blockParamPlchldExpr)))
 				{
 					BuiltinType* codegenType = (BuiltinType*)var->value->getConstantValue();
-					exprType = TpltType::get("ExprAST<" + std::string(blockParamPlchldExpr->p2) + ">", BuiltinTypes::ExprAST, codegenType);
+					exprType = TpltType::get("ExprAST<" + std::string(getPlchldExprASTSublabel(blockParamPlchldExpr)) + ">", BuiltinTypes::ExprAST, codegenType);
 					break;
 				}
 			}
@@ -784,7 +771,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 				new XXXValue(builder->CreateBitCast(param, Types::ExprListAST->getPointerTo()))
 			);
 		}
-		else if (blockParamExpr->exprtype == ExprAST::ExprType::ELLIPSIS)
+		else if (ExprASTIsEllipsis(blockParamExpr))
 		{
 			paramVar = Variable(BuiltinTypes::ExprAST, new XXXValue(Constant::getNullValue((Types::ExprAST->getPointerTo())))); break;
 			continue;
@@ -792,8 +779,9 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 		else
 			assert(0);
 
-		blockAST->blockParams.push_back(paramVar);
+		blockParams.push_back(paramVar);
 	}
+	setBlockExprASTParams(blockAST, blockParams);
 
 	closure = currentFunc->args().begin() + 6;
 	closure->setName("closure");
@@ -819,16 +807,7 @@ closureType->setBody(capturedTypes);*/
 
 uint64_t JitFunction::compile()
 {
-	try {
 		finalize();
-//print(name + ".ll");
-	}
-	catch (CompileError err) {
-#ifdef OUTPUT_JIT_CODE
-		print("error.ll");
-#endif
-		throw;
-	}
 
 /*for(GlobalVariable& g: module->globals())
 {
@@ -858,7 +837,10 @@ new GlobalVariable(
 	if (jitFunctionPointer)
 		return *jitFunctionPointer;
 	else
-		throw CompileError("error linking JIT function\n" + toString(jitFunctionPointer.takeError()), loc);
+	{
+		raiseCompileError(("error linking JIT function\n" + toString(jitFunctionPointer.takeError())).c_str(), loc);
+		return 0; // Unreachable
+	}
 #endif
 }
 

@@ -13,7 +13,7 @@ protected:
 	DIFile* const prevDfile;
 	Function* const prevFunc;
 	BasicBlock* const prevBB;
-	const Location loc;
+	const ExprAST* const loc;
 
 	legacy::FunctionPassManager* jitFunctionPassManager;
 	legacy::PassManager* jitModulePassManager;
@@ -22,7 +22,7 @@ public:
 	std::unique_ptr<Module> module;
 	std::set<XXXModule*> dependencies;
 
-	XXXModule(const std::string& moduleName, const Location& loc, bool outputDebugSymbols, bool optimizeCode);
+	XXXModule(const std::string& moduleName, const ExprAST* loc, bool outputDebugSymbols, bool optimizeCode);
 	virtual void finalize();
 	void print(const std::string& outputPath);
 	void print();

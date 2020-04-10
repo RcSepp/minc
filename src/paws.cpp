@@ -848,6 +848,12 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
+	defineExpr(pkgScope, "loadLibrary($E<PawsString>)",
+		+[](std::string filename) -> void {
+			loadLibrary(filename.c_str());
+		}
+	);
+
 	defineExpr(pkgScope, "createModule($E<PawsString>, $E<PawsString>, $E<PawsInt>)",
 		+[](std::string sourcePath, std::string moduleFuncName, int outputDebugSymbols) -> IModule* {
 			return createModule(sourcePath, moduleFuncName, outputDebugSymbols);

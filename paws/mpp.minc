@@ -53,6 +53,7 @@ if (rootBlock == NULL)
 
 // Compile AST
 initCompiler();
+loadLibrary("libpython3.7m.so"); //DELETE
 module = createModule(realPath, "main", outputDebugSymbols);
 measure("compile time") {
 	rootBlock.scopeType = FILE_SCOPE_TYPE;

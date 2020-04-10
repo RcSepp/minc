@@ -169,7 +169,7 @@ extern "C"
 
 	const Variable& getVoid();
 
-	void raiseCompileError(const char* msg, const ExprAST* loc);
+	void raiseCompileError(const char* msg, const ExprAST* loc=nullptr);
 
 	void registerStepEventListener(StepEvent listener, void* eventArgs=nullptr);
 	void deregisterStepEventListener(StepEvent listener);
@@ -177,6 +177,7 @@ extern "C"
 	// >>> Compiler
 
 	void initCompiler();
+	void loadLibrary(const char* filename);
 	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols);
 
 	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);

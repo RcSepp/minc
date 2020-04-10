@@ -549,7 +549,7 @@ extern "C"
 
 	void raiseCompileError(const char* msg, const ExprAST* loc)
 	{
-		throw CompileError(msg, loc->loc);
+		throw CompileError(msg, loc ? loc->loc : Location({0}));
 	}
 
 	void registerStepEventListener(StepEvent listener, void* eventArgs)

@@ -610,6 +610,13 @@ catch (CompileError err) {
 }
 }
 
+void loadLibrary(const char* filename)
+{
+	std::string errstr;
+	if (llvm::sys::DynamicLibrary::LoadLibraryPermanently("libpython3.7m.so", &errstr))
+		raiseCompileError(("error linking libpython3.7m.so: " + errstr).c_str());
+}
+
 int FileModule::run()
 {
 	ExecutionEngine* EE = EngineBuilder(std::unique_ptr<Module>(module.get())).create();

@@ -92,7 +92,6 @@ typedef PawsValue<const std::vector<BlockExprAST*>&> PawsConstBlockExprASTList;
 typedef PawsValue<ExprListAST*> PawsExprListAST;
 typedef PawsValue<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsValue<IdExprAST*> PawsIdExprAST;
-typedef PawsValue<IModule*> PawsModule;
 typedef PawsValue<Variable> PawsVariable;
 typedef PawsValue<BaseScopeType*> PawsScopeType;
 typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;

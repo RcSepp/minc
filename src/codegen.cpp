@@ -163,6 +163,10 @@ extern "C"
 	{
 		return expr->exprtype == ExprAST::ExprType::PLCHLD;
 	}
+	bool ExprASTIsEllipsis(const ExprAST* expr)
+	{
+		return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
+	}
 
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr)
 	{
@@ -300,6 +304,17 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr) { return expr->loc.begin_col; }
 	unsigned getExprEndLine(const ExprAST* expr) { return expr->loc.end_line; }
 	unsigned getExprEndColumn(const ExprAST* expr) { return expr->loc.end_col; }
+
+	const ExprAST* createLoc(const char* filename, unsigned line, unsigned column, unsigned endLine, unsigned endColumn)
+	{
+		return new LocExprAST({
+			filename,
+			line <= 1 ? 1 : line,
+			column <= 1 ? 1 : column,
+			endLine < line ? line : endLine,
+			endColumn < column ? column : endColumn
+		});
+	}
 
 	ExprAST* getDerivedExprAST(ExprAST* expr)
 	{

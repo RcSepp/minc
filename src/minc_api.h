@@ -52,17 +52,6 @@ struct Cast
 	virtual Cast* derive() const = 0;
 };
 
-class IModule
-{
-public:
-	virtual void print(const std::string& outputPath) = 0;
-	virtual void print() = 0;
-	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
-	virtual int run() = 0;
-	virtual void buildRun() = 0;
-	virtual void finalize() = 0;
-};
-
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
 typedef BaseType* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
@@ -92,6 +81,7 @@ extern "C"
 	bool ExprASTIsStmt(const ExprAST* expr);
 	bool ExprASTIsList(const ExprAST* expr);
 	bool ExprASTIsPlchld(const ExprAST* expr);
+	bool ExprASTIsEllipsis(const ExprAST* expr);
 	void resolveExprAST(BlockExprAST* scope, ExprAST* expr);
 	BlockExprAST* wrapExprAST(ExprAST* expr);
 	BlockExprAST* createEmptyBlockExprAST();
@@ -125,6 +115,7 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr);
 	unsigned getExprEndLine(const ExprAST* expr);
 	unsigned getExprEndColumn(const ExprAST* expr);
+	const ExprAST* createLoc(const char* filename=nullptr, unsigned line=1, unsigned column=1, unsigned endLine=1, unsigned endColumn=1);
 	ExprAST* getDerivedExprAST(ExprAST* expr);
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
@@ -135,27 +126,19 @@ extern "C"
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
 	void defineType(const char* name, const BaseType* type);
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
-	void defineAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs = nullptr);
 	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt);
-	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
-	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc);
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr);
-	void defineAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type);
 	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineAntiExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
-	void defineAntiExpr4(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc);
 	void defineAntiExpr5(BlockExprAST* scope, CodegenContext* expr);
-	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineTypeCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
 	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
-	void defineInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 	void defineInheritanceCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
 	void defineInheritanceCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
 	void defineOpaqueInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
@@ -173,17 +156,6 @@ extern "C"
 
 	void registerStepEventListener(StepEvent listener, void* eventArgs=nullptr);
 	void deregisterStepEventListener(StepEvent listener);
-
-	// >>> Compiler
-
-	void initCompiler();
-	void loadLibrary(const char* filename);
-	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols);
-
-	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
-	uint64_t compileJitFunction(JitFunction* jitFunc);
-	void removeJitFunctionModule(JitFunction* jitFunc);
-	void removeJitFunction(JitFunction* jitFunc);
 }
 
 #endif

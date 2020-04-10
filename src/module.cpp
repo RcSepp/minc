@@ -47,11 +47,13 @@ const bool OPTIMIZE_JIT_CODE = true;
 #include <llvm/IR/LegacyPassManager.h>
 
 #include "minc_api.h"
+#include "module.h"
 #include "llvm_constants.h"
 #include "KaleidoscopeJIT.h"
-#include "module.h"
 
 using namespace llvm;
+
+class XXXModule;
 
 extern LLVMContext* context;
 extern IRBuilder<>* builder;
@@ -77,6 +79,63 @@ KaleidoscopeJIT* jit;
 std::string currentSourcePath;
 DIBasicType* intType;
 Value* closure;
+
+class XXXModule : public IModule
+{
+protected:
+	Module* const prevModule;
+	XXXModule* const prevXXXModule;
+	DIBuilder* const prevDbuilder;
+	DIFile* const prevDfile;
+	Function* const prevFunc;
+	BasicBlock* const prevBB;
+	const ExprAST* const loc;
+
+	legacy::FunctionPassManager* jitFunctionPassManager;
+	legacy::PassManager* jitModulePassManager;
+
+public:
+	std::unique_ptr<Module> module;
+	std::set<XXXModule*> dependencies;
+
+	XXXModule(const std::string& moduleName, const ExprAST* loc, bool outputDebugSymbols, bool optimizeCode);
+	virtual void finalize();
+	void print(const std::string& outputPath);
+	void print();
+	bool compile(const std::string& outputPath, std::string& errstr);
+	int run();
+	void buildRun();
+};
+
+class FileModule : public XXXModule
+{
+private:
+	const std::string prevSourcePath;
+	Function* mainFunc;
+
+public:
+	FileModule(const char* sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols, bool optimizeCode);
+	void finalize();
+	int run();
+	void buildRun();
+};
+
+class JitFunction : public XXXModule
+{
+private:
+	llvm::orc::VModuleKey jitModuleKey;
+
+public:
+	const std::string name;
+	StructType* closureType;
+	FunctionType* funcType;
+
+	static void init();
+	JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name);
+	void finalize();
+	uint64_t compile();
+	void removeCompiledModule();
+};
 
 struct DynamicStmtContext : public CodegenContext
 {
@@ -318,46 +377,46 @@ extern "C"
 		BuiltinTypes::StmtAST = BuiltinType::get("StmtAST", wrap(Types::StmtAST->getPointerTo()), 8, dwarf::DW_ATE_address, 64);
 	}
 
-	void defineStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
+	void defineJitFunctionStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs)
 	{
 		defineStmt3(scope, tplt, new DynamicStmtContext(func, stmtArgs));
 	}
 
-	void defineAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs)
+	void defineJitFunctionAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs)
 	{
 		defineAntiStmt3(scope, func == nullptr ? nullptr : new DynamicStmtContext(func, stmtArgs));
 	}
 
-	/*void DefineStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
+	/*void DefineJitFunctionStatement(BlockExprAST* targetBlock, ExprAST** params, int numParams, JitFunction* func, void* closure)
 	{
 		defineAntiStmt3(targetBlock, std::vector<ExprAST*>(params, params + numParams), new DynamicStmtContext(func, closure));
 	}*/
 
-	void defineExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
+	void defineJitFunctionExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type)
 	{
 		defineExpr5(scope, tplt, new DynamicExprContext(func, type));
 	}
 
-	void defineExpr4(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
+	void defineJitFunctionExpr2(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc)
 	{
 		defineExpr5(scope, tplt, new DynamicExprContext2(func, typeFunc));
 	}
 
-	void defineAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type)
+	void defineJitFunctionAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type)
 	{
 		defineAntiExpr5(scope, func == nullptr ? nullptr : new DynamicExprContext(func, type));
 	}
 
-	void defineAntiExpr4(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc)
+	void defineJitFunctionAntiExpr2(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc)
 	{
 		defineAntiExpr5(scope, func == nullptr ? nullptr : new DynamicExprContext2(func, typeFunc));
 	}
 
-	void defineTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
+	void defineJitFunctionTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
 		defineTypeCast3(scope, fromType, toType, new DynamicExprContext(func, toType));
 	}
-	void defineInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
+	void defineJitFunctionInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func)
 	{
 		defineInheritanceCast3(scope, fromType, toType, new DynamicExprContext(func, toType));
 	}

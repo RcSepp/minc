@@ -98,6 +98,17 @@ namespace std
 	};
 }
 
+class LocExprAST : public ExprAST
+{
+public:
+	LocExprAST(const Location& loc) : ExprAST(loc, (ExprAST::ExprType)-1) {}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { return true; }
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
+	std::string str() const { return ""; }
+	std::string shortStr() const { return ""; }
+	ExprAST* clone() { return new LocExprAST(loc); }
+};
+
 class ExprListAST : public ExprAST
 {
 public:

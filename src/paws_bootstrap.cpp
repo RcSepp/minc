@@ -12,6 +12,7 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
 
+#include "module.h"
 #include "llvm_constants.h"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
@@ -848,7 +849,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				capturedScope.clear();
 				codegenExpr((ExprAST*)blockAST, parentBlock);
 
-				defineStmt(parentBlock, stmtParamsAST, jitFunc);
+				defineJitFunctionStmt(parentBlock, stmtParamsAST, jitFunc);
 				removeJitFunction(jitFunc);
 			}
 		);
@@ -925,7 +926,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				capturedScope.clear();
 				codegenExpr((ExprAST*)blockAST, parentBlock);
 
-				defineExpr(parentBlock, exprAST, jitFunc, exprType);
+				defineJitFunctionExpr(parentBlock, exprAST, jitFunc, exprType);
 				removeJitFunction(jitFunc);
 			}
 		);
@@ -974,7 +975,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				}
 				builder->CreateRet(builder->CreateBitCast(((XXXValue*)codegenExpr(exprTypeAST, exprTypeBlock).value)->val, Types::BaseType->getPointerTo()));
 
-				defineExpr4(parentBlock, exprAST, jitFunc, jitTypeFunc);
+				defineJitFunctionExpr2(parentBlock, exprAST, jitFunc, jitTypeFunc);
 				removeJitFunction(jitTypeFunc);
 				removeJitFunction(jitFunc);
 			}
@@ -1002,7 +1003,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				capturedScope.clear();
 				codegenExpr((ExprAST*)blockAST, parentBlock);
 
-				defineTypeCast(parentBlock, fromType, toType, jitFunc);
+				defineJitFunctionTypeCast(parentBlock, fromType, toType, jitFunc);
 				removeJitFunction(jitFunc);
 			}
 		);
@@ -1029,7 +1030,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				capturedScope.clear();
 				codegenExpr((ExprAST*)blockAST, parentBlock);
 
-				defineInheritanceCast(parentBlock, fromType, toType, jitFunc);
+				defineJitFunctionInheritanceCast(parentBlock, fromType, toType, jitFunc);
 				removeJitFunction(jitFunc);
 			}
 		);

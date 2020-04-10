@@ -7,9 +7,6 @@ LIBMINC_OBJS = \
 	stmtreg.o \
 	castreg.o \
 	codegen.o \
-	module.o \
-	llvm_constants.o \
-	types.o \
 	cparser.o \
 	cparser.yy.o \
 	pyparser.o \
@@ -29,11 +26,16 @@ MINC_OBJS = \
 	paws_subroutine.o \
 	paws_frame.o \
 	paws_array.o \
+	paws_compile.o \
+	llvm_constants.o \
+	module.o \
+	types.o \
 	paws_bootstrap.o \
 
 YACC = bison
 CPPFLAGS = -g -std=c++1z
-LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -pthread -fexceptions -rdynamic
+LIBMINC_LIBS = -fexceptions
+MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -pthread -fexceptions -rdynamic
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 MINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${MINC_OBJS})
@@ -56,13 +58,13 @@ ${TEMP_DIR}%.d: ${SRC_DIR}%.cpp
 
 ${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc ${LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc ${MINC_LIBS}
 
 # libminc.so library
 
 ${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS} ${LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS} ${LIBMINC_LIBS}
 
 # Parser code
 

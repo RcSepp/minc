@@ -1,64 +1,44 @@
 #ifndef __MODULE_H
 #define __MODULE_H
 
-#include <set>
-#include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
+#include <vector>
+#include <string>
 
-class XXXModule : public IModule
+struct BaseType;
+class ExprAST;
+class BlockExprAST;
+class JitFunction;
+
+class IModule
 {
-protected:
-	Module* const prevModule;
-	XXXModule* const prevXXXModule;
-	DIBuilder* const prevDbuilder;
-	DIFile* const prevDfile;
-	Function* const prevFunc;
-	BasicBlock* const prevBB;
-	const ExprAST* const loc;
-
-	legacy::FunctionPassManager* jitFunctionPassManager;
-	legacy::PassManager* jitModulePassManager;
-
 public:
-	std::unique_ptr<Module> module;
-	std::set<XXXModule*> dependencies;
-
-	XXXModule(const std::string& moduleName, const ExprAST* loc, bool outputDebugSymbols, bool optimizeCode);
-	virtual void finalize();
-	void print(const std::string& outputPath);
-	void print();
-	bool compile(const std::string& outputPath, std::string& errstr);
-	int run();
-	void buildRun();
+	virtual void print(const std::string& outputPath) = 0;
+	virtual void print() = 0;
+	virtual bool compile(const std::string& outputPath, std::string& errstr) = 0;
+	virtual int run() = 0;
+	virtual void buildRun() = 0;
+	virtual void finalize() = 0;
 };
 
-class FileModule : public XXXModule
+extern "C"
 {
-private:
-	const std::string prevSourcePath;
-	Function* mainFunc;
+	void initCompiler();
+	void loadLibrary(const char* filename);
+	IModule* createModule(const std::string& sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols);
 
-public:
-	FileModule(const char* sourcePath, const std::string& moduleFuncName, bool outputDebugSymbols, bool optimizeCode);
-	void finalize();
-	int run();
-	void buildRun();
-};
+	void defineJitFunctionInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
+	void defineJitFunctionStmt(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, JitFunction* func, void* stmtArgs = nullptr);
+	void defineJitFunctionAntiStmt(BlockExprAST* scope, JitFunction* func, void* stmtArgs = nullptr);
+	void defineJitFunctionExpr(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, BaseType* type);
+	void defineJitFunctionExpr2(BlockExprAST* scope, ExprAST* tplt, JitFunction* func, JitFunction* typeFunc);
+	void defineJitFunctionAntiExpr(BlockExprAST* scope, JitFunction* func, BaseType* type);
+	void defineJitFunctionAntiExpr2(BlockExprAST* scope, JitFunction* func, JitFunction* typeFunc);
+	void defineJitFunctionTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType, JitFunction* func);
 
-class JitFunction : public XXXModule
-{
-private:
-	llvm::orc::VModuleKey jitModuleKey;
-
-public:
-	const std::string name;
-	StructType* closureType;
-	FunctionType* funcType;
-
-	static void init();
-	JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type *returnType, std::vector<ExprAST*>& params, std::string& name);
-	void finalize();
-	uint64_t compile();
-	void removeCompiledModule();
-};
+	JitFunction* createJitFunction(BlockExprAST* scope, BlockExprAST* blockAST, BaseType *returnType, std::vector<ExprAST*>& params, std::string& name);
+	uint64_t compileJitFunction(JitFunction* jitFunc);
+	void removeJitFunctionModule(JitFunction* jitFunc);
+	void removeJitFunction(JitFunction* jitFunc);
+}
 
 #endif

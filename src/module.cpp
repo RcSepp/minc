@@ -455,7 +455,6 @@ XXXModule::XXXModule(const std::string& moduleName, const Location& loc, bool ou
 		jitPassManagerBuilder.OptLevel = 3; // -O3
 		jitPassManagerBuilder.SizeLevel = 0;
 		jitPassManagerBuilder.Inliner = createFunctionInliningPass(jitPassManagerBuilder.OptLevel, jitPassManagerBuilder.SizeLevel, false);
-		jitPassManagerBuilder.DisableUnitAtATime = false;
 		jitPassManagerBuilder.DisableUnrollLoops = false;
 		jitPassManagerBuilder.LoopVectorize = true;
 		jitPassManagerBuilder.SLPVectorize = true;

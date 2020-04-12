@@ -756,14 +756,12 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	if (exprIdx >= exprs->size())
 		exprIdx = 0;
 
-	ExprASTIter beginExpr = exprs->cbegin() + exprIdx;
 	try
 	{
-		for (ExprASTIter iter = beginExpr; iter != exprs->cend();)
+		for (ExprASTIter endExpr = exprs->cbegin() + exprIdx; endExpr != exprs->cend(); exprIdx = endExpr - exprs->cbegin())
 		{
-			beginExpr = iter;
-			const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(iter, exprs->cend());
-			const ExprASTIter endExpr = iter;
+			const ExprASTIter beginExpr = endExpr;
+			const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(endExpr, exprs->cend());
 
 			StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
 			if (stmtContext == nullptr)
@@ -787,10 +785,9 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	catch (...)
 	{
 		// Forget resolved future expressions, because this block may be resumed in a different context
-		for (ExprASTIter iter = beginExpr; iter != exprs->cend() && (*iter)->exprtype != ExprAST::ExprType::STOP && (*iter)->exprtype != ExprAST::ExprType::BLOCK; ++iter)
+		for (ExprASTIter iter = exprs->cbegin() + exprIdx; iter != exprs->cend() && (*iter)->exprtype != ExprAST::ExprType::STOP && (*iter)->exprtype != ExprAST::ExprType::BLOCK; ++iter)
 			(*iter)->resolvedContext = nullptr;
 
-		exprIdx = beginExpr - exprs->cbegin();
 		resultCacheIdx = 0;
 
 		if (topLevelBlock == this)

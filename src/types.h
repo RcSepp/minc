@@ -1,6 +1,7 @@
 #ifndef __INCLUDE_H
 #define __INCLUDE_H
 
+#include <mutex>
 #include "minc_api.h"
 
 namespace llvm {
@@ -20,6 +21,7 @@ enum Visibility {
 struct BuiltinType : public BaseType
 {
 private:
+	static std::mutex mutex;
 	static std::map<std::string, BuiltinType*> builtinTypes;
 	PtrType* ptr;
 
@@ -82,6 +84,7 @@ struct ClassType : public BuiltinType
 struct TpltType : public BuiltinType
 {
 private:
+	static std::mutex mutex;
 	static std::map<std::string, TpltType*> tpltTypes;
 	virtual ~TpltType() {};
 

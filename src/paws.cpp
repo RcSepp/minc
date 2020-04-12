@@ -44,6 +44,7 @@ const std::string PawsBase::toString() const
 }
 
 template<> uint64_t PawsValue<PawsType*>::getConstantValue() { return (uint64_t)val; }
+std::mutex PawsTpltType::mutex;
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 {

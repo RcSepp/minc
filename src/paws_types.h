@@ -5,6 +5,7 @@
 #include <set>
 #include <map>
 #include <cstring>
+#include <mutex>
 
 struct BaseScopeType;
 
@@ -60,6 +61,7 @@ namespace std
 struct PawsTpltType : PawsType
 {
 private:
+	static std::mutex mutex;
 	static std::set<PawsTpltType> tpltTypes;
 	PawsTpltType(PawsType* baseType, PawsType* tpltType) : baseType(baseType), tpltType(tpltType) {}
 
@@ -67,6 +69,7 @@ public:
 	PawsType *const baseType, *const tpltType;
 	static PawsTpltType* get(PawsType* baseType, PawsType* tpltType)
 	{
+		std::unique_lock<std::mutex> lock(mutex);
 		std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
 		if (iter == tpltTypes.end())
 		{

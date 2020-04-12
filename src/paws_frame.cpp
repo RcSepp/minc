@@ -13,6 +13,7 @@
 struct Awaitable : public PawsType
 {
 private:
+	static std::mutex mutex;
 	static std::set<Awaitable> awaitableTypes;
 
 protected:
@@ -24,6 +25,7 @@ public:
 	static Awaitable* get(PawsType* returnType);
 	Awaitable() = default;
 };
+std::mutex Awaitable::mutex;
 std::set<Awaitable> Awaitable::awaitableTypes;
 bool operator<(const Awaitable& lhs, const Awaitable& rhs)
 {
@@ -34,6 +36,7 @@ typedef PawsValue<Awaitable*> PawsAwaitable;
 struct Event : public PawsType
 {
 private:
+	static std::mutex mutex;
 	static std::set<Event> eventTypes;
 
 protected:
@@ -45,6 +48,7 @@ public:
 	static Event* get(PawsType* msgType);
 	Event() = default;
 };
+std::mutex Event::mutex;
 std::set<Event> Event::eventTypes;
 bool operator<(const Event& lhs, const Event& rhs)
 {
@@ -280,6 +284,7 @@ struct AwaitException {};
 
 Awaitable* Awaitable::get(PawsType* returnType)
 {
+	std::unique_lock<std::mutex> lock(mutex);
 	std::set<Awaitable>::iterator iter = awaitableTypes.find(Awaitable(returnType));
 	if (iter == awaitableTypes.end())
 	{
@@ -294,6 +299,7 @@ Awaitable* Awaitable::get(PawsType* returnType)
 
 Event* Event::get(PawsType* msgType)
 {
+	std::unique_lock<std::mutex> lock(mutex);
 	std::set<Event>::iterator iter = eventTypes.find(Event(msgType));
 	if (iter == eventTypes.end())
 	{

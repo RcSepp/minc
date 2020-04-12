@@ -16,11 +16,14 @@ using namespace llvm;
 
 extern LLVMContext* context;
 
+std::mutex BuiltinType::mutex;
 std::map<std::string, BuiltinType*> BuiltinType::builtinTypes;
+std::mutex TpltType::mutex;
 std::map<std::string, TpltType*> TpltType::tpltTypes;
 
 BuiltinType* BuiltinType::get(const char* name, LLVMOpaqueType* llvmtype, int32_t align, int32_t encoding, int64_t numbits)
 {
+	std::unique_lock<std::mutex> lock(mutex);
 	std::string hash = std::string(name);
 	auto t = builtinTypes.find(hash);
 	if (t == builtinTypes.end())
@@ -73,6 +76,7 @@ ClassType::ClassType()
 
 TpltType* TpltType::get(std::string name, BuiltinType* baseType, BuiltinType* tpltType)
 {
+	std::unique_lock<std::mutex> lock(mutex);
 	auto t = tpltTypes.find(name);
 	if (t == tpltTypes.end())
 	{

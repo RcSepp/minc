@@ -489,6 +489,18 @@ void PawsFramePackage::define(BlockExprAST* pkgScope)
 
 			defineAntiStmt2(block, nullptr);
 
+			// Name frame block
+			std::string frameFullName(frameName);
+			frameFullName += '(';
+			if (frame->argTypes.size())
+			{
+				frameFullName += getTypeName(frame->argTypes[0]);
+				for (size_t i = 1; i != frame->argTypes.size(); ++i)
+					frameFullName += getTypeName(frame->argTypes[i]) + ", ";
+			}
+			frameFullName += ')';
+			setBlockExprASTName(block, frameFullName);
+
 			// Set frame parent to frame definition scope
 			setBlockExprASTParent(block, parentBlock);
 

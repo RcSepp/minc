@@ -52,9 +52,6 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
 
-			// Name function block
-			setBlockExprASTName(block, funcName);
-
 			// Set function parent to function definition scope
 			setBlockExprASTParent(block, parentBlock);
 
@@ -71,6 +68,19 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 				func->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
 			func->body = block;
 
+			// Name function block
+			std::string funcFullName(funcName);
+			funcFullName += '(';
+			if (func->argTypes.size())
+			{
+				funcFullName += getTypeName(func->argTypes[0]);
+				for (size_t i = 1; i != func->argTypes.size(); ++i)
+					funcFullName += getTypeName(func->argTypes[i]) + ", ";
+			}
+			funcFullName += ')';
+			setBlockExprASTName(block, funcFullName);
+
+			// Define function symbol in calling scope
 			PawsType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);
 			defineSymbol(parentBlock, funcName, funcType, new PawsFunction(func));
 		}

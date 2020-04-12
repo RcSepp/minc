@@ -18,7 +18,8 @@ class FileModule;
 const Variable VOID = Variable(new BaseType(), nullptr);
 
 // Misc
-BlockExprAST* rootBlock = nullptr;
+BlockExprAST* const rootBlock = new BlockExprAST({0}, {});
+BlockExprAST* topLevelBlock = nullptr;
 BlockExprAST* fileBlock = nullptr;
 std::map<const BaseType*, TypeDescription> typereg;
 std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<BaseType*, ImptBlock>> importRules;
@@ -741,9 +742,12 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	parent = parentBlock;
 
-	BlockExprAST* oldRootBlock = rootBlock;
+	BlockExprAST* oldTopLevelBlock = topLevelBlock;
 	if (parentBlock == nullptr)
-		rootBlock = this;
+	{
+		parent = rootBlock;
+		topLevelBlock = this;
+	}
 
 	BlockExprAST* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
@@ -789,8 +793,8 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		exprIdx = beginExpr - exprs->cbegin();
 		resultCacheIdx = 0;
 
-		if (rootBlock == this)
-			rootBlock = oldRootBlock;
+		if (topLevelBlock == this)
+			topLevelBlock = oldTopLevelBlock;
 
 		if (fileBlock == this)
 			fileBlock = oldFileBlock;
@@ -803,13 +807,11 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	exprIdx = 0;
 
-	if (rootBlock == this)
-		rootBlock = oldRootBlock;
+	if (topLevelBlock == this)
+		topLevelBlock = oldTopLevelBlock;
 
 	if (fileBlock == this)
 		fileBlock = oldFileBlock;
-
-	// parent = nullptr;
 
 	raiseStepEvent(this, STEP_OUT);
 

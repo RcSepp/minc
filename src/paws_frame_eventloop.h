@@ -182,7 +182,7 @@ private:
 			eventQueueMutex.unlock();
 
 			// Execute event on current thread
-			threadlocalEventLoop->post(callback, 0.0f);
+			callback();
 		}
 	}
 };

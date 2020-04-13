@@ -6,8 +6,6 @@
 #include <condition_variable>
 #include <functional>
 
-using namespace std;
-
 typedef std::function<void()> CALLBACK_TYPE;
 
 class EventLoop;
@@ -15,19 +13,19 @@ thread_local EventLoop* threadlocalEventLoop = nullptr;
 class EventLoop
 {
 private:
-	mutex cv_m;
-	unique_lock<mutex> lk;
-	condition_variable cv;
+	std::mutex cv_m;
+	std::unique_lock<std::mutex> lk;
+	std::condition_variable cv;
 	bool running, ready;
 
-	typedef pair<std::chrono::time_point<std::chrono::high_resolution_clock>, CALLBACK_TYPE> EventQueueValueType;
+	typedef std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, CALLBACK_TYPE> EventQueueValueType;
 	struct EventQueueCompare {
 		constexpr bool operator()( EventQueueValueType const & a, EventQueueValueType const & b) const
 		{
 			return a.first > b.first;
 		}
 	};
-	priority_queue<EventQueueValueType, vector<EventQueueValueType>, EventQueueCompare> eventQueue;
+	std::priority_queue<EventQueueValueType, std::vector<EventQueueValueType>, EventQueueCompare> eventQueue;
 
 public:
 	EventLoop() : lk(cv_m), running(true), ready(false)
@@ -43,7 +41,7 @@ public:
 		while (running)
 		{
 			EventQueueValueType front = eventQueue.top();
-			while (chrono::high_resolution_clock::now() < front.first)
+			while (std::chrono::high_resolution_clock::now() < front.first)
 			{
 				cv.wait_until(lk, front.first);
 				front = eventQueue.top();
@@ -68,7 +66,7 @@ public:
 	void post(CALLBACK_TYPE callback, float duration)
 	{
 		ready = false;
-		eventQueue.push(EventQueueValueType(chrono::high_resolution_clock::now() + chrono::nanoseconds((long long)(1e9f * duration)), callback));
+		eventQueue.push(EventQueueValueType(std::chrono::high_resolution_clock::now() + std::chrono::nanoseconds((long long)(1e9f * duration)), callback));
 		cv.notify_one();
 	}
 
@@ -82,9 +80,9 @@ class EventPool
 {
 private:
 	std::vector<EventLoop*> eventLoops;
-	std::vector<thread> eventThreads;
+	std::vector<std::thread> eventThreads;
 	std::queue<CALLBACK_TYPE> eventQueue;
-	mutex eventQueueMutex;
+	std::mutex eventQueueMutex;
 
 	static void eventThreadFunc(EventLoop* eventLoop)
 	{
@@ -113,7 +111,7 @@ public:
 	{
 		// Spawn threads for each but the first eventloop
 		for (size_t i = 1; i < eventLoops.size(); ++i)
-			eventThreads.push_back(thread(eventThreadFunc, eventLoops[i]));
+			eventThreads.push_back(std::thread(eventThreadFunc, eventLoops[i]));
 
 		// Register first event loop as threadlocalEventLoop for this thread
 		threadlocalEventLoop = eventLoops[0];
@@ -122,7 +120,7 @@ public:
 		eventLoops[0]->run();
 
 		// Wait for all eventloops to finish
-		for (thread& eventThread: eventThreads)
+		for (std::thread& eventThread: eventThreads)
 			eventThread.join();
 
 		// Remove threads
@@ -148,7 +146,7 @@ private:
 			eventLoops[0]->post(callback, duration); // Pass event to event loop
 		else if (duration > 0.0f)
 		{
-			eventLoops.back()->post(bind(&EventPool::enqueue, this, callback, 0.0f), duration);
+			eventLoops.back()->post(std::bind(&EventPool::enqueue, this, callback, 0.0f), duration);
 			//TODO: Use dedicated delay thread to wait `duration`, then call enqueue() again!
 		}
 		else // duration == 0.0f
@@ -162,7 +160,7 @@ private:
 			for (EventLoop* eventLoop: eventLoops)
 				if (eventLoop->idle())
 				{
-					eventLoop->post(bind(&EventPool::dequeue, this), 0.0f);
+					eventLoop->post(std::bind(&EventPool::dequeue, this), 0.0f);
 					break;
 				}
 		}

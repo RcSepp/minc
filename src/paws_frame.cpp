@@ -269,7 +269,7 @@ public:
 			msgQueue.pop();
 			mutex.unlock();
 			*result = Variable(type, msg.value); // Return first queued message
-			eventPool->post(bind(&SingleshotAwaitableInstance::wakeup, msg.invokeInstance, Variable(PawsVoid::TYPE, nullptr)), 0.0f); // Signal event processed
+			eventPool->post(std::bind(&SingleshotAwaitableInstance::wakeup, msg.invokeInstance, Variable(PawsVoid::TYPE, nullptr)), 0.0f); // Signal event processed
 			return true;
 		}
 	}
@@ -418,7 +418,7 @@ void PawsFramePackage::define(BlockExprAST* pkgScope)
 		{
 			double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
 			SingleshotAwaitableInstance* sleepInstance = new SingleshotAwaitableInstance();
-			((EventPool*)funcArgs)->post(bind(&SingleshotAwaitableInstance::wakeup, sleepInstance, Variable(PawsVoid::TYPE, nullptr)), duration);
+			((EventPool*)funcArgs)->post(std::bind(&SingleshotAwaitableInstance::wakeup, sleepInstance, Variable(PawsVoid::TYPE, nullptr)), duration);
 			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(sleepInstance));
 		}, eventPool
 	);
@@ -547,7 +547,7 @@ void PawsFramePackage::define(BlockExprAST* pkgScope)
 
 			// Call frame
 			FrameInstance* instance = new FrameInstance(frame, parentBlock, argExprs);
-			((EventPool*)exprArgs)->post(bind(&FrameInstance::wakeup, instance, Variable(PawsVoid::TYPE, nullptr)), 0.0f);
+			(EventPool*)exprArgs->post(std::bind(&FrameInstance::wakeup, instance, Variable(PawsVoid::TYPE, nullptr)), 0.0f);
 
 			return Variable(frame, new PawsFrameInstance(instance));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -638,7 +638,7 @@ void PawsFramePackage::define(BlockExprAST* pkgScope)
 
 			// Invoke event
 			SingleshotAwaitableInstance* invokeInstance = new SingleshotAwaitableInstance();
-			((EventPool*)exprArgs)->post(bind(&EventInstance::invoke, event, invokeInstance, codegenExpr(argExpr, parentBlock).value), 0.0f);
+			((EventPool*)exprArgs)->post(std::bind(&EventInstance::invoke, event, invokeInstance, codegenExpr(argExpr, parentBlock).value), 0.0f);
 
 			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(invokeInstance));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {

@@ -20,13 +20,18 @@ MincPackage::~MincPackage()
 		removeBlockExprAST(pkgScope);
 }
 
-BlockExprAST* MincPackage::load()
+BlockExprAST* MincPackage::load(BlockExprAST* importer)
 {
+	// Avoid circular import dead lock
+	if (pkgScope == importer)
+		return pkgScope;
+
+	std::unique_lock<std::mutex> lock(loadMutex);
 	if (pkgScope == nullptr)
 	{
 		pkgScope = createEmptyBlockExprAST();
 		if (parentName.size())
-			importBlock(pkgScope, MINC_PACKAGE_MANAGER().loadPackage(parentName));
+			importBlock(pkgScope, MINC_PACKAGE_MANAGER().loadPackage(parentName, importer));
 		this->define(pkgScope);
 	}
 	return pkgScope;
@@ -34,7 +39,7 @@ BlockExprAST* MincPackage::load()
 
 void MincPackage::import(BlockExprAST* scope)
 {
-	importBlock(scope, load());
+	importBlock(scope, load(scope));
 }
 
 MincPackageManager& MINC_PACKAGE_MANAGER()
@@ -65,10 +70,10 @@ void MincPackageManager::define(BlockExprAST* pkgScope)
 	);
 }
 
-BlockExprAST* MincPackageManager::loadPackage(std::string pkgName) const
+BlockExprAST* MincPackageManager::loadPackage(std::string pkgName, BlockExprAST* importer) const
 {
 	auto pkg = packages.find(pkgName);
-	return pkg == packages.end() ? nullptr : pkg->second->load();
+	return pkg == packages.end() ? nullptr : pkg->second->load(importer);
 }
 
 void MincPackageManager::importPackage(BlockExprAST* scope, std::string pkgName) const

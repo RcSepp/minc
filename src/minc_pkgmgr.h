@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <mutex>
 
 class BlockExprAST;
 
@@ -11,6 +12,7 @@ typedef void (*MincPackageFunc)(BlockExprAST* pkgScope);
 class MincPackage
 {
 private:
+	std::mutex loadMutex;
 	std::string parentName;
 	BlockExprAST* pkgScope;
 	MincPackageFunc defineFunc;
@@ -19,7 +21,7 @@ private:
 public:
 	MincPackage(const char* name, MincPackageFunc defineFunc=nullptr);
 	virtual ~MincPackage();
-	BlockExprAST* load();
+	BlockExprAST* load(BlockExprAST* importer);
 	void import(BlockExprAST* scope);
 };
 
@@ -35,7 +37,7 @@ public:
 	{
 		packages[pkgName] = package;
 	}
-	BlockExprAST* loadPackage(std::string pkgName) const;
+	BlockExprAST* loadPackage(std::string pkgName, BlockExprAST* importer) const;
 	void importPackage(BlockExprAST* scope, std::string pkgName) const;
 	bool tryImportPackage(BlockExprAST* scope, std::string pkgName) const;
 };

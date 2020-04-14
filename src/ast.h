@@ -298,8 +298,9 @@ public:
 	std::vector<Variable*> resultCache;
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended;
+	bool isBusy;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-		: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false) {}
+		: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false) {}
 
 	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{

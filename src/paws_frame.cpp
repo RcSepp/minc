@@ -163,11 +163,12 @@ struct FrameInstance : public SingleshotAwaitableInstance
 private:
 	const Frame* frame;
 	BlockExprAST* instance;
+	EventPool* const eventPool;
 
 public:
 	std::map<std::string, BaseValue*> variables;
 
-	FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs);
+	FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, EventPool* eventPool);
 	~FrameInstance() { removeBlockExprAST(instance); }
 
 protected:
@@ -313,8 +314,8 @@ defineOpaqueInheritanceCast(getRootScope(), PawsEventInstance::TYPE, PawsAwaitab
 	return const_cast<Event*>(&*iter); //TODO: Find a way to avoid const_cast
 }
 
-FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs)
-	: frame(frame), instance(cloneBlockExprAST(frame->body))
+FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, EventPool* eventPool)
+	: frame(frame), instance(cloneBlockExprAST(frame->body)), eventPool(eventPool)
 {
 	instance->parent = frame->body;
 
@@ -349,6 +350,14 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 
 bool FrameInstance::resume(Variable* result)
 {
+	// Avoid executing instance while it's being executed by another thread
+	// This happens when a frame is resumed by a new thread while the old thread is still busy unrolling the AwaitException
+	if (isBlockExprASTBusy(instance))
+	{
+		eventPool->post(std::bind(&SingleshotAwaitableInstance::wakeup, this, *result), 0.0f); // Re-post self
+		return false; // Not done yet
+	}
+
 	try
 	{
 		codegenExpr((ExprAST*)instance, getBlockExprASTParent(instance));
@@ -546,8 +555,9 @@ void PawsFramePackage::define(BlockExprAST* pkgScope)
 			}
 
 			// Call frame
-			FrameInstance* instance = new FrameInstance(frame, parentBlock, argExprs);
-			(EventPool*)exprArgs->post(std::bind(&FrameInstance::wakeup, instance, Variable(PawsVoid::TYPE, nullptr)), 0.0f);
+			EventPool* const eventPool = (EventPool*)exprArgs;
+			FrameInstance* instance = new FrameInstance(frame, parentBlock, argExprs, eventPool);
+			eventPool->post(std::bind(&FrameInstance::wakeup, instance, Variable(PawsVoid::TYPE, nullptr)), 0.0f);
 
 			return Variable(frame, new PawsFrameInstance(instance));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {

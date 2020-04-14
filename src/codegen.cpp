@@ -203,6 +203,11 @@ extern "C"
 		block->clearCache(targetState);
 	}
 
+	bool isBlockExprASTBusy(BlockExprAST* block)
+	{
+		return block->isBusy;
+	}
+
 	void removeBlockExprAST(BlockExprAST* expr)
 	{
 		delete expr;
@@ -727,6 +732,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
+	isBusy = true;
 
 	try
 	{
@@ -736,6 +742,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	{
 		isBlockSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
+		isBusy = false;
 		throw;
 	}
 	isBlockSuspended = false;
@@ -799,6 +806,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		isBlockSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
 
+		isBusy = false;
 		throw;
 	}
 
@@ -812,6 +820,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	raiseStepEvent(this, STEP_OUT);
 
+	isBusy = false;
 	return VOID;
 }
 

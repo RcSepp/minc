@@ -78,7 +78,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<std::string>::TYPE;
 	PawsValue() {}
 	PawsValue(char* val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	char* get() { return const_cast<char*>(val.c_str()); } //TODO: Remove const_cast
 	void set(char* val) { this->val = std::string(val); }
 };
@@ -92,7 +91,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<std::string>::TYPE;
 	PawsValue() {}
 	PawsValue(const char* val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	const char* get() { return val.c_str(); }
 	void set(const char* val) { this->val = std::string(val); }
 };
@@ -107,7 +105,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const uint32_t val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	uint32_t get() { return (uint32_t)val; }
 	void set(uint32_t val) { this->val = (int)val; }
 };
@@ -121,7 +118,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const uint64_t val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	uint64_t get() { return (uint64_t)val; }
 	void set(uint64_t val) { this->val = (int)val; }
 };
@@ -135,7 +131,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const unsigned long long val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	unsigned long long get() { return (unsigned long long)val; }
 	void set(unsigned long long val) { this->val = (int)val; }
 };
@@ -149,7 +144,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const long long val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	long long get() { return (long long)val; }
 	void set(long long val) { this->val = (int)val; }
 };
@@ -164,7 +158,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMOpcode val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMOpcode get() { return (LLVMOpcode)val; }
 	void set(LLVMOpcode val) { this->val = (int)val; }
 };
@@ -178,7 +171,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMTypeKind val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMTypeKind get() { return (LLVMTypeKind)val; }
 	void set(LLVMTypeKind val) { this->val = (int)val; }
 };
@@ -192,7 +184,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMLinkage val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMLinkage get() { return (LLVMLinkage)val; }
 	void set(LLVMLinkage val) { this->val = (int)val; }
 };
@@ -206,7 +197,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMVisibility val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMVisibility get() { return (LLVMVisibility)val; }
 	void set(LLVMVisibility val) { this->val = (int)val; }
 };
@@ -220,7 +210,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMUnnamedAddr val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMUnnamedAddr get() { return (LLVMUnnamedAddr)val; }
 	void set(LLVMUnnamedAddr val) { this->val = (int)val; }
 };
@@ -234,7 +223,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDLLStorageClass val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMDLLStorageClass get() { return (LLVMDLLStorageClass)val; }
 	void set(LLVMDLLStorageClass val) { this->val = (int)val; }
 };
@@ -248,7 +236,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMCallConv val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMCallConv get() { return (LLVMCallConv)val; }
 	void set(LLVMCallConv val) { this->val = (int)val; }
 };
@@ -262,7 +249,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMValueKind val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMValueKind get() { return (LLVMValueKind)val; }
 	void set(LLVMValueKind val) { this->val = (int)val; }
 };
@@ -276,7 +262,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMIntPredicate val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMIntPredicate get() { return (LLVMIntPredicate)val; }
 	void set(LLVMIntPredicate val) { this->val = (int)val; }
 };
@@ -290,7 +275,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMRealPredicate val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMRealPredicate get() { return (LLVMRealPredicate)val; }
 	void set(LLVMRealPredicate val) { this->val = (int)val; }
 };
@@ -304,7 +288,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMLandingPadClauseTy val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMLandingPadClauseTy get() { return (LLVMLandingPadClauseTy)val; }
 	void set(LLVMLandingPadClauseTy val) { this->val = (int)val; }
 };
@@ -318,7 +301,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMThreadLocalMode val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMThreadLocalMode get() { return (LLVMThreadLocalMode)val; }
 	void set(LLVMThreadLocalMode val) { this->val = (int)val; }
 };
@@ -332,7 +314,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMAtomicOrdering val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMAtomicOrdering get() { return (LLVMAtomicOrdering)val; }
 	void set(LLVMAtomicOrdering val) { this->val = (int)val; }
 };
@@ -346,7 +327,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMAtomicRMWBinOp val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMAtomicRMWBinOp get() { return (LLVMAtomicRMWBinOp)val; }
 	void set(LLVMAtomicRMWBinOp val) { this->val = (int)val; }
 };
@@ -360,7 +340,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDiagnosticSeverity val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMDiagnosticSeverity get() { return (LLVMDiagnosticSeverity)val; }
 	void set(LLVMDiagnosticSeverity val) { this->val = (int)val; }
 };
@@ -374,7 +353,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMInlineAsmDialect val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMInlineAsmDialect get() { return (LLVMInlineAsmDialect)val; }
 	void set(LLVMInlineAsmDialect val) { this->val = (int)val; }
 };
@@ -388,7 +366,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMModuleFlagBehavior val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMModuleFlagBehavior get() { return (LLVMModuleFlagBehavior)val; }
 	void set(LLVMModuleFlagBehavior val) { this->val = (int)val; }
 };
@@ -402,7 +379,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDIFlags val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMDIFlags get() { return (LLVMDIFlags)val; }
 	void set(LLVMDIFlags val) { this->val = (int)val; }
 };
@@ -416,7 +392,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDWARFSourceLanguage val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMDWARFSourceLanguage get() { return (LLVMDWARFSourceLanguage)val; }
 	void set(LLVMDWARFSourceLanguage val) { this->val = (int)val; }
 };
@@ -430,7 +405,6 @@ public:
 	static inline PawsType* TYPE = PawsValue<int>::TYPE;
 	PawsValue() {}
 	PawsValue(const LLVMDWARFEmissionKind val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	LLVMDWARFEmissionKind get() { return (LLVMDWARFEmissionKind)val; }
 	void set(LLVMDWARFEmissionKind val) { this->val = (int)val; }
 };

@@ -9,7 +9,7 @@ struct BaseType {};
 struct BaseScopeType {};
 struct BaseValue
 {
-	virtual uint64_t getConstantValue() = 0;
+	virtual uint64_t getConstantValue() { return 0; }
 };
 class JitFunction;
 

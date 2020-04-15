@@ -143,7 +143,6 @@ public:
 	Func(const char* name, BuiltinType* resultType, std::vector<BuiltinType*> argTypes, bool isVarArg, const char* symName = nullptr)
 		: val(nullptr), type(new FuncType(name, resultType, argTypes, isVarArg)), name(name), symName(symName ? symName : name) {}
 
-	uint64_t getConstantValue() { return 0; }
 	llvm::Function* getFunction(llvm::Module* module);
 };
 

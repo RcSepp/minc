@@ -21,7 +21,6 @@ struct PawsBase : BaseValue
 {
 	typedef void CType;
 	static inline PawsType* TYPE = new PawsType();
-	virtual uint64_t getConstantValue() { return 0; }
 	virtual PawsBase* copy() { return new PawsBase(); }
 	virtual const std::string toString() const;
 };
@@ -37,7 +36,7 @@ public:
 	PawsValue() {}
 	PawsValue(const T& val) : val(val) {}
 	uint64_t getConstantValue() { return 0; }
-	virtual PawsBase* copy() { return new PawsValue<T>(val); }
+	PawsBase* copy() { return new PawsValue<T>(val); }
 	const std::string toString() const { return PawsBase::toString(); }
 	T& get() { return val; }
 	void set(const T& val) { this->val = val; }
@@ -47,8 +46,7 @@ template<> struct PawsValue<void> : PawsBase
 	typedef void CType;
 	static inline PawsType* TYPE = new PawsType();
 	PawsValue() {}
-	uint64_t getConstantValue() { return 0; }
-	virtual PawsBase* copy() { return new PawsValue<void>(); }
+	PawsBase* copy() { return new PawsValue<void>(); }
 };
 namespace std
 {

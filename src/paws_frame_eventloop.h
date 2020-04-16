@@ -13,7 +13,7 @@ thread_local EventLoop* threadlocalEventLoop = nullptr;
 class EventLoop
 {
 private:
-	std::mutex cv_m;
+	std::mutex cv_m, mutex;
 	std::unique_lock<std::mutex> lk;
 	std::condition_variable cv;
 	bool running, ready;
@@ -35,7 +35,15 @@ public:
 
 	void run()
 	{
-		if (running && eventQueue.empty()) { ready = true; cv.wait(lk); ready = false; } //TODO: Make atomic
+		mutex.lock();
+		if (running && eventQueue.empty())
+		{
+			ready = true;
+			mutex.unlock();
+			cv.wait(lk);
+			mutex.lock();
+			ready = false;
+		}
 
 		EventQueueValueType front;
 		while (running)
@@ -43,15 +51,27 @@ public:
 			EventQueueValueType front = eventQueue.top();
 			while (std::chrono::high_resolution_clock::now() < front.first)
 			{
+				mutex.unlock();
 				cv.wait_until(lk, front.first);
+				mutex.lock();
 				front = eventQueue.top();
 			}
 
 			eventQueue.pop();
+			mutex.unlock();
 			front.second();
+			mutex.lock();
 
-			if (running && eventQueue.empty()) { ready = true; cv.wait(lk); ready = false; } //TODO: Make atomic
+			if (running && eventQueue.empty())
+			{
+				ready = true;
+				mutex.unlock();
+				cv.wait(lk);
+				mutex.lock();
+				ready = false;
+			}
 		}
+		mutex.unlock();
 	}
 
 	void close()
@@ -65,8 +85,10 @@ public:
 
 	void post(CALLBACK_TYPE callback, float duration)
 	{
+		mutex.lock();
 		ready = false;
 		eventQueue.push(EventQueueValueType(std::chrono::high_resolution_clock::now() + std::chrono::nanoseconds((long long)(1e9f * duration)), callback));
+		mutex.unlock();
 		cv.notify_one();
 	}
 

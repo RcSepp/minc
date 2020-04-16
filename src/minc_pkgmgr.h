@@ -37,6 +37,7 @@ public:
 	{
 		packages[pkgName] = package;
 	}
+	MincPackage* discoverPackage(std::string pkgName) const;
 	BlockExprAST* loadPackage(std::string pkgName, BlockExprAST* importer) const;
 	void importPackage(BlockExprAST* scope, std::string pkgName) const;
 	bool tryImportPackage(BlockExprAST* scope, std::string pkgName) const;

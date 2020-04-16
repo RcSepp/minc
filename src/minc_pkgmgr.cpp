@@ -72,24 +72,24 @@ void MincPackageManager::define(BlockExprAST* pkgScope)
 
 BlockExprAST* MincPackageManager::loadPackage(std::string pkgName, BlockExprAST* importer) const
 {
-	auto pkg = packages.find(pkgName);
-	return pkg == packages.end() ? nullptr : pkg->second->load(importer);
+	MincPackage* pkg = discoverPackage(pkgName);
+	return pkg == nullptr ? nullptr : pkg->load(importer);
 }
 
 void MincPackageManager::importPackage(BlockExprAST* scope, std::string pkgName) const
 {
-	auto pkg = packages.find(pkgName);
-	if (pkg != packages.end())
-		pkg->second->import(scope);
+	MincPackage* pkg = discoverPackage(pkgName);
+	if (pkg != nullptr)
+		pkg->import(scope);
 	else
 		raiseCompileError(("unknown package " + pkgName).c_str(), (ExprAST*)scope);
 }
 bool MincPackageManager::tryImportPackage(BlockExprAST* scope, std::string pkgName) const
 {
-	auto pkg = packages.find(pkgName);
-	if (pkg != packages.end())
+	MincPackage* pkg = discoverPackage(pkgName);
+	if (pkg != nullptr)
 	{
-		pkg->second->import(scope);
+		pkg->import(scope);
 		return true;
 	}
 	else

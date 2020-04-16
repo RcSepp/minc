@@ -15,6 +15,7 @@ LIBMINC_OBJS = \
 MINC_OBJS = \
 	minc.o \
 	minc_pkgmgr.o \
+	minc_discover.o \
 	paws.o \
 	paws_int.o \
 	paws_string.o \
@@ -35,7 +36,7 @@ MINC_OBJS = \
 YACC = bison
 CPPFLAGS = -g -std=c++1z
 LIBMINC_LIBS = -fexceptions
-MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -pthread -fexceptions -rdynamic
+MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -pthread -fexceptions -ldl -rdynamic
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 MINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${MINC_OBJS})

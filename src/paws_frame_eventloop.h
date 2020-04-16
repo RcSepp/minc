@@ -116,6 +116,16 @@ public:
 		// Register first event loop as threadlocalEventLoop for this thread
 		threadlocalEventLoop = eventLoops[0];
 
+		// Process already queued events
+		size_t numQueuedEvents = eventQueue.size();
+		if (numQueuedEvents != 0)
+		{
+			if (numQueuedEvents > eventLoops.size())
+				numQueuedEvents = eventLoops.size();
+			for (size_t i = 0; i < numQueuedEvents; ++i)
+				eventLoops[i]->post(std::bind(&EventPool::dequeue, this), 0.0f);
+		}
+
 		// Run first event loop on the current thread
 		eventLoops[0]->run();
 

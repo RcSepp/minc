@@ -103,6 +103,17 @@ public:
 	}
 	~EventPool()
 	{
+		// Close all event loops
+		close();
+
+		// Wait for all eventloops to finish
+		for (std::thread& eventThread: eventThreads)
+			eventThread.join();
+
+		// Remove threads
+		eventThreads.clear();
+
+		// Remove all event loops
 		for (EventLoop* eventLoop: eventLoops)
 			delete eventLoop;
 		eventLoops.clear();

@@ -1,3 +1,6 @@
+#ifndef __PAWS_SUBROUTINE_H
+#define __PAWS_SUBROUTINE_H
+
 struct PawsFunc
 {
 	PawsType* returnType;
@@ -20,7 +23,6 @@ struct PawsRegularFunc : public PawsFunc
 	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
 		: PawsFunc(returnType, argTypes, argNames), body(body) {}
 };
-typedef PawsValue<PawsFunc*> PawsFunction;
 
 typedef Variable (*FuncBlock)(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, void* funcArgs);
 struct PawsConstFunc : public PawsFunc
@@ -64,7 +66,8 @@ struct PawsExternFunc : public PawsFunc
 };
 
 template <typename R, typename... A>
-struct PawsExternFunc<R (*)(A...)> : public PawsFunc {
+struct PawsExternFunc<R (*)(A...)> : public PawsFunc
+{
 	typedef R F(A...);
 
 	F* func;
@@ -111,3 +114,5 @@ template<class F> void defineExternFunction(BlockExprAST* scope, const char* nam
 	PawsFunc* pawsFunc = new PawsExternFunc(func);
 	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
+
+#endif

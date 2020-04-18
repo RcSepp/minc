@@ -30,7 +30,7 @@ struct CompileError
 	const Location loc;
 	const std::string msg;
 	std::vector<std::string> hints;
-	CompileError(std::string msg, Location loc={0}) : msg(msg), loc(loc) {}
+	CompileError(std::string msg, Location loc={0}) : loc(loc), msg(msg) {}
 	void addHint(const std::string& hint) { hints.push_back(hint); }
 	void print(std::ostream& out=std::cerr);
 };
@@ -112,11 +112,11 @@ public:
 class ExprListAST : public ExprAST
 {
 public:
-	std::vector<ExprAST*> exprs;
 	char seperator;
+	std::vector<ExprAST*> exprs;
 	ExprListAST(char seperator) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator) {}
 	ExprListAST(char seperator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator), exprs(exprs) {}
-	Variable codegen(BlockExprAST* parentBlock) { assert(0); }
+	Variable codegen(BlockExprAST* parentBlock) { assert(0); return Variable(nullptr, nullptr); /* Unreachable */ }
 	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(BlockExprAST* block) { for (auto expr: exprs) expr->resolveTypes(block); }
@@ -248,7 +248,7 @@ public:
 	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
 	void collectParams(const BlockExprAST* block, const ExprListAST& tplt);
 	Variable codegen(BlockExprAST* parentBlock);
-bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); }
+bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); return false; /* Unreachable */ }
 void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
 void resolveTypes(BlockExprAST* block) { assert(0); }
 	std::string str() const
@@ -355,7 +355,6 @@ public:
 	}
 	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const
 	{
-		const std::pair<BaseType*, BaseType*>& key = std::make_pair(fromType, toType);
 		const Cast* cast;
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
@@ -369,7 +368,6 @@ public:
 	}
 	bool isInstance(BaseType* derivedType, BaseType* baseType) const
 	{
-		const std::pair<BaseType*, BaseType*>& key = std::make_pair(derivedType, baseType);
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
 			if (block->castreg.isInstance(derivedType, baseType))
@@ -614,7 +612,7 @@ public:
 	BaseType* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && idx == this->idx;
+		return expr->exprtype == this->exprtype && ((ParamExprAST*)expr)->idx == this->idx;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
 	std::string str() const { return '$' + std::to_string(idx); }

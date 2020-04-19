@@ -399,7 +399,7 @@ public:
 			if (importBlock == block || std::find(block->references.begin(), block->references.end(), importBlock) != block->references.end())
 				break;
 		if (block == nullptr)
-			references.push_back(importBlock);
+			references.insert(references.begin(), importBlock);
 
 		// Import all references of importBlock
 		for (BlockExprAST* importRef: importBlock->references)
@@ -408,7 +408,7 @@ public:
 				if (importRef == block || std::find(block->references.begin(), block->references.end(), importRef) != block->references.end())
 					break;
 			if (block == nullptr)
-				references.push_back(importRef);
+				references.insert(references.begin(), importRef);
 		}
 	}
 

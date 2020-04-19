@@ -30,8 +30,7 @@
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
-%type<std::vector<ExprAST*>*> block
-%type<std::vector<ExprAST*>*> stmt_string
+%type<std::vector<ExprAST*>*> block stmt_string
 %type<ExprListAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
 %type<ExprAST*> id_or_plchld expr
 

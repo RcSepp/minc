@@ -24,7 +24,7 @@ struct ExitException
 	const int code;
 	ExitException(int code) : code(code) {}
 };
-void exit(int code)
+void quit(int code)
 {
 	throw ExitException(code);
 }

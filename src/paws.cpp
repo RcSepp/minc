@@ -49,7 +49,7 @@ std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 {
 	return lhs.baseType < rhs.baseType
-		|| lhs.baseType == rhs.baseType && lhs.tpltType < rhs.tpltType;
+		|| (lhs.baseType == rhs.baseType && lhs.tpltType < rhs.tpltType);
 }
 
 void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName)
@@ -60,7 +60,6 @@ void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const
 		defineStmt2(scope, "return $E",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
-				BaseType* returnType = getType(params[0], parentBlock);
 				if (funcName)
 					raiseCompileError(("void function '" + std::string(funcName) + "' should not return a value").c_str(), params[0]);
 				else
@@ -317,10 +316,10 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 	// Define return statement
 	definePawsReturnStmt(pkgScope, PawsInt::TYPE);
 
-	// Overwrite return statement with correct type in function scope to call exit() instead of raising ReturnException
+	// Overwrite return statement with correct type in function scope to call quit() instead of raising ReturnException
 	defineStmt(pkgScope, "return $E<PawsInt>",
 		+[](int returnCode) {
-			exit(returnCode);
+			quit(returnCode);
 		}
 	);
 

@@ -31,9 +31,8 @@
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
-%type<BlockExprAST*> block
-%type<std::vector<ExprAST*>*> stmt_string
-%type<ExprListAST*> expr_string expr_list expr_lists optional_expr_lists
+%type<std::vector<ExprAST*>*> block stmt_string
+%type<ExprListAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
 %type<ExprAST*> id_or_plchld expr
 
 %start file
@@ -53,25 +52,28 @@
 %%
 
 file
-	: block { *rootBlock = $1; }
+	: stmt_string { *rootBlock = new BlockExprAST(getloc(@1, @1), $1); }
 ;
 
 block
-	: stmt_string { $$ = new BlockExprAST(getloc(@1, @1), $1); }
-	| stmt_string expr_string { $1->insert($1->end(), $2->cbegin(), $2->cend()); $1->push_back(new StopExprAST(getloc(@2, @2))); $$ = new BlockExprAST(getloc(@1, @1), $1); }
+	: INDENT stmt_string OUTDENT { $$ = $2; }
 ;
 
 stmt_string
-	: expr_string NEWLINE { $$ = new std::vector<ExprAST*>($1->cbegin(), $1->cend()); $$->push_back(new StopExprAST(getloc(@2, @2))); }
-	| expr_string ':' NEWLINE INDENT block OUTDENT { $$ = new std::vector<ExprAST*>($1->cbegin(), $1->cend()); $$->push_back($5); }
-	| stmt_string expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
-	| stmt_string expr_string ':' NEWLINE INDENT block OUTDENT { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back($6); }
+	: %empty { $$ = new std::vector<ExprAST*>(); }
+	| stmt_string optional_expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
+	| stmt_string expr_string ':' NEWLINE block { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new BlockExprAST(getloc(@5, @5), $5)); }
 ;
 
 expr_string
 	: expr { $$ = new ExprListAST('\0'); $$->exprs.push_back($1); }
 	| expr_string expr { ($$ = $1)->exprs.push_back($2); }
 	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
+;
+
+optional_expr_string
+	: %empty { $$ = new ExprListAST('\0'); }
+	| expr_string { $$ = $1; }
 ;
 
 expr_list
@@ -106,10 +108,9 @@ expr
 	| '(' optional_expr_lists ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
 	| '[' optional_expr_lists ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
 	| '<' optional_expr_lists '>' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'<', "<", ">", $2); }
-	| '{' block '}' { $$ = $2; }
 
 	// Parameterized expressions
-	| id_or_plchld '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
 	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
 	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
 
@@ -138,7 +139,6 @@ expr
 	| expr '*' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'*', "*", $1); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
-	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
 	| AWT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::AWT, "await", $2); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
 	| INC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }

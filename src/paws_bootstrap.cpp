@@ -444,7 +444,7 @@ struct PawsBootstrap : public MincPackage
 	PawsBootstrap() : MincPackage("paws.bootstrap") {}
 
 private:
-	void define(BlockExprAST* rootBlock)
+	void definePackage(BlockExprAST* rootBlock)
 	{
 		// >>> Create Minc extern functions
 

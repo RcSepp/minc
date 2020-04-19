@@ -382,7 +382,7 @@ class PawsFramePackage : public MincPackage
 {
 private:
 	EventPool* eventPool;
-	void define(BlockExprAST* pkgScope);
+	void definePackage(BlockExprAST* pkgScope);
 public:
 	PawsFramePackage() : MincPackage("paws.frame"), eventPool(nullptr) {}
 	~PawsFramePackage()
@@ -392,7 +392,7 @@ public:
 	}
 } PAWS_FRAME;
 
-void PawsFramePackage::define(BlockExprAST* pkgScope)
+void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 {
 	eventPool = new EventPool(1);
 

@@ -32,7 +32,7 @@ BlockExprAST* MincPackage::load(BlockExprAST* importer)
 		pkgScope = createEmptyBlockExprAST();
 		if (parentName.size())
 			importBlock(pkgScope, MINC_PACKAGE_MANAGER().loadPackage(parentName, importer));
-		this->define(pkgScope);
+		this->definePackage(pkgScope);
 	}
 	return pkgScope;
 }
@@ -53,7 +53,7 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 	registerPackage("pkgmgr", this); // Manually register MincPackageManager
 }
 
-void MincPackageManager::define(BlockExprAST* pkgScope)
+void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 {
 	defineStmt2(pkgScope, "import $I. ...",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {

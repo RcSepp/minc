@@ -16,7 +16,9 @@ private:
 	std::string parentName;
 	BlockExprAST* pkgScope;
 	MincPackageFunc defineFunc;
-	virtual void define(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
+
+protected:
+	virtual void definePackage(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
 
 public:
 	MincPackage(const char* name, MincPackageFunc defineFunc=nullptr);
@@ -29,7 +31,7 @@ class MincPackageManager : public MincPackage
 {
 private:
 	std::map<std::string, MincPackage*> packages;
-	void define(BlockExprAST* pkgScope);
+	void definePackage(BlockExprAST* pkgScope);
 
 public:
 	MincPackageManager();

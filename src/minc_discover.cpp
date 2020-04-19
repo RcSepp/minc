@@ -8,8 +8,16 @@
 #include "minc_api.h"
 #include "minc_pkgmgr.h"
 
+#define USE_BINARY_PACKAGES
+#define USE_PYTHON_PACKAGES
+
 const std::string	PACKAGE_PATH_ENV = "MINC_PATH";
 const char			PACKAGE_PATH_ENV_SEPARATOR = ':';
+
+#ifdef USE_PYTHON_PACKAGES
+#define PY_SSIZE_T_CLEAN
+#include <python3.7m/Python.h>
+#endif
 
 bool hasSubdir(const char* path, const char* subdir)
 {
@@ -69,22 +77,46 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 				pkgDir.push_back('/');
 #endif
 
-				std::string pkgPath = pkgDir + subpkgName + ".so";
-				if (std::filesystem::exists(pkgPath)) // If a package library exists for this sub-package, ...
+				std::string pkgPath;
+
+#ifdef USE_BINARY_PACKAGES
+				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".so")) // If a binary package library exists for this sub-package, ...
 				{
 					// Load package library
 					// Packages will be registed with the package manager during library initialization
 					auto pkgHandle = dlopen(pkgPath.c_str(), RTLD_NOW);
 					if (pkgHandle == nullptr)
 						raiseCompileError(("unable to read package " + pkgPath).c_str());
+				} else
+#endif
 
-					// Search registered packages again to discover newly added packages
-					pkg = packages.find(pkgName);
-					if (pkg != packages.end())
-						return pkg->second; // Package found
+#ifdef USE_PYTHON_PACKAGES
+				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".py")) // If a Python package library exists for this sub-package, ...
+				{
+					if (!Py_IsInitialized())
+					{
+//						PyImport_AppendInittab("minc", PyInit_minc);
+						Py_Initialize();
+					}
 
-					//TODO: Raise warning that subpkgName was not defined in pkgPath
+					FILE* file = fopen(pkgPath.c_str(), "rb");
+					PyRun_SimpleFileEx(file, pkgPath.c_str(), 1);
+
+					Py_Finalize();
+				} else
+#endif
+
+				// If no package library exists for this sub-package, ...
+				{
+					continue;
 				}
+
+				// Search registered packages again to discover newly added packages
+				pkg = packages.find(pkgName);
+				if (pkg != packages.end())
+					return pkg->second; // Package found
+
+				//TODO: Raise warning that subpkgName was not defined in pkgPath
 			}
 	}
 

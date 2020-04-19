@@ -11,7 +11,6 @@ struct BaseValue
 {
 	virtual uint64_t getConstantValue() { return 0; }
 };
-class JitFunction;
 
 class ExprAST;
 class IdExprAST;
@@ -35,6 +34,7 @@ struct Variable
 
 struct CodegenContext
 {
+	virtual ~CodegenContext() {}
 	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
 	virtual BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
 };
@@ -129,11 +129,13 @@ extern "C"
 	void defineType(const char* name, const BaseType* type);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
+	void defineStmt4(BlockExprAST* scope, const char* tpltStr, CodegenContext* stmt);
 	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt);
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr);
+	void defineExpr6(BlockExprAST* scope, const char* tpltStr, CodegenContext* expr);
 	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
 	void defineAntiExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineAntiExpr5(BlockExprAST* scope, CodegenContext* expr);

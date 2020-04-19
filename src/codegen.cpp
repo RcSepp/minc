@@ -427,6 +427,31 @@ extern "C"
 			scope->defineStatement(tplt, stmt);
 	}
 
+	void defineStmt4(BlockExprAST* scope, const char* tpltStr, CodegenContext* stmt)
+	{
+		// Append STOP expr to make tpltStr a valid statement
+		std::stringstream ss(tpltStr);
+		ss << tpltStr << ';';
+
+		// Parse tpltStr into tpltBlock
+		CLexer lexer(ss, std::cout);
+		BlockExprAST* tpltBlock;
+		yy::CParser parser(lexer, nullptr, &tpltBlock);
+		if (parser.parse())
+			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
+
+		// Remove appended STOP expr if last expr is $B
+		assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
+		if (tpltBlock->exprs->size() >= 2)
+		{
+			const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
+				tpltBlock->exprs->pop_back();
+		}
+	
+		scope->defineStatement(*tpltBlock->exprs, stmt);
+	}
+
 	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs)
 	{
 		scope->defineAntiStatement(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
@@ -465,6 +490,19 @@ extern "C"
 
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr)
 	{
+		scope->defineExpr(tplt, expr);
+	}
+
+	void defineExpr6(BlockExprAST* scope, const char* tpltStr, CodegenContext* expr)
+	{
+		std::stringstream ss(tpltStr);
+		ss << tpltStr << ';';
+		CLexer lexer(ss, std::cout);
+		BlockExprAST* tpltBlock;
+		yy::CParser parser(lexer, nullptr, &tpltBlock);
+		if (parser.parse())
+			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
+		ExprAST* tplt = tpltBlock->exprs->at(0);
 		scope->defineExpr(tplt, expr);
 	}
 

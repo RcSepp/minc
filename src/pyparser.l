@@ -25,6 +25,7 @@ using token = yy::PyParser::token;
 %x initial
 %x indent
 %s normal
+%x end
 
 LITERAL		([0-9]*\.?[0-9][0-9a-zA-Z_]*)|([0-9a-zA-Z_]*\"[^\"\n]*\")|([0-9a-zA-Z_]*\'[^\'\n]*\')
 ID			([a-zA-Z_][0-9a-zA-Z_]*)|$#
@@ -95,11 +96,13 @@ DEC			--
 					}
 				}
 
+<normal><<EOF>>	{ BEGIN(indent); return token::NEWLINE; }
+
 <indent>.		{
 					if(!g_is_fake_outdent_symbol) {
 						unput(*yytext);
 					}
-					/*set_yycolumn(yycolumn-1);*/
+					loc->columns(-1);
 					g_is_fake_outdent_symbol = 0;
 
 					// Indentation level has increased. It can only ever
@@ -209,7 +212,7 @@ DEC			--
 								}
 
 <normal>[ \t]+							// White space
-<normal>\n								{ loc->lines(); g_current_line_indent = 0; indent_caller = YY_START; BEGIN(indent); return token::NEWLINE; } // New line
+<normal>\n								{ g_current_line_indent = 0; indent_caller = YY_START; BEGIN(indent); return token::NEWLINE; } // New line
 
 <normal>{ELLIPSIS}						return token::ELLIPSIS;
 <normal>{EQ}							return token::EQ;

@@ -59,6 +59,8 @@ DEC			--
 	*/
 <*>\n { loc->lines(); REJECT; }
 
+<*>#[^\n]* // Single-line comment
+
 	/* Everything runs in the <normal> mode and enters the <indent> mode
 		when a newline symbol is encountered.
 		There is no newline symbol before the first line, so we need to go
@@ -208,8 +210,6 @@ DEC			--
 
 <normal>[ \t]+							// White space
 <normal>\n								{ loc->lines(); g_current_line_indent = 0; indent_caller = YY_START; BEGIN(indent); return token::NEWLINE; } // New line
-<normal>"//"[^\n]*						// Single-line comment
-<normal>"/*"([^*]|(\*+[^*/]))*\*+\/		while (*(++yytext)) if (*yytext == '\n') loc->lines(); // Multi-line comment
 
 <normal>{ELLIPSIS}						return token::ELLIPSIS;
 <normal>{EQ}							return token::EQ;

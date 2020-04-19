@@ -390,27 +390,7 @@ public:
 	size_t countCasts() const { return castreg.countCasts(); }
 	void iterateCasts(std::function<void(const Cast* cast)> cbk) const { castreg.iterateCasts(cbk); }
 
-	void import(BlockExprAST* importBlock)
-	{
-		const BlockExprAST* block;
-
-		// Import importBlock
-		for (block = this; block; block = block->parent)
-			if (importBlock == block || std::find(block->references.begin(), block->references.end(), importBlock) != block->references.end())
-				break;
-		if (block == nullptr)
-			references.insert(references.begin(), importBlock);
-
-		// Import all references of importBlock
-		for (BlockExprAST* importRef: importBlock->references)
-		{
-			for (block = this; block; block = block->parent)
-				if (importRef == block || std::find(block->references.begin(), block->references.end(), importRef) != block->references.end())
-					break;
-			if (block == nullptr)
-				references.insert(references.begin(), importRef);
-		}
-	}
+	void import(BlockExprAST* importBlock);
 
 	void defineSymbol(std::string name, BaseType* type, BaseValue* var) { scope[name] = Variable(type, var); }
 	const Variable* lookupSymbol(const std::string& name) const;

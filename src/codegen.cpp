@@ -666,6 +666,28 @@ StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* con
 	resolvedContext = context;
 }
 
+void BlockExprAST::import(BlockExprAST* importBlock)
+{
+	const BlockExprAST* block;
+
+	// Import all references of importBlock
+	for (BlockExprAST* importRef: importBlock->references)
+	{
+		for (block = this; block; block = block->parent)
+			if (importRef == block || std::find(block->references.begin(), block->references.end(), importRef) != block->references.end())
+				break;
+		if (block == nullptr)
+			references.insert(references.begin(), importRef);
+	}
+
+	// Import importBlock
+	for (block = this; block; block = block->parent)
+		if (importBlock == block || std::find(block->references.begin(), block->references.end(), importBlock) != block->references.end())
+			break;
+	if (block == nullptr)
+		references.insert(references.begin(), importBlock);
+}
+
 const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
 {
 	std::map<std::string, Variable>::const_iterator symbolIter;

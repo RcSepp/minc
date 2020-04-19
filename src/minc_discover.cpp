@@ -82,6 +82,24 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 #ifdef USE_BINARY_PACKAGES
 				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".so")) // If a binary package library exists for this sub-package, ...
 				{
+#ifdef BINARY_PKG_REQUIREMENTS
+					// Load required libraries
+					const std::string required_libs[] = BINARY_PKG_REQUIREMENTS;
+					for (const std::string& required_lib: required_libs)
+					{
+						//std::cout << "loading required library " << required_lib << "\n";
+						auto pkgHandle = dlopen(required_lib.c_str(), RTLD_NOW | RTLD_GLOBAL);
+						if (pkgHandle == nullptr)
+						{
+							char *error = dlerror();
+							if (error != nullptr)
+								raiseCompileError(("error loading library " + required_lib + ": " + error).c_str());
+							else
+								raiseCompileError(("unable to load library " + required_lib).c_str());
+						}
+					}
+#endif
+
 					// Load package library
 					// Packages will be registed with the package manager during library initialization
 					auto pkgHandle = dlopen(pkgPath.c_str(), RTLD_NOW);

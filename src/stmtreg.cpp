@@ -72,10 +72,8 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 						// 1) We handle ellipsis match by continuing the loop
 						// 2) We handle terminator match calling matchStatement() starting after the terminator match
 						// If case 2 succeeds, return true
-						&& matchStatement(block, tplt + 1, tpltEnd, expr, exprEnd, score))
+						&& matchStatement(block, tplt + 1, tpltEnd, expr, exprEnd, score, stmtEnd))
 					{
-						if (stmtEnd)
-							*stmtEnd = expr;
 						return true;
 					}
 				}

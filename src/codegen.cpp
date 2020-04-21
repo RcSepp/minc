@@ -390,6 +390,11 @@ extern "C"
 		typereg[type] = TypeDescription{name};
 	}
 
+	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs)
+	{
+		scope->defineStatement(tplt, new StaticStmtContext(codeBlock, stmtArgs));
+	}
+
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs)
 	{
 		// Append STOP expr to make tpltStr a valid statement
@@ -417,14 +422,16 @@ extern "C"
 
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
-		if (tplt.empty() || tplt.back()->exprtype != ExprAST::ExprType::PLCHLD || ((PlchldExprAST*)tplt.back())->p1 != 'B')
+		if (!tplt.empty() && ((tplt.back()->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt.back())->p1 == 'B')
+						   || (tplt.back()->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt.back())->size() == 1
+							   && ((ExprListAST*)tplt.back())->at(0)->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)((ExprListAST*)tplt.back())->at(0))->p1 == 'B')))
+			scope->defineStatement(tplt, stmt);
+		else
 		{
 			std::vector<ExprAST*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new StopExprAST(Location{}));
 			scope->defineStatement(stoppedTplt, stmt);
 		}
-		else
-			scope->defineStatement(tplt, stmt);
 	}
 
 	void defineStmt4(BlockExprAST* scope, const char* tpltStr, CodegenContext* stmt)

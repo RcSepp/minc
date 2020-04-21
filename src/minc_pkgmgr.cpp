@@ -68,6 +68,22 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
 		}, this
 	);
+
+	// Also define Python-grammar version of import statement
+	//TODO: Remove this as soon as imcompatibilities between Python & C grammars have been fixed!
+	defineStmt1(pkgScope, parsePythonTplt("import $I. ..."),
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
+			std::vector<ExprAST*>& pkgPath = getExprListASTExpressions((ExprListAST*)params[0]);
+			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
+			for (size_t i = 1; i < pkgPath.size(); ++i)
+				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);
+
+			// Import package
+			if (!pkgMgr->tryImportPackage(parentBlock, pkgName))
+				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
+		}, this
+	);
 }
 
 BlockExprAST* MincPackageManager::loadPackage(std::string pkgName, BlockExprAST* importer) const

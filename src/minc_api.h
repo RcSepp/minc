@@ -63,7 +63,10 @@ extern "C"
 	// >>> Parser
 
 	BlockExprAST* parseCFile(const char* filename);
+	const std::vector<ExprAST*> parseCTplt(const char* filename);
+
 	BlockExprAST* parsePythonFile(const char* filename);
+	const std::vector<ExprAST*> parsePythonTplt(const char* filename);
 
 	// >>> Code Generator
 
@@ -127,6 +130,7 @@ extern "C"
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
 	void defineType(const char* name, const BaseType* type);
+	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
 	void defineStmt4(BlockExprAST* scope, const char* tpltStr, CodegenContext* stmt);

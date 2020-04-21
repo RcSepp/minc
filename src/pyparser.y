@@ -169,3 +169,24 @@ BlockExprAST* parsePythonFile(const char* filename)
 
 	return rootBlock;
 }
+
+const std::vector<ExprAST*> parsePythonTplt(const char* tpltStr)
+{
+	// Parse tpltStr into tpltBlock
+	std::stringstream ss(tpltStr);
+	PyLexer lexer(ss, std::cout);
+	BlockExprAST* tpltBlock;
+	yy::PyParser parser(lexer, nullptr, &tpltBlock);
+	if (parser.parse())
+	{
+		std::cerr << "\033[31merror:\033[0merror parsing template " << std::string(tpltStr) << '\n';
+		return {};
+	} //TODO: Throw CompileError instead:
+		//throw CompileError("error parsing template " + std::string(tpltStr));
+
+	// Remove trailing STOP expr
+	if (tpltBlock->exprs->size())
+		tpltBlock->exprs->pop_back();
+
+	return *tpltBlock->exprs;
+}

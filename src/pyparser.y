@@ -26,13 +26,13 @@
 %}
 
 %token ELLIPSIS
-%token EQ NE GEQ LEQ GR LE AWT NEW DM SR INC DEC
+%token EQ NE GEQ LEQ RS LS AWT NEW DM SR INC DEC
 %token NEWLINE INDENT OUTDENT
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
 %type<std::vector<ExprAST*>*> block stmt_string
-%type<ExprListAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
+%type<ExprListAST*> expr_string optional_expr_string expr_list optional_expr_list
 %type<ExprAST*> id_or_plchld expr
 
 %start file
@@ -41,7 +41,7 @@
 %left AND
 %left '&'
 %left EQ NE
-%left GEQ LEQ GR LE
+%left GEQ LEQ RS LS '>' '<'
 %left '+' '-'
 %left '*' '/' '%'
 %right AWT NEW REF PREINC
@@ -66,8 +66,8 @@ stmt_string
 ;
 
 expr_string
-	: expr { $$ = new ExprListAST('\0'); $$->exprs.push_back($1); }
-	| expr_string expr { ($$ = $1)->exprs.push_back($2); }
+	: expr_list { $$ = new ExprListAST('\0'); $$->exprs.push_back($1); }
+	| expr_string expr_list { ($$ = $1)->exprs.push_back($2); }
 	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
 ;
 
@@ -77,20 +77,14 @@ optional_expr_string
 ;
 
 expr_list
-	: expr_string { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
-	| expr_list ',' expr_string { ($$ = $1)->exprs.push_back($3); }
+	: expr { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
+	| expr_list ',' expr { ($$ = $1)->exprs.push_back($3); }
 	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
 ;
 
-expr_lists
-	: expr_list { $$ = new ExprListAST(';'); $$->exprs.push_back($1); }
-	| expr_lists ';' expr_list { ($$ = $1)->exprs.push_back($3); }
-	| expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
-;
-
-optional_expr_lists
-	: %empty { $$ = new ExprListAST(';'); }
-	| expr_lists { $$ = $1; }
+optional_expr_list
+	: %empty { $$ = new ExprListAST(','); }
+	| expr_list { $$ = $1; }
 ;
 
 id_or_plchld
@@ -105,14 +99,12 @@ expr
 	| id_or_plchld { $$ = $1; }
 
 	// Enclosed expressions
-	| '(' optional_expr_lists ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
-	| '[' optional_expr_lists ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
-	| '<' optional_expr_lists '>' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'<', "<", ">", $2); }
+	| '(' optional_expr_list ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
+	| '[' optional_expr_list ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
 
 	// Parameterized expressions
-	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
-	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
+	| expr '(' optional_expr_list ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '[' optional_expr_list ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
 
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
@@ -129,8 +121,10 @@ expr
 	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
 	| expr GEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
 	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
-	| expr GR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GR, ">>", $1, $3); }
-	| expr LE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LE, "<<", $1, $3); }
+	| expr '>' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'>', ">", $1, $3); }
+	| expr '<' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'<', "<", $1, $3); }
+	| expr RS expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::RS, ">>", $1, $3); }
+	| expr LS expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LS, "<<", $1, $3); }
 	| expr AND expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
 	| expr OR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
 

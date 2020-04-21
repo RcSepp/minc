@@ -37,8 +37,8 @@ EQ			==
 NE			!=
 GEQ			>=
 LEQ			<=
-GR			>>
-LE			<<
+RS			>>
+LS			<<
 AND			&&
 OR			\|\|
 AWT			await
@@ -219,11 +219,11 @@ DEC			--
 <normal>{NE}							return token::NE;
 <normal>{GEQ}							return token::GEQ;
 <normal>{LEQ}							return token::LEQ;
-<normal>{GR}							return token::GR;
-<normal>{LE}							return token::LE;
+<normal>{RS}							return token::RS;
+<normal>{LS}							return token::LS;
 <normal>{AND}							return token::AND;
 <normal>{OR}							return token::OR;
 
-<normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:	return yytext[0];
+<normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:|<|>	return yytext[0];
 
 %%

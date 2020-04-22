@@ -53,7 +53,7 @@ decls = {}
 # Helper functions
 ################################################################################
 
-def split_outside_brackets(sentence, seperator):
+def split_outside_brackets(sentence, separator):
     wordstart = 0
     words = []
     bracket_level = 0
@@ -62,9 +62,9 @@ def split_outside_brackets(sentence, seperator):
             bracket_level += 1
         elif c == ")":
             bracket_level -= 1
-        elif bracket_level == 0 and i + len(seperator) <= len(sentence) and all(sentence[i + j] == sc for j, sc in enumerate(seperator)):
+        elif bracket_level == 0 and i + len(separator) <= len(sentence) and all(sentence[i + j] == sc for j, sc in enumerate(separator)):
             words.append(sentence[wordstart:i])
-            wordstart = i + len(seperator)
+            wordstart = i + len(separator)
     if wordstart + 1 < len(sentence):
         words.append(sentence[wordstart:])
     return words

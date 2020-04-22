@@ -112,10 +112,10 @@ public:
 class ExprListAST : public ExprAST
 {
 public:
-	char seperator;
+	char separator; //TODO: Fix spelling to "separator"!
 	std::vector<ExprAST*> exprs;
-	ExprListAST(char seperator) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator) {}
-	ExprListAST(char seperator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), seperator(seperator), exprs(exprs) {}
+	ExprListAST(char separator) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator) {}
+	ExprListAST(char separator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator), exprs(exprs) {}
 	Variable codegen(BlockExprAST* parentBlock) { assert(0); return Variable(nullptr, nullptr); /* Unreachable */ }
 	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
@@ -127,11 +127,11 @@ public:
 
 		std::string s;
 		const std::string _(1, ' ');
-		switch(seperator)
+		switch(separator)
 		{
 		case '\0': s = _; break;
-		case ',': case ';': s = seperator + _; break;
-		default: s = _ + seperator + _; break;
+		case ',': case ';': s = separator + _; break;
+		default: s = _ + separator + _; break;
 		}
 
 		std::string result = exprs[0]->str();
@@ -166,7 +166,7 @@ public:
 	void push_back(ExprAST* expr) { return exprs.push_back(expr); }
 	ExprAST* clone()
 	{
-		ExprListAST* clone = new ExprListAST(seperator);
+		ExprListAST* clone = new ExprListAST(separator);
 		for (ExprAST* expr: this->exprs)
 			clone->exprs.push_back(expr->clone());
 		return clone;

@@ -611,14 +611,8 @@ class EllipsisExprAST : public ExprAST
 public:
 	ExprAST* expr;
 	EllipsisExprAST(const Location& loc, ExprAST* expr) : ExprAST(loc, ExprAST::ExprType::ELLIPSIS), expr(expr) {}
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-	{
-		return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, score);
-	}
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-	{
-		this->expr->collectParams(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, params, paramIdx);
-	}
+	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
+	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(BlockExprAST* block)
 	{
 		expr->resolveTypes(block);

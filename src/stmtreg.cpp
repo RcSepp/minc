@@ -665,6 +665,22 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 	storeParam(expr, params, paramIdx++);
 }
 
+bool EllipsisExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+{
+	return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, score);
+}
+void EllipsisExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+{
+	size_t ellipsisBegin = paramIdx;
+	this->expr->collectParams(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, params, paramIdx);
+
+	// Replace all non-list parameters that are part of this ellipsis with single-element lists,
+	// because ellipsis parameters are expected to always be lists
+	for (size_t i = ellipsisBegin; i < paramIdx; ++i)
+		if (params[i]->exprtype != ExprAST::ExprType::LIST)
+			params[i] = new ExprListAST('\0', { params[i] });
+}
+
 std::vector<ExprAST*>::iterator begin(ExprListAST& exprs) { return exprs.begin(); }
 std::vector<ExprAST*>::iterator begin(ExprListAST* exprs) { return exprs->begin(); }
 std::vector<ExprAST*>::iterator end(ExprListAST& exprs) { return exprs.end(); }

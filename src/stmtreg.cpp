@@ -554,7 +554,11 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 
 	// Advance exprs parameter to beginning of next statement
 	if (context)
+	{
 		exprs = stmtEnd;
+		if (exprs != exprEnd && (*exprs)->exprtype == ExprAST::ExprType::STOP)
+			++exprs;
+	}
 	else
 	{
 		while (exprs != exprEnd && (*exprs)->exprtype != ExprAST::ExprType::STOP && (*exprs)->exprtype != ExprAST::ExprType::BLOCK)

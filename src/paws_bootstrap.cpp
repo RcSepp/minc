@@ -185,7 +185,6 @@ void defineReturnStmt(BlockExprAST* scope, const BaseType* returnType, const cha
 		defineStmt2(scope, "return $E",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
-				BaseType* returnType = getType(params[0], parentBlock);
 				if (funcName)
 					raiseCompileError(("void function '" + std::string(funcName) + "' should not return a value").c_str(), params[0]);
 				else

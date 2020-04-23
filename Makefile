@@ -12,10 +12,12 @@ LIBMINC_OBJS = \
 	pyparser.o \
 	pyparser.yy.o \
 
-MINC_OBJS = \
-	minc.o \
+LIBMINC_PKGMGR_OBJS = \
 	minc_pkgmgr.o \
 	minc_discover.o \
+
+MINC_OBJS = \
+	minc.o \
 	paws.o \
 	paws_int.o \
 	paws_string.o \
@@ -34,38 +36,44 @@ MINC_OBJS = \
 	paws_bootstrap.o \
 
 YACC = bison
-CPPFLAGS = -g -std=c++1z
-LIBMINC_LIBS = -fexceptions
-MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` -pthread -fexceptions -ldl -rdynamic
+CPPFLAGS = -g -std=c++1z `pkg-config --cflags python-3.7`
+MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7m` -pthread -ldl -rdynamic
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
+LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_PKGMGR_OBJS})
 MINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${MINC_OBJS})
 
 all: ${BIN_DIR}minc
 
 clean:
-	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}minc
-
-depend: $(LIBMINC_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}minc
 
 # Dependency management
+
+depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 ${TEMP_DIR}%.d: ${SRC_DIR}%.cpp
 	$(CXX) $(CPPFLAGS) -MM -MT ${TEMP_DIR}$*.o $^ > $@;
 
--include $(LIBMINC_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+-include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 # minc binary
 
-${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc ${MINC_LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr ${MINC_LIBS}
 
 # libminc.so library
 
 ${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS} ${LIBMINC_LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS}
+
+# libminc_pkgmgr.so library
+
+${BIN_DIR}libminc_pkgmgr.so: ${LIBMINC_PKGMGR_OBJPATHS}
+	-mkdir -p ${BIN_DIR}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_PKGMGR_OBJPATHS}
 
 # Parser code
 

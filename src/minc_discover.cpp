@@ -16,7 +16,7 @@ const char			PACKAGE_PATH_ENV_SEPARATOR = ':';
 
 #ifdef USE_PYTHON_PACKAGES
 #define PY_SSIZE_T_CLEAN
-#include <python3.7m/Python.h>
+#include <python3.7/Python.h>
 #endif
 
 bool hasSubdir(const char* path, const char* subdir)
@@ -118,15 +118,10 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".py")) // If a Python package library exists for this sub-package, ...
 				{
 					if (!Py_IsInitialized())
-					{
-//						PyImport_AppendInittab("minc", PyInit_minc);
 						Py_Initialize();
-					}
 
 					FILE* file = fopen(pkgPath.c_str(), "rb");
 					PyRun_SimpleFileEx(file, pkgPath.c_str(), 1);
-
-					Py_Finalize();
 				} else
 #endif
 

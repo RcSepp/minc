@@ -37,7 +37,7 @@ MINC_OBJS = \
 
 YACC = bison
 CPPFLAGS = -g -std=c++1z `pkg-config --cflags python-3.7`
-MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7m` -pthread -ldl -rdynamic
+MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7` -pthread -ldl -rdynamic
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_PKGMGR_OBJS})

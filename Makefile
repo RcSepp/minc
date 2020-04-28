@@ -29,6 +29,7 @@ MINC_OBJS = \
 	paws_stmtreg.o \
 	paws_subroutine.o \
 	paws_frame.o \
+	paws_frame_eventloop.o \
 	paws_array.o \
 	paws_compile.o \
 	llvm_constants.o \

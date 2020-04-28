@@ -61,6 +61,7 @@ DEC			--
 <*>\n { loc->lines(); REJECT; }
 
 <*>#[^\n]* // Single-line comment
+<*>\"\"\"([^\"]|\"[^\"]|\"\"[^\"])*\"\"\" while (*(++yytext)) if (*yytext == '\n') loc->lines(); // Multi-line comment
 
 	/* Everything runs in the <normal> mode and enters the <indent> mode
 		when a newline symbol is encountered.

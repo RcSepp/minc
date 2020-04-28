@@ -3,10 +3,12 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include "minc_api.h"
 #include "minc_pkgmgr.h"
+#include "json.h"
 
 #define USE_BINARY_PACKAGES
 #define USE_PYTHON_PACKAGES
@@ -78,6 +80,39 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 #endif
 
 				std::string pkgPath;
+
+				if (std::filesystem::exists(pkgPath = pkgDir + "minc_pkg.json")) // If a package configuration file exists for this sub-package, ...
+				{
+					Json::Value json;
+					std::ifstream file(pkgPath.c_str());
+					if (file)
+					{
+						bool success = Json::parse(file, &json);
+						file.close();
+						if (!success)
+							raiseCompileError(("error parsing package configuration " + pkgPath).c_str());
+					}
+
+					auto libs = json.lst.find("libs");
+					if (libs != json.lst.end())
+					{
+						// Load required libraries
+						for (const Json::Value& required_lib: libs->second.arr)
+							if (!required_lib.str.empty())
+							{
+								//std::cout << "loading required library " << required_lib.str << "\n";
+								auto pkgHandle = dlopen(required_lib.str.c_str(), RTLD_NOW | RTLD_GLOBAL);
+								if (pkgHandle == nullptr)
+								{
+									char *error = dlerror();
+									if (error != nullptr)
+										raiseCompileError(("error loading library " + required_lib.str + ": " + error).c_str());
+									else
+										raiseCompileError(("unable to load library " + required_lib.str).c_str());
+								}
+							}
+					}
+				}
 
 #ifdef USE_BINARY_PACKAGES
 				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".so")) // If a binary package library exists for this sub-package, ...

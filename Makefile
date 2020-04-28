@@ -15,6 +15,7 @@ LIBMINC_OBJS = \
 LIBMINC_PKGMGR_OBJS = \
 	minc_pkgmgr.o \
 	minc_discover.o \
+	json.o \
 
 MINC_OBJS = \
 	minc.o \

@@ -34,7 +34,7 @@
 %type<BlockExprAST*> block
 %type<std::vector<ExprAST*>*> stmt_string
 %type<std::pair<ExprListAST*, bool>> expr_string
-%type<ExprListAST*> optional_expr_string
+%type<ExprListAST*> optional_expr_string expr_list optional_expr_list expr_idx
 %type<ExprAST*> id_or_plchld expr
 
 %start file
@@ -112,6 +112,24 @@ optional_expr_string
 	| expr_string { $$ = $1.first; }
 ;
 
+expr_list
+	: expr { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
+	| expr_list expr { ($$ = $1)->exprs.push_back($2); }
+	| expr_list ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
+;
+
+optional_expr_list
+	: %empty { $$ = new ExprListAST(','); }
+	| expr_list { $$ = $1; }
+;
+
+expr_idx
+	: optional_expr_list { $$ = new ExprListAST(':'); $$->exprs.push_back($1); }
+	| ':' optional_expr_list { $$ = new ExprListAST(':'); $$->exprs.push_back(new ExprListAST('\0')); $$->exprs.push_back($2); }
+	| expr_idx ':' optional_expr_list { ($$ = $1)->exprs.push_back($3); }
+	| expr_idx ':' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
+;
+
 id_or_plchld
 	: ID { $$ = new IdExprAST(getloc(@1, @1), $1); }
 	| PLCHLD1 { $$ = new PlchldExprAST(getloc(@1, @1), $1); }
@@ -125,12 +143,12 @@ expr
 
 	// Enclosed expressions
 	| '(' optional_expr_string ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
-	| '[' optional_expr_string ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
+	| '[' expr_idx ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
 	| '{' optional_expr_string '}' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'{', "{", "}", $2); }
 
 	// Parameterized expressions
 	| expr '(' optional_expr_string ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' optional_expr_string ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
+	| expr '[' expr_idx ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
 
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }

@@ -26,7 +26,7 @@
 %}
 
 %token ELLIPSIS
-%token EQ NE GEQ LEQ RS LS AWT NEW DM SR INC DEC
+%token EQ NE GEQ LEQ RS LS AWT NEW DM
 %token NEWLINE INDENT OUTDENT
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
@@ -46,9 +46,8 @@
 %left GEQ LEQ RS LS '>' '<'
 %left '+' '-'
 %left '*' '/' '%'
-%right AWT NEW REF PREINC
-%left '.' CALL SUBSCRIPT TPLT DM POSTINC
-%left SR
+%right AWT NEW REF
+%left '.' CALL SUBSCRIPT TPLT DM
 %left ENC
 
 %%
@@ -138,11 +137,11 @@ expr
 	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
 	| expr '.' ELLIPSIS { $$ = new VarBinOpExprAST(getloc(@1, @3), (int)'.', ".", $1); }
 	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
-	| expr SR id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::SR, "::", $1, $3); }
 	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }
 	| expr '/' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'/', "/", $1, $3); }
+	| expr '%' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'%', "%", $1, $3); }
 	| expr '&' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'&', "&", $1, $3); }
 	| expr EQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::EQ, "==", $1, $3); }
 	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
@@ -157,16 +156,16 @@ expr
 
 	// Unary operators
 	| expr ',' { $$ = new ExprListAST(',', std::vector<ExprAST*>(1, $1)); }
+	| '+' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
+	| expr '+' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'+', "+", $1); } //TODO: Precedence
+	| '-' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
+	| expr '-' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'-', "-", $1); } //TODO: Precedence
 	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
 	| expr '*' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'*', "*", $1); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
 	| AWT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::AWT, "await", $2); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
-	| INC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }
-	| DEC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::DEC, "--", $2); }
-	| id_or_plchld INC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::INC, "++", $1); }
-	| id_or_plchld DEC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::DEC, "--", $1); }
 ;
 
 %%

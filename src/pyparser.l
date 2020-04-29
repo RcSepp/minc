@@ -44,9 +44,6 @@ OR			\|\|
 AWT			await
 NEW			new
 DM			->
-SR			::
-INC			\+\+
-DEC			--
 
 %%
 	int indent_caller = normal;
@@ -152,9 +149,6 @@ DEC			--
 <normal>{AWT}							return token::AWT;
 <normal>{NEW}							return token::NEW;
 <normal>{DM}							return token::DM;
-<normal>{SR}							return token::SR;
-<normal>{INC}							return token::INC;
-<normal>{DEC}							return token::DEC;
 <normal>{LITERAL}						{
 									size_t len = strlen(yytext);
 									char* value = new char[len + 1];
@@ -225,6 +219,6 @@ DEC			--
 <normal>{AND}							return token::AND;
 <normal>{OR}							return token::OR;
 
-<normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:|<|>	return yytext[0];
+<normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:|<|>|%	return yytext[0];
 
 %%

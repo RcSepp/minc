@@ -58,14 +58,14 @@ file
 ;
 
 block
-	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(getloc(@1, @3), $2); }
+	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(Location{filename, @1.begin.line, @1.begin.column, $2->back()->loc.end_line, $2->back()->loc.end_col}, $2); }
 ;
 
 stmt_string
-	: expr_string NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(getloc(@2, @2))); }
+	: expr_string NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(Location{filename, @1.end.line, @1.end.column, @1.end.line, @1.end.column})); }
 	| expr_string ':' NEWLINE block { $$ = &$1.first->exprs; $$->push_back($4); }
 	| stmt_string NEWLINE { $$ = $1; } // Blank line
-	| stmt_string expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
+	| stmt_string expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(Location{filename, @2.end.line, @2.end.column, @2.end.line, @2.end.column})); }
 	| stmt_string expr_string ':' NEWLINE block { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back($5); }
 ;
 

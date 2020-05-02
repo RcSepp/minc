@@ -65,8 +65,8 @@ DM			->
 		There is no newline symbol before the first line, so we need to go
 		into the <indent> mode by hand there.
 	*/
-<initial>.  { indent_caller = normal; yyless(0); BEGIN(indent); }
-<initial>\n { indent_caller = normal; yyless(0); BEGIN(indent); }
+<initial>.  { indent_caller = normal; BEGIN(indent); loc->columns(-1); yyless(0); }
+<initial>\n { indent_caller = normal; BEGIN(indent); loc->columns(-1); REJECT; }
 
 	/* The following are the rules that keep track of indentation. */
 <indent>" "		{ g_current_line_indent++; }
@@ -100,7 +100,7 @@ DM			->
 					if(!g_is_fake_outdent_symbol) {
 						unput(*yytext);
 					}
-					loc->columns(-1);
+					loc->columns(-2);
 					g_is_fake_outdent_symbol = 0;
 
 					// Indentation level has increased. It can only ever
@@ -135,6 +135,8 @@ DM			->
 								unput(' ');
 							}
 							unput('\n');
+							// Ignore the two unput('\n')s when tracking locations
+							loc->lines(-2);
 						} else {
 							BEGIN(indent_caller);
 						}

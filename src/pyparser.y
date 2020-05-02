@@ -33,9 +33,9 @@
 %token<int> PARAM
 %type<BlockExprAST*> block
 %type<std::vector<ExprAST*>*> stmt_string
-%type<std::pair<ExprListAST*, bool>> expr_string
-%type<ExprListAST*> optional_expr_string expr_list optional_expr_list expr_idx
-%type<ExprAST*> id_or_plchld expr
+%type<std::pair<ExprListAST*, bool>> stmt
+%type<ExprListAST*> optional_stmt expr_string optional_expr_string expr_list expr_idx
+%type<ExprAST*> id_or_plchld expr expr_or_single_expr_list
 
 %start file
 %right '=' '?' ':'
@@ -62,71 +62,77 @@ block
 ;
 
 stmt_string
-	: expr_string NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(Location{filename, @1.end.line, @1.end.column, @1.end.line, @1.end.column})); }
-	| expr_string ':' NEWLINE block { $$ = &$1.first->exprs; $$->push_back($4); }
+	: stmt NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(Location{filename, @1.end.line, @1.end.column, @1.end.line, @1.end.column})); }
+	| stmt ':' NEWLINE block { $$ = &$1.first->exprs; $$->push_back($4); }
 	| stmt_string NEWLINE { $$ = $1; } // Blank line
-	| stmt_string expr_string NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(Location{filename, @2.end.line, @2.end.column, @2.end.line, @2.end.column})); }
-	| stmt_string expr_string ':' NEWLINE block { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back($5); }
+	| stmt_string stmt NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(Location{filename, @2.end.line, @2.end.column, @2.end.line, @2.end.column})); }
+	| stmt_string stmt ':' NEWLINE block { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back($5); }
+;
+
+stmt
+	: expr_or_single_expr_list	{
+								ExprListAST* stmt = new ExprListAST('\0');
+								stmt->exprs.push_back($1);
+								$$ = std::make_pair(stmt, $1->exprtype == ExprAST::ExprType::LIST);
+							}
+	| stmt expr_or_single_expr_list	{
+								ExprListAST* stmt = $1.first;
+								if (stmt->exprs.back()->exprtype != ExprAST::ExprType::LIST || $1.second == false) // If stmt.back() is single expression or stmt ended without a trailing ',', ...
+									stmt->exprs.push_back($2); // Append expr to stmt
+								else if ($2->exprtype != ExprAST::ExprType::LIST) // If stmt.back() is a list, but expr is a single expression ...
+									((ExprListAST*)stmt->exprs.back())->push_back($2); // Append expr to stmt.back()
+								else // If both stmt.back() and expr are lists ...
+								{
+									 // Merge expr into stmt.back()
+									((ExprListAST*)stmt->exprs.back())->push_back(((ExprListAST*)$2)->exprs.front());
+									delete $2;
+								}
+								$$ = std::make_pair(stmt, $2->exprtype == ExprAST::ExprType::LIST);
+							}
+	| stmt ELLIPSIS	{
+								ExprListAST* stmt = $1.first;
+								if (stmt->exprs.back()->exprtype == ExprAST::ExprType::ELLIPSIS)
+									{} // Swallow subsequent ellipses
+								else if (stmt->exprs.back()->exprtype != ExprAST::ExprType::LIST || $1.second == false)
+									stmt->exprs.back() = new EllipsisExprAST(getloc(@2, @2), stmt->exprs.back());
+								else
+									((ExprListAST*)stmt->exprs.back())->exprs.back() = new EllipsisExprAST(getloc(@2, @2), ((ExprListAST*)stmt->exprs.back())->exprs.back());
+								$$ = std::make_pair(stmt, false);
+							}
+	| stmt ':' expr_or_single_expr_list	{
+								ExprListAST* stmt = $1.first;
+								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_col, @3.end.line, @3.end.column};
+								stmt->exprs.back() = new BinOpExprAST(loc, (int)':', ":", stmt->exprs.back(), $3);
+								$$ = std::make_pair(stmt, $3->exprtype == ExprAST::ExprType::LIST);
+							}
+;
+
+optional_stmt
+	: %empty { $$ = new ExprListAST('\0'); }
+	| stmt { $$ = $1.first; }
 ;
 
 expr_string
-	: expr					{
-								ExprListAST* expr_string = new ExprListAST('\0');
-								expr_string->exprs.push_back($1);
-								$$ = std::make_pair(expr_string, $1->exprtype == ExprAST::ExprType::LIST);
-							}
-	| expr_string expr		{
-								ExprListAST* expr_string = $1.first;
-								if (expr_string->exprs.back()->exprtype != ExprAST::ExprType::LIST || $1.second == false) // If expr_string.back() is single expression or expr_string ended without a trailing ',', ...
-									expr_string->exprs.push_back($2); // Append expr to expr_string
-								else if ($2->exprtype != ExprAST::ExprType::LIST) // If expr_string.back() is a list, but expr is a single expression ...
-									((ExprListAST*)expr_string->exprs.back())->push_back($2); // Append expr to expr_string.back()
-								else // If both expr_string.back() and expr are lists ...
-								{
-									 // Merge expr into expr_string.back()
-									((ExprListAST*)expr_string->exprs.back())->push_back(((ExprListAST*)$2)->exprs.front());
-									delete $2;
-								}
-								$$ = std::make_pair(expr_string, $2->exprtype == ExprAST::ExprType::LIST);
-							}
-	| expr_string ELLIPSIS	{
-								ExprListAST* expr_string = $1.first;
-								if (expr_string->exprs.back()->exprtype == ExprAST::ExprType::ELLIPSIS)
-									{} // Swallow subsequent ellipses
-								else if (expr_string->exprs.back()->exprtype != ExprAST::ExprType::LIST || $1.second == false)
-									expr_string->exprs.back() = new EllipsisExprAST(getloc(@2, @2), expr_string->exprs.back());
-								else
-									((ExprListAST*)expr_string->exprs.back())->exprs.back() = new EllipsisExprAST(getloc(@2, @2), ((ExprListAST*)expr_string->exprs.back())->exprs.back());
-								$$ = std::make_pair(expr_string, false);
-							}
-	| expr_string ':' expr	{
-								ExprListAST* expr_string = $1.first;
-								const Location& loc = Location{filename, expr_string->exprs.back()->loc.begin_line, expr_string->exprs.back()->loc.begin_col, @3.end.line, @3.end.column};
-								expr_string->exprs.back() = new BinOpExprAST(loc, (int)':', ":", expr_string->exprs.back(), $3);
-								$$ = std::make_pair(expr_string, $3->exprtype == ExprAST::ExprType::LIST);
-							}
+	: expr_list { $$ = new ExprListAST('\0'); $$->exprs.push_back($1); }
+	| expr_string expr_list { ($$ = $1)->exprs.push_back($2); }
+	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
 ;
 
 optional_expr_string
 	: %empty { $$ = new ExprListAST('\0'); }
-	| expr_string { $$ = $1.first; }
+	| expr_string { $$ = $1; }
 ;
 
 expr_list
 	: expr { $$ = new ExprListAST(','); $$->exprs.push_back($1); }
-	| expr_list expr { ($$ = $1)->exprs.push_back($2); }
-	| expr_list ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
-;
-
-optional_expr_list
-	: %empty { $$ = new ExprListAST(','); }
-	| expr_list { $$ = $1; }
+	| expr_list ',' expr { ($$ = $1)->exprs.push_back($3); }
+	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
 ;
 
 expr_idx
-	: optional_expr_list { $$ = new ExprListAST(':'); $$->exprs.push_back($1); }
-	| ':' optional_expr_list { $$ = new ExprListAST(':'); $$->exprs.push_back(new ExprListAST('\0')); $$->exprs.push_back($2); }
-	| expr_idx ':' optional_expr_list { ($$ = $1)->exprs.push_back($3); }
+	: optional_expr_string { $$ = new ExprListAST(':'); $$->exprs.push_back($1); }
+	| ':' optional_expr_string { $$ = new ExprListAST(':'); $$->exprs.push_back(new ExprListAST('\0')); $$->exprs.push_back($2); }
+	| expr_idx ':' optional_expr_string { ($$ = $1)->exprs.push_back($3); }
 	| expr_idx ':' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
 ;
 
@@ -142,12 +148,12 @@ expr
 	| id_or_plchld { $$ = $1; }
 
 	// Enclosed expressions
-	| '(' optional_expr_string ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
+	| '(' optional_stmt ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
 	| '[' expr_idx ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
-	| '{' optional_expr_string '}' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'{', "{", "}", $2); }
+	| '{' optional_stmt '}' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'{', "{", "}", $2); }
 
 	// Parameterized expressions
-	| expr '(' optional_expr_string ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '(' optional_stmt ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
 	| expr '[' expr_idx ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
 
 	// Binary operators
@@ -173,7 +179,6 @@ expr
 	| expr OR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
 
 	// Unary operators
-	| expr ',' { $$ = new ExprListAST(',', std::vector<ExprAST*>(1, $1)); }
 	| '+' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
 	| expr '+' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'+', "+", $1); } //TODO: Precedence
 	| '-' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
@@ -184,6 +189,11 @@ expr
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
 	| AWT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::AWT, "await", $2); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
+;
+
+expr_or_single_expr_list
+	: expr { $$ = $1; }
+	| expr ',' { $$ = new ExprListAST(',', std::vector<ExprAST*>(1, $1)); }
 ;
 
 %%

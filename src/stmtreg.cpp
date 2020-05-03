@@ -143,7 +143,15 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 			// Match non-ellipsis template expression
 			if (!tplt[0]->match(block, expr[0], score))
 				return false;
-			++tplt, ++expr;
+
+//TODO: Figure out logic for looking up expressions ahead of looking up statements
+if ((expr++)[0]->exprtype == ExprAST::ExprType::BLOCK) // Expressions are only resolved up to the next STOP or BLOCK. If we just successfully matched BLOCK, resolve further ...
+{
+	for (ExprASTIter exprIter = expr; exprIter != exprEnd && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
+		if ((*exprIter)->resolvedContext == nullptr)
+			(*exprIter)->resolveTypes(const_cast<BlockExprAST*>(block));
+}
+			++tplt;
 		}
 	}
 

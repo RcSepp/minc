@@ -41,6 +41,19 @@ RS			>>
 LS			<<
 AND			&&
 OR			\|\|
+CADD		\+=
+CSUB		-=
+CMUL		\*=
+CMML		@=
+CDIV		\/=
+CMOD		%=
+CAND		&=
+COR			\|=
+CXOR		^=
+CLS			<<=
+CRS			>>=
+CPOW		\*\*=
+CIDV		\/\/=
 AWT			await
 NEW			new
 DM			->
@@ -220,6 +233,19 @@ DM			->
 <normal>{LS}							return token::LS;
 <normal>{AND}							return token::AND;
 <normal>{OR}							return token::OR;
+<normal>{CADD}							return token::CADD;
+<normal>{CSUB}							return token::CSUB;
+<normal>{CMUL}							return token::CMUL;
+<normal>{CMML}							return token::CMML;
+<normal>{CDIV}							return token::CDIV;
+<normal>{CMOD}							return token::CMOD;
+<normal>{CAND}							return token::CAND;
+<normal>{COR}							return token::COR;
+<normal>{CXOR}							return token::CXOR;
+<normal>{CLS}							return token::CLS;
+<normal>{CRS}							return token::CRS;
+<normal>{CPOW}							return token::CPOW;
+<normal>{CIDV}							return token::CIDV;
 
 <normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:|<|>|%	return yytext[0];
 

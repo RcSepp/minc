@@ -26,7 +26,7 @@
 %}
 
 %token ELLIPSIS
-%token EQ NE GEQ LEQ RS LS AWT NEW DM
+%token EQ NE GEQ LEQ RS LS AND OR CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV AWT NEW DM
 %token NEWLINE INDENT OUTDENT
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
@@ -38,7 +38,7 @@
 %type<ExprAST*> id_or_plchld expr expr_or_single_expr_list
 
 %start file
-%right '=' '?' ':'
+%right '=' '?' ':' CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV
 %left OR
 %left AND
 %left '&'
@@ -158,6 +158,19 @@ expr
 
 	// Binary operators
 	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
+	| expr CADD expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CADD, "+=", $1, $3); }
+	| expr CSUB expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CSUB, "-=", $1, $3); }
+	| expr CMUL expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CMUL, "*=", $1, $3); }
+	| expr CMML expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CMML, "@=", $1, $3); }
+	| expr CDIV expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CDIV, "/=", $1, $3); }
+	| expr CMOD expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CMOD, "%=", $1, $3); }
+	| expr CAND expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CAND, "&=", $1, $3); }
+	| expr COR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::COR, "|=", $1, $3); }
+	| expr CXOR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CXOR, "^=", $1, $3); }
+	| expr CLS expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CLS, "<<=", $1, $3); }
+	| expr CRS expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CRS, ">>=", $1, $3); }
+	| expr CPOW expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CPOW, "**=", $1, $3); }
+	| expr CIDV expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::CIDV, "//=", $1, $3); }
 	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
 	| expr '.' ELLIPSIS { $$ = new VarBinOpExprAST(getloc(@1, @3), (int)'.', ".", $1); }
 	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
@@ -180,9 +193,7 @@ expr
 
 	// Unary operators
 	| '+' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
-	| expr '+' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'+', "+", $1); } //TODO: Precedence
 	| '-' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
-	| expr '-' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'-', "-", $1); } //TODO: Precedence
 	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
 	| expr '*' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'*', "*", $1); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }

@@ -483,11 +483,11 @@ public:
 class LiteralExprAST : public ExprAST
 {
 public:
-	const char* value;
+	const std::string value;
 	LiteralExprAST(const Location& loc, const char* value) : ExprAST(loc, ExprAST::ExprType::LITERAL), value(value) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
-		return expr->exprtype == this->exprtype && strcmp(((LiteralExprAST*)expr)->value,  this->value) == 0;
+		return expr->exprtype == this->exprtype && ((LiteralExprAST*)expr)->value == this->value;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
 	std::string str() const { return std::regex_replace(std::regex_replace(value, std::regex("\n"), "\\n"), std::regex("\r"), "\\r"); }
@@ -496,15 +496,15 @@ public:
 		int c = ExprAST::comp(other);
 		if (c) return c;
 		const LiteralExprAST* _other = (const LiteralExprAST*)other;
-		return strcmp(this->value, _other->value);
+		return this->value.compare(_other->value);
 	}
-	ExprAST* clone() { return new LiteralExprAST(loc, value); }
+	ExprAST* clone() { return new LiteralExprAST(loc, value.c_str()); }
 };
 
 class IdExprAST : public ExprAST
 {
 public:
-	const char* name;
+	const std::string name;
 	IdExprAST(const Location& loc, const char* name) : ExprAST(loc, ExprAST::ExprType::ID), name(name) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const {}
@@ -514,9 +514,9 @@ public:
 		int c = ExprAST::comp(other);
 		if (c) return c;
 		const IdExprAST* _other = (const IdExprAST*)other;
-		return strcmp(this->name, _other->name);
+		return this->name.compare(_other->name);
 	}
-	ExprAST* clone() { return new IdExprAST(loc, name); }
+	ExprAST* clone() { return new IdExprAST(loc, name.c_str()); }
 };
 
 class CastExprAST : public ExprAST

@@ -581,7 +581,7 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 bool IdExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	score += 6; // Reward exact match (score is disregarded on mismatch)
-	return expr->exprtype == this->exprtype && strcmp(((IdExprAST*)expr)->name, this->name) == 0;
+	return expr->exprtype == this->exprtype && ((IdExprAST*)expr)->name == this->name;
 }
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
@@ -606,17 +606,17 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 		else
 		{
 			score += 7; // Reward exact match
-			const char* value = ((const LiteralExprAST*)expr)->value;
-			const char* valueEnd = value + strlen(value) - 1;
-			if (*valueEnd == '"' || *valueEnd == '\'')
+			const std::string& value = ((const LiteralExprAST*)expr)->value;
+			if (value.back() == '"' || value.back() == '\'')
 			{
-				size_t prefixLen = strchr(value, *valueEnd) - value;
-				return strncmp(p2, value, prefixLen) == 0 && p2[prefixLen] == '\0';
+				size_t prefixLen = value.rfind(value.back());
+				return value.compare(0, prefixLen, p2) == 0 && p2[prefixLen] == '\0';
 			}
 			else
 			{
-				for (value = valueEnd; *value != '-' && (*value < '0' || *value > '9'); --value) {}
-				return strcmp(p2, ++value) == 0;
+				const char* postFix;
+				for (postFix = value.c_str() + value.size() - 1; *postFix != '-' && (*postFix < '0' || *postFix > '9'); --postFix) {}
+				return strcmp(p2, ++postFix) == 0;
 			}
 		}
 	case 'B': score += 6; return expr->exprtype == ExprAST::ExprType::BLOCK;

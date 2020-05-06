@@ -1,0 +1,52 @@
+import paws;
+
+// Test expression `getFileScope()` and expression `test($E<PawsBase>)`
+assert type(getFileScope()) == PawsBlockExprAST;
+
+// Test symbol `FILE_SCOPE_TYPE`
+assert type(FILE_SCOPE_TYPE) == PawsScopeType;
+
+// Test statement `$E<PawsBase>`, expression `$I` and expression `$I<PawsBase> = $E<PawsBase>`
+a = 1;
+assert a;
+
+// Test statement `$B`
+b = 0;
+{
+	b = 1;
+}
+assert b;
+
+// Test expression `($E)`
+c = (1);
+assert c;
+
+// Test expression `$L`
+assert "1" == "1";
+
+// Test statement `if($E<PawsInt>) $S`
+if (1) assert 1;
+
+// Test statement `if($E<PawsInt>) $S else $S`
+if (1) assert 1; else assert 0;
+if (0) assert 0; else assert 1;
+
+// Test expression `$E<PawsInt> ? $E : $E`
+assert 0 ? 0 : 1;
+assert 1 ? 1 : 0;
+
+// Test statement `while($E<PawsInt>) $S`
+i = 0;
+while (i != 2) i = i + 1;
+assert i == 2;
+
+// Test statement `for($E; $E; $E) $B`
+k = 0;
+for (j = 0; j != 3; j = j + 1) { k = k + j + 1; }
+assert k == 6;
+
+// Test expression `str($E<PawsBase>)`
+assert str(123) == "123";
+
+// Test file-scope `return $E<PawsInt>` statement
+return 123;

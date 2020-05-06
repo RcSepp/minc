@@ -434,6 +434,17 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		PawsInt::TYPE
 	);
 
+	defineExpr(pkgScope, "$E<PawsMetaType> == $E<PawsMetaType>",
+		+[](PawsType* a, PawsType* b) -> int {
+			return a == b;
+		}
+	);
+	defineExpr(pkgScope, "$E<PawsMetaType> != $E<PawsMetaType>",
+		+[](PawsType* a, PawsType* b) -> int {
+			return a != b;
+		}
+	);
+
 	// Define pointer equivalence operators
 	//TODO: Generalize this beyond PawsConstExprAST
 	defineExpr(pkgScope, "$E<PawsConstExprAST> == NULL",
@@ -619,6 +630,14 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			return Variable(PawsMetaType::TYPE, new PawsMetaType((PawsType*)getType(exprAST, parentBlock)));
 		},
 		PawsMetaType::TYPE
+	);
+
+	defineStmt2(pkgScope, "assert $E<PawsInt>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			int test = ((PawsInt*)codegenExpr(params[0], parentBlock).value)->get();
+			if (!test)
+				raiseCompileError("Assertion failed", params[0]);
+		}
 	);
 
 	defineExpr(pkgScope, "parseCFile($E<PawsString>)",

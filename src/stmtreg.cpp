@@ -83,7 +83,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 		{
 			++tplt; // Eat $S
 
-			if (!block->lookupStatement(expr, exprEnd))
+			if (block->lookupStatement(expr, exprEnd).first == nullptr)
 				return false;
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -237,11 +237,11 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 			++tplt; // Eat $S
 
 			const ExprASTIter beginExpr = expr;
-			const std::pair<const ExprListAST, CodegenContext*>* stmtContext = block->lookupStatement(expr, exprEnd);
+			const std::pair<const ExprListAST*, CodegenContext*> stmtContext = block->lookupStatement(expr, exprEnd);
 			const ExprASTIter endExpr = expr;
-			assert(stmtContext);
-			StmtAST* stmt = new StmtAST(beginExpr, endExpr, stmtContext->second);
-			stmt->collectParams(block, stmtContext->first);
+			assert(stmtContext.first != nullptr);
+			StmtAST* stmt = new StmtAST(beginExpr, endExpr, stmtContext.second);
+			stmt->collectParams(block, *stmtContext.first);
 			storeParam(stmt, params, paramIdx++);
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -346,25 +346,30 @@ void StmtAST::collectParams(const BlockExprAST* block, const ExprListAST& tplt)
 	collectStatement(block, tplt.cbegin(), tplt.cend(), begin, end, resolvedParams, paramIdx);
 }
 
-const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const
+void StatementRegister::defineStatement(const ExprListAST* tplt, CodegenContext* stmt)
+{
+	stmtreg[tplt] = stmt;
+}
+
+std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	ExprASTIter currentStmtEnd, stmtEnd = bestStmtEnd;
-	const std::pair<const ExprListAST, CodegenContext*>* bestStmt = nullptr;
-	for (const std::pair<const ExprListAST, CodegenContext*>& iter: stmtreg)
+	std::pair<const ExprListAST*, CodegenContext*> bestStmt = {nullptr, nullptr};
+	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
 	{
 #ifdef DEBUG_STMTREG
-		printf("%scandidate `%s`", indent.c_str(), iter.first.str().c_str());
+		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
 #endif
 		currentScore = 0;
-		if (matchStatement(block, iter.first.exprs.cbegin(), iter.first.exprs.cend(), stmt, stmtEnd, currentScore, &currentStmtEnd))
+		if (matchStatement(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), stmt, stmtEnd, currentScore, &currentStmtEnd))
 #ifdef DEBUG_STMTREG
 		{
 #endif
 			if (currentScore > bestScore)
 			{
 				bestScore = currentScore;
-				bestStmt = &iter;
+				bestStmt = iter;
 				bestStmtEnd = currentStmtEnd;
 			}
 #ifdef DEBUG_STMTREG
@@ -376,15 +381,36 @@ const std::pair<const ExprListAST, CodegenContext*>* StatementRegister::lookupSt
 	if (antiStmt != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
-		return new std::pair<const ExprListAST, CodegenContext*>(ExprListAST('\0'), antiStmt);
+		return std::pair<const ExprListAST*, CodegenContext*>(new ExprListAST('\0'), antiStmt);
 	}
 	return bestStmt;
 }
 
-const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
+size_t StatementRegister::countStatements() const
+{
+	return stmtreg.size();
+}
+
+void StatementRegister::iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
+{
+	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
+		cbk(iter.first, iter.second);
+}
+
+void StatementRegister::defineAntiStatement(CodegenContext* stmt)
+{
+	antiStmt = stmt;
+}
+
+void StatementRegister::defineExpr(const ExprAST* tplt, CodegenContext* expr)
+{
+	exprreg[tplt->exprtype][tplt] = expr;
+}
+
+std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	const std::pair<const ExprAST*const, CodegenContext*>* bestExpr = nullptr;
+	std::pair<const ExprAST*, CodegenContext*> bestExpr = {nullptr, nullptr};
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
@@ -398,7 +424,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 			if (currentScore > bestScore)
 			{
 				bestScore = currentScore;
-				bestExpr = &iter;
+				bestExpr = iter;
 			}
 #ifdef DEBUG_STMTREG
 			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
@@ -419,7 +445,7 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 			if (currentScore > bestScore)
 			{
 				bestScore = currentScore;
-				bestExpr = &iter;
+				bestExpr = iter;
 			}
 #ifdef DEBUG_STMTREG
 			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
@@ -430,15 +456,14 @@ const std::pair<const ExprAST*const, CodegenContext*>* StatementRegister::lookup
 	if (antiExpr != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
-		return new std::pair<const ExprAST*const, CodegenContext*>(nullptr, antiExpr);
+		return std::pair<const ExprAST*, CodegenContext*>(nullptr, antiExpr);
 	}
 	return bestExpr;
 }
 
-void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const
+void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
 {
 	MatchScore score;
-	const std::pair<const ExprAST*const, CodegenContext*>* bestStmt = nullptr;
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 		score = 0;
@@ -476,7 +501,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 #endif
 	expr->resolvedParams.clear();
 	MatchScore currentScore, score = -2147483648;
-	const std::pair<const ExprAST*const, CodegenContext*> *currentContext, *context = nullptr;
+	std::pair<const ExprAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -501,18 +526,18 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	indent = indent.substr(0, indent.size() - 1);
 #endif
 
-	if (context)
+	if (context.first)
 	{
 		size_t paramIdx = 0;
-		context->first->collectParams(this, expr, expr->resolvedParams, paramIdx);
-		expr->resolvedContext = context->second;
+		context.first->collectParams(this, expr, expr->resolvedParams, paramIdx);
+		expr->resolvedContext = context.second;
 		return true;
 	}
 	else
 		return false;
 }
 
-const std::pair<const ExprListAST, CodegenContext*>* BlockExprAST::lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const
+std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const
 {
 //TODO: Figure out logic for looking up expressions ahead of looking up statements
 for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
@@ -531,7 +556,7 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 	// Get context of best match
 	MatchScore currentScore, score = -2147483648;
 	ExprASTIter currentStmtEnd, stmtEnd;
-	const std::pair<const ExprListAST, CodegenContext*> *currentContext, *context = nullptr;
+	std::pair<const ExprListAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -561,7 +586,7 @@ for (ExprASTIter exprIter = exprs; exprIter != exprEnd && (*exprIter)->exprtype 
 #endif
 
 	// Advance exprs parameter to beginning of next statement
-	if (context)
+	if (context.first)
 	{
 		exprs = stmtEnd;
 		if (exprs != exprEnd && (*exprs)->exprtype == ExprAST::ExprType::STOP)

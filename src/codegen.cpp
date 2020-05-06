@@ -582,13 +582,13 @@ extern "C"
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)
 	{
 		std::string report = "";
-		std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&> candidates;
+		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&> candidates;
 		std::vector<ExprAST*> resolvedParams;
 		scope->lookupExprCandidates(expr, candidates);
 		for (auto& candidate: candidates)
 		{
 			const MatchScore score = candidate.first;
-			const std::pair<const ExprAST*const, CodegenContext*>& context = candidate.second;
+			const std::pair<const ExprAST*, CodegenContext*>& context = candidate.second;
 			size_t paramIdx = 0;
 			resolvedParams.clear();
 			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams, paramIdx);
@@ -835,13 +835,13 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 		for (ExprASTIter endExpr = exprs->cbegin() + exprIdx; endExpr != exprs->cend(); exprIdx = endExpr - exprs->cbegin())
 		{
 			const ExprASTIter beginExpr = endExpr;
-			const std::pair<const ExprListAST, CodegenContext*>* stmtContext = lookupStatement(endExpr, exprs->cend());
+			std::pair<const ExprListAST*, CodegenContext*> stmtContext = lookupStatement(endExpr, exprs->cend());
 
-			StmtAST stmt(beginExpr, endExpr, stmtContext ? stmtContext->second : nullptr);
-			if (stmtContext == nullptr)
+			StmtAST stmt(beginExpr, endExpr, stmtContext.second);
+			if (stmtContext.first == nullptr)
 				throw UndefinedStmtException(&stmt);
 
-			stmt.collectParams(this, stmtContext->first);
+			stmt.collectParams(this, *stmtContext.first);
 			stmt.codegen(this);
 
 #ifndef DISABLE_RESULT_CACHING

@@ -177,27 +177,31 @@ std::vector<ExprAST*>::iterator begin(ExprListAST* exprs);
 std::vector<ExprAST*>::iterator end(ExprListAST& exprs);
 std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
 
+namespace std
+{
+	template<> struct less<const ExprListAST*>
+	{
+		bool operator()(const ExprListAST* lhs, const ExprListAST* rhs) const { return lhs->comp(rhs) < 0; }
+	};
+}
+
 class StatementRegister
 {
 private:
-	std::map<const ExprListAST, CodegenContext*> stmtreg;
+	std::map<const ExprListAST*, CodegenContext*> stmtreg;
 	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
 	CodegenContext *antiStmt, *antiExpr;
 public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
-	void defineStatement(const std::vector<ExprAST*>& tplt, CodegenContext* stmt) { stmtreg[ExprListAST('\0', tplt)] = stmt; }
-	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
-	size_t countStatements() const { return stmtreg.size(); }
-	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
-	{
-		for (const std::pair<const ExprListAST, CodegenContext*>& iter: stmtreg)
-			cbk(&iter.first, iter.second);
-	}
-	void defineAntiStatement(CodegenContext* stmt) { antiStmt = stmt; }
+	void defineStatement(const ExprListAST* tplt, CodegenContext* stmt);
+	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
+	size_t countStatements() const;
+	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const;
+	void defineAntiStatement(CodegenContext* stmt);
 
-	void defineExpr(const ExprAST* tplt, CodegenContext* expr) { exprreg[tplt->exprtype][tplt] = expr; }
-	const std::pair<const ExprAST*const, CodegenContext*>* lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
-	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const;
+	void defineExpr(const ExprAST* tplt, CodegenContext* expr);
+	std::pair<const ExprAST*, CodegenContext*> lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
+	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 	void defineAntiExpr(CodegenContext* expr) { antiExpr = expr; }
@@ -284,9 +288,6 @@ private:
 	std::map<std::string, Variable> scope;
 	CastRegister castreg;
 
-	const std::pair<const ExprListAST, CodegenContext*>* lookupStatementInternal(const BlockExprAST* block, ExprASTIter& exprs, ExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
-	const std::pair<const ExprAST*const, CodegenContext*>* lookupExprInternal(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
-
 public:
 	BlockExprAST* parent;
 	std::vector<BlockExprAST*> references;
@@ -306,9 +307,9 @@ public:
 	{
 		for (ExprAST* tpltExpr: tplt)
 			tpltExpr->resolveTypes(this);
-		stmtreg.defineStatement(tplt, stmt);
+		stmtreg.defineStatement(new ExprListAST('\0', tplt), stmt);
 	}
-	const std::pair<const ExprListAST, CodegenContext*>* lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
+	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
 	size_t countStatements() const { return stmtreg.countStatements(); }
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }
 	void defineAntiStatement(CodegenContext* stmt) { stmtreg.defineAntiStatement(stmt); }
@@ -319,7 +320,7 @@ public:
 		stmtreg.defineExpr(tplt, expr);
 	}
 	bool lookupExpr(ExprAST* expr) const;
-	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*const, CodegenContext*>&>& candidates) const
+	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{

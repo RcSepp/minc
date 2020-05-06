@@ -535,7 +535,7 @@ public:
 		return false;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
-	std::string str() const { assert(0); return ""; }
+	std::string str() const { return "cast expression from " + getTypeName(cast->fromType) + " to " + getTypeName(cast->toType); }
 	ExprAST* getDerivedExpr();
 	ExprAST* clone() { return new CastExprAST(cast, resolvedParams[0]); }
 };

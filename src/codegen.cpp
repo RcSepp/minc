@@ -227,11 +227,11 @@ extern "C"
 	}
 	const char* getIdExprASTName(const IdExprAST* expr)
 	{
-		return expr->name;
+		return expr->name.c_str();
 	}
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr)
 	{
-		return expr->value;
+		return expr->value.c_str();
 	}
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr)
 	{

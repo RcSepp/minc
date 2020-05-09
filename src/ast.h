@@ -548,6 +548,12 @@ public:
 	char* p2;
 	bool allowCast;
 	PlchldExprAST(const Location& loc, char p1) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), p2(nullptr), allowCast(false) {}
+	PlchldExprAST(const Location& loc, char p1, const char* p2, bool allowCast) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p1), allowCast(allowCast)
+	{
+		size_t p2len = strlen(p2);
+		this->p2 = new char[p2len + 1];
+		memcpy(this->p2, p2, p2len + 1);
+	}
 	PlchldExprAST(const Location& loc, const char* p2) : ExprAST(loc, ExprAST::ExprType::PLCHLD), p1(p2[0])
 	{
 		size_t p2len = strlen(++p2);
@@ -581,7 +587,7 @@ public:
 		if (this->p2 == nullptr || _other->p2 == nullptr) return this->p2 - _other->p2;
 		return strcmp(this->p2, _other->p2);
 	}
-	ExprAST* clone() { return p2 == nullptr ? new PlchldExprAST(loc, p1) : new PlchldExprAST(loc, p2); }
+	ExprAST* clone() { return p2 == nullptr ? new PlchldExprAST(loc, p1) : new PlchldExprAST(loc, p1, p2, allowCast); }
 };
 
 class ParamExprAST : public ExprAST

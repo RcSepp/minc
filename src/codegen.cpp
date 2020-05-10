@@ -672,12 +672,10 @@ StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* con
 {
 	resolvedContext = context;
 }
+StmtAST::StmtAST() : ExprAST(Location{0}, ExprAST::ExprType::STMT) {}
 
 StmtAST::~StmtAST()
 {
-	// Unresolve expressions
-	for (ExprASTIter exprIter = begin; exprIter != end; ++exprIter)
-		(*exprIter)->resolvedContext = nullptr;
 }
 
 void BlockExprAST::import(BlockExprAST* importBlock)
@@ -841,15 +839,10 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	{
 		for (ExprASTIter endExpr = exprs->cbegin() + exprIdx; endExpr != exprs->cend(); exprIdx = endExpr - exprs->cbegin())
 		{
-			const ExprASTIter beginExpr = endExpr;
-			std::pair<const ExprListAST*, CodegenContext*> stmtContext = lookupStatement(endExpr, exprs->cend());
-
-			StmtAST stmt(beginExpr, endExpr, stmtContext.second);
-			if (stmtContext.first == nullptr)
-				throw UndefinedStmtException(&stmt);
-
-			stmt.collectParams(this, *stmtContext.first);
-			stmt.codegen(this);
+			StmtAST stmtNew;
+			if (!lookupStatement(endExpr, stmtNew))
+				throw UndefinedStmtException(&stmtNew);
+			stmtNew.codegen(this);
 
 #ifndef DISABLE_RESULT_CACHING
 			// Clear cached expressions
@@ -960,9 +953,6 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 #endif
 
-	if (!resolvedContext)
-		parentBlock->lookupExpr(this);
-
 	if (resolvedContext)
 	{
 		Variable var;
@@ -1072,7 +1062,7 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 	return VOID;
 }
 
-void ExprAST::resolveTypes(BlockExprAST* block)
+void ExprAST::resolveTypes(const BlockExprAST* block)
 {
 	block->lookupExpr(this);
 }

@@ -65,7 +65,7 @@ class Expr
 class ExprAST
 {
 public:
-	const Location loc;
+	Location loc;
 	enum ExprType {
 		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ARGOP, ENCOP, TEROP, BINOP, VARBINOP, PREOP, POSTOP, BLOCK,
 		NUM_EXPR_TYPES
@@ -82,7 +82,7 @@ public:
 	virtual BaseType* getType(const BlockExprAST* parentBlock) const;
 	virtual bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
-	virtual void resolveTypes(BlockExprAST* block);
+	virtual void resolveTypes(const BlockExprAST* block);
 	virtual std::string str() const = 0;
 	virtual std::string shortStr() const { return str(); }
 	virtual int comp(const ExprAST* other) const { return this->exprtype - other->exprtype; }
@@ -97,6 +97,88 @@ namespace std
 		bool operator()(const ExprAST* lhs, const ExprAST* rhs) const { return lhs->comp(rhs) < 0; }
 	};
 }
+
+// class StreamingExprASTIter : public ExprASTIter
+// {
+// 	std::function<ExprASTIter(ExprASTIter current)> next;
+
+// public:
+// 	StreamingExprASTIter(ExprASTIter iter, std::function<ExprASTIter(ExprASTIter current)> next) : ExprASTIter(iter), next(next) {}
+
+// 	StreamingExprASTIter operator+(const difference_type& n)
+// 	{
+// 		ExprASTIter newIter = *this;
+// 		for (size_t i = 0; i != n; ++i)
+// 			newIter = next(newIter);
+// 		return StreamingExprASTIter(newIter, next);
+// 	}
+// 	StreamingExprASTIter& operator+=(const difference_type& n)
+// 	{
+// 		for (size_t i = 0; i != n; ++i)
+// 			_M_current = next(*this).base();
+// 		return *this;
+// 	}
+// 	StreamingExprASTIter operator++(int)
+// 	{
+// 		ExprASTIter prevIter = *this;
+// 		_M_current = next(*this).base();
+// 		return StreamingExprASTIter(prevIter, next);
+// 	}
+// 	StreamingExprASTIter& operator++()
+// 	{
+// 		_M_current = next(*this).base();
+// 		return *this;
+// 	}
+// };
+class StreamingExprASTIter
+{
+	std::vector<ExprAST*>* buffer;
+	size_t idx;
+	std::function<bool()> next;
+
+public:
+	static bool defaultNext() { return false; }
+	StreamingExprASTIter(std::vector<ExprAST*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext) : buffer(buffer), idx(idx), next(next)
+	{
+		if (buffer != nullptr)
+			for(size_t i = buffer->size(); i <= idx; ++i)
+				if (!next())
+				{
+					idx = buffer->size();
+					break;
+				}
+	}
+	StreamingExprASTIter(const StreamingExprASTIter& other) = default;
+	bool done()
+	{
+		return idx == buffer->size() && !next();
+	}
+
+	ExprAST* operator*() { return idx != buffer->size() ? buffer->at(idx) : nullptr; }
+	ExprAST* operator[](int i) { return idx + i < buffer->size() ? buffer->at(idx + i) : nullptr; }
+	size_t operator-(const StreamingExprASTIter& other) const { return idx - other.idx; }
+	StreamingExprASTIter& operator=(const StreamingExprASTIter& other) = default;
+
+	StreamingExprASTIter operator+(int n) const
+	{
+		return StreamingExprASTIter(buffer, idx + n, next);
+	}
+	StreamingExprASTIter operator++(int)
+	{
+		if (done())
+			return *this;
+		else
+			return StreamingExprASTIter(buffer, idx++, next);
+	}
+	StreamingExprASTIter& operator++()
+	{
+		if (!done())
+			++idx;
+		return *this;
+	}
+
+	ExprASTIter iter() const { return buffer->cbegin() + idx; }
+};
 
 class LocExprAST : public ExprAST
 {
@@ -119,7 +201,7 @@ public:
 	Variable codegen(BlockExprAST* parentBlock) { assert(0); return Variable(nullptr, nullptr); /* Unreachable */ }
 	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(BlockExprAST* block) { for (auto expr: exprs) expr->resolveTypes(block); }
+	void resolveTypes(const BlockExprAST* block) { for (auto expr: exprs) expr->resolveTypes(block); }
 	std::string str() const
 	{
 		if (exprs.empty())
@@ -194,7 +276,7 @@ private:
 public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
 	void defineStatement(const ExprListAST* tplt, CodegenContext* stmt);
-	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(const BlockExprAST* block, const ExprASTIter stmt, ExprASTIter& stmtEnd, MatchScore& score) const;
+	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& stmtEnd, MatchScore& score) const;
 	size_t countStatements() const;
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const;
 	void defineAntiStatement(CodegenContext* stmt);
@@ -247,15 +329,34 @@ public:
 class StmtAST : public ExprAST
 {
 public:
+	class ExprASTIterator : public ExprASTIter
+	{
+		StmtAST* const stmt;
+
+	public:
+		ExprASTIterator(ExprASTIter iter, StmtAST* stmt) : ExprASTIter(iter), stmt(stmt) {}
+
+		//ExprAST*& operator*() const { return *iter; }
+		//ExprASTIter operator->() const { return &*iter; }
+
+		ExprASTIterator& operator++() { ExprASTIter::operator++(); return *this; }
+		ExprASTIterator operator++(int) { return ExprASTIterator(*(this + 1), stmt); }
+
+		// friend bool operator==(ExprASTIterator a, ExprASTIterator b);
+		// friend bool operator!=(ExprASTIterator a, ExprASTIterator b);
+	};
+
 	ExprASTIter begin, end;
+	std::vector<ExprAST*> resolvedExprs;
+	ExprASTIter sourceExprPtr;
 
 	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
+	StmtAST();
 	~StmtAST();
-	void collectParams(const BlockExprAST* block, const ExprListAST& tplt);
 	Variable codegen(BlockExprAST* parentBlock);
 bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); return false; /* Unreachable */ }
 void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
-void resolveTypes(BlockExprAST* block) { assert(0); }
+void resolveTypes(const BlockExprAST* block) { assert(0); }
 	std::string str() const
 	{
 		if (begin == end)
@@ -310,7 +411,8 @@ public:
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(new ExprListAST('\0', tplt), stmt);
 	}
-	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(ExprASTIter& exprs, const ExprASTIter exprEnd) const;
+	bool lookupStatement(ExprASTIter& beginExpr, StmtAST& stmt) const;
+	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStatements() const { return stmtreg.countStatements(); }
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }
 	void defineAntiStatement(CodegenContext* stmt) { stmtreg.defineAntiStatement(stmt); }
@@ -621,7 +723,7 @@ public:
 	EllipsisExprAST(const Location& loc, ExprAST* expr) : ExprAST(loc, ExprAST::ExprType::ELLIPSIS), expr(expr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		expr->resolveTypes(block);
 		ExprAST::resolveTypes(block);
@@ -659,7 +761,7 @@ public:
 		var->collectParams(block, ((ArgOpExprAST*)expr)->var, params, paramIdx);
 		args->collectParams(block, ((ArgOpExprAST*)expr)->args, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		var->resolveTypes(block);
 		args->resolveTypes(block);
@@ -699,7 +801,7 @@ public:
 	{
 		val->collectParams(block, ((EncOpExprAST*)expr)->val, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		val->resolveTypes(block);
 		ExprAST::resolveTypes(block);
@@ -741,7 +843,7 @@ public:
 		b->collectParams(block, ((TerOpExprAST*)expr)->b, params, paramIdx);
 		c->collectParams(block, ((TerOpExprAST*)expr)->c, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		a->resolveTypes(block);
 		b->resolveTypes(block);
@@ -782,7 +884,7 @@ public:
 	{
 		a->collectParams(block, ((PrefixExprAST*)expr)->a, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		a->resolveTypes(block);
 		ExprAST::resolveTypes(block);
@@ -815,7 +917,7 @@ public:
 	{
 		a->collectParams(block, ((PostfixExprAST*)expr)->a, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		a->resolveTypes(block);
 		ExprAST::resolveTypes(block);
@@ -852,7 +954,7 @@ public:
 		a->collectParams(block, ((BinOpExprAST*)expr)->a, params, paramIdx);
 		b->collectParams(block, ((BinOpExprAST*)expr)->b, params, paramIdx);
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		a->resolveTypes(block);
 		b->resolveTypes(block);
@@ -913,7 +1015,7 @@ public:
 			if (params[i]->exprtype != ExprAST::ExprType::LIST)
 				params[i] = new ExprListAST('\0', { params[i] });
 	}
-	void resolveTypes(BlockExprAST* block)
+	void resolveTypes(const BlockExprAST* block)
 	{
 		a->resolveTypes(block);
 		ExprAST::resolveTypes(block);

@@ -1,6 +1,7 @@
 import paws;
 import paws.subroutine;
 import paws.time;
+import paws.stmtreg;
 
 PawsVoid test_basic()
 {
@@ -53,10 +54,35 @@ PawsVoid test_basic()
 	assert str(123) == "123";
 }
 
+PawsVoid test_mutable_exprs()
+{
+	// Test mutable expressions after `if` body
+	// Make sure expressions after the `if` block aren't resolved before executing the `if` block while looking for a possible if-else statement
+	FILE_SCOPE = getFileScope();
+	FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "a"; }
+	if (1)
+	{
+		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "b"; }
+	}
+	assert "" * "" == "b";
+
+	// Test mutable expressions in loop body
+	// Make sure expressions are re-resolved for every loop iteration
+	r = "";
+	FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "c"; }
+	for (j = 0; j << 2; j = j + 1)
+	{
+		r = r + "" * "";
+		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "d"; }
+	}
+	assert r == "cd";
+}
+
 measure("test time")
 	for (t = 0; t << 1000; t = t + 1)
 	{
 		test_basic();
+		test_mutable_exprs();
 	}
 
 // Test file-scope `return $E<PawsInt>` statement

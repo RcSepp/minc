@@ -250,6 +250,7 @@ public:
 	ExprASTIter begin, end;
 
 	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
+	~StmtAST();
 	void collectParams(const BlockExprAST* block, const ExprListAST& tplt);
 	Variable codegen(BlockExprAST* parentBlock);
 bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const { assert(0); return false; /* Unreachable */ }

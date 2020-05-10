@@ -673,6 +673,13 @@ StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* con
 	resolvedContext = context;
 }
 
+StmtAST::~StmtAST()
+{
+	// Unresolve expressions
+	for (ExprASTIter exprIter = begin; exprIter != end; ++exprIter)
+		(*exprIter)->resolvedContext = nullptr;
+}
+
 void BlockExprAST::import(BlockExprAST* importBlock)
 {
 	const BlockExprAST* block;

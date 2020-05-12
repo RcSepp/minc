@@ -14,14 +14,14 @@ class MincPackage
 private:
 	std::mutex loadMutex;
 	std::string parentName;
-	BlockExprAST* pkgScope;
+	BlockExprAST *pkgScope, *defineBlock;
 	MincPackageFunc defineFunc;
 
 protected:
 	virtual void definePackage(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
 
 public:
-	MincPackage(const char* name, MincPackageFunc defineFunc=nullptr);
+	MincPackage(const char* name, MincPackageFunc defineFunc=nullptr, BlockExprAST* defineBlock=nullptr);
 	virtual ~MincPackage();
 	BlockExprAST* load(BlockExprAST* importer);
 	void import(BlockExprAST* scope);

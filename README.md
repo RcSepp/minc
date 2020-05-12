@@ -64,7 +64,7 @@ Et voilà!
 
 You just wrote a programming language!
 
-Note: You may have noticed we didn't declare the "import" statement. This statement is the only predefined statement known to Minc (hence the term: *minimal* compiler).
+Note: You may have noticed we didn't declare the "import" statement. Import and export are the only predefined statements in Minc (hence the term: *minimal* compiler).
 
 ## Where to go from here
 

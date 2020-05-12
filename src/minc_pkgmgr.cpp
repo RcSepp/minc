@@ -2,8 +2,13 @@
 #include "minc_api.h"
 #include "minc_pkgmgr.h"
 
-MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc)
-	: pkgScope(nullptr), defineFunc(defineFunc)
+void defaultDefineFunc(BlockExprAST* pkgScope)
+{
+	codegenExpr((ExprAST*)pkgScope, getBlockExprASTParent(pkgScope));
+}
+
+MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc, BlockExprAST* defineBlock)
+	: pkgScope(nullptr), defineFunc(defineFunc != nullptr ? defineFunc : defaultDefineFunc), defineBlock(defineBlock != nullptr ? defineBlock : createEmptyBlockExprAST())
 {
 	if (name) // Avoid registering MincPackageManager during class construction
 	{
@@ -16,8 +21,7 @@ MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc)
 
 MincPackage::~MincPackage()
 {
-	if (pkgScope)
-		removeBlockExprAST(pkgScope);
+	removeBlockExprAST(defineBlock);
 }
 
 BlockExprAST* MincPackage::load(BlockExprAST* importer)
@@ -29,7 +33,7 @@ BlockExprAST* MincPackage::load(BlockExprAST* importer)
 	std::unique_lock<std::mutex> lock(loadMutex);
 	if (pkgScope == nullptr)
 	{
-		pkgScope = createEmptyBlockExprAST();
+		pkgScope = defineBlock;
 		if (parentName.size())
 		{
 			BlockExprAST* parentPkg = MINC_PACKAGE_MANAGER().loadPackage(parentName, importer);
@@ -61,6 +65,7 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 
 void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 {
+	// Define import statement
 	defineStmt2(pkgScope, "import $I. ...",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
@@ -75,20 +80,26 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 		}, this
 	);
 
-	// Also define Python-grammar version of import statement
-	//TODO: Remove this as soon as imcompatibilities between Python & C grammars have been fixed!
-	defineStmt1(pkgScope, parsePythonTplt("import $I. ..."),
+	// Define export statement
+	defineStmt2(pkgScope, "export $I. ... $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
 			std::vector<ExprAST*>& pkgPath = getExprListASTExpressions((ExprListAST*)params[0]);
 			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
 			for (size_t i = 1; i < pkgPath.size(); ++i)
 				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);
+			BlockExprAST* exportBlock = (BlockExprAST*)params[1];
 
-			// Import package
-			if (!pkgMgr->tryImportPackage(parentBlock, pkgName))
-				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
-		}, this
+			setBlockExprASTParent(exportBlock, parentBlock);
+
+			// Export package
+			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
+		}
+	);
+	defineStmt2(pkgScope, "export $I. ...",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			std::vector<ExprAST*>& pkgPath = getExprListASTExpressions((ExprListAST*)params[0]);
+			raiseCompileError("Missing export block", pkgPath.empty() ? nullptr : pkgPath.front());
+		}
 	);
 }
 

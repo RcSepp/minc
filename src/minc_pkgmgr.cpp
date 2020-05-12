@@ -31,7 +31,13 @@ BlockExprAST* MincPackage::load(BlockExprAST* importer)
 	{
 		pkgScope = createEmptyBlockExprAST();
 		if (parentName.size())
-			importBlock(pkgScope, MINC_PACKAGE_MANAGER().loadPackage(parentName, importer));
+		{
+			BlockExprAST* parentPkg = MINC_PACKAGE_MANAGER().loadPackage(parentName, importer);
+			if (parentPkg != nullptr)
+				importBlock(pkgScope, parentPkg);
+			else
+				raiseCompileError(("unknown package " + parentName).c_str(), (ExprAST*)importer);
+		}
 		this->definePackage(pkgScope);
 	}
 	return pkgScope;

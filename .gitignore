@@ -8,3 +8,4 @@
 # Visual Studio Code
 **/.vscode/ipch
 **/.vscode/settings.json
+**/.vscode/c_cpp_properties.json

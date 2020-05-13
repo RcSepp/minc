@@ -22,7 +22,7 @@
 #undef yylex
 #define yylex scanner.yylex
 
-#define getloc(b, e) Location{filename, b.begin.line, b.begin.column, e.end.line, e.end.column}
+#define getloc(b, e) Location{filename, (unsigned)b.begin.line, (unsigned)b.begin.column, (unsigned)e.end.line, (unsigned)e.end.column}
 %}
 
 %token ELLIPSIS

@@ -22,7 +22,7 @@
 #undef yylex
 #define yylex scanner.yylex
 
-#define getloc(b, e) Location{filename, b.begin.line, b.begin.column, e.end.line, e.end.column}
+#define getloc(b, e) Location{filename, (unsigned)b.begin.line, (unsigned)b.begin.column, (unsigned)e.end.line, (unsigned)e.end.column}
 %}
 
 %token ELLIPSIS
@@ -58,14 +58,14 @@ file
 ;
 
 block
-	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(Location{filename, @1.begin.line, @1.begin.column, $2->back()->loc.end_line, $2->back()->loc.end_col}, $2); }
+	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(Location{filename, (unsigned)@1.begin.line, (unsigned)@1.begin.column, $2->back()->loc.end_line, $2->back()->loc.end_col}, $2); }
 ;
 
 stmt_string
-	: stmt NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(Location{filename, @1.end.line, @1.end.column, @1.end.line, @1.end.column})); }
+	: stmt NEWLINE { $$ = &$1.first->exprs; $$->push_back(new StopExprAST(Location{filename, (unsigned)@1.end.line, (unsigned)@1.end.column, (unsigned)@1.end.line, (unsigned)@1.end.column})); }
 	| stmt ':' NEWLINE block { $$ = &$1.first->exprs; $$->push_back($4); }
 	| stmt_string NEWLINE { $$ = $1; } // Blank line
-	| stmt_string stmt NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(Location{filename, @2.end.line, @2.end.column, @2.end.line, @2.end.column})); }
+	| stmt_string stmt NEWLINE { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back(new StopExprAST(Location{filename, (unsigned)@2.end.line, (unsigned)@2.end.column, (unsigned)@2.end.line, (unsigned)@2.end.column})); }
 	| stmt_string stmt ':' NEWLINE block { ($$ = $1)->insert($1->end(), $2.first->cbegin(), $2.first->cend()); $$->push_back($5); }
 ;
 
@@ -101,7 +101,7 @@ stmt
 							}
 	| stmt ':' expr_or_single_expr_list	{
 								ExprListAST* stmt = $1.first;
-								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_col, @3.end.line, @3.end.column};
+								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_col, (unsigned)@3.end.line, (unsigned)@3.end.column};
 								stmt->exprs.back() = new BinOpExprAST(loc, (int)':', ":", stmt->exprs.back(), $3);
 								$$ = std::make_pair(stmt, $3->exprtype == ExprAST::ExprType::LIST);
 							}

@@ -17,6 +17,9 @@ LIBMINC_PKGMGR_OBJS = \
 	minc_discover.o \
 	json.o \
 
+LIBMINC_DBG_OBJS = \
+	minc_dbg.o \
+
 MINC_OBJS = \
 	minc.o \
 	paws.o \
@@ -38,32 +41,33 @@ MINC_OBJS = \
 	paws_bootstrap.o \
 
 YACC = bison
-CPPFLAGS = -g -std=c++1z `pkg-config --cflags python-3.7`
+CPPFLAGS = -g -std=c++1z -Ithird_party/cppdap/include `pkg-config --cflags python-3.7`
 MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7` -pthread -ldl -rdynamic
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_PKGMGR_OBJS})
+LIBMINC_DBG_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_DBG_OBJS})
 MINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${MINC_OBJS})
 
 all: ${BIN_DIR}minc
 
 clean:
-	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}minc
+	-rm -r ${TEMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}minc
 
 # Dependency management
 
-depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 ${TEMP_DIR}%.d: ${SRC_DIR}%.cpp
 	$(CXX) $(CPPFLAGS) -MM -MT ${TEMP_DIR}$*.o $^ > $@;
 
--include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+-include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 # minc binary
 
-${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr ${MINC_LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg ${MINC_LIBS}
 
 # libminc.so library
 
@@ -76,6 +80,12 @@ ${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
 ${BIN_DIR}libminc_pkgmgr.so: ${LIBMINC_PKGMGR_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_PKGMGR_OBJPATHS}
+
+# libminc_dbg.so library
+
+${BIN_DIR}libminc_dbg.so: ${LIBMINC_DBG_OBJPATHS}
+	-mkdir -p ${BIN_DIR}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_DBG_OBJPATHS} third_party/cppdap/lib/libcppdap.a
 
 # Parser code
 

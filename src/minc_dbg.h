@@ -6,6 +6,8 @@
 struct BaseValue;
 
 typedef std::function<bool(const BaseValue*, std::string*)> GetValueStrFunc;
+
+int launchDebugClient(BlockExprAST* rootBlock);
 void registerValueSerializer(GetValueStrFunc serializer);
 
 #endif

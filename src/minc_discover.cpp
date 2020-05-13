@@ -12,6 +12,7 @@
 
 #define USE_BINARY_PACKAGES
 #define USE_PYTHON_PACKAGES
+#define USE_NODE_PACKAGES
 
 const std::string	PACKAGE_PATH_ENV = "MINC_PATH";
 const char			PACKAGE_PATH_ENV_SEPARATOR = ':';
@@ -19,6 +20,10 @@ const char			PACKAGE_PATH_ENV_SEPARATOR = ':';
 #ifdef USE_PYTHON_PACKAGES
 #define PY_SSIZE_T_CLEAN
 #include <python3.7/Python.h>
+#endif
+
+#ifdef USE_NODE_PACKAGES
+#include <node.h>
 #endif
 
 bool hasSubdir(const char* path, const char* subdir)
@@ -157,6 +162,18 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 
 					FILE* file = fopen(pkgPath.c_str(), "rb");
 					PyRun_SimpleFileEx(file, pkgPath.c_str(), 1);
+				} else
+#endif
+
+#ifdef USE_NODE_PACKAGES
+				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".js")) // If a Node.js package library exists for this sub-package, ...
+				{
+					char *args = new char[pkgPath.size() + 2];
+					args[0] = '\0';
+					strcpy(args + 1, pkgPath.c_str());
+					char* argv[] = {args + 0, args + 1};
+					node::Start(2, argv);
+					delete[] args;
 				} else
 #endif
 

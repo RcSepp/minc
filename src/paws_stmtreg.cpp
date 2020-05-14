@@ -72,6 +72,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](BlockExprAST* pkgScope) {
 			std::vector<Variable> blockParams;
 			getBlockParameterTypes(parentBlock, stmtParams, blockParams);
 
+			setBlockExprASTParent(blockAST, scope);
 			definePawsReturnStmt(blockAST, PawsVoid::TYPE);
 
 			defineStmt3(scope, stmtParamsAST, new PawsCodegenContext(blockAST, getVoid().type, blockParams));
@@ -115,6 +116,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](BlockExprAST* pkgScope) {
 			std::vector<Variable> blockParams;
 			getBlockParameterTypes(parentBlock, exprParams, blockParams);
 
+			setBlockExprASTParent(blockAST, scope);
 			definePawsReturnStmt(blockAST, exprType);
 
 			defineExpr5(scope, exprParamAST, new PawsCodegenContext(blockAST, exprType, blockParams));

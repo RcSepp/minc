@@ -1136,6 +1136,8 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				PawsType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
+				setBlockExprASTParent(blockAST, parentBlock);
+
 				// Get block parameter types
 				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
 
@@ -1152,6 +1154,8 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				BaseType* toType = (BaseType*)codegenExpr(params[0], parentBlock).value->getConstantValue();
 				PawsType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
 				BlockExprAST* blockAST = (BlockExprAST*)params[2];
+
+				setBlockExprASTParent(blockAST, parentBlock);
 
 				// Get block parameter types
 				std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));

@@ -160,26 +160,28 @@ PawsCodegenContext::PawsCodegenContext(BlockExprAST* expr, BaseType* type, const
 
 Variable PawsCodegenContext::codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 {
+	BlockExprAST* instance = cloneBlockExprAST(expr);
+
 	// Set block parameters
 	for (size_t i = 0; i < params.size(); ++i)
 		blockParams[i].value = new PawsExprAST(params[i]);
-	setBlockExprASTParams(expr, blockParams);
+	setBlockExprASTParams(instance, blockParams);
 
-	defineSymbol(expr, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
+	defineSymbol(instance, "parentBlock", PawsBlockExprAST::TYPE, new PawsBlockExprAST(parentBlock));
 
 	// Execute expression code block
 	try
 	{
-		codegenExpr((ExprAST*)expr, parentBlock);
+		codegenExpr((ExprAST*)instance, expr);
 	}
 	catch (ReturnException err)
 	{
-		resetBlockExprAST(expr);
+		resetBlockExprAST(instance);
 		return err.result;
 	}
 
 	if (type != getVoid().type && type != PawsVoid::TYPE)
-		raiseCompileError("missing return statement in expression block", (ExprAST*)expr);
+		raiseCompileError("missing return statement in expression block", (ExprAST*)instance);
 	return getVoid();
 }
 

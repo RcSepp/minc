@@ -720,6 +720,24 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			return ((PawsTpltType*)type)->tpltType;
 		}
 	);
+	defineExpr3(pkgScope, "$E<PawsExprAST>.codegen()",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->get();
+			BlockExprAST* scope = getBlockExprASTParent(parentBlock);
+			if (!ExprASTIsCast(params[0]))
+			{
+				codegenExpr(expr, scope);
+				return Variable(PawsVoid::TYPE, nullptr);
+			}
+			return codegenExpr(expr, scope);
+		},
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+			if (!ExprASTIsCast(params[0]))
+				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
+			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
+			return ((PawsTpltType*)type)->tpltType;
+		}
+	);
 	defineExpr(pkgScope, "$E<PawsBlockExprAST>.codegen($E<PawsBlockExprAST>)",
 		+[](ExprAST* expr, BlockExprAST* scope) -> void {
 			codegenExpr(expr, scope);

@@ -858,10 +858,6 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	}
 	catch (...)
 	{
-		// Forget resolved future expressions, because this block may be resumed in a different context
-		for (ExprASTIter iter = exprs->cbegin() + exprIdx; iter != exprs->cend() && (*iter)->exprtype != ExprAST::ExprType::STOP && (*iter)->exprtype != ExprAST::ExprType::BLOCK; ++iter)
-			(*iter)->resolvedContext = nullptr;
-
 		resultCacheIdx = 0;
 
 		if (topLevelBlock == this)

@@ -125,11 +125,11 @@ paws_castdef<double> PawsDouble {
 }
 
 paws_castdef<string> PawsString {
-	str = $0.codegen(parentBlock);
-	glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), str.length + 1), "MY_CONSTANT");
+	s = $0.codegen(parentBlock);
+	glob = LLVMEXAddGlobal(LLVMArrayType(LLVMInt8Type(), s.length + 1), "MY_CONSTANT");
 	LLVMSetLinkage(glob, 9);
 	LLVMSetGlobalConstant(glob, 1);
-	LLVMSetInitializer(glob, LLVMConstString(str, str.length + 1, 1));
+	LLVMSetInitializer(glob, LLVMConstString(s, s.length + 1, 1));
 	LLVMSetUnnamedAddress(glob, 2);
 	LLVMSetAlignment(glob, 1);
 

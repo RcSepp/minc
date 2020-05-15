@@ -151,39 +151,40 @@ public:
 struct Identifiable;
 class IdMap
 {
-	std::map<int, Identifiable*> ids;
+	std::vector<Identifiable*> ids;
 public:
 	IdMap()
 	{
-		ids[0] = nullptr; // 0 is not a valid id
+		ids.push_back(nullptr); // 0 is not a valid id
 	}
 	int assign(Identifiable* ptr)
 	{
-		int id;
-		ids[id = (int)ids.size()] = ptr;
-		return id;
+		ids.push_back(ptr);
+		return (int)ids.size() - 1;
 	}
 	int update(int id, Identifiable* ptr)
 	{
+		assert(id >= 0 && id < (int)ids.size());
 		ids[id] = ptr;
 		return id;
 	}
 	template<class T> T* get(int id)
 	{
-		auto pair = ids.find(id);
-		return pair == ids.end() ? nullptr : dynamic_cast<T*>(pair->second);
+		if (id < 0 || id >= (int)ids.size())
+			return nullptr;
+		else
+			return dynamic_cast<T*>(ids[id]);
 	}
 	template<class T> bool get(int id, T** ptr)
 	{
-		auto pair = ids.find(id);
-		if (pair == ids.end())
+		if (id < 0 || id >= (int)ids.size())
 		{
 			*ptr = nullptr;
 			return false;
 		}
 		else
 		{
-			*ptr = dynamic_cast<T*>(pair->second);
+			*ptr = dynamic_cast<T*>(ids[id]);
 			return true;
 		}
 	}

@@ -804,6 +804,8 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
+	if (isBusy)
+		throw CompileError("block expression already executing. Use BlockExprAST::clone() when executing blocks recursively", this->loc);
 	isBusy = true;
 
 	try

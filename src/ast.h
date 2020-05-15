@@ -641,7 +641,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
 	std::string str() const { return "cast expression from " + getTypeName(cast->fromType) + " to " + getTypeName(cast->toType); }
 	ExprAST* getDerivedExpr();
-	ExprAST* clone() { return new CastExprAST(cast, resolvedParams[0]); }
+	ExprAST* clone() { return new CastExprAST(cast, resolvedParams[0]->clone()); }
 };
 
 class PlchldExprAST : public ExprAST
@@ -736,7 +736,7 @@ public:
 		const EllipsisExprAST* _other = (const EllipsisExprAST*)other;
 		return this->expr->comp(_other->expr);
 	}
-	ExprAST* clone() { return new EllipsisExprAST(loc, expr); }
+	ExprAST* clone() { return new EllipsisExprAST(loc, expr->clone()); }
 };
 
 class ArgOpExprAST : public ExprAST
@@ -779,7 +779,7 @@ public:
 		if (c) return c;
 		return this->args->comp(_other->args);
 	}
-	ExprAST* clone() { return new ArgOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), var, args); }
+	ExprAST* clone() { return new ArgOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), var->clone(), (ExprListAST*)args->clone()); }
 };
 
 class EncOpExprAST : public ExprAST
@@ -816,7 +816,7 @@ public:
 		if (c) return c;
 		return this->val->comp(_other->val);
 	}
-	ExprAST* clone() { return new EncOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), val); }
+	ExprAST* clone() { return new EncOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), val->clone()); }
 };
 
 class TerOpExprAST : public ExprAST
@@ -866,7 +866,7 @@ public:
 		if (c) return c;
 		return this->c->comp(_other->c);
 	}
-	ExprAST* clone() { return new TerOpExprAST(loc, op1, op2, opstr1.c_str(), opstr2.c_str(), a, b, c); }
+	ExprAST* clone() { return new TerOpExprAST(loc, op1, op2, opstr1.c_str(), opstr2.c_str(), a->clone(), b->clone(), c->clone()); }
 };
 
 class PrefixExprAST : public ExprAST
@@ -899,7 +899,7 @@ public:
 		if (c) return c;
 		return this->a->comp(_other->a);
 	}
-	ExprAST* clone() { return new PrefixExprAST(loc, op, opstr.c_str(), a); }
+	ExprAST* clone() { return new PrefixExprAST(loc, op, opstr.c_str(), a->clone()); }
 };
 
 class PostfixExprAST : public ExprAST
@@ -932,7 +932,7 @@ public:
 		if (c) return c;
 		return this->a->comp(_other->a);
 	}
-	ExprAST* clone() { return new PostfixExprAST(loc, op, opstr.c_str(), a); }
+	ExprAST* clone() { return new PostfixExprAST(loc, op, opstr.c_str(), a->clone()); }
 };
 
 class BinOpExprAST : public ExprAST
@@ -974,7 +974,7 @@ public:
 		if (c) return c;
 		return this->b->comp(_other->b);
 	}
-	ExprAST* clone() { return new BinOpExprAST(loc, op, opstr.c_str(), a, b); }
+	ExprAST* clone() { return new BinOpExprAST(loc, op, opstr.c_str(), a->clone(), b->clone()); }
 };
 
 class VarBinOpExprAST : public ExprAST
@@ -1030,7 +1030,7 @@ public:
 		if (c) return c;
 		return this->a->comp(_other->a);
 	}
-	ExprAST* clone() { return new VarBinOpExprAST(loc, op, opstr.c_str(), a); }
+	ExprAST* clone() { return new VarBinOpExprAST(loc, op, opstr.c_str(), a->clone()); }
 };
 
 #endif

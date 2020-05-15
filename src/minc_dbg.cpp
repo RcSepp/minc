@@ -148,6 +148,55 @@ public:
 	}
 };
 
+struct Identifiable;
+class IdMap
+{
+	std::map<int, Identifiable*> ids;
+public:
+	IdMap()
+	{
+		ids[0] = nullptr; // 0 is not a valid id
+	}
+	int assign(Identifiable* ptr)
+	{
+		int id;
+		ids[id = (int)ids.size()] = ptr;
+		return id;
+	}
+	int update(int id, Identifiable* ptr)
+	{
+		ids[id] = ptr;
+		return id;
+	}
+	template<class T> T* get(int id)
+	{
+		auto pair = ids.find(id);
+		return pair == ids.end() ? nullptr : dynamic_cast<T*>(pair->second);
+	}
+	template<class T> bool get(int id, T** ptr)
+	{
+		auto pair = ids.find(id);
+		if (pair == ids.end())
+		{
+			*ptr = nullptr;
+			return false;
+		}
+		else
+		{
+			*ptr = dynamic_cast<T*>(pair->second);
+			return true;
+		}
+	}
+} ID_MAP;
+
+struct Identifiable
+{
+	const int id;
+	Identifiable() : id(ID_MAP.assign(this)) {}
+	Identifiable(const Identifiable& other) : id(ID_MAP.update(other.id, this)) {}
+	virtual ~Identifiable() {};
+};
+
 class Debugger
 {
 public:
@@ -158,29 +207,129 @@ public:
 	StepType stepType;
 	bool traceAnonymousBlocks;
 
-	struct StackFrame : dap::StackFrame
+	struct StackFrame : public dap::StackFrame, public Identifiable
 	{
+		struct Scope
+		{
+			virtual dap::Scope scope() = 0;
+			virtual dap::array<dap::Variable> variables() = 0;
+		};
+		struct Locals : public Scope, public Identifiable
+		{
+			const BlockExprAST* const block;
+			Locals(const BlockExprAST* const block) : block(block) {}
+			dap::Scope scope()
+			{
+				dap::Scope scope;
+				scope.name = "Locals";
+				scope.presentationHint = "locals";
+				scope.variablesReference = id;
+				scope.namedVariables = (int)countBlockExprASTSymbols(block);
+				return scope;
+			}
+			dap::array<dap::Variable> variables()
+			{
+				dap::array<dap::Variable> variables;
+				auto cbk = [&](const std::string& name, const Variable& symbol) {
+					dap::Variable var;
+					var.name = name;
+					if (!getValueStr(symbol.value, &var.value))
+						var.value = "UNKNOWN";
+					var.type = getTypeName(symbol.type);
+					variables.push_back(var);
+				};
+				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
+				{
+					iterateBlockExprASTSymbols(block, cbk);
+					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
+						iterateBlockExprASTSymbols(ref, cbk);
+				}
+				return variables;
+			}
+		} locals;
+		struct Statements : public Scope, public Identifiable
+		{
+			const BlockExprAST* const block;
+			Statements(const BlockExprAST* const block) : block(block) {}
+			dap::Scope scope()
+			{
+				dap::Scope scope;
+				scope.name = "Statements";
+				scope.presentationHint = "locals";
+				scope.variablesReference = id;
+				scope.namedVariables = (int)countBlockExprASTStmts(block);
+				return scope;
+			}
+			dap::array<dap::Variable> variables()
+			{
+				dap::array<dap::Variable> variables;
+				auto cbk = [&](const ExprListAST* tplt, const CodegenContext* stmt) {
+					dap::Variable var;
+					var.name = ExprASTToShortString(tplt);
+					var.value = "TODO";
+					variables.push_back(var);
+				};
+				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
+				{
+					iterateBlockExprASTStmts(block, cbk);
+					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
+						iterateBlockExprASTStmts(ref, cbk);
+				}
+				return variables;
+			}
+		} statements;
+		struct Expressions : public Scope, public Identifiable
+		{
+			const BlockExprAST* const block;
+			Expressions(const BlockExprAST* const block) : block(block) {}
+			dap::Scope scope()
+			{
+				dap::Scope scope;
+				scope.name = "Expressions";
+				scope.presentationHint = "locals";
+				scope.variablesReference = id;
+				scope.namedVariables = (int)countBlockExprASTExprs(block);
+				return scope;
+			}
+			dap::array<dap::Variable> variables()
+			{
+				dap::array<dap::Variable> variables;
+				auto cbk = [&](const ExprAST* tplt, const CodegenContext* expr) {
+					dap::Variable var;
+					var.name = ExprASTToShortString(tplt);
+					var.value = "TODO";
+					variables.push_back(var);
+				};
+				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
+				{
+					iterateBlockExprASTExprs(block, cbk);
+					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
+						iterateBlockExprASTExprs(ref, cbk);
+				}
+				return variables;
+			}
+		} expressions;
 		const BlockExprAST* const block;
 
-		StackFrame(const BlockExprAST* block, int id) : block(block)
+
+		StackFrame(const BlockExprAST* block) : block(block), locals(block), statements(block), expressions(block)
 		{
 			name = getBlockExprASTName(block);
 			if (name.empty())
 				name = "Anonymous Block";
 
-			this->id = id;
+			dap::StackFrame::id = Identifiable::id;
 
 			source = dap::Source();
 			source->path = getExprFilename((ExprAST*)block);
 		}
 	};
-	struct Thread
+	struct Thread : public Identifiable
 	{
-		int id;
 		std::vector<StackFrame> callStack;
 		size_t prevStackDepth;
 
-		Thread(int id) : id(id), prevStackDepth(0) {}
+		Thread() : prevStackDepth(0) {}
 	};
 
 private:
@@ -195,7 +344,7 @@ private:
 	std::map<std::thread::id, Thread*> threadIdMap;
 	void createThread()
 	{
-		threads.push_back(new Thread((int)threads.size()));
+		threads.push_back(new Thread());
 		threadIdMap[std::this_thread::get_id()] = threads.back();
 	}
 	void removeAllThreads()
@@ -216,7 +365,7 @@ private:
 		threadIsNew = pair == threadIdMap.end();
 		if (threadIsNew)
 		{
-			threads.push_back(new Thread((int)threads.size()));
+			threads.push_back(new Thread());
 			threadIdMap[thread_id] = threads.back();
 			return *threads.back();
 		}
@@ -387,7 +536,7 @@ private:
 			{
 			case STEP_IN:
 			case STEP_RESUME:
-				callStack.push_back(StackFrame((BlockExprAST*)loc, (int)(callStack.size() | 0x10000 * currentThread.id)));
+				callStack.push_back(StackFrame((BlockExprAST*)loc));
 				break;
 
 			case STEP_OUT:
@@ -509,7 +658,7 @@ private:
 		for (size_t i = 0; i < threads.size(); ++i)
 		{
 			dap::Thread thread;
-			thread.id = i;
+			thread.id = threads[i]->id;
 			thread.name = "Thread " + std::to_string(i);
 			response.threads.push_back(thread);
 		}
@@ -518,12 +667,12 @@ private:
 
 	dap::ResponseOrError<dap::StackTraceResponse> onStackTraceRequest(const dap::StackTraceRequest& request)
 	{
-		// Verify thread id
-		if (request.threadId >= threads.size())
+		Thread* thread = ID_MAP.get<Thread>(request.threadId);
+		if (thread == nullptr)
 			return dap::Error("Unknown threadId '%d'", int(request.threadId));
 
 		// Get thread call stack
-		std::vector<StackFrame>& callStack = threads[request.threadId]->callStack;
+		std::vector<StackFrame>& callStack = thread->callStack;
 
 		dap::StackTraceResponse response;
 
@@ -535,105 +684,26 @@ private:
 
 	dap::ResponseOrError<dap::ScopesResponse> onScopeRequest(const dap::ScopesRequest& request)
 	{
-		int threadId = request.frameId >> 16, frameId = request.frameId & 0xFFFF;
-		if (threadId >= threads.size())
-			return dap::Error("Unknown frameId '%d'", int(request.frameId));
-		std::vector<StackFrame>& callStack = threads[threadId]->callStack;
-		if (frameId >= (int)callStack.size())
+		StackFrame* frame = ID_MAP.get<StackFrame>(request.frameId);
+		if (frame == nullptr)
 			return dap::Error("Unknown frameId '%d'", int(request.frameId));
 
-		const BlockExprAST* const block = callStack[frameId].block;
+		const BlockExprAST* const block = frame->block;
 		dap::ScopesResponse response;
-		dap::Scope scope;
-
-		scope.name = "Locals";
-		scope.presentationHint = "locals";
-		scope.variablesReference = 0x1000 + request.frameId * 4 + 0;
-		scope.namedVariables = (int)countBlockExprASTSymbols(block);
-		response.scopes.push_back(scope);
-
-		scope.name = "Statements";
-		scope.presentationHint = "locals";
-		scope.variablesReference = 0x1000 + request.frameId * 4 + 1;
-		scope.namedVariables = (int)countBlockExprASTStmts(block);
-		response.scopes.push_back(scope);
-
-		scope.name = "Expressions";
-		scope.presentationHint = "locals";
-		scope.variablesReference = 0x1000 + request.frameId * 4 + 2;
-		scope.namedVariables = (int)countBlockExprASTExprs(block);
-		response.scopes.push_back(scope);
-
+		response.scopes.push_back(frame->locals.scope());
+		response.scopes.push_back(frame->expressions.scope());
+		response.scopes.push_back(frame->statements.scope());
 		return response;
 	}
 
 	dap::ResponseOrError<dap::VariablesResponse> onVariablesRequest(const dap::VariablesRequest& request)
 	{
-		int threadId = request.variablesReference >> 16, frameId = ((request.variablesReference & 0xFFFF) - 0x1000) >> 2;
-		if (threadId >= threads.size())
-			return dap::Error("Unknown variablesReference '%d'", int(request.variablesReference));
-		std::vector<StackFrame>& callStack = threads[threadId]->callStack;
-		if (frameId >= (int)callStack.size())
+		StackFrame::Scope* scope = ID_MAP.get<StackFrame::Scope>(request.variablesReference);
+		if (scope == nullptr)
 			return dap::Error("Unknown variablesReference '%d'", int(request.variablesReference));
 
 		dap::VariablesResponse response;
-
-		switch (request.variablesReference & 0x3)
-		{
-		case 0:
-			{
-				auto cbk = [&](const std::string& name, const Variable& symbol) {
-					dap::Variable var;
-					var.name = name;
-					if (!getValueStr(symbol.value, &var.value))
-						var.value = "UNKNOWN";
-					var.type = getTypeName(symbol.type);
-					response.variables.push_back(var);
-				};
-				for (const BlockExprAST* block = callStack[frameId].block; block != nullptr; block = getBlockExprASTParent(block))
-				{
-					iterateBlockExprASTSymbols(block, cbk);
-					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
-						iterateBlockExprASTSymbols(ref, cbk);
-				}
-			}
-			break;
-
-		case 1:
-			{
-				auto cbk = [&](const ExprListAST* tplt, const CodegenContext* stmt) {
-					dap::Variable var;
-					var.name = ExprASTToShortString(tplt);
-					var.value = "TODO";
-					response.variables.push_back(var);
-				};
-				for (const BlockExprAST* block = callStack[frameId].block; block != nullptr; block = getBlockExprASTParent(block))
-				{
-					iterateBlockExprASTStmts(block, cbk);
-					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
-						iterateBlockExprASTStmts(ref, cbk);
-				}
-			}
-			break;
-
-		case 2:
-			{
-				auto cbk = [&](const ExprAST* tplt, const CodegenContext* expr) {
-					dap::Variable var;
-					var.name = ExprASTToShortString(tplt);
-					var.value = "TODO";
-					response.variables.push_back(var);
-				};
-				for (const BlockExprAST* block = callStack[frameId].block; block != nullptr; block = getBlockExprASTParent(block))
-				{
-					iterateBlockExprASTExprs(block, cbk);
-					for (const BlockExprAST* ref: getBlockExprASTReferences(block))
-						iterateBlockExprASTExprs(ref, cbk);
-				}
-			}
-			break;
-		}
-
+		response.variables = scope->variables();
 		return response;
 	}
 

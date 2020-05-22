@@ -389,6 +389,7 @@ private:
 	StatementRegister stmtreg;
 	std::map<std::string, Variable> scope;
 	CastRegister castreg;
+	StmtAST currentStmt;
 
 public:
 	BlockExprAST* parent;
@@ -411,7 +412,7 @@ public:
 			tpltExpr->resolveTypes(this);
 		stmtreg.defineStatement(new ExprListAST('\0', tplt), stmt);
 	}
-	bool lookupStatement(ExprASTIter& beginExpr, StmtAST& stmt) const;
+	bool lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const;
 	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStatements() const { return stmtreg.countStatements(); }
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }

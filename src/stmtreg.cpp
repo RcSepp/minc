@@ -527,10 +527,12 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 		return false;
 }
 
-bool BlockExprAST::lookupStatement(ExprASTIter& beginExpr, StmtAST& stmt) const
+bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
 {
 	// Initialize stmt
 	stmt.resolvedContext = nullptr;
+	stmt.resolvedParams.clear();
+	stmt.resolvedExprs.clear();
 	stmt.begin = beginExpr;
 
 	// Define a callback to resolve an expression from this block and append it to stmt.resolvedExprs
@@ -588,7 +590,6 @@ bool BlockExprAST::lookupStatement(ExprASTIter& beginExpr, StmtAST& stmt) const
 		if (stmt.end != exprs->end())
 			++stmt.end;
 	}
-	beginExpr = stmt.end;
 
 	// Update location
 	stmt.loc.filename = stmt.begin[0]->loc.filename;

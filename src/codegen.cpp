@@ -839,12 +839,14 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	try
 	{
-		for (ExprASTIter endExpr = exprs->cbegin() + exprIdx; endExpr != exprs->cend(); exprIdx = endExpr - exprs->cbegin())
+		for (ExprASTIter stmtBeginExpr = exprs->cbegin() + exprIdx; stmtBeginExpr != exprs->cend(); exprIdx = stmtBeginExpr - exprs->cbegin())
 		{
-			StmtAST stmtNew;
-			if (!lookupStatement(endExpr, stmtNew))
-				throw UndefinedStmtException(&stmtNew);
-			stmtNew.codegen(this);
+			if (!isStmtSuspended && !lookupStatement(stmtBeginExpr, currentStmt))
+				throw UndefinedStmtException(&currentStmt);
+			currentStmt.codegen(this);
+
+			// Advance beginning of next statement to end of current statement
+			stmtBeginExpr = currentStmt.end;
 
 #ifndef DISABLE_RESULT_CACHING
 			// Clear cached expressions
@@ -1062,7 +1064,8 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 
 void ExprAST::resolveTypes(const BlockExprAST* block)
 {
-	block->lookupExpr(this);
+	if (this->resolvedContext == nullptr)
+		block->lookupExpr(this);
 }
 
 ExprAST* CastExprAST::getDerivedExpr()

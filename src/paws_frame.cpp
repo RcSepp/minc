@@ -266,7 +266,7 @@ public:
 		}
 		else // If there are messages in the queue, ...
 		{
-			const Message& msg = msgQueue.front();
+			Message msg = msgQueue.front();
 			msgQueue.pop();
 			mutex.unlock();
 			*result = Variable(type, msg.value); // Return first queued message

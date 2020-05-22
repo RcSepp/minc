@@ -956,16 +956,16 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		Variable var;
 		try
 		{
-			raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+			raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 			var = resolvedContext->codegen(parentBlock, resolvedParams);
 		}
 		catch (...)
 		{
-			parentBlock->isStmtSuspended = true;
+			parentBlock->isExprSuspended = true;
 			raiseStepEvent(this, STEP_SUSPEND);
 			throw;
 		}
-		parentBlock->isStmtSuspended = false;
+		parentBlock->isExprSuspended = false;
 
 		const BaseType *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
@@ -1029,16 +1029,16 @@ Variable StmtAST::codegen(BlockExprAST* parentBlock)
 
 	try
 	{
-		raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
 		resolvedContext->codegen(parentBlock, resolvedParams);
 	}
 	catch (...)
 	{
-		parentBlock->isExprSuspended = true;
+		parentBlock->isStmtSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
 		throw;
 	}
-	parentBlock->isExprSuspended = false;
+	parentBlock->isStmtSuspended = false;
 
 #ifndef DISABLE_RESULT_CACHING
 	// Cache expression result for coroutines
@@ -1085,15 +1085,15 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 {
 	try
 	{
-		raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 	}
 	catch (...)
 	{
-		parentBlock->isStmtSuspended = true;
+		parentBlock->isExprSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
 		throw;
 	}
-	parentBlock->isStmtSuspended = false;
+	parentBlock->isExprSuspended = false;
 
 	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr)

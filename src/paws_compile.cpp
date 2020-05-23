@@ -8,10 +8,7 @@ typedef PawsValue<IModule*> PawsModule;
 
 void importFile(BlockExprAST* parentBlock, std::string importPath)
 {
-	char buf[1024];
-	realpath(importPath.c_str(), buf);
-	char* importRealPath = new char[strlen(buf) + 1];
-	strcpy(importRealPath, buf);
+	char* importRealPath = realpath(importPath.c_str(), nullptr);
 	importPath = importPath.substr(std::max(importPath.rfind("/"), importPath.rfind("\\")) + 1);
 	const size_t dt = importPath.rfind(".");
 	if (dt != -1) importPath = importPath.substr(0, dt);

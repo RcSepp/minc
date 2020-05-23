@@ -849,9 +849,10 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 
 	defineExpr(pkgScope, "realpath($E<PawsString>)",
 		+[](std::string path) -> std::string {
-			char realPath[1024];
-			realpath(path.c_str(), realPath);
-			return realPath;
+			char* realPath = realpath(path.c_str(), nullptr);
+			std::string realPathStr(realPath);
+			free(realPath);
+			return realPathStr;
 		}
 	);
 

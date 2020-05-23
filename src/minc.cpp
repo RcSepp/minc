@@ -68,8 +68,7 @@ int main(int argc, char** argv)
 	}
 
 	// Get absolute path to source file
-	char buf[1024];
-	const char* realPath = use_stdin ? nullptr : realpath(path, buf);
+	char* realPath = use_stdin ? nullptr : realpath(path, nullptr);
 
 	// >>> Parse source code from file or stdin into AST
 
@@ -84,6 +83,7 @@ int main(int argc, char** argv)
 			if (parser.parse())
 			{
 				if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
+				free(realPath);
 				if (rootBlock) delete rootBlock;
 				return -1;
 			}
@@ -95,6 +95,7 @@ int main(int argc, char** argv)
 			if (parser.parse())
 			{
 				if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
+				free(realPath);
 				if (rootBlock) delete rootBlock;
 				return -1;
 			}
@@ -102,6 +103,7 @@ int main(int argc, char** argv)
 	} catch (CompileError err) {
 		err.print(std::cerr);
 		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
+		free(realPath);
 		if (rootBlock) delete rootBlock;
 		return -1;
 	}
@@ -139,8 +141,9 @@ int main(int argc, char** argv)
 			result = -1;
 		}
 	}
-	if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
 
+	if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
+	free(realPath);
 	delete rootBlock;
 	return result;
 }

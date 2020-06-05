@@ -25,6 +25,7 @@ MINC_OBJS = \
 	paws.o \
 	paws_int.o \
 	paws_string.o \
+	paws_extend.o \
 	paws_fileio.o \
 	paws_time.o \
 	paws_llvm.o \

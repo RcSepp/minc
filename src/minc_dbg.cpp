@@ -198,6 +198,132 @@ struct Identifiable
 	virtual ~Identifiable() {};
 };
 
+struct Scope
+{
+	virtual dap::Scope scope() = 0;
+	virtual dap::array<dap::Variable> variables() = 0;
+};
+struct Packages : public Scope, public Identifiable
+{
+	const BlockExprAST* const block;
+	Packages(const BlockExprAST* const block) : block(block) {}
+	dap::Scope scope() { return dap::Scope(); }
+	dap::array<dap::Variable> variables();
+};
+struct Parameters : public Scope, public Identifiable
+{
+	const ExprAST* tplt;
+	ExprAST* expr;
+	const BlockExprAST* const block;
+	Parameters(const ExprAST* tplt, ExprAST* expr, const BlockExprAST* const block) : tplt(tplt), expr(expr), block(block) {}
+	dap::Scope scope() { return dap::Scope(); }
+	dap::array<dap::Variable> variables();
+};
+struct ExprCandidates : public Scope, public Identifiable
+{
+	ExprAST* expr;
+	const BlockExprAST* const block;
+	ExprCandidates(ExprAST* expr, const BlockExprAST* const block) : expr(expr), block(block) {}
+	dap::Scope scope() { return dap::Scope(); }
+	dap::array<dap::Variable> variables();
+};
+struct StmtCandidates : public Scope, public Identifiable
+{
+	const StmtAST* stmt;
+	const BlockExprAST* const block;
+	StmtCandidates(const StmtAST* stmt, const BlockExprAST* const block) : stmt(stmt), block(block) {}
+	dap::Scope scope() { return dap::Scope(); }
+	dap::array<dap::Variable> variables();
+};
+dap::array<dap::Variable> Packages::variables()
+{
+	dap::array<dap::Variable> variables;
+	dap::Variable var;
+
+	int i = 1;
+	for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
+		for (const BlockExprAST* ref: getBlockExprASTReferences(block))
+		{
+			var.name = getBlockExprASTName(ref);
+			if (var.name == "")
+				var.name = "Unnamed Package " + std::to_string(i++);
+			variables.push_back(var);
+		}
+	variables.push_back(var);
+
+	return variables;
+}
+dap::array<dap::Variable> Parameters::variables()
+{
+	dap::array<dap::Variable> variables;
+	dap::Variable var;
+
+	std::vector<ExprAST*> params;
+	collectParams(block, tplt, expr, params);
+	int i = 0;
+	for (ExprAST* param: params)
+	{
+		var.name = "$" + std::to_string(i++);
+		var.value = ExprASTToShortString(param);
+		var.type = getTypeName(getType(param, block));
+		var.variablesReference = (new ExprCandidates(param, block))->id;
+		variables.push_back(var);
+	}
+
+	return variables;
+}
+dap::array<dap::Variable> ExprCandidates::variables()
+{
+	dap::array<dap::Variable> variables;
+	dap::Variable var;
+
+	if (ExprASTIsCast(expr))
+	{
+		expr = getCastExprASTSource((CastExprAST*)expr);
+		var.name = "$0";
+		var.value = ExprASTToShortString(expr);
+		var.type = getTypeName(getType(expr, block));
+		var.variablesReference = (new ExprCandidates(expr, block))->id;
+		variables.push_back(var);
+	}
+	else
+	{
+		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>> candidates;
+		lookupExprCandidates(block, expr, candidates);
+		int i = 1;
+		for (auto& candidate: candidates)
+		{
+			var.name = "Expression Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
+			var.value = ExprASTToShortString(candidate.second.first);
+			std::vector<ExprAST*> params;
+			collectParams(block, candidate.second.first, expr, params);
+			if (params.size() > 0 && params[0] != expr)
+				var.variablesReference = (new Parameters(candidate.second.first, expr, block))->id;
+			variables.push_back(var);
+		}
+	}
+
+	return variables;
+}
+dap::array<dap::Variable> StmtCandidates::variables()
+{
+	dap::array<dap::Variable> variables;
+	dap::Variable var;
+
+	std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>> candidates;
+	lookupStmtCandidates(this->block, stmt, candidates);
+	int i = 1;
+	for (auto& candidate: candidates)
+	{
+		var.name = "Statement Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
+		var.value = ExprASTToShortString(candidate.second.first);
+		var.variablesReference = (new Parameters(candidate.second.first, const_cast<StmtAST*>(stmt), block))->id; //TODO: Remove const_cast
+		variables.push_back(var);
+	}
+
+	return variables;
+}
+
 class Debugger
 {
 public:
@@ -210,11 +336,6 @@ public:
 
 	struct StackFrame : public dap::StackFrame, public Identifiable
 	{
-		struct Scope
-		{
-			virtual dap::Scope scope() = 0;
-			virtual dap::array<dap::Variable> variables() = 0;
-		};
 		struct Locals : public Scope, public Identifiable
 		{
 			const BlockExprAST* const block;
@@ -248,7 +369,7 @@ public:
 				return variables;
 			}
 		} locals;
-		struct Statements : public Scope, public Identifiable
+		struct Statements : public Scope, public Identifiable //TODO: Move to MincScope -> Packages
 		{
 			const BlockExprAST* const block;
 			Statements(const BlockExprAST* const block) : block(block) {}
@@ -267,7 +388,6 @@ public:
 				auto cbk = [&](const ExprListAST* tplt, const CodegenContext* stmt) {
 					dap::Variable var;
 					var.name = ExprASTToShortString(tplt);
-					var.value = "TODO";
 					variables.push_back(var);
 				};
 				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
@@ -279,7 +399,7 @@ public:
 				return variables;
 			}
 		} statements;
-		struct Expressions : public Scope, public Identifiable
+		struct Expressions : public Scope, public Identifiable //TODO: Move to MincScope -> Packages
 		{
 			const BlockExprAST* const block;
 			Expressions(const BlockExprAST* const block) : block(block) {}
@@ -298,7 +418,6 @@ public:
 				auto cbk = [&](const ExprAST* tplt, const CodegenContext* expr) {
 					dap::Variable var;
 					var.name = ExprASTToShortString(tplt);
-					var.value = "TODO";
 					variables.push_back(var);
 				};
 				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
@@ -310,10 +429,46 @@ public:
 				return variables;
 			}
 		} expressions;
+		struct MincScope : public Scope, public Identifiable
+		{
+			const BlockExprAST* const block;
+			MincScope(const BlockExprAST* const block) : block(block) {}
+			dap::Scope scope()
+			{
+				dap::Scope scope;
+				scope.name = "Minc";
+				scope.presentationHint = "locals";
+				scope.variablesReference = id;
+				scope.namedVariables = 1;
+				return scope;
+			}
+			dap::array<dap::Variable> variables()
+			{
+				dap::array<dap::Variable> variables;
+				dap::Variable var;
+
+				var.name = "Packages";
+				size_t numReferences = 0;
+				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
+					numReferences += getBlockExprASTReferences(block).size();
+				var.namedVariables = numReferences;
+				var.variablesReference = (new Packages(block))->id;
+				variables.push_back(var);
+
+				const StmtAST* stmt = getCurrentBlockExprASTStmt(block);
+				var.name = "Current Statement";
+				var.value = ExprASTToShortString(stmt);
+				var.namedVariables = dap::optional<dap::integer>();
+				var.variablesReference = (new StmtCandidates(stmt, block))->id;
+				variables.push_back(var);
+
+				return variables;
+			}
+		} mincScope;
 		const BlockExprAST* const block;
 
 
-		StackFrame(const BlockExprAST* block) : block(block), locals(block), statements(block), expressions(block)
+		StackFrame(const BlockExprAST* block) : block(block), locals(block), statements(block), expressions(block), mincScope(block)
 		{
 			name = getBlockExprASTName(block);
 			if (name.empty())
@@ -694,12 +849,13 @@ private:
 		response.scopes.push_back(frame->locals.scope());
 		response.scopes.push_back(frame->expressions.scope());
 		response.scopes.push_back(frame->statements.scope());
+		response.scopes.push_back(frame->mincScope.scope());
 		return response;
 	}
 
 	dap::ResponseOrError<dap::VariablesResponse> onVariablesRequest(const dap::VariablesRequest& request)
 	{
-		StackFrame::Scope* scope = ID_MAP.get<StackFrame::Scope>(request.variablesReference);
+		Scope* scope = ID_MAP.get<Scope>(request.variablesReference);
 		if (scope == nullptr)
 			return dap::Error("Unknown variablesReference '%d'", int(request.variablesReference));
 

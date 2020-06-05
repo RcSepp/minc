@@ -114,4 +114,50 @@ MincPackage PAWS_COMPILE("paws.compile", [](BlockExprAST* pkgScope) {
 			importFile(parentBlock, importPath);
 		}
 	);
+
+
+	defineStmt2(pkgScope, "compile $I($E<PawsString>, $E<PawsString>, $E<PawsInt>) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			const char* moduleName = getIdExprASTName((IdExprAST*)params[0]);
+			const std::string& sourcePath = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
+			const std::string& moduleFuncName = ((PawsString*)codegenExpr(params[2], parentBlock).value)->get();
+			int outputDebugSymbols = ((PawsInt*)codegenExpr(params[3], parentBlock).value)->get();
+			BlockExprAST* block = (BlockExprAST*)params[4];
+
+			IModule* module = createModule(sourcePath, moduleFuncName, outputDebugSymbols);
+
+			defineSymbol(block, "this", PawsBlockExprAST::TYPE, new PawsBlockExprAST(block));
+			codegenExpr((ExprAST*)block, parentBlock);
+			module->finalize();
+
+			defineSymbol(parentBlock, moduleName, PawsModule::TYPE, new PawsModule(module));
+		}
+	);
+
+	defineStmt2(pkgScope, "compile $E $I($P, ...) $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			std::string funcName = getIdExprASTName((IdExprAST*)params[1]);
+			std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[2]);
+			BlockExprAST* block = (BlockExprAST*)params[3];
+
+			JitFunction* jitFunc = createJitFunction(parentBlock, block, returnType, argExprs, funcName);
+
+			codegenExpr((ExprAST*)block, parentBlock);
+
+			typedef void (*funcPtr)(int);
+			funcPtr func = reinterpret_cast<funcPtr>(compileJitFunction(jitFunc));
+
+			func(123);
+			int abc = 0;
+
+			// IModule* module = createModule(sourcePath, moduleFuncName, outputDebugSymbols);
+
+			// defineSymbol(block, "this", PawsBlockExprAST::TYPE, new PawsBlockExprAST(block));
+			// codegenExpr((ExprAST*)block, parentBlock);
+			// module->finalize();
+
+			// defineSymbol(parentBlock, moduleName, PawsModule::TYPE, new PawsModule(module));
+		}
+	);
 });

@@ -32,23 +32,15 @@
             ]
         },
         {
-            "name": "gdb current file",
-            "type": "cppdbg",
+            "name": "./minc debug",
+            "type": "minc",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/${fileBasenameNoExtension}",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/bin",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "program": "${workspaceFolder}/paws/test.minc",
+            "args": [
+                "debug"
+            ],
+            "stopOnEntry": false,
+            "traceAnonymousBlocks": false
         }
     ]
 }

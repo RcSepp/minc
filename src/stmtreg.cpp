@@ -332,6 +332,8 @@ void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::
 {
 	if (exprs->exprtype == ExprAST::ExprType::LIST)
 		collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)exprs)->exprs), params, paramIdx);
+	else if (exprs->exprtype == ExprAST::ExprType::STMT)
+		collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((StmtAST*)exprs)->resolvedExprs), params, paramIdx);
 	else
 		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
 }

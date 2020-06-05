@@ -8,11 +8,17 @@ void defaultDefineFunc(BlockExprAST* pkgScope)
 }
 
 MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc, BlockExprAST* defineBlock)
-	: pkgScope(nullptr), defineFunc(defineFunc != nullptr ? defineFunc : defaultDefineFunc), defineBlock(defineBlock != nullptr ? defineBlock : createEmptyBlockExprAST())
+	: defineFunc(defineFunc != nullptr ? defineFunc : defaultDefineFunc), defineBlock(defineBlock != nullptr ? defineBlock : createEmptyBlockExprAST())
 {
+	// Initialize pkgScope to nullptr
+	// Note: If a binary is loaded multiple times, it is possible that a package is constructed multiple times at the same memory location.
+	//		 In this case we skip initialization of pkgScope to avoid overwriting the existing package.
+	if (name == nullptr || MINC_PACKAGE_MANAGER().registerPackage(name, this)) // If package is MincPackageManager or newly registered, ...
+		pkgScope = nullptr;
+
 	if (name) // Avoid registering MincPackageManager during class construction
 	{
-		MINC_PACKAGE_MANAGER().registerPackage(name, this);
+		setBlockExprASTName(this->defineBlock, name);
 		const char* perentNameEnd = strrchr(name, '.');
 		if (perentNameEnd)
 			parentName = std::string(name, perentNameEnd - name);
@@ -21,7 +27,11 @@ MincPackage::MincPackage(const char* name, MincPackageFunc defineFunc, BlockExpr
 
 MincPackage::~MincPackage()
 {
-	removeBlockExprAST(defineBlock);
+	if (defineBlock != nullptr)
+	{
+	 	removeBlockExprAST(defineBlock);
+		defineBlock = nullptr;
+	}
 }
 
 BlockExprAST* MincPackage::load(BlockExprAST* importer)
@@ -65,6 +75,8 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 
 void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 {
+	setBlockExprASTName(pkgScope, "pkgmgr"); // Manually set MincPackageManager name
+
 	// Define import statement
 	defineStmt2(pkgScope, "import $I. ...",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
@@ -101,6 +113,11 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 			raiseCompileError("Missing export block", pkgPath.empty() ? nullptr : pkgPath.front());
 		}
 	);
+}
+
+bool MincPackageManager::registerPackage(std::string pkgName, MincPackage* package)
+{
+	return packages.insert(std::make_pair(pkgName, package)).second;
 }
 
 BlockExprAST* MincPackageManager::loadPackage(std::string pkgName, BlockExprAST* importer) const

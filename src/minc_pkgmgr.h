@@ -15,7 +15,7 @@ private:
 	std::mutex loadMutex;
 	std::string parentName;
 	BlockExprAST *pkgScope, *defineBlock;
-	MincPackageFunc defineFunc;
+	const MincPackageFunc defineFunc;
 
 protected:
 	virtual void definePackage(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
@@ -32,14 +32,11 @@ class MincPackageManager : public MincPackage
 private:
 	std::map<std::string, MincPackage*> packages;
 	void definePackage(BlockExprAST* pkgScope);
+	MincPackage* discoverPackage(std::string pkgName) const;
 
 public:
 	MincPackageManager();
-	void registerPackage(std::string pkgName, MincPackage* package)
-	{
-		packages[pkgName] = package;
-	}
-	MincPackage* discoverPackage(std::string pkgName) const;
+	bool registerPackage(std::string pkgName, MincPackage* package);
 	BlockExprAST* loadPackage(std::string pkgName, BlockExprAST* importer) const;
 	void importPackage(BlockExprAST* scope, std::string pkgName) const;
 	bool tryImportPackage(BlockExprAST* scope, std::string pkgName) const;

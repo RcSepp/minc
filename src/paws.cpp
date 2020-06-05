@@ -584,8 +584,6 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 	defineExpr2(pkgScope, "print($E<PawsBase>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
-			if (ExprASTIsCast(exprAST))
-				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
 			PawsBase* value = (PawsBase*)codegenExpr(exprAST, parentBlock).value;
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes

@@ -9,6 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/llvm-c-decl-extractor.py",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "preLaunchTask": "make",
         }

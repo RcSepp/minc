@@ -589,7 +589,7 @@ if (EC)
 }
 
 legacy::PassManager pass;
-auto FileType = TargetMachine::CGFT_ObjectFile;
+auto FileType = CodeGenFileType::CGFT_ObjectFile;
 
 if (jit->getTargetMachine().addPassesToEmitFile(pass, dest, nullptr, FileType))
 {
@@ -744,28 +744,28 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 	builder->SetInsertPoint(currentBB = BasicBlock::Create(*context, "entry", currentFunc));
 
 	AllocaInst* builderPtr = builder->CreateAlloca(Types::LLVMOpaqueBuilder->getPointerTo(), nullptr, "builder");
-	builderPtr->setAlignment(8);
-	builder->CreateStore(currentFunc->args().begin(), builderPtr)->setAlignment(8);
+	builderPtr->setAlignment(MaybeAlign(8));
+	builder->CreateStore(currentFunc->args().begin(), builderPtr)->setAlignment(MaybeAlign(8));
 	defineSymbol(blockAST, "builder", BuiltinTypes::LLVMBuilderRef, new XXXValue(builderPtr));
 
 	AllocaInst* modulePtr = builder->CreateAlloca(Types::LLVMOpaqueModule->getPointerTo(), nullptr, "module");
-	modulePtr->setAlignment(8);
-	builder->CreateStore(currentFunc->args().begin() + 1, modulePtr)->setAlignment(8);
+	modulePtr->setAlignment(MaybeAlign(8));
+	builder->CreateStore(currentFunc->args().begin() + 1, modulePtr)->setAlignment(MaybeAlign(8));
 	defineSymbol(blockAST, "module", BuiltinTypes::LLVMModuleRef, new XXXValue(modulePtr));
 
 	AllocaInst* functionPtr = builder->CreateAlloca(Types::LLVMOpaqueValue->getPointerTo(), nullptr, "function");
-	functionPtr->setAlignment(8);
-	builder->CreateStore(currentFunc->args().begin() + 2, functionPtr)->setAlignment(8);
+	functionPtr->setAlignment(MaybeAlign(8));
+	builder->CreateStore(currentFunc->args().begin() + 2, functionPtr)->setAlignment(MaybeAlign(8));
 	defineSymbol(blockAST, "function", BuiltinTypes::LLVMValueRef, new XXXValue(functionPtr));
 
 	AllocaInst* parentBlockPtr = builder->CreateAlloca(Types::BlockExprAST->getPointerTo(), nullptr, "parentBlock");
-	parentBlockPtr->setAlignment(8);
-	builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(8);
+	parentBlockPtr->setAlignment(MaybeAlign(8));
+	builder->CreateStore(currentFunc->args().begin() + 3, parentBlockPtr)->setAlignment(MaybeAlign(8));
 	defineSymbol(blockAST, "parentBlock", BuiltinTypes::BlockExprAST, new XXXValue(parentBlockPtr));
 
 	AllocaInst* dfilePtr = builder->CreateAlloca(Types::LLVMOpaqueMetadata->getPointerTo(), nullptr, "dfile");
-	dfilePtr->setAlignment(8);
-	builder->CreateStore(currentFunc->args().begin() + 4, dfilePtr)->setAlignment(8);
+	dfilePtr->setAlignment(MaybeAlign(8));
+	builder->CreateStore(currentFunc->args().begin() + 4, dfilePtr)->setAlignment(MaybeAlign(8));
 	defineSymbol(blockAST, "dfile", BuiltinTypes::LLVMMetadataRef, new XXXValue(dfilePtr));
 
 	Value* paramsVal = currentFunc->args().begin() + 5;
@@ -776,7 +776,7 @@ JitFunction::JitFunction(BlockExprAST* parentBlock, BlockExprAST* blockAST, Type
 	{
 		Value* gep = builder->CreateInBoundsGEP(paramsVal, { Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, i++, true)) });
 		LoadInst* param = builder->CreateLoad(gep);
-		param->setAlignment(8);
+		param->setAlignment(MaybeAlign(8));
 
 		Variable paramVar = Variable(BuiltinTypes::ExprAST, new XXXValue(param));
 		if (ExprASTIsPlchld(blockParamExpr))

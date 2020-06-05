@@ -29,6 +29,7 @@ class FuncDecl(object):
 IR_TYPE_REGEX = re.compile(r"(?:%\"[^\"]*\")|%[\w.:]+")
 IR_TYPEDEF_REGEX = re.compile(r"(.*?) = type (.*)")
 IR_FUNCDEF_REGEX = re.compile(r"define (dso_local)? (.*?) @([^(]+)\((.*)\) (?:local_unnamed_addr )?#.*")
+IR_ARGTYPE_REGEX = re.compile(r"(.*)(?:%\d+)|(.*)")
 C_TYPE_REGEX = re.compile(r"(.*?)[^\*\s]+$")
 C_FUNCDEF_REGEX = re.compile(r"([\w\*\s]+[\*\s])(\w+)\s*\(([^\)]*)\)\s*{")
 
@@ -230,7 +231,7 @@ for filename in ['Core.ll', 'CloneModule.ll', 'DebugInfo.ll', 'ExecutionEngineBi
                 decl = FuncDecl(*match.groups())
                 decl.name = get_name(decl.name)
                 decl.argtypes = split_outside_brackets(decl.argtypes, ',')
-                decl.argtypes = [ argtype.strip() for argtype in decl.argtypes ]
+                decl.argtypes = [ IR_ARGTYPE_REGEX.match(argtype).group(1).strip() for argtype in decl.argtypes ]
                 decls[decl.name] = decl
 
 ################################################################################

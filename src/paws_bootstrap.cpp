@@ -149,7 +149,7 @@ Value* createStringConstant(StringRef str, const Twine& name)
 		val, name, nullptr, GlobalVariable::NotThreadLocal, 0
 	);
 	filenameGlobal->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
-	filenameGlobal->setAlignment(1);
+	filenameGlobal->setAlignment(MaybeAlign(1));
 	return builder->CreateInBoundsGEP(val->getType(), filenameGlobal, { ConstantInt::getNullValue(Types::Int64), ConstantInt::getNullValue(Types::Int64) });
 }
 
@@ -351,8 +351,8 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 	for (size_t i = 0; i < numArgs; ++i)
 	{
 		AllocaInst* arg = builder->CreateAlloca(unwrap(argTypes[i]->llvmtype), nullptr, argNames[i] ? getIdExprASTName(argNames[i]) : "");
-		arg->setAlignment(argTypes[i]->align);
-		builder->CreateStore(currentFunc->args().begin() + i, arg)->setAlignment(argTypes[i]->align);
+		arg->setAlignment(MaybeAlign(argTypes[i]->align));
+		builder->CreateStore(currentFunc->args().begin() + i, arg)->setAlignment(MaybeAlign(argTypes[i]->align));
 		defineSymbol(funcBlock, argNames[i] ? getIdExprASTName(argNames[i]) : "", argTypes[i], new XXXValue(arg));
 	}
 
@@ -385,8 +385,8 @@ Func* defineFunction(BlockExprAST* scope, BlockExprAST* funcBlock, const char* f
 	if (classType != nullptr)
 	{
 		AllocaInst* thisPtr = builder->CreateAlloca(unwrap(classType->Ptr()->llvmtype), nullptr, "this");
-		thisPtr->setAlignment(8);
-		builder->CreateStore(currentFunc->args().begin(), thisPtr)->setAlignment(8);
+		thisPtr->setAlignment(MaybeAlign(8));
+		builder->CreateStore(currentFunc->args().begin(), thisPtr)->setAlignment(MaybeAlign(8));
 		defineSymbol(funcBlock, "this", classType->Ptr(), new XXXValue(thisPtr));
 	}
 
@@ -895,7 +895,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 	// 					Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(64, 0, true)),
 	// 					Constant::getIntegerValue(IntegerType::getInt32Ty(*context), APInt(32, i++, true))
 	// 				});
-	// 				builder->CreateStore(var.value->val, gep)->setAlignment(8);
+	// 				builder->CreateStore(var.value->val, gep)->setAlignment(MaybeAlign(8));
 	// 			}
 	// 			closure = builder->CreateBitCast(closure, Type::getInt8PtrTy(*context));
 	// 			Function* defineStatementFunc = MincFunctions::defineStmt->getFunction(currentModule);
@@ -1335,7 +1335,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 
 				Value* gep = builder->CreateStructGEP(((XXXValue*)structVar.value)->val, variable->second.index, "gep");
 				LoadInst* memberVal = builder->CreateLoad(gep);
-				memberVal->setAlignment(variable->second.type->align);
+				memberVal->setAlignment(MaybeAlign(variable->second.type->align));
 				return Variable(variable->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -1385,9 +1385,9 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				XXXValue* valVal = (XXXValue*)codegenExpr(varExpr, parentBlock).value;
 
 				Value* gep = builder->CreateStructGEP(((XXXValue*)structVar.value)->val, variable->second.index, "gep");
-				builder->CreateStore(valVal->val, gep)->setAlignment(variable->second.type->align);
+				builder->CreateStore(valVal->val, gep)->setAlignment(MaybeAlign(variable->second.type->align));
 				LoadInst* memberVal = builder->CreateLoad(gep);
-				memberVal->setAlignment(variable->second.type->align);
+				memberVal->setAlignment(MaybeAlign(variable->second.type->align));
 				return Variable(variable->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -1444,7 +1444,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					if (constructor.func->symName[0] == '\0') // If constructor is default constructor
 					{
 						// Memset struct body to zero
-						builder->CreateMemSet(valMem, Constant::getNullValue(Types::Int8), structSize, 8);
+						builder->CreateMemSet(valMem, Constant::getNullValue(Types::Int8), structSize, MaybeAlign(8));
 					}
 					else
 					{
@@ -1467,7 +1467,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				// assert(0); //TODO: Not implemented below this
 				// Value* gep = builder->CreateStructGEP(structVar.value->val, member->second.index, "gep");
 				// LoadInst* memberVal = builder->CreateLoad(gep);
-				// memberVal->setAlignment(member->second.type->align);
+				// memberVal->setAlignment(MaybeAlign(member->second.type->align);
 				// return Variable(member->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -1491,7 +1491,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 				assert(0); //TODO: Not implemented below this
 				Value* gep = builder->CreateStructGEP(structVar.value->val, member->second.index, "gep");
 				LoadInst* memberVal = builder->CreateLoad(gep);
-				memberVal->setAlignment(member->second.type->align);
+				memberVal->setAlignment(MaybeAlign(member->second.type->align);
 				return Variable(member->second.type, new XXXValue(memberVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
@@ -1621,7 +1621,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					idx
 				}, "gep");
 				LoadInst* val = builder->CreateLoad(gep);
-				val->setAlignment(8);
+				val->setAlignment(MaybeAlign(8));
 				return Variable(nullptr, new XXXValue(val));
 			},
 			nullptr
@@ -1662,7 +1662,7 @@ defineSymbol(pawsDefScope, "PawsInt", PawsMetaType::TYPE, new PawsMetaType(PawsI
 					return *var;
 
 				LoadInst* loadVal = builder->CreateLoad(((XXXValue*)var->value)->val, varName);
-				loadVal->setAlignment(4);
+				loadVal->setAlignment(MaybeAlign(4));
 				return Variable(var->type, new XXXValue(loadVal));
 			},
 			[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {

@@ -902,12 +902,6 @@ ExprAST* BlockExprAST::clone()
 	clone->name = this->name;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
-	clone->resultCache = this->resultCache;
-	clone->resultCacheIdx = this->resultCacheIdx;
-	clone->exprIdx = this->exprIdx;
-	clone->isBlockSuspended = this->isBlockSuspended;
-	clone->isStmtSuspended = this->isStmtSuspended;
-	clone->isExprSuspended = this->isExprSuspended;
 	return clone;
 }
 

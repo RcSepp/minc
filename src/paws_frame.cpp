@@ -79,7 +79,7 @@ struct SingleshotAwaitableInstance;
 struct AwaitableInstance
 {
 	virtual bool awaitResult(SingleshotAwaitableInstance* awaitable, Variable* result) = 0;
-	virtual Variable getResult() = 0;
+	virtual bool getResult(Variable* result) = 0;
 };
 typedef PawsValue<AwaitableInstance*> PawsAwaitableInstance;
 
@@ -133,9 +133,16 @@ public:
 			return false;
 		}
 	}
-	Variable getResult()
+	bool getResult(Variable* result)
 	{
-		return result;
+		std::unique_lock<std::mutex> lock(mutex);
+		if (isDone())
+		{
+			*result = this->result;
+			return true;
+		}
+		else
+			return false;
 	}
 
 protected:
@@ -274,9 +281,24 @@ public:
 			return true;
 		}
 	}
-	Variable getResult()
+	bool getResult(Variable* result)
 	{
-		return Variable(PawsVoid::TYPE, nullptr); // Events don't store results. Return void instead
+		mutex.lock();
+
+		if (msgQueue.empty()) // If there are no messages in the queue, ...
+		{
+			mutex.unlock();
+			return false;
+		}
+		else // If there are messages in the queue, ...
+		{
+			const Message& msg = msgQueue.front();
+			msgQueue.pop();
+			mutex.unlock();
+			*result = Variable(type, msg.value); // Return first queued message
+			eventPool->post(std::bind(&SingleshotAwaitableInstance::wakeup, msg.invokeInstance, Variable(PawsVoid::TYPE, nullptr)), 0.0f); // Signal event processed
+			return true;
+		}
 	}
 };
 typedef PawsValue<EventInstance*> PawsEventInstance;
@@ -611,11 +633,13 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock).value)->get();
 			EventPool* eventPool = (EventPool*)exprArgs;
-			Variable result;
+			Variable result = Variable(PawsVoid::TYPE, nullptr);
 
-			blocker->awaitResult(new TopLevelInstance(eventPool), &result);
+			if (blocker->awaitResult(new TopLevelInstance(eventPool), &result))
+				return result;
 			eventPool->run();
-			return blocker->getResult();
+			blocker->getResult(&result);
+			return result;
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
 			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);

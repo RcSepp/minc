@@ -575,8 +575,7 @@ bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
 		if (stmt.sourceExprPtr != exprs->cend()) // If expressions are available
 		{
 			// Resolve next expression
-			//ExprAST* const clone = (*stmt.sourceExprPtr++)->clone(); //TODO: Uncomment this and make BlockExprAST::exprs a list of const ExprAST's to improve thread-safety at the expense of performance
-			ExprAST* const clone = *stmt.sourceExprPtr++;
+			ExprAST* const clone = (*stmt.sourceExprPtr++)->clone(); //TODO: Make BlockExprAST::exprs a list of const ExprAST's
 			clone->resolveTypes(this);
 			stmt.resolvedExprs.push_back(clone);
 			return true;

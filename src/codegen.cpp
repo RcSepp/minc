@@ -910,9 +910,6 @@ ExprAST* BlockExprAST::clone()
 	BlockExprAST* clone = new BlockExprAST(this->loc, this->exprs);
 	clone->parent = this->parent;
 	clone->references = this->references;
-	clone->exprs = new std::vector<ExprAST*>();
-	for (ExprAST* expr: *this->exprs)
-		clone->exprs->push_back(expr->clone());
 	clone->name = this->name;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;

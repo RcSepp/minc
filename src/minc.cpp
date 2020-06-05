@@ -7,8 +7,6 @@
 #include <stdio.h>
 
 // Local includes
-#include "cparser.h"
-#include "pyparser.h"
 #include "ast.h"
 #include "minc_cli.h"
 #include "minc_dbg.h"
@@ -77,29 +75,9 @@ int main(int argc, char** argv)
 	const int LEN_PY_EXT = 3;
 	try {
 		if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
-		{
-			PyLexer lexer(in, &std::cout);
-			yy::PyParser parser(lexer, realPath, &rootBlock);
-			if (parser.parse())
-			{
-				if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
-				free(realPath);
-				if (rootBlock) delete rootBlock;
-				return -1;
-			}
-		}
+			rootBlock = parsePythonFile(realPath);
 		else
-		{
-			CLexer lexer(in, &std::cout);
-			yy::CParser parser(lexer, realPath, &rootBlock);
-			if (parser.parse())
-			{
-				if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
-				free(realPath);
-				if (rootBlock) delete rootBlock;
-				return -1;
-			}
-		}
+			rootBlock = parseCFile(realPath);
 	} catch (CompileError err) {
 		err.print(std::cerr);
 		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }

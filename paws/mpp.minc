@@ -58,9 +58,13 @@ loadLibrary("libpython3.7m.so"); //DELETE
 module = createModule(realPath, "main", outputDebugSymbols);
 measure("compile time") {
 	rootBlock.scopeType = FILE_SCOPE_TYPE;
+	rootBlock.import(paws.compile);
 	rootBlock.import(paws.bootstrap);
+	rootBlock.import(pkgmgr);
 	rootBlock.symbols[FILE_SCOPE] = rootBlock;
-	rootBlock.codegen(getFileScope());
+	rootBlock.symbols[outputDebugSymbols] = outputDebugSymbols;
+	rootBlock.symbols[command] = command;
+	rootBlock.codegen(NULL);
 	module.finalize();
 }
 

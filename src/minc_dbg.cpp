@@ -786,7 +786,6 @@ private:
 				event.reason = "step";
 				event.threadId = getCurrentThread().id;
 				session->send(event);
-				resume.wait(true);
 				break;
 			}
 		case StopEventReason::BreakpointHit:
@@ -796,7 +795,6 @@ private:
 				event.reason = "breakpoint";
 				event.threadId = getCurrentThread().id;
 				session->send(event);
-				resume.wait(true);
 				break;
 			}
 		case StopEventReason::Paused:
@@ -806,7 +804,6 @@ private:
 				event.reason = "pause";
 				event.threadId = getCurrentThread().id;
 				session->send(event);
-				resume.wait(true);
 				break;
 			}
 		case StopEventReason::Exception:
@@ -817,7 +814,6 @@ private:
 				event.threadId = getCurrentThread().id;
 				event.text = description;
 				session->send(event);
-				resume.wait(true);
 				break;
 			}
 		case StopEventReason::PauseOnEntry:
@@ -827,10 +823,12 @@ private:
 				event.reason = "entry";
 				event.threadId = getCurrentThread().id;
 				session->send(event);
-				resume.wait(true);
 				break;
 			}
 		}
+		mutex.unlock();
+		resume.wait(true);
+		mutex.lock();
 	}
 };
 

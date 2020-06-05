@@ -436,12 +436,15 @@ std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const B
 		printf("\n");
 #endif
 	}
+
+	expr->resolvedParams.push_back(expr); // Set first context parameter to self to enable type-aware matching
 	for (auto& iter: exprreg[ExprAST::PLCHLD])
 	{
 #ifdef DEBUG_STMTREG
 		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
 #endif
 		currentScore = 0;
+		expr->resolvedContext = iter.second; // Set context to enable type-aware matching
 		if (iter.first->match(block, expr, currentScore))
 #ifdef DEBUG_STMTREG
 		{
@@ -457,11 +460,15 @@ std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const B
 		printf("\n");
 #endif
 	}
+	expr->resolvedParams.pop_back(); // Remove first context parameter
+	expr->resolvedContext = nullptr; // Reset context
+
 	if (antiExpr != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
 		return std::pair<const ExprAST*, CodegenContext*>(nullptr, antiExpr);
 	}
+
 	return bestExpr;
 }
 
@@ -533,8 +540,21 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	if (context.first != nullptr)
 	{
 		size_t paramIdx = 0;
-		context.first->collectParams(this, expr, expr->resolvedParams, paramIdx);
-		expr->resolvedContext = context.second;
+		if (context.first->exprtype == ExprAST::PLCHLD)
+		{
+			expr->resolvedContext = context.second; // Set context before collectParams() to enable type-aware matching
+			expr->resolvedParams.push_back(expr); // Set first context parameter to self to enable type-aware matching
+			std::vector<ExprAST*> collectedParams;
+			context.first->collectParams(this, expr, collectedParams, paramIdx);
+			expr->resolvedParams.pop_back(); // Remove first context parameter
+			expr->resolvedParams = collectedParams; // Replace parameters with collected parameters
+		}
+		else
+		{
+			// Don't set context before collectParams(), because resolvedParams are not yet set, which results in undefined behavior when using the context
+			context.first->collectParams(this, expr, expr->resolvedParams, paramIdx);
+			expr->resolvedContext = context.second;
+		}
 		return true;
 	}
 	else

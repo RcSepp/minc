@@ -44,7 +44,7 @@ MINC_OBJS = \
 
 YACC = bison
 CPPFLAGS = -g -std=c++1z -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include `pkg-config --cflags python-3.7`
-MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7` -pthread -ldl -rdynamic -lnode
+MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_PKGMGR_OBJS})

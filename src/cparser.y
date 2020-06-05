@@ -25,8 +25,9 @@
 #define getloc(b, e) Location{filename, (unsigned)b.begin.line, (unsigned)b.begin.column, (unsigned)e.end.line, (unsigned)e.end.column}
 %}
 
-%token ELLIPSIS
-%token EQ NE GEQ LEQ GR LE AWT NEW DM SR INC DEC
+%token ELLIPSIS // ...
+%token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV // Operators
+%token AWT NEW // Keywords
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM

@@ -1,6 +1,7 @@
 #ifndef __MINC_API_H
 #define __MINC_API_H
 
+#include <map>
 #include <string>
 #include <vector>
 #include <functional>
@@ -20,6 +21,8 @@ class PlchldExprAST;
 class ExprListAST;
 class StmtAST;
 class BlockExprAST;
+
+typedef int MatchScore;
 
 enum StepEventType { STEP_IN, STEP_OUT, STEP_SUSPEND, STEP_RESUME };
 
@@ -111,6 +114,7 @@ extern "C"
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
 	const std::string& getBlockExprASTName(const BlockExprAST* expr);
 	void setBlockExprASTName(BlockExprAST* expr, std::string name);
+	const StmtAST* getCurrentBlockExprASTStmt(const BlockExprAST* expr);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
 	char getPlchldExprASTLabel(const PlchldExprAST* expr);
 	const char* getPlchldExprASTSublabel(const PlchldExprAST* expr);
@@ -154,6 +158,8 @@ extern "C"
 	Variable* importSymbol(BlockExprAST* scope, const char* name);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
 	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType);
+	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates);
+	void lookupExprCandidates(const BlockExprAST* scope, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);
 

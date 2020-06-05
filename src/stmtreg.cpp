@@ -376,6 +376,18 @@ std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStatemen
 	return bestStmt;
 }
 
+void StatementRegister::lookupStmtCandidates(const BlockExprAST* block, const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const
+{
+	MatchScore score;
+	StreamingExprASTIter stmtEnd;
+	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
+	{
+		score = 0;
+		if (matchStatement(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingExprASTIter(&stmt->exprs), score, &stmtEnd) && stmtEnd.done())
+			candidates.insert({ score, iter });
+	}
+}
+
 size_t StatementRegister::countStatements() const
 {
 	return stmtreg.size();
@@ -397,7 +409,7 @@ void StatementRegister::defineExpr(const ExprAST* tplt, CodegenContext* expr)
 	exprreg[tplt->exprtype][tplt] = expr;
 }
 
-std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const
+std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const BlockExprAST* block, ExprAST* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	std::pair<const ExprAST*, CodegenContext*> bestExpr = {nullptr, nullptr};
@@ -451,7 +463,7 @@ std::pair<const ExprAST*, CodegenContext*> StatementRegister::lookupExpr(const B
 	return bestExpr;
 }
 
-void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
+void StatementRegister::lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const
 {
 	MatchScore score;
 	for (auto& iter: exprreg[expr->exprtype])

@@ -16,7 +16,6 @@
 #include "minc_api.h"
 
 typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
-typedef int MatchScore;
 
 struct Location
 {
@@ -132,13 +131,13 @@ namespace std
 // };
 class StreamingExprASTIter
 {
-	std::vector<ExprAST*>* buffer;
+	const std::vector<ExprAST*>* buffer;
 	size_t idx;
 	std::function<bool()> next;
 
 public:
 	static bool defaultNext() { return false; }
-	StreamingExprASTIter(std::vector<ExprAST*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext) : buffer(buffer), idx(idx), next(next)
+	StreamingExprASTIter(const std::vector<ExprAST*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext) : buffer(buffer), idx(idx), next(next)
 	{
 		if (buffer != nullptr)
 			for(size_t i = buffer->size(); i <= idx; ++i)
@@ -277,13 +276,14 @@ public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
 	void defineStatement(const ExprListAST* tplt, CodegenContext* stmt);
 	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& stmtEnd, MatchScore& score) const;
+	void lookupStmtCandidates(const BlockExprAST* block, const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const;
 	size_t countStatements() const;
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const;
 	void defineAntiStatement(CodegenContext* stmt);
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr);
-	std::pair<const ExprAST*, CodegenContext*> lookupExpr(const BlockExprAST* block, const ExprAST* expr, MatchScore& bestScore) const;
-	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const;
+	std::pair<const ExprAST*, CodegenContext*> lookupExpr(const BlockExprAST* block, ExprAST* expr, MatchScore& bestScore) const;
+	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 	void defineAntiExpr(CodegenContext* expr) { antiExpr = expr; }
@@ -413,6 +413,15 @@ public:
 		stmtreg.defineStatement(new ExprListAST('\0', tplt), stmt);
 	}
 	bool lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const;
+	void lookupStmtCandidates(const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const
+	{
+		for (const BlockExprAST* block = this; block; block = block->parent)
+		{
+			block->stmtreg.lookupStmtCandidates(this, stmt, candidates);
+			for (const BlockExprAST* ref: block->references)
+				ref->stmtreg.lookupStmtCandidates(this, stmt, candidates);
+		}
+	}
 	std::pair<const ExprListAST*, CodegenContext*> lookupStatement(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStatements() const { return stmtreg.countStatements(); }
 	void iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStatements(cbk); }
@@ -424,7 +433,7 @@ public:
 		stmtreg.defineExpr(tplt, expr);
 	}
 	bool lookupExpr(ExprAST* expr) const;
-	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&>& candidates) const
+	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
@@ -570,6 +579,7 @@ public:
 	ExprAST* clone();
 	void reset();
 	void clearCache(size_t targetSize);
+	const StmtAST* getCurrentStmt() const { return &currentStmt; }
 };
 
 class StopExprAST : public ExprAST

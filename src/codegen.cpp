@@ -291,6 +291,10 @@ extern "C"
 	{
 		expr->name = name;
 	}
+	const StmtAST* getCurrentBlockExprASTStmt(const BlockExprAST* expr)
+	{
+		return expr->getCurrentStmt();
+	}
 	ExprAST* getCastExprASTSource(const CastExprAST* expr)
 	{
 		return expr->resolvedParams[0];
@@ -579,10 +583,20 @@ extern "C"
 		return fromType == toType || scope->isInstance(fromType, toType);
 	}
 
+	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates)
+	{
+		ExprListAST stmtExprs('\0', std::vector<ExprAST*>(stmt->begin, stmt->end));
+		scope->lookupStmtCandidates(&stmtExprs, candidates);
+	}
+	void lookupExprCandidates(const BlockExprAST* scope, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates)
+	{
+		scope->lookupExprCandidates(expr, candidates);
+	}
+
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr)
 	{
 		std::string report = "";
-		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>&> candidates;
+		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>> candidates;
 		std::vector<ExprAST*> resolvedParams;
 		scope->lookupExprCandidates(expr, candidates);
 		for (auto& candidate: candidates)

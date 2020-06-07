@@ -41,6 +41,7 @@ RS			>>
 LS			<<
 AND			&&
 OR			\|\|
+IDIV		\/\/
 CADD		\+=
 CSUB		-=
 CMUL		\*=
@@ -233,6 +234,7 @@ DM			->
 <normal>{LS}							return token::LS;
 <normal>{AND}							return token::AND;
 <normal>{OR}							return token::OR;
+<normal>{IDIV}							return token::IDIV;
 <normal>{CADD}							return token::CADD;
 <normal>{CSUB}							return token::CSUB;
 <normal>{CMUL}							return token::CMUL;

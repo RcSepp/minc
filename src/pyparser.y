@@ -26,7 +26,7 @@
 %}
 
 %token ELLIPSIS // ...
-%token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV // Operators
+%token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR IDIV CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV // Operators
 %token AWT NEW // Keywords
 %token NEWLINE INDENT OUTDENT // Language specific tokens
 %token<const char*> LITERAL ID PLCHLD2
@@ -46,8 +46,9 @@
 %left EQ NE
 %left GEQ LEQ RS LS '>' '<'
 %left '+' '-'
-%left '*' '/' '%'
+%left '*' '/' '%' IDIV
 %right AWT NEW REF
+%right DCOR
 %left '.' CALL SUBSCRIPT TPLT DM
 %left ENC
 
@@ -179,6 +180,7 @@ expr
 	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
 	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }
 	| expr '/' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'/', "/", $1, $3); }
+	| expr IDIV expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::IDIV, "//", $1, $3); }
 	| expr '%' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'%', "%", $1, $3); }
 	| expr '&' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'&', "&", $1, $3); }
 	| expr EQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::EQ, "==", $1, $3); }
@@ -199,6 +201,7 @@ expr
 	| expr '*' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'*', "*", $1); }
 	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
 	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
+	| '@' expr %prec DCOR { $$ = new PrefixExprAST(getloc(@1, @2), (int)'@', "@", $2); }
 	| AWT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::AWT, "await", $2); }
 	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
 ;

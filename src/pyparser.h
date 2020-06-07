@@ -21,10 +21,15 @@ private:
 int g_current_line_indent;
 std::stack<size_t> g_indent_levels;
 int g_is_fake_outdent_symbol;
+int g_current_rbkt_level, g_current_sbkt_level, g_current_cbkt_level;
 
 public:
-	PyLexer(std::istream& in, std::ostream& out) : yyFlexLexer(in, out), g_current_line_indent(0), g_is_fake_outdent_symbol(0) {}
-	PyLexer(std::istream* in, std::ostream* out) : yyFlexLexer(in, out), g_current_line_indent(0), g_is_fake_outdent_symbol(0) {}
+	PyLexer(std::istream& in, std::ostream& out)
+		: yyFlexLexer(in, out), g_current_line_indent(0), g_is_fake_outdent_symbol(0),
+		  g_current_rbkt_level(0), g_current_sbkt_level(0), g_current_cbkt_level(0) {}
+	PyLexer(std::istream* in, std::ostream* out)
+		: yyFlexLexer(in, out), g_current_line_indent(0), g_is_fake_outdent_symbol(0),
+		  g_current_rbkt_level(0), g_current_sbkt_level(0), g_current_cbkt_level(0) {}
 	virtual ~PyLexer() {}
 	using FlexLexer::yylex;
 	virtual int yylex(yy::PyParser::semantic_type * const lval, yy::PyParser::location_type *location);

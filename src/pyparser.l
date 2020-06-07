@@ -222,8 +222,25 @@ DM			->
 									return token::PARAM;
 								}
 
+<normal>\(		{ ++g_current_rbkt_level; return yytext[0]; }
+<normal>\)		{ if (--g_current_rbkt_level < 0) {} return yytext[0]; } //TODO: Throw "missing opening bracket"
+
+<normal>\[		{ ++g_current_sbkt_level; return yytext[0]; }
+<normal>\]		{ if (--g_current_sbkt_level < 0) {} return yytext[0]; } //TODO: Throw "missing opening bracket"
+
+<normal>\{		{ ++g_current_cbkt_level; return yytext[0]; }
+<normal>\}		{ if (--g_current_cbkt_level < 0) {} return yytext[0]; } //TODO: Throw "missing opening bracket"
+
 <normal>[ \t]+							// White space
-<normal>\n								{ g_current_line_indent = 0; indent_caller = YY_START; BEGIN(indent); return token::NEWLINE; } // New line
+<normal>\n								{ // New line
+									if ((g_current_rbkt_level | g_current_sbkt_level | g_current_cbkt_level) == 0)
+									{
+										g_current_line_indent = 0;
+										indent_caller = YY_START;
+										BEGIN(indent);
+										return token::NEWLINE;
+									}
+								}
 
 <normal>{ELLIPSIS}						return token::ELLIPSIS;
 <normal>{EQ}							return token::EQ;
@@ -249,6 +266,6 @@ DM			->
 <normal>{CPOW}							return token::CPOW;
 <normal>{CIDV}							return token::CIDV;
 
-<normal>;|=|\+|\(|\)|,|\{|\}|\[|\]|.|:|<|>|%	return yytext[0];
+<normal>;|=|\+|,|.|:|<|>|%				return yytext[0];
 
 %%

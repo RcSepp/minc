@@ -905,7 +905,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	return VOID;
 }
 
-ExprAST* BlockExprAST::clone()
+ExprAST* BlockExprAST::clone() const
 {
 	BlockExprAST* clone = new BlockExprAST(this->loc, this->exprs);
 	clone->parent = this->parent;

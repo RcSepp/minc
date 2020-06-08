@@ -11,7 +11,6 @@
 #include <functional>
 #include <cassert>
 #include <regex>
-#include <iostream>
 
 #include "minc_api.h"
 
@@ -20,22 +19,6 @@ const char* getTypeName2Internal(const BaseType* type);
 
 typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
 
-struct Location
-{
-	const char* filename;
-	unsigned begin_line, begin_col;
-	unsigned end_line, end_col;
-};
-
-struct CompileError
-{
-	const Location loc;
-	const std::string msg;
-	std::vector<std::string> hints;
-	CompileError(std::string msg, Location loc={0}) : loc(loc), msg(msg) {}
-	void addHint(const std::string& hint) { hints.push_back(hint); }
-	void print(std::ostream& out=std::cerr);
-};
 struct UndefinedStmtException : public CompileError
 {
 	UndefinedStmtException(const StmtAST* stmt);

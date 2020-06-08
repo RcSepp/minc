@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <iostream>
 
 struct BaseType {};
 struct BaseScopeType {};
@@ -53,6 +54,23 @@ struct Cast
 		: fromType(fromType), toType(toType), context(context) {}
 	virtual int getCost() const = 0;
 	virtual Cast* derive() const = 0;
+};
+
+struct Location
+{
+	const char* filename;
+	unsigned begin_line, begin_col;
+	unsigned end_line, end_col;
+};
+
+struct CompileError
+{
+	const Location loc;
+	const std::string msg;
+	std::vector<std::string> hints;
+	CompileError(std::string msg, Location loc={0}) : loc(loc), msg(msg) {}
+	void addHint(const std::string& hint) { hints.push_back(hint); }
+	void print(std::ostream& out=std::cerr);
 };
 
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);

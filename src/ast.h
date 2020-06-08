@@ -15,6 +15,9 @@
 
 #include "minc_api.h"
 
+const std::string& getTypeNameInternal(const BaseType* type);
+const char* getTypeName2Internal(const BaseType* type);
+
 typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
 
 struct Location
@@ -650,7 +653,7 @@ public:
 		return false;
 	}
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const { assert(0); }
-	std::string str() const { return "cast expression from " + getTypeName(cast->fromType) + " to " + getTypeName(cast->toType); }
+	std::string str() const { return "cast expression from " + getTypeNameInternal(cast->fromType) + " to " + getTypeNameInternal(cast->toType); }
 	ExprAST* getDerivedExpr();
 	ExprAST* clone() const { return new CastExprAST(cast, resolvedParams[0]->clone()); }
 };

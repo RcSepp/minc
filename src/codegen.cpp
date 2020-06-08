@@ -94,6 +94,27 @@ public:
 	}
 };
 
+const std::string& getTypeNameInternal(const BaseType* type)
+{
+	if (type == nullptr)
+		return NULL_TYPE;
+	const auto typeDesc = typereg.find(type);
+	if (typeDesc == typereg.cend())
+		return UNKNOWN_TYPE;
+	else
+		return typeDesc->second.name;
+}
+const char* getTypeName2Internal(const BaseType* type)
+{
+	if (type == nullptr)
+		return NULL_TYPE.c_str();
+	const auto typeDesc = typereg.find(type);
+	if (typeDesc == typereg.cend())
+		return UNKNOWN_TYPE.c_str();
+	else
+		return typeDesc->second.name.c_str();
+}
+
 extern "C"
 {
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope)
@@ -361,23 +382,11 @@ extern "C"
 
 	const std::string& getTypeName(const BaseType* type)
 	{
-		if (type == nullptr)
-			return NULL_TYPE;
-		const auto typeDesc = typereg.find(type);
-		if (typeDesc == typereg.cend())
-			return UNKNOWN_TYPE;
-		else
-			return typeDesc->second.name;
+		return getTypeNameInternal(type);
 	}
 	const char* getTypeName2(const BaseType* type)
 	{
-		if (type == nullptr)
-			return NULL_TYPE.c_str();
-		const auto typeDesc = typereg.find(type);
-		if (typeDesc == typereg.cend())
-			return UNKNOWN_TYPE.c_str();
-		else
-			return typeDesc->second.name.c_str();
+		return getTypeName2Internal(type);
 	}
 
 	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value)
@@ -606,7 +615,7 @@ extern "C"
 			size_t paramIdx = 0;
 			resolvedParams.clear();
 			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams, paramIdx);
-			const std::string& typeName = getTypeName(context.second->getType(scope, resolvedParams));
+			const std::string& typeName = getTypeNameInternal(context.second->getType(scope, resolvedParams));
 			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + typeName + ">\n";
 		}
 		return report;
@@ -618,7 +627,7 @@ extern "C"
 		std::list<std::pair<BaseType*, BaseType*>> casts;
 		scope->listAllCasts(casts);
 		for (auto& cast: casts)
-			report += "\t" +  getTypeName(cast.first) + " -> " + getTypeName(cast.second) + "\n";
+			report += "\t" +  getTypeNameInternal(cast.first) + " -> " + getTypeNameInternal(cast.second) + "\n";
 		return report;
 	}
 
@@ -978,7 +987,7 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		if (expectedType != gotType)
 		{
 			throw CompileError(
-				("invalid expression return type: " + ExprASTToString(this) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">").c_str(),
+				("invalid expression return type: " + ExprASTToString(this) + "<" + getTypeNameInternal(gotType) + ">, expected: <" + getTypeNameInternal(expectedType) + ">").c_str(),
 				this->loc
 			);
 		}

@@ -37,7 +37,7 @@ void CastRegister::defineDirectCast(Cast* cast)
 	bwdCasts.insert(std::make_pair(cast->toType, cast));
 
 #ifdef DETECT_UNDEFINED_TYPE_CASTS
-	std::string fromTypeName = getTypeName(cast->fromType), toTypeName = getTypeName(cast->toType);
+	std::string fromTypeName = getTypeNameInternal(cast->fromType), toTypeName = getTypeNameInternal(cast->toType);
 	if (fromTypeName.find("UNKNOWN_TYPE") != std::string::npos || toTypeName.find("UNKNOWN_TYPE") != std::string::npos)
 		throw CompileError("type-cast defined from " + fromTypeName + " to " + toTypeName);
 #endif

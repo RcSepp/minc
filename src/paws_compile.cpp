@@ -9,6 +9,8 @@ typedef PawsValue<IModule*> PawsModule;
 void importFile(BlockExprAST* parentBlock, std::string importPath)
 {
 	char* importRealPath = realpath(importPath.c_str(), nullptr);
+	if (importRealPath == nullptr)
+		raiseCompileError((importPath + ": No such file or directory").c_str());
 	importPath = importPath.substr(std::max(importPath.rfind("/"), importPath.rfind("\\")) + 1);
 	const size_t dt = importPath.rfind(".");
 	if (dt != -1) importPath = importPath.substr(0, dt);

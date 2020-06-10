@@ -845,13 +845,16 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
-	defineExpr(pkgScope, "realpath($E<PawsString>)",
-		+[](std::string path) -> std::string {
+	defineExpr2(pkgScope, "realpath($E<PawsString>)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			const std::string& path = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
 			char* realPath = realpath(path.c_str(), nullptr);
-			std::string realPathStr(realPath);
+			if (realPath == nullptr)
+				raiseCompileError((path + ": No such file or directory").c_str(), params[0]);
+			PawsString* realPathStr = new PawsString(realPath);
 			free(realPath);
-			return realPathStr;
-		}
+			return Variable(PawsString::TYPE, realPathStr);
+		}, PawsString::TYPE
 	);
 
 	// Define MINC package manager import with target scope

@@ -13,6 +13,12 @@
 // 3     | PLCHLD       | $E<CAST>
 // 2     | PLCHLD       | $I
 // 1     | PLCHLD       | $E
+//
+// Match score penalties:
+// Penalty | Match type
+//---------------------
+// -1      | Type-cast
+// -1      | Ellipsis
 
 //#define DEBUG_STMTREG
 
@@ -770,6 +776,7 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 
 bool EllipsisExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
+	score--; // Penalize ellipsis match
 	return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, score);
 }
 void EllipsisExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const

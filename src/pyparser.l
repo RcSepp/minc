@@ -57,6 +57,15 @@ CPOW		\*\*=
 CIDV		\/\/=
 AWT			await
 NEW			new
+PAND		and
+POR			or
+IF			if
+ELSE		else
+FOR			for
+WHL			while
+NOT			not
+IN			in
+IS			is
 DM			->
 
 %%
@@ -164,6 +173,15 @@ DM			->
 
 <normal>{AWT}							return token::AWT;
 <normal>{NEW}							return token::NEW;
+<normal>{PAND}							return token::PAND;
+<normal>{POR}							return token::POR;
+<normal>{IF}							return token::IF;
+<normal>{ELSE}							return token::ELSE;
+<normal>{FOR}							return token::FOR;
+<normal>{WHL}							return token::WHL;
+<normal>{NOT}							return token::NOT;
+<normal>{IN}							return token::IN;
+<normal>{IS}							return token::IS;
 <normal>{DM}							return token::DM;
 <normal>{LITERAL}						{
 									size_t len = strlen(yytext);

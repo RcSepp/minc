@@ -155,7 +155,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
 		)) ++tplt;
 
 	if (stmtEnd)
@@ -302,7 +302,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score)
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score)
 		))
 	{
 		// Match ellipsis expression against itself

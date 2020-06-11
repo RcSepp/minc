@@ -234,11 +234,11 @@ extern "C"
 		delete expr;
 	}
 
-	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr)
+	std::vector<ExprAST*>& getExprListASTExprs(ExprListAST* expr)
 	{
 		return expr->exprs;
 	}
-	ExprAST* getExprListASTExpression(ExprListAST* expr, size_t index)
+	ExprAST* getExprListASTExpr(ExprListAST* expr, size_t index)
 	{
 		return expr->exprs[index];
 	}

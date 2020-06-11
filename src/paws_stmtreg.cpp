@@ -60,7 +60,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = stmts;
-			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[1]);
+			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExprs((ExprListAST*)params[1]);
 			BlockExprAST* blockAST = (BlockExprAST*)params[2];
 
 			// Collect parameters

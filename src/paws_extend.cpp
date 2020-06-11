@@ -5,7 +5,7 @@
 MincPackage PAWS_EXTEND("paws.extend", [](BlockExprAST* pkgScope) {
 	defineStmt2(pkgScope, "stmt $E ... $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExpressions((ExprListAST*)params[0]);
+			const std::vector<ExprAST*>& stmtParamsAST = getExprListASTExprs((ExprListAST*)params[0]);
 			BlockExprAST* blockAST = (BlockExprAST*)params[1];
 
 			// Collect parameters

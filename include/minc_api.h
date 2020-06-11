@@ -115,7 +115,7 @@ extern "C"
 	void resetBlockExprASTCache(BlockExprAST* block, size_t targetState);
 	bool isBlockExprASTBusy(BlockExprAST* block);
 	void removeBlockExprAST(BlockExprAST* expr);
-	std::vector<ExprAST*>& getExprListASTExpressions(ExprListAST* expr);
+	std::vector<ExprAST*>& getExprListASTExprs(ExprListAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);

@@ -52,8 +52,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 					PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 					const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
-					const std::vector<ExprAST*>& argTypeExprs = getExprListASTExpressions((ExprListAST*)params[2]);
-					const std::vector<ExprAST*>& argNameExprs = getExprListASTExpressions((ExprListAST*)params[3]);
+					const std::vector<ExprAST*>& argTypeExprs = getExprListASTExprs((ExprListAST*)params[2]);
+					const std::vector<ExprAST*>& argNameExprs = getExprListASTExprs((ExprListAST*)params[3]);
 					BlockExprAST* block = (BlockExprAST*)params[4];
 
 					// Set function parent to function definition scope
@@ -152,7 +152,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 				raiseCompileError(("no method named '" + methodName + "' in '" + getTypeName(strct) + "'").c_str(), params[1]);
 
 			const Struct::Method& method = pair->second;
-			std::vector<ExprAST*>& argExprs = getExprListASTExpressions((ExprListAST*)params[2]);
+			std::vector<ExprAST*>& argExprs = getExprListASTExprs((ExprListAST*)params[2]);
 
 			// Check number of arguments
 			if (method.argTypes.size() != argExprs.size())

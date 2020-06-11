@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 SRC_DIR = src/
+INC_DIR = include/
 TMP_DIR = tmp/
 BIN_DIR = bin/
 
@@ -37,7 +38,7 @@ MINC_OBJS = \
 	paws_array.o \
 
 YACC = bison
-CPPFLAGS = -g -std=c++1z -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include `pkg-config --cflags python-3.7`
+CPPFLAGS = -g -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include `pkg-config --cflags python-3.7`
 MINC_LIBS = `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
 
 LIBMINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_OBJS})

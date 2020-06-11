@@ -264,11 +264,11 @@ extern "C"
 	}
 	size_t countBlockExprASTStmts(const BlockExprAST* expr)
 	{
-		return expr->countStatements();
+		return expr->countStmts();
 	}
 	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk)
 	{
-		return expr->iterateStatements(cbk);
+		return expr->iterateStmts(cbk);
 	}
 	size_t countBlockExprASTExprs(const BlockExprAST* expr)
 	{
@@ -405,7 +405,7 @@ extern "C"
 
 	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs)
 	{
-		scope->defineStatement(tplt, new StaticStmtContext(codeBlock, stmtArgs));
+		scope->defineStmt(tplt, new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs)
@@ -430,7 +430,7 @@ extern "C"
 				tpltBlock->exprs->pop_back();
 		}
 	
-		scope->defineStatement(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
+		scope->defineStmt(*tpltBlock->exprs, new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
@@ -438,12 +438,12 @@ extern "C"
 		if (!tplt.empty() && ((tplt.back()->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt.back())->p1 == 'B')
 						   || (tplt.back()->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt.back())->size() == 1
 							   && ((ExprListAST*)tplt.back())->at(0)->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)((ExprListAST*)tplt.back())->at(0))->p1 == 'B')))
-			scope->defineStatement(tplt, stmt);
+			scope->defineStmt(tplt, stmt);
 		else
 		{
 			std::vector<ExprAST*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new StopExprAST(Location{}));
-			scope->defineStatement(stoppedTplt, stmt);
+			scope->defineStmt(stoppedTplt, stmt);
 		}
 	}
 
@@ -469,17 +469,17 @@ extern "C"
 				tpltBlock->exprs->pop_back();
 		}
 	
-		scope->defineStatement(*tpltBlock->exprs, stmt);
+		scope->defineStmt(*tpltBlock->exprs, stmt);
 	}
 
 	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs)
 	{
-		scope->defineAntiStatement(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
+		scope->defineAntiStmt(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
 	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt)
 	{
-		scope->defineAntiStatement(stmt);
+		scope->defineAntiStmt(stmt);
 	}
 
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
@@ -864,7 +864,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	{
 		for (ExprASTIter stmtBeginExpr = exprs->cbegin() + exprIdx; stmtBeginExpr != exprs->cend(); exprIdx = stmtBeginExpr - exprs->cbegin())
 		{
-			if (!isStmtSuspended && !lookupStatement(stmtBeginExpr, currentStmt))
+			if (!isStmtSuspended && !lookupStmt(stmtBeginExpr, currentStmt))
 				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
 

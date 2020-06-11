@@ -50,7 +50,7 @@ void storeParam(ExprAST* param, std::vector<ExprAST*>& params, size_t paramIdx)
 	}
 }
 
-bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, StreamingExprASTIter expr, MatchScore& score, StreamingExprASTIter* stmtEnd=nullptr)
+bool matchStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, StreamingExprASTIter expr, MatchScore& score, StreamingExprASTIter* stmtEnd=nullptr)
 {
 	while (tplt != tpltEnd && !expr.done())
 	{
@@ -76,9 +76,9 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 					if (ellipsisTerminator->match(block, (expr++)[0], score)
 						// At this point both ellipsis and terminator match. Both cases must be handled
 						// 1) We handle ellipsis match by continuing the loop
-						// 2) We handle terminator match calling matchStatement() starting after the terminator match
+						// 2) We handle terminator match calling matchStmt() starting after the terminator match
 						// If case 2 succeeds, return true
-						&& matchStatement(block, tplt + 1, tpltEnd, expr, score, stmtEnd))
+						&& matchStmt(block, tplt + 1, tpltEnd, expr, score, stmtEnd))
 					{
 						return true;
 					}
@@ -91,7 +91,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 
 			StreamingExprASTIter subStmtEnd;
 			MatchScore subStmtScore;
-			if (block->lookupStatement(expr, expr, subStmtScore).first == nullptr)
+			if (block->lookupStmt(expr, expr, subStmtScore).first == nullptr)
 				return false;
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -161,7 +161,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStmt(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
 		)) ++tplt;
 
 	if (stmtEnd)
@@ -169,7 +169,7 @@ bool matchStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIt
 	return tplt == tpltEnd; // We have a match if tplt has been fully traversed
 }
 
-void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, StreamingExprASTIter expr, std::vector<ExprAST*>& params, size_t& paramIdx)
+void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tpltEnd, StreamingExprASTIter expr, std::vector<ExprAST*>& params, size_t& paramIdx)
 {
 	MatchScore score;
 	while (tplt != tpltEnd && !expr.done())
@@ -202,9 +202,9 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 					if (ellipsisTerminator->match(block, expr[0], score)
 						// At this point both ellipsis and terminator match. Both cases must be handled
 						// 1) We handle ellipsis match by continuing the loop
-						// 2) We handle terminator match calling matchStatement() starting after the terminator match
+						// 2) We handle terminator match calling matchStmt() starting after the terminator match
 						// If case 2 succeeds, continue collecting after the terminator match
-						&& matchStatement(block, tplt + 1, tpltEnd, expr + 1, score))
+						&& matchStmt(block, tplt + 1, tpltEnd, expr + 1, score))
 					{
 						// If ellipsisTerminator == $V, collect the ellipsis expression as part of the template ellipsis
 						if (expr[0]->exprtype == ExprAST::ExprType::ELLIPSIS)
@@ -217,7 +217,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 								params[i] = new ExprListAST('\0', { params[i] });
 
 						ellipsisTerminator->collectParams(block, expr[0], params, paramIdx);
-						return collectStatement(block, tplt + 1, tpltEnd, expr + 1, params, paramIdx);
+						return collectStmt(block, tplt + 1, tpltEnd, expr + 1, params, paramIdx);
 					}
 					else
 					{
@@ -239,11 +239,11 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 
 			StreamingExprASTIter subStmtBegin = expr;
 			MatchScore subStmtScore;
-			const std::pair<const ExprListAST*, CodegenContext*> stmtContext = block->lookupStatement(subStmtBegin, expr, subStmtScore);
+			const std::pair<const ExprListAST*, CodegenContext*> stmtContext = block->lookupStmt(subStmtBegin, expr, subStmtScore);
 			assert(stmtContext.first != nullptr);
 			StmtAST* subStmt = new StmtAST(subStmtBegin.iter(), expr.iter(), stmtContext.second);
 			size_t subStmtParamIdx = 0;
-			collectStatement(block, stmtContext.first->cbegin(), stmtContext.first->cend(), subStmtBegin, subStmt->resolvedParams, subStmtParamIdx);
+			collectStmt(block, stmtContext.first->cbegin(), stmtContext.first->cend(), subStmtBegin, subStmt->resolvedParams, subStmtParamIdx);
 			storeParam(subStmt, params, paramIdx++);
 
 			if (tplt[0]->exprtype == ExprAST::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -308,7 +308,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStatement(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score)
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStmt(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score)
 		))
 	{
 		// Match ellipsis expression against itself
@@ -327,7 +327,7 @@ void collectStatement(const BlockExprAST* block, ExprASTIter tplt, const ExprAST
 bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	StreamingExprASTIter listExprEnd;
-	if (expr->exprtype == ExprAST::ExprType::LIST && matchStatement(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
+	if (expr->exprtype == ExprAST::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
 		return true;
 	if (expr->exprtype != ExprAST::ExprType::LIST && this->exprs.size() == 1)
 		return this->exprs[0]->match(block, expr, score);
@@ -337,19 +337,19 @@ bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchSco
 void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const
 {
 	if (exprs->exprtype == ExprAST::ExprType::LIST)
-		collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)exprs)->exprs), params, paramIdx);
+		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)exprs)->exprs), params, paramIdx);
 	else if (exprs->exprtype == ExprAST::ExprType::STMT)
-		collectStatement(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((StmtAST*)exprs)->resolvedExprs), params, paramIdx);
+		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((StmtAST*)exprs)->resolvedExprs), params, paramIdx);
 	else
 		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
 }
 
-void StatementRegister::defineStatement(const ExprListAST* tplt, CodegenContext* stmt)
+void StatementRegister::defineStmt(const ExprListAST* tplt, CodegenContext* stmt)
 {
 	stmtreg[tplt] = stmt;
 }
 
-std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStatement(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	StreamingExprASTIter currentStmtEnd;
@@ -360,7 +360,7 @@ std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStatemen
 		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
 #endif
 		currentScore = 0;
-		if (matchStatement(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), stmt, currentScore, &currentStmtEnd))
+		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), stmt, currentScore, &currentStmtEnd))
 #ifdef DEBUG_STMTREG
 		{
 #endif
@@ -391,23 +391,23 @@ void StatementRegister::lookupStmtCandidates(const BlockExprAST* block, const Ex
 	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
 	{
 		score = 0;
-		if (matchStatement(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingExprASTIter(&stmt->exprs), score, &stmtEnd) && stmtEnd.done())
+		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingExprASTIter(&stmt->exprs), score, &stmtEnd) && stmtEnd.done())
 			candidates.insert({ score, iter });
 	}
 }
 
-size_t StatementRegister::countStatements() const
+size_t StatementRegister::countStmts() const
 {
 	return stmtreg.size();
 }
 
-void StatementRegister::iterateStatements(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
+void StatementRegister::iterateStmts(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
 {
 	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
 		cbk(iter.first, iter.second);
 }
 
-void StatementRegister::defineAntiStatement(CodegenContext* stmt)
+void StatementRegister::defineAntiStmt(CodegenContext* stmt)
 {
 	antiStmt = stmt;
 }
@@ -567,7 +567,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 		return false;
 }
 
-bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
+bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 {
 	// Initialize stmt
 	stmt.resolvedContext = nullptr;
@@ -606,7 +606,7 @@ bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
 	// Get context of best match
 	StreamingExprASTIter stmtEnd;
 	MatchScore score;
-	std::pair<const ExprListAST*, CodegenContext*> context = lookupStatement(stmtBegin, stmtEnd, score);
+	std::pair<const ExprListAST*, CodegenContext*> context = lookupStmt(stmtBegin, stmtEnd, score);
 
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
@@ -640,7 +640,7 @@ bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
 	if (context.first != nullptr)
 	{
 		size_t paramIdx = 0;
-		collectStatement(this, context.first->cbegin(), context.first->cend(), stmtBegin, stmt.resolvedParams, paramIdx);
+		collectStmt(this, context.first->cbegin(), context.first->cend(), stmtBegin, stmt.resolvedParams, paramIdx);
 		stmt.resolvedContext = context.second;
 		return true;
 	}
@@ -648,7 +648,7 @@ bool BlockExprAST::lookupStatement(ExprASTIter beginExpr, StmtAST& stmt) const
 		return false;
 }
 
-std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStatement(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	bestScore = -2147483648;
 	MatchScore currentScore;
@@ -657,7 +657,7 @@ std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStatement(Str
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = bestScore;
-		currentContext = block->stmtreg.lookupStatement(this, stmt, currentStmtEnd, currentScore);
+		currentContext = block->stmtreg.lookupStmt(this, stmt, currentStmtEnd, currentScore);
 		if (currentScore > bestScore)
 		{
 			bestContext = currentContext;
@@ -667,7 +667,7 @@ std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStatement(Str
 		for (const BlockExprAST* ref: block->references)
 		{
 			currentScore = bestScore;
-			currentContext = ref->stmtreg.lookupStatement(this, stmt, currentStmtEnd, currentScore);
+			currentContext = ref->stmtreg.lookupStmt(this, stmt, currentStmtEnd, currentScore);
 			if (currentScore > bestScore)
 			{
 				bestContext = currentContext;

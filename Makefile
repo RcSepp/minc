@@ -28,7 +28,6 @@ MINC_OBJS = \
 	paws_extend.o \
 	paws_fileio.o \
 	paws_time.o \
-	paws_llvm.o \
 	paws_castreg.o \
 	paws_stmtreg.o \
 	paws_struct.o \
@@ -36,15 +35,10 @@ MINC_OBJS = \
 	paws_frame.o \
 	paws_frame_eventloop.o \
 	paws_array.o \
-	paws_compile.o \
-	llvm_constants.o \
-	module.o \
-	types.o \
-	paws_bootstrap.o \
 
 YACC = bison
 CPPFLAGS = -g -std=c++1z -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include `pkg-config --cflags python-3.7`
-MINC_LIBS = `llvm-config --cxxflags --ldflags --system-libs --libs all` `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
+MINC_LIBS = `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
 
 LIBMINC_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TEMP_DIR}, ${LIBMINC_PKGMGR_OBJS})

@@ -2,6 +2,9 @@
 /tmp
 /bin
 
+# Working documents
+/design
+
 # Visual Studio Code
 **/.vscode/ipch
 **/.vscode/settings.json

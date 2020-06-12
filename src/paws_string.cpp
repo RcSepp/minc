@@ -92,8 +92,8 @@ MincPackage PAWS_STRING("paws.string", [](BlockExprAST* pkgScope) {
 	// Define string map constructor
 	defineExpr2(pkgScope, "map($E<PawsString>: $E<PawsString>, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			std::vector<ExprAST*>& keys = getExprListASTExprs((ExprListAST*)params[0]);
-			std::vector<ExprAST*>& values = getExprListASTExprs((ExprListAST*)params[1]);
+			std::vector<ExprAST*>& keys = getListExprASTExprs((ListExprAST*)params[0]);
+			std::vector<ExprAST*>& values = getListExprASTExprs((ListExprAST*)params[1]);
 			std::map<std::string, std::string> map;
 			for (size_t i = 0; i < keys.size(); ++i)
 				map[((PawsString*)codegenExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)codegenExpr(values[i], parentBlock).value)->get();

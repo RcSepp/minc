@@ -90,7 +90,7 @@ typedef PawsValue<std::string> PawsString;
 typedef PawsValue<ExprAST*> PawsExprAST;
 typedef PawsValue<BlockExprAST*> PawsBlockExprAST;
 typedef PawsValue<const std::vector<BlockExprAST*>&> PawsConstBlockExprASTList;
-typedef PawsValue<ExprListAST*> PawsExprListAST;
+typedef PawsValue<ListExprAST*> PawsListExprAST;
 typedef PawsValue<LiteralExprAST*> PawsLiteralExprAST;
 typedef PawsValue<IdExprAST*> PawsIdExprAST;
 typedef PawsValue<Variable> PawsVariable;
@@ -138,7 +138,7 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 			|| std::is_same<CastExprAST, rawCType>()
 			|| std::is_same<LiteralExprAST, rawCType>()
 			|| std::is_same<PlchldExprAST, rawCType>()
-			|| std::is_same<ExprListAST, rawCType>()
+			|| std::is_same<ListExprAST, rawCType>()
 			|| std::is_same<StmtAST, rawCType>()
 			|| std::is_same<BlockExprAST, rawCType>()
 		) // If rawCType derives from ExprAST

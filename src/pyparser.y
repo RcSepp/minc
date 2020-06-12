@@ -34,7 +34,7 @@
 %token<int> PARAM
 %type<BlockExprAST*> block
 %type<std::vector<ExprAST*>*> stmt_string
-%type<ExprListAST*> stmt optional_expr kvexpr_list optional_kvexpr_list expr_idx
+%type<ListExprAST*> stmt optional_expr kvexpr_list optional_kvexpr_list expr_idx
 %type<ExprAST*> id_or_plchld expr kvexpr
 
 %start file
@@ -78,17 +78,17 @@ stmt_string
 
 stmt
 	: expr	{
-								ExprListAST* stmt = new ExprListAST('\0');
+								ListExprAST* stmt = new ListExprAST('\0');
 								stmt->exprs.push_back($1);
 								$$ = stmt;
 							}
 	| stmt expr	{
-								ExprListAST* stmt = $1;
+								ListExprAST* stmt = $1;
 								stmt->exprs.push_back($2);
 								$$ = stmt;
 							}
 	| stmt '=' expr	{
-								ExprListAST* stmt = $1;
+								ListExprAST* stmt = $1;
 								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_col, (unsigned)@3.end.line, (unsigned)@3.end.column};
 								stmt->exprs.back() = new BinOpExprAST(loc, (int)'=', "=", stmt->exprs.back(), $3);
 								$$ = stmt;
@@ -96,15 +96,15 @@ stmt
 ;
 
 optional_expr
-	: %empty { $$ = new ExprListAST(','); }
-	| expr { $$ = new ExprListAST(',', { $1 }); }
+	: %empty { $$ = new ListExprAST(','); }
+	| expr { $$ = new ListExprAST(',', { $1 }); }
 ;
 
 expr_idx
-	: %empty { $$ = new ExprListAST(':', { new ExprListAST('\0') }); }
-	| expr_idx ':' { ($$ = $1)->exprs.push_back(new ExprListAST('\0')); }
-	| expr_idx ':' ELLIPSIS { ($$ = $1)->exprs.push_back(new EllipsisExprAST(getloc(@3, @3), new ExprListAST('\0'))); }
-	| expr_idx expr { ((ExprListAST*)($$ = $1)->exprs.back())->exprs.push_back($2); }
+	: %empty { $$ = new ListExprAST(':', { new ListExprAST('\0') }); }
+	| expr_idx ':' { ($$ = $1)->exprs.push_back(new ListExprAST('\0')); }
+	| expr_idx ':' ELLIPSIS { ($$ = $1)->exprs.push_back(new EllipsisExprAST(getloc(@3, @3), new ListExprAST('\0'))); }
+	| expr_idx expr { ((ListExprAST*)($$ = $1)->exprs.back())->exprs.push_back($2); }
 ;
 
 id_or_plchld
@@ -115,13 +115,13 @@ id_or_plchld
 ;
 
 optional_kvexpr_list
-	: %empty { $$ = new ExprListAST(','); }
+	: %empty { $$ = new ListExprAST(','); }
 	| kvexpr_list { $$ = $1; }
 ;
 
 kvexpr_list
-	: kvexpr { $$ = new ExprListAST(',', { $1 }); }
-	| kvexpr_list ',' { ($$ = $1)->exprs.push_back(new ExprListAST('\0')); } //TODO: Not working
+	: kvexpr { $$ = new ListExprAST(',', { $1 }); }
+	| kvexpr_list ',' { ($$ = $1)->exprs.push_back(new ListExprAST('\0')); } //TODO: Not working
 	| kvexpr_list ',' kvexpr { ($$ = $1)->exprs.push_back($3); } //TODO: Not working
 ;
 
@@ -207,23 +207,23 @@ expr
 	| NOT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NOT, "not", $2); }
 
 	// List operators
-	| expr ',' { $$ = new ExprListAST(',', { $1 }); }
+	| expr ',' { $$ = new ListExprAST(',', { $1 }); }
 	| expr ',' ELLIPSIS {
 		if ($1->exprtype == ExprAST::ExprType::LIST)
-			((ExprListAST*)($$ = $1))->exprs.back() = new EllipsisExprAST(getloc(@3, @3), ((ExprListAST*)$1)->exprs.back());
+			((ListExprAST*)($$ = $1))->exprs.back() = new EllipsisExprAST(getloc(@3, @3), ((ListExprAST*)$1)->exprs.back());
 		else
-			$$ = new ExprListAST(',', { new EllipsisExprAST(getloc(@3, @3), $1) });
+			$$ = new ListExprAST(',', { new EllipsisExprAST(getloc(@3, @3), $1) });
 	}
 	| expr ',' expr {
-		ExprListAST *l1 = (ExprListAST*)$1, *l3 = (ExprListAST*)$3;
+		ListExprAST *l1 = (ListExprAST*)$1, *l3 = (ListExprAST*)$3;
 		if ($1->exprtype == ExprAST::ExprType::LIST && $3->exprtype == ExprAST::ExprType::LIST)
 			l1->exprs.insert(l1->end(), l3->begin(), l3->end());
 		else if ($1->exprtype == ExprAST::ExprType::LIST && $3->exprtype != ExprAST::ExprType::LIST)
 			l1->exprs.push_back($3);
 		else if ($1->exprtype != ExprAST::ExprType::LIST && $3->exprtype == ExprAST::ExprType::LIST)
-			(l1 = new ExprListAST(',', { $1 }))->exprs.insert(l1->end(), l3->begin(), l3->end());
+			(l1 = new ListExprAST(',', { $1 }))->exprs.insert(l1->end(), l3->begin(), l3->end());
 		else
-			l1 = new ExprListAST(',', { $1, $3 });
+			l1 = new ListExprAST(',', { $1, $3 });
 		$$ = l1;
 	}
 ;

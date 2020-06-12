@@ -19,7 +19,7 @@ class IdExprAST;
 class CastExprAST;
 class LiteralExprAST;
 class PlchldExprAST;
-class ExprListAST;
+class ListExprAST;
 class StmtAST;
 class BlockExprAST;
 
@@ -115,13 +115,13 @@ extern "C"
 	void resetBlockExprASTCache(BlockExprAST* block, size_t targetState);
 	bool isBlockExprASTBusy(BlockExprAST* block);
 	void removeBlockExprAST(BlockExprAST* expr);
-	std::vector<ExprAST*>& getExprListASTExprs(ExprListAST* expr);
+	std::vector<ExprAST*>& getListExprASTExprs(ListExprAST* expr);
 	const char* getIdExprASTName(const IdExprAST* expr);
 	const char* getLiteralExprASTValue(const LiteralExprAST* expr);
 	BlockExprAST* getBlockExprASTParent(const BlockExprAST* expr);
 	const std::vector<BlockExprAST*>& getBlockExprASTReferences(const BlockExprAST* expr);
 	size_t countBlockExprASTStmts(const BlockExprAST* expr);
-	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk);
+	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk);
 	size_t countBlockExprASTExprs(const BlockExprAST* expr);
 	void iterateBlockExprASTExprs(const BlockExprAST* expr, std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk);
 	size_t countBlockExprASTCasts(const BlockExprAST* expr);
@@ -176,7 +176,7 @@ extern "C"
 	Variable* importSymbol(BlockExprAST* scope, const char* name);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
 	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType);
-	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates);
+	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates);
 	void lookupExprCandidates(const BlockExprAST* scope, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);
 	std::string reportCasts(const BlockExprAST* scope);

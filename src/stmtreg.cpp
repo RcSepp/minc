@@ -45,8 +45,8 @@ void storeParam(ExprAST* param, std::vector<ExprAST*>& params, size_t paramIdx)
 	else
 	{
 		if (params[paramIdx]->exprtype != ExprAST::ExprType::LIST)
-			params[paramIdx] = new ExprListAST('\0', { params[paramIdx] });
-		((ExprListAST*)params[paramIdx])->exprs.push_back(param);
+			params[paramIdx] = new ListExprAST('\0', { params[paramIdx] });
+		((ListExprAST*)params[paramIdx])->exprs.push_back(param);
 	}
 }
 
@@ -161,7 +161,7 @@ bool matchStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter tp
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStmt(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ListExprAST*)tplt[0])->exprs.size() && matchStmt(block, ((ListExprAST*)tplt[0])->exprs.cbegin(), ((ListExprAST*)tplt[0])->exprs.cend(), expr, score, &listExprEnd) && listExprEnd.done()
 		)) ++tplt;
 
 	if (stmtEnd)
@@ -214,7 +214,7 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 						// because ellipsis parameters are expected to always be lists
 						for (size_t i = ellipsisBegin; i < paramIdx; ++i)
 							if (params[i]->exprtype != ExprAST::ExprType::LIST)
-								params[i] = new ExprListAST('\0', { params[i] });
+								params[i] = new ListExprAST('\0', { params[i] });
 
 						ellipsisTerminator->collectParams(block, expr[0], params, paramIdx);
 						return collectStmt(block, tplt + 1, tpltEnd, expr + 1, params, paramIdx);
@@ -231,7 +231,7 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 			// because ellipsis parameters are expected to always be lists
 			for (size_t i = ellipsisBegin; i < paramIdx; ++i)
 				if (params[i]->exprtype != ExprAST::ExprType::LIST)
-					params[i] = new ExprListAST('\0', { params[i] });
+					params[i] = new ListExprAST('\0', { params[i] });
 		}
 		else if (tplt[0]->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt[0])->p1 == 'S')
 		{
@@ -239,7 +239,7 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 
 			StreamingExprASTIter subStmtBegin = expr;
 			MatchScore subStmtScore;
-			const std::pair<const ExprListAST*, CodegenContext*> stmtContext = block->lookupStmt(subStmtBegin, expr, subStmtScore);
+			const std::pair<const ListExprAST*, CodegenContext*> stmtContext = block->lookupStmt(subStmtBegin, expr, subStmtScore);
 			assert(stmtContext.first != nullptr);
 			StmtAST* subStmt = new StmtAST(subStmtBegin.iter(), expr.iter(), stmtContext.second);
 			size_t subStmtParamIdx = 0;
@@ -308,53 +308,53 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ||
-			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt[0])->exprs.size() && matchStmt(block, ((ExprListAST*)tplt[0])->exprs.cbegin(), ((ExprListAST*)tplt[0])->exprs.cend(), expr, score)
+			tplt[0]->exprtype == ExprAST::ExprType::LIST && ((ListExprAST*)tplt[0])->exprs.size() && matchStmt(block, ((ListExprAST*)tplt[0])->exprs.cbegin(), ((ListExprAST*)tplt[0])->exprs.cend(), expr, score)
 		))
 	{
 		// Match ellipsis expression against itself
 		// This will append all trailing template placeholders to params
-		ExprAST* ellipsisExpr = ((EllipsisExprAST*)(tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ? tplt[0] : ((ExprListAST*)tplt[0])->exprs[0]))->expr;
+		ExprAST* ellipsisExpr = ((EllipsisExprAST*)(tplt[0]->exprtype == ExprAST::ExprType::ELLIPSIS ? tplt[0] : ((ListExprAST*)tplt[0])->exprs[0]))->expr;
 		ellipsisExpr->collectParams(block, ellipsisExpr, params, paramIdx);
 		++tplt;
 	}
 	// Replace trailing placeholders with empty lists
 	for (size_t i = trailingEllipsesBegin; i < paramIdx; ++i)
-		params[i] = new ExprListAST('\0');
+		params[i] = new ListExprAST('\0');
 
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
-bool ExprListAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+bool ListExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 {
 	StreamingExprASTIter listExprEnd;
-	if (expr->exprtype == ExprAST::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
+	if (expr->exprtype == ExprAST::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
 		return true;
 	if (expr->exprtype != ExprAST::ExprType::LIST && this->exprs.size() == 1)
 		return this->exprs[0]->match(block, expr, score);
 	return false;
 }
 
-void ExprListAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const
+void ListExprAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const
 {
 	if (exprs->exprtype == ExprAST::ExprType::LIST)
-		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ExprListAST*)exprs)->exprs), params, paramIdx);
+		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)exprs)->exprs), params, paramIdx);
 	else if (exprs->exprtype == ExprAST::ExprType::STMT)
 		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((StmtAST*)exprs)->resolvedExprs), params, paramIdx);
 	else
 		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
 }
 
-void StatementRegister::defineStmt(const ExprListAST* tplt, CodegenContext* stmt)
+void StatementRegister::defineStmt(const ListExprAST* tplt, CodegenContext* stmt)
 {
 	stmtreg[tplt] = stmt;
 }
 
-std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const ListExprAST*, CodegenContext*> StatementRegister::lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	StreamingExprASTIter currentStmtEnd;
-	std::pair<const ExprListAST*, CodegenContext*> bestStmt = {nullptr, nullptr};
-	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
+	std::pair<const ListExprAST*, CodegenContext*> bestStmt = {nullptr, nullptr};
+	for (const std::pair<const ListExprAST*, CodegenContext*>& iter: stmtreg)
 	{
 #ifdef DEBUG_STMTREG
 		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
@@ -379,16 +379,16 @@ std::pair<const ExprListAST*, CodegenContext*> StatementRegister::lookupStmt(con
 	if (antiStmt != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
-		return std::pair<const ExprListAST*, CodegenContext*>(new ExprListAST('\0'), antiStmt);
+		return std::pair<const ListExprAST*, CodegenContext*>(new ListExprAST('\0'), antiStmt);
 	}
 	return bestStmt;
 }
 
-void StatementRegister::lookupStmtCandidates(const BlockExprAST* block, const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const
+void StatementRegister::lookupStmtCandidates(const BlockExprAST* block, const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const
 {
 	MatchScore score;
 	StreamingExprASTIter stmtEnd;
-	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
+	for (const std::pair<const ListExprAST*, CodegenContext*>& iter: stmtreg)
 	{
 		score = 0;
 		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingExprASTIter(&stmt->exprs), score, &stmtEnd) && stmtEnd.done())
@@ -401,9 +401,9 @@ size_t StatementRegister::countStmts() const
 	return stmtreg.size();
 }
 
-void StatementRegister::iterateStmts(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const
+void StatementRegister::iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const
 {
-	for (const std::pair<const ExprListAST*, CodegenContext*>& iter: stmtreg)
+	for (const std::pair<const ListExprAST*, CodegenContext*>& iter: stmtreg)
 		cbk(iter.first, iter.second);
 }
 
@@ -598,7 +598,7 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 	std::vector<ExprAST*> _exprs;
 	for (ExprASTIter exprIter = beginExpr; exprIter != exprs->cend() && (*exprIter)->exprtype != ExprAST::ExprType::STOP && (*exprIter)->exprtype != ExprAST::ExprType::BLOCK; ++exprIter)
 		_exprs.push_back(*exprIter);
-	printf("%slookupStmt(%s)\n", indent.c_str(), ExprListAST('\0', _exprs).str().c_str());
+	printf("%slookupStmt(%s)\n", indent.c_str(), ListExprAST('\0', _exprs).str().c_str());
 	indent += '\t';
 #endif
 
@@ -606,7 +606,7 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 	// Get context of best match
 	StreamingExprASTIter stmtEnd;
 	MatchScore score;
-	std::pair<const ExprListAST*, CodegenContext*> context = lookupStmt(stmtBegin, stmtEnd, score);
+	std::pair<const ListExprAST*, CodegenContext*> context = lookupStmt(stmtBegin, stmtEnd, score);
 
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
@@ -648,12 +648,12 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 		return false;
 }
 
-std::pair<const ExprListAST*, CodegenContext*> BlockExprAST::lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const ListExprAST*, CodegenContext*> BlockExprAST::lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	bestScore = -2147483648;
 	MatchScore currentScore;
 	StreamingExprASTIter currentStmtEnd;
-	std::pair<const ExprListAST*, CodegenContext*> currentContext, bestContext = {nullptr, nullptr};
+	std::pair<const ListExprAST*, CodegenContext*> currentContext, bestContext = {nullptr, nullptr};
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = bestScore;
@@ -788,10 +788,10 @@ void EllipsisExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, st
 	// because ellipsis parameters are expected to always be lists
 	for (size_t i = ellipsisBegin; i < paramIdx; ++i)
 		if (params[i]->exprtype != ExprAST::ExprType::LIST)
-			params[i] = new ExprListAST('\0', { params[i] });
+			params[i] = new ListExprAST('\0', { params[i] });
 }
 
-std::vector<ExprAST*>::iterator begin(ExprListAST& exprs) { return exprs.begin(); }
-std::vector<ExprAST*>::iterator begin(ExprListAST* exprs) { return exprs->begin(); }
-std::vector<ExprAST*>::iterator end(ExprListAST& exprs) { return exprs.end(); }
-std::vector<ExprAST*>::iterator end(ExprListAST* exprs) { return exprs->end(); }
+std::vector<ExprAST*>::iterator begin(ListExprAST& exprs) { return exprs.begin(); }
+std::vector<ExprAST*>::iterator begin(ListExprAST* exprs) { return exprs->begin(); }
+std::vector<ExprAST*>::iterator end(ListExprAST& exprs) { return exprs.end(); }
+std::vector<ExprAST*>::iterator end(ListExprAST* exprs) { return exprs->end(); }

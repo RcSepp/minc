@@ -48,8 +48,8 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
-			const std::vector<ExprAST*>& argTypeExprs = getExprListASTExprs((ExprListAST*)params[2]);
-			const std::vector<ExprAST*>& argNameExprs = getExprListASTExprs((ExprListAST*)params[3]);
+			const std::vector<ExprAST*>& argTypeExprs = getListExprASTExprs((ListExprAST*)params[2]);
+			const std::vector<ExprAST*>& argNameExprs = getListExprASTExprs((ListExprAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
 
 			// Set function parent to function definition scope
@@ -90,7 +90,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 	defineExpr3(pkgScope, "$E<PawsFunction>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			const PawsFunc* func = ((PawsFunction*)codegenExpr(params[0], parentBlock).value)->get();
-			std::vector<ExprAST*>& argExprs = getExprListASTExprs((ExprListAST*)params[1]);
+			std::vector<ExprAST*>& argExprs = getListExprASTExprs((ListExprAST*)params[1]);
 
 			// Check number of arguments
 			if (func->argTypes.size() != argExprs.size())

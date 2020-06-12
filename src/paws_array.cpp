@@ -10,7 +10,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 	// Inline array declaration
 	defineExpr3(pkgScope, "[$E<PawsBase>, ...]",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			std::vector<ExprAST*>& values = getExprListASTExprs((ExprListAST*)params[0]);
+			std::vector<ExprAST*>& values = getListExprASTExprs((ListExprAST*)params[0]);
 			PawsArray* arr = new PawsArray(std::vector<BaseValue*>());
 			arr->get().reserve(values.size());
 			for (ExprAST* value: values)
@@ -19,7 +19,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
-			std::vector<ExprAST*>& values = getExprListASTExprs((ExprListAST*)params[0]);
+			std::vector<ExprAST*>& values = getListExprASTExprs((ListExprAST*)params[0]);
 			std::vector<PawsType*> valueTypes;
 			valueTypes.reserve(values.size());
 			for (ExprAST* value: values)

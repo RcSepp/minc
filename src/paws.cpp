@@ -131,7 +131,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 		}
 		else if (ExprASTIsList(param))
 		{
-			const std::vector<ExprAST*>& listParamExprs = getExprListASTExprs((ExprListAST*)param);
+			const std::vector<ExprAST*>& listParamExprs = getListExprASTExprs((ListExprAST*)param);
 			if (listParamExprs.size() != 0)
 			{
 				PlchldExprAST* plchldParam = (PlchldExprAST*)listParamExprs.front();
@@ -148,7 +148,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
 						paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value->getConstantValue());
 				}
-				paramType = PawsTpltType::get(PawsExprListAST::TYPE, paramType);
+				paramType = PawsTpltType::get(PawsListExprAST::TYPE, paramType);
 			}
 		}
 		blockParams.push_back(Variable(paramType, nullptr));
@@ -252,7 +252,7 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 	registerType<PawsExprAST>(pkgScope, "PawsExprAST");
 	registerType<PawsBlockExprAST>(pkgScope, "PawsBlockExprAST");
 	registerType<PawsConstBlockExprASTList>(pkgScope, "PawsConstBlockExprASTList");
-	registerType<PawsExprListAST>(pkgScope, "PawsExprListAST");
+	registerType<PawsListExprAST>(pkgScope, "PawsListExprAST");
 	registerType<PawsLiteralExprAST>(pkgScope, "PawsLiteralExprAST");
 	registerType<PawsIdExprAST>(pkgScope, "PawsIdExprAST");
 	registerType<PawsVariable>(pkgScope, "PawsVariable");
@@ -807,13 +807,13 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
-	defineExpr3(pkgScope, "$E<PawsExprListAST>[$E<PawsInt>]",
+	defineExpr3(pkgScope, "$E<PawsListExprAST>[$E<PawsInt>]",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			assert(ExprASTIsCast(params[0]));
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
-			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->get();
+			ListExprAST* exprs = ((PawsListExprAST*)exprsVar.value)->get();
 			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
-			return Variable(((PawsTpltType*)exprsVar.type)->tpltType, new PawsExprAST(getExprListASTExprs(exprs)[idx]));
+			return Variable(((PawsTpltType*)exprsVar.type)->tpltType, new PawsExprAST(getListExprASTExprs(exprs)[idx]));
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
 			assert(ExprASTIsCast(params[0]));
@@ -821,17 +821,17 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		}
 	);
 
-	defineStmt2(pkgScope, "for ($I: $E<PawsExprListAST>) $B",
+	defineStmt2(pkgScope, "for ($I: $E<PawsListExprAST>) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			assert(ExprASTIsCast(params[1]));
 			IdExprAST* iterExpr = (IdExprAST*)params[0];
 			Variable exprsVar = codegenExpr(getCastExprASTSource((CastExprAST*)params[1]), parentBlock);
-			ExprListAST* exprs = ((PawsExprListAST*)exprsVar.value)->get();
+			ListExprAST* exprs = ((PawsListExprAST*)exprsVar.value)->get();
 			PawsType* exprType = ((PawsTpltType*)exprsVar.type)->tpltType;
 			BlockExprAST* body = (BlockExprAST*)params[2];
 			PawsExprAST iter;
 			defineSymbol(body, getIdExprASTName(iterExpr), exprType, &iter);
-			for (ExprAST* expr: getExprListASTExprs(exprs))
+			for (ExprAST* expr: getListExprASTExprs(exprs))
 			{
 				iter.set(expr);
 				codegenExpr((ExprAST*)body, parentBlock);
@@ -862,7 +862,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			BlockExprAST* block = ((PawsBlockExprAST*)codegenExpr(params[0], parentBlock).value)->get();
 			MincPackageManager* pkgMgr = (MincPackageManager*)exprArgs;
-			std::vector<ExprAST*>& pkgPath = getExprListASTExprs((ExprListAST*)params[1]);
+			std::vector<ExprAST*>& pkgPath = getListExprASTExprs((ListExprAST*)params[1]);
 			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
 			for (size_t i = 1; i < pkgPath.size(); ++i)
 				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);

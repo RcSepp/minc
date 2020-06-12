@@ -234,15 +234,15 @@ extern "C"
 		delete expr;
 	}
 
-	std::vector<ExprAST*>& getExprListASTExprs(ExprListAST* expr)
+	std::vector<ExprAST*>& getListExprASTExprs(ListExprAST* expr)
 	{
 		return expr->exprs;
 	}
-	ExprAST* getExprListASTExpr(ExprListAST* expr, size_t index)
+	ExprAST* getListExprASTExpr(ListExprAST* expr, size_t index)
 	{
 		return expr->exprs[index];
 	}
-	size_t getExprListASTSize(ExprListAST* expr)
+	size_t getListExprASTSize(ListExprAST* expr)
 	{
 		return expr->exprs.size();
 	}
@@ -266,7 +266,7 @@ extern "C"
 	{
 		return expr->countStmts();
 	}
-	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk)
+	void iterateBlockExprASTStmts(const BlockExprAST* expr, std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk)
 	{
 		return expr->iterateStmts(cbk);
 	}
@@ -436,8 +436,8 @@ extern "C"
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
 	{
 		if (!tplt.empty() && ((tplt.back()->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)tplt.back())->p1 == 'B')
-						   || (tplt.back()->exprtype == ExprAST::ExprType::LIST && ((ExprListAST*)tplt.back())->size() == 1
-							   && ((ExprListAST*)tplt.back())->at(0)->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)((ExprListAST*)tplt.back())->at(0))->p1 == 'B')))
+						   || (tplt.back()->exprtype == ExprAST::ExprType::LIST && ((ListExprAST*)tplt.back())->size() == 1
+							   && ((ListExprAST*)tplt.back())->at(0)->exprtype == ExprAST::ExprType::PLCHLD && ((PlchldExprAST*)((ListExprAST*)tplt.back())->at(0))->p1 == 'B')))
 			scope->defineStmt(tplt, stmt);
 		else
 		{
@@ -592,9 +592,9 @@ extern "C"
 		return fromType == toType || scope->isInstance(fromType, toType);
 	}
 
-	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates)
+	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates)
 	{
-		ExprListAST stmtExprs('\0', std::vector<ExprAST*>(stmt->begin, stmt->end));
+		ListExprAST stmtExprs('\0', std::vector<ExprAST*>(stmt->begin, stmt->end));
 		scope->lookupStmtCandidates(&stmtExprs, candidates);
 	}
 	void lookupExprCandidates(const BlockExprAST* scope, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates)

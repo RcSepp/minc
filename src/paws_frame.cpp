@@ -472,8 +472,8 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 			const char* frameName = getIdExprASTName((IdExprAST*)params[1]);
-			const std::vector<ExprAST*>& argTypeExprs = getExprListASTExprs((ExprListAST*)params[2]);
-			const std::vector<ExprAST*>& argNameExprs = getExprListASTExprs((ExprListAST*)params[3]);
+			const std::vector<ExprAST*>& argTypeExprs = getListExprASTExprs((ListExprAST*)params[2]);
+			const std::vector<ExprAST*>& argNameExprs = getListExprASTExprs((ListExprAST*)params[3]);
 			BlockExprAST* block = (BlockExprAST*)params[4];
 
 			Frame* frame = new Frame();
@@ -549,7 +549,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	defineExpr3(pkgScope, "$E<PawsFrame>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
-			std::vector<ExprAST*>& argExprs = getExprListASTExprs((ExprListAST*)params[1]);
+			std::vector<ExprAST*>& argExprs = getListExprASTExprs((ListExprAST*)params[1]);
 
 			// Check number of arguments
 			if (frame->argTypes.size() != argExprs.size())

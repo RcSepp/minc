@@ -310,7 +310,7 @@ dap::array<dap::Variable> StmtCandidates::variables()
 	dap::array<dap::Variable> variables;
 	dap::Variable var;
 
-	std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>> candidates;
+	std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>> candidates;
 	lookupStmtCandidates(this->block, stmt, candidates);
 	int i = 1;
 	for (auto& candidate: candidates)
@@ -385,7 +385,7 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const ExprListAST* tplt, const CodegenContext* stmt) {
+				auto cbk = [&](const ListExprAST* tplt, const CodegenContext* stmt) {
 					dap::Variable var;
 					var.name = ExprASTToShortString(tplt);
 					variables.push_back(var);

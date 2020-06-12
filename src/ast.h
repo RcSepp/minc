@@ -176,13 +176,13 @@ public:
 	ExprAST* clone() const { return new LocExprAST(loc); }
 };
 
-class ExprListAST : public ExprAST
+class ListExprAST : public ExprAST
 {
 public:
-	char separator; //TODO: Fix spelling to "separator"!
+	char separator;
 	std::vector<ExprAST*> exprs;
-	ExprListAST(char separator) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator) {}
-	ExprListAST(char separator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator), exprs(exprs) {}
+	ListExprAST(char separator) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator) {}
+	ListExprAST(char separator, std::vector<ExprAST*> exprs) : ExprAST({0}, ExprAST::ExprType::LIST), separator(separator), exprs(exprs) {}
 	Variable codegen(BlockExprAST* parentBlock) { assert(0); return Variable(nullptr, nullptr); /* Unreachable */ }
 	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
@@ -210,7 +210,7 @@ public:
 	{
 		int c = ExprAST::comp(other);
 		if (c) return c;
-		const ExprListAST* _other = (const ExprListAST*)other;
+		const ListExprAST* _other = (const ListExprAST*)other;
 		c = (int)this->exprs.size() - (int)_other->exprs.size();
 		if (c) return c;
 		for (std::vector<ExprAST*>::const_iterator t = this->exprs.cbegin(), o = _other->exprs.cbegin(); t != this->exprs.cend(); ++t, ++o)
@@ -233,38 +233,38 @@ public:
 	void push_back(ExprAST* expr) { return exprs.push_back(expr); }
 	ExprAST* clone() const
 	{
-		ExprListAST* clone = new ExprListAST(separator);
+		ListExprAST* clone = new ListExprAST(separator);
 		for (ExprAST* expr: this->exprs)
 			clone->exprs.push_back(expr->clone());
 		return clone;
 	}
 };
-std::vector<ExprAST*>::iterator begin(ExprListAST& exprs);
-std::vector<ExprAST*>::iterator begin(ExprListAST* exprs);
-std::vector<ExprAST*>::iterator end(ExprListAST& exprs);
-std::vector<ExprAST*>::iterator end(ExprListAST* exprs);
+std::vector<ExprAST*>::iterator begin(ListExprAST& exprs);
+std::vector<ExprAST*>::iterator begin(ListExprAST* exprs);
+std::vector<ExprAST*>::iterator end(ListExprAST& exprs);
+std::vector<ExprAST*>::iterator end(ListExprAST* exprs);
 
 namespace std
 {
-	template<> struct less<const ExprListAST*>
+	template<> struct less<const ListExprAST*>
 	{
-		bool operator()(const ExprListAST* lhs, const ExprListAST* rhs) const { return lhs->comp(rhs) < 0; }
+		bool operator()(const ListExprAST* lhs, const ListExprAST* rhs) const { return lhs->comp(rhs) < 0; }
 	};
 }
 
 class StatementRegister
 {
 private:
-	std::map<const ExprListAST*, CodegenContext*> stmtreg;
+	std::map<const ListExprAST*, CodegenContext*> stmtreg;
 	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
 	CodegenContext *antiStmt, *antiExpr;
 public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
-	void defineStmt(const ExprListAST* tplt, CodegenContext* stmt);
-	std::pair<const ExprListAST*, CodegenContext*> lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& stmtEnd, MatchScore& score) const;
-	void lookupStmtCandidates(const BlockExprAST* block, const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const;
+	void defineStmt(const ListExprAST* tplt, CodegenContext* stmt);
+	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& stmtEnd, MatchScore& score) const;
+	void lookupStmtCandidates(const BlockExprAST* block, const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const;
 	size_t countStmts() const;
-	void iterateStmts(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const;
+	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
 	void defineAntiStmt(CodegenContext* stmt);
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr);
@@ -396,10 +396,10 @@ public:
 	{
 		for (ExprAST* tpltExpr: tplt)
 			tpltExpr->resolveTypes(this);
-		stmtreg.defineStmt(new ExprListAST('\0', tplt), stmt);
+		stmtreg.defineStmt(new ListExprAST('\0', tplt), stmt);
 	}
 	bool lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const;
-	void lookupStmtCandidates(const ExprListAST* stmt, std::multimap<MatchScore, const std::pair<const ExprListAST*, CodegenContext*>>& candidates) const
+	void lookupStmtCandidates(const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const
 	{
 		for (const BlockExprAST* block = this; block; block = block->parent)
 		{
@@ -408,9 +408,9 @@ public:
 				ref->stmtreg.lookupStmtCandidates(this, stmt, candidates);
 		}
 	}
-	std::pair<const ExprListAST*, CodegenContext*> lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
+	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStmts() const { return stmtreg.countStmts(); }
-	void iterateStmts(std::function<void(const ExprListAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStmts(cbk); }
+	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const { stmtreg.iterateStmts(cbk); }
 	void defineAntiStmt(CodegenContext* stmt) { stmtreg.defineAntiStmt(stmt); }
 
 	void defineExpr(ExprAST* tplt, CodegenContext* expr)
@@ -741,9 +741,9 @@ class ArgOpExprAST : public ExprAST
 public:
 	int op;
 	ExprAST *var;
-	ExprListAST* args;
+	ListExprAST* args;
 	const std::string oopstr, copstr;
-	ArgOpExprAST(const Location& loc, int op, const char* oopstr, const char* copstr, ExprAST* var, ExprListAST* args)
+	ArgOpExprAST(const Location& loc, int op, const char* oopstr, const char* copstr, ExprAST* var, ListExprAST* args)
 		: ExprAST(loc, ExprAST::ExprType::ARGOP), op(op), var(var), args(args), oopstr(oopstr), copstr(copstr) {}
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
 	{
@@ -776,7 +776,7 @@ public:
 		if (c) return c;
 		return this->args->comp(_other->args);
 	}
-	ExprAST* clone() const { return new ArgOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), var->clone(), (ExprListAST*)args->clone()); }
+	ExprAST* clone() const { return new ArgOpExprAST(loc, op, oopstr.c_str(), copstr.c_str(), var->clone(), (ListExprAST*)args->clone()); }
 };
 
 class EncOpExprAST : public ExprAST
@@ -1010,7 +1010,7 @@ public:
 		// because ellipsis parameters are expected to always be lists
 		for (size_t i = paramBegin; i < paramIdx; ++i)
 			if (params[i]->exprtype != ExprAST::ExprType::LIST)
-				params[i] = new ExprListAST('\0', { params[i] });
+				params[i] = new ListExprAST('\0', { params[i] });
 	}
 	void resolveTypes(const BlockExprAST* block)
 	{

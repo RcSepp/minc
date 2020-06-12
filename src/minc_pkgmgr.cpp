@@ -81,7 +81,7 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 	defineStmt2(pkgScope, "import $I. ...",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
-			std::vector<ExprAST*>& pkgPath = getExprListASTExprs((ExprListAST*)params[0]);
+			std::vector<ExprAST*>& pkgPath = getListExprASTExprs((ListExprAST*)params[0]);
 			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
 			for (size_t i = 1; i < pkgPath.size(); ++i)
 				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);
@@ -95,7 +95,7 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 	// Define export statement
 	defineStmt2(pkgScope, "export $I. ... $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			std::vector<ExprAST*>& pkgPath = getExprListASTExprs((ExprListAST*)params[0]);
+			std::vector<ExprAST*>& pkgPath = getListExprASTExprs((ListExprAST*)params[0]);
 			std::string pkgName = getIdExprASTName((IdExprAST*)pkgPath[0]);
 			for (size_t i = 1; i < pkgPath.size(); ++i)
 				pkgName = pkgName + '.' + getIdExprASTName((IdExprAST*)pkgPath[i]);
@@ -109,7 +109,7 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 	);
 	defineStmt2(pkgScope, "export $I. ...",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			std::vector<ExprAST*>& pkgPath = getExprListASTExprs((ExprListAST*)params[0]);
+			std::vector<ExprAST*>& pkgPath = getListExprASTExprs((ListExprAST*)params[0]);
 			raiseCompileError("Missing export block", pkgPath.empty() ? nullptr : pkgPath.front());
 		}
 	);

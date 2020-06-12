@@ -613,7 +613,7 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 #endif
 
 	// Advance stmt.end to beginning of next statement
-	if (context.first != nullptr)
+	if (stmtEnd - stmtBegin != 0)
 	{
 		// End of statement = beginning of statement + length of resolved statement + length of trailing STOP expression
 		stmt.end = stmt.begin + (stmtEnd - stmtBegin);

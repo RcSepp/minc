@@ -93,10 +93,10 @@ int main(int argc, char** argv)
 		const size_t dt = rootBlockName.rfind(".");
 		if (dt != -1) rootBlockName = rootBlockName.substr(0, dt);
 
-		rootBlock->setName(rootBlockName);
+		rootBlock->name = rootBlockName;
 	}
 	else
-		rootBlock->setName("stdin");
+		rootBlock->name = "stdin";
 
 	// >>> Print AST
 

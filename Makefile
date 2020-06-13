@@ -5,13 +5,33 @@ TMP_DIR = tmp/
 BIN_DIR = bin/
 
 LIBMINC_OBJS = \
-	stmtreg.o \
-	castreg.o \
 	codegen.o \
+	CompileError.o \
 	cparser.o \
 	cparser.yy.o \
 	pyparser.o \
 	pyparser.yy.o \
+	ArgOpExprAST.o \
+	BinOpExprAST.o \
+	BlockExprAST.o \
+	CastExprAST.o \
+	CastRegister.o \
+	EllipsisExprAST.o \
+	EncOpExprAST.o \
+	ExprAST.o \
+	IdExprAST.o \
+	ListExprAST.o \
+	LiteralExprAST.o \
+	ParamExprAST.o \
+	PlchldExprAST.o \
+	PostfixExprAST.o \
+	PrefixExprAST.o \
+	StatementRegister.o \
+	StmtAST.o \
+	StopExprAST.o \
+	StreamingExprASTIter.o \
+	TerOpExprAST.o \
+	VarBinOpExprAST.o \
 
 LIBMINC_PKGMGR_OBJS = \
 	minc_pkgmgr.o \

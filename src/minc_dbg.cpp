@@ -17,7 +17,7 @@
 #include "dap/session.h"
 
 // Local includes
-#include "ast.h"
+#include "minc_api.hpp"
 #include "minc_api.h"
 #include "minc_cli.h"
 #include "minc_dbg.h"

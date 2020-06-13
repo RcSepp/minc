@@ -1,7 +1,38 @@
-#include "ast.h"
-#include <iostream> //DELETE
+#include "minc_api.hpp"
 
 #define DETECT_UNDEFINED_TYPE_CASTS
+
+const std::string& getTypeNameInternal(const BaseType* type);
+
+InheritanceCast::InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+	: Cast(fromType, toType, context)
+{
+}
+
+int InheritanceCast::getCost() const
+{
+	return 0;
+}
+
+Cast* InheritanceCast::derive() const
+{
+	return nullptr;
+}
+
+TypeCast::TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+	: Cast(fromType, toType, context)
+{
+}
+
+int TypeCast::getCost() const
+{
+	return 1;
+}
+
+Cast* TypeCast::derive() const
+{
+	return new TypeCast(fromType, toType, context);
+}
 
 struct IndirectCast : public Cast, public CodegenContext
 {
@@ -28,6 +59,11 @@ struct IndirectCast : public Cast, public CodegenContext
 	}
 };
 
+CastRegister::CastRegister(BlockExprAST* block)
+	: block(block)
+{
+}
+
 void CastRegister::defineDirectCast(Cast* cast)
 {
 	const auto& key = std::make_pair(cast->fromType, cast->toType);
@@ -53,6 +89,7 @@ void CastRegister::defineDirectCast(Cast* cast)
 // )
 // 	std::cout << "    " << fromTypeName << "-->|" << cast->getCost() << "|" << toTypeName << ";\n";
 }
+
 void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
 {
 	std::map<std::pair<BaseType*, BaseType*>, Cast*>::const_iterator existingCast;
@@ -104,6 +141,7 @@ const Cast* CastRegister::lookupCast(BaseType* fromType, BaseType* toType) const
 	const auto& cast = casts.find(std::make_pair(fromType, toType));
 	return cast == casts.end() ? nullptr : cast->second;
 }
+
 bool CastRegister::isInstance(BaseType* derivedType, BaseType* baseType) const
 {
 	const auto& cast = casts.find(std::make_pair(derivedType, baseType));
@@ -114,4 +152,15 @@ void CastRegister::listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& cast
 {
 	for (const std::pair<std::pair<BaseType*, BaseType*>, Cast*>& cast: this->casts)
 		casts.push_back(cast.first);
+}
+
+size_t CastRegister::countCasts() const
+{
+	return casts.size();
+}
+
+void CastRegister::iterateCasts(std::function<void(const Cast* cast)> cbk) const
+{
+	for (const std::pair<const std::pair<BaseType*, BaseType*>, Cast*>& iter: casts)
+		cbk(iter.second);
 }

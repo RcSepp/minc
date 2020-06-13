@@ -8,7 +8,7 @@
 #endif
 
 //class CLexer;
-#include "ast.h"
+#include "minc_api.hpp"
 
 #include "../tmp/location.hh"
 #include "../tmp/cparser.hh"

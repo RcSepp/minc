@@ -17,6 +17,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <fstream>
+#include <sstream>
 #include "../src/cparser.h"
 
 #undef yylex
@@ -211,14 +212,4 @@ extern "C"
 
 		return *tpltBlock->exprs;
 	}
-}
-
-BlockExprAST* BlockExprAST::parseCFile(const char* filename)
-{
-	return ::parseCFile(filename);
-}
-
-const std::vector<ExprAST*> BlockExprAST::parseCTplt(const char* tpltStr)
-{
-	return ::parseCTplt(tpltStr);
 }

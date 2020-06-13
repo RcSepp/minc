@@ -23,16 +23,7 @@
 //#define DEBUG_STMTREG
 
 #include <assert.h>
-#include "ast.h"
-
-UndefinedStmtException::UndefinedStmtException(const StmtAST* stmt)
-	: CompileError("undefined statement " + stmt->str(), stmt->loc) {}
-UndefinedExprException::UndefinedExprException(const ExprAST* expr)
-	: CompileError("undefined expression " + expr->str(), expr->loc) {}
-UndefinedIdentifierException::UndefinedIdentifierException(const IdExprAST* id)
-	: CompileError('`' + id->str() + "` was not declared in this scope", id->loc) {}
-InvalidTypeException::InvalidTypeException(const PlchldExprAST* plchld)
-	: CompileError('`' + std::string(plchld->p2) + "` is not a type", plchld->loc) {}
+#include "minc_api.hpp"
 
 #ifdef DEBUG_STMTREG
 std::string indent;
@@ -324,26 +315,6 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
-bool ListExprAST::match(const BlockExprAST* block, const ::ExprAST* expr, MatchScore& score) const
-{
-	StreamingExprASTIter listExprEnd;
-	if (expr->exprtype == ExprAST::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
-		return true;
-	if (expr->exprtype != ExprAST::ExprType::LIST && this->exprs.size() == 1)
-		return this->exprs[0]->match(block, expr, score);
-	return false;
-}
-
-void ListExprAST::collectParams(const BlockExprAST* block, ::ExprAST* exprs, std::vector<::ExprAST*>& params, size_t& paramIdx) const
-{
-	if (exprs->exprtype == ExprAST::ExprType::LIST)
-		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)exprs)->exprs), params, paramIdx);
-	else if (exprs->exprtype == ExprAST::ExprType::STMT)
-		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((StmtAST*)exprs)->resolvedExprs), params, paramIdx);
-	else
-		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
-}
-
 void StatementRegister::defineStmt(const ListExprAST* tplt, CodegenContext* stmt)
 {
 	stmtreg[tplt] = stmt;
@@ -518,7 +489,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 #endif
 	expr->resolvedParams.clear();
 	MatchScore currentScore, score = -2147483648;
-	std::pair<const ::ExprAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
+	std::pair<const ExprAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -546,7 +517,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	if (context.first != nullptr)
 	{
 		size_t paramIdx = 0;
-		if (context.first->exprtype == ::ExprAST::PLCHLD)
+		if (context.first->exprtype ==ExprAST::PLCHLD)
 		{
 			expr->resolvedContext = context.second; // Set context before collectParams() to enable type-aware matching
 			expr->resolvedParams.push_back(expr); // Set first context parameter to self to enable type-aware matching
@@ -677,118 +648,6 @@ std::pair<const ListExprAST*, CodegenContext*> BlockExprAST::lookupStmt(Streamin
 		}
 	}
 	return bestContext;
-}
-
-bool IdExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-{
-	score += 6; // Reward exact match (score is disregarded on mismatch)
-	return expr->exprtype == this->exprtype && ((IdExprAST*)expr)->name == this->name;
-}
-
-bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-{
-	// Make sure collectParams(tplt, tplt) collects all placeholders
-	if (expr == this)
-		return true;
-
-	switch(p1)
-	{
-	case 'I':
-		if (expr->exprtype != ExprAST::ExprType::ID) return false;
-		score += 1; // Reward $I (over $E or $S)
-		break;
-	case 'L':
-		if (expr->exprtype != ExprAST::ExprType::LITERAL) return false;
-		if (p2 == nullptr)
-		{
-			score += 6; // Reward vague match
-			return true;
-		}
-		else
-		{
-			score += 7; // Reward exact match
-			const std::string& value = ((const LiteralExprAST*)expr)->value;
-			if (value.back() == '"' || value.back() == '\'')
-			{
-				size_t prefixLen = value.rfind(value.back());
-				return value.compare(0, prefixLen, p2) == 0 && p2[prefixLen] == '\0';
-			}
-			else
-			{
-				const char* postFix;
-				for (postFix = value.c_str() + value.size() - 1; *postFix != '-' && (*postFix < '0' || *postFix > '9'); --postFix) {}
-				return strcmp(p2, ++postFix) == 0;
-			}
-		}
-	case 'B': score += 6; return expr->exprtype == ExprAST::ExprType::BLOCK;
-	case 'P': score += 6; return expr->exprtype == ExprAST::ExprType::PLCHLD;
-	case 'V': score += 6; return expr->exprtype == ExprAST::ExprType::ELLIPSIS;
-	case 'E':
-	case 'S':
-		if (expr->exprtype == ExprAST::ExprType::STOP) return false;
-		break;
-	default: throw CompileError(std::string("Invalid placeholder: $") + p1, loc);
-	}
-
-	if (p2 == nullptr)
-	{
-		score += 1; // Reward vague match
-		return true;
-	}
-	else
-	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
-		if (exprType == tpltType)
-		{
-			score += 5; // Reward exact match
-			return true;
-		}
-		const Cast* cast = allowCast ? block->lookupCast(exprType, tpltType) : nullptr;
-		if (cast != nullptr)
-		{
-			score += 3; // Reward inexact match (inheritance or type-cast)
-			score -= cast->getCost(); // Penalize type-cast
-			return true;
-		}
-		return false;
-	}
-}
-
-void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-{
-	if (p2 != nullptr && p1 != 'L')
-	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
-		if (exprType != tpltType)
-		{
-//printf("implicit cast from %s to %s in %s:%i\n", getTypeNameInternal(exprType).c_str(), getTypeNameInternal(tpltType).c_str(), expr->loc.filename, expr->loc.begin_line);
-			const Cast* cast = block->lookupCast(exprType, tpltType);
-			assert(cast != nullptr);
-			ExprAST* castExpr = new CastExprAST(cast, expr);
-			storeParam(castExpr, params, paramIdx++);
-			return;
-		}
-	}
-	storeParam(expr, params, paramIdx++);
-}
-
-bool EllipsisExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
-{
-	score--; // Penalize ellipsis match
-	return this->expr->match(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, score);
-}
-void EllipsisExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
-{
-	size_t ellipsisBegin = paramIdx;
-	this->expr->collectParams(block, expr->exprtype == ExprAST::ExprType::ELLIPSIS ? ((EllipsisExprAST*)expr)->expr : expr, params, paramIdx);
-
-	// Replace all non-list parameters that are part of this ellipsis with single-element lists,
-	// because ellipsis parameters are expected to always be lists
-	for (size_t i = ellipsisBegin; i < paramIdx; ++i)
-		if (params[i]->exprtype != ExprAST::ExprType::LIST)
-			params[i] = new ListExprAST('\0', { params[i] });
 }
 
 std::vector<ExprAST*>::iterator begin(ListExprAST& exprs) { return exprs.begin(); }

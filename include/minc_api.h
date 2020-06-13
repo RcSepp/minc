@@ -71,7 +71,6 @@ extern "C"
 	unsigned getExprColumn(const ExprAST* expr);
 	unsigned getExprEndLine(const ExprAST* expr);
 	unsigned getExprEndColumn(const ExprAST* expr);
-	const ExprAST* createLoc(const char* filename=nullptr, unsigned line=1, unsigned column=1, unsigned endLine=1, unsigned endColumn=1);
 	ExprAST* getDerivedExprAST(ExprAST* expr);
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();

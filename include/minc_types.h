@@ -71,6 +71,22 @@ struct CompileError
 	void addHint(const std::string& hint) { hints.push_back(hint); }
 	void print(std::ostream& out=std::cerr);
 };
+struct UndefinedStmtException : public CompileError
+{
+	UndefinedStmtException(const StmtAST* stmt);
+};
+struct UndefinedExprException : public CompileError
+{
+	UndefinedExprException(const ExprAST* expr);
+};
+struct UndefinedIdentifierException : public CompileError
+{
+	UndefinedIdentifierException(const IdExprAST* id);
+};
+struct InvalidTypeException : public CompileError
+{
+	InvalidTypeException(const PlchldExprAST* plchld);
+};
 
 typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
 typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);

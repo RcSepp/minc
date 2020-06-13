@@ -510,7 +510,7 @@ void StatementRegister::iterateExprs(std::function<void(const ExprAST* tplt, con
 			cbk(iter.first, iter.second);
 }
 
-bool BlockExprAST::lookupExpr(ExprAST* expr) const
+bool BlockExprAST::lookupExpr(::ExprAST* expr) const
 {
 #ifdef DEBUG_STMTREG
 	printf("%slookupExpr(%s)\n", indent.c_str(), expr->str().c_str());
@@ -518,7 +518,7 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 #endif
 	expr->resolvedParams.clear();
 	MatchScore currentScore, score = -2147483648;
-	std::pair<const ExprAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
+	std::pair<const ::ExprAST*, CodegenContext*> currentContext, context = {nullptr, nullptr};
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -546,11 +546,11 @@ bool BlockExprAST::lookupExpr(ExprAST* expr) const
 	if (context.first != nullptr)
 	{
 		size_t paramIdx = 0;
-		if (context.first->exprtype == ExprAST::PLCHLD)
+		if (context.first->exprtype == ::ExprAST::PLCHLD)
 		{
 			expr->resolvedContext = context.second; // Set context before collectParams() to enable type-aware matching
 			expr->resolvedParams.push_back(expr); // Set first context parameter to self to enable type-aware matching
-			std::vector<ExprAST*> collectedParams;
+			std::vector<::ExprAST*> collectedParams;
 			context.first->collectParams(this, expr, collectedParams, paramIdx);
 			expr->resolvedParams.pop_back(); // Remove first context parameter
 			expr->resolvedParams = collectedParams; // Replace parameters with collected parameters
@@ -581,7 +581,7 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 		if (stmt.sourceExprPtr != exprs->cend()) // If expressions are available
 		{
 			// Resolve next expression
-			ExprAST* const clone = (*stmt.sourceExprPtr++)->clone(); //TODO: Make BlockExprAST::exprs a list of const ExprAST's
+			::ExprAST* const clone = (*stmt.sourceExprPtr++)->clone(); //TODO: Make BlockExprAST::exprs a list of const ExprAST's
 			clone->resolveTypes(this);
 			stmt.resolvedExprs.push_back(clone);
 			return true;

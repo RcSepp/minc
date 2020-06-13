@@ -6,7 +6,6 @@
 #include <fstream>
 
 // Local includes
-#include "minc_api.h"
 #include "cparser.h"
 
 #define DETECT_REDEFINED_TYPES

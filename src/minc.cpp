@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 // Local includes
-#include "ast.h"
+#include "minc_api.hpp"
 #include "minc_cli.h"
 #include "minc_dbg.h"
 #include "minc_pkgmgr.h"
@@ -75,9 +75,9 @@ int main(int argc, char** argv)
 	const int LEN_PY_EXT = 3;
 	try {
 		if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
-			rootBlock = parsePythonFile(realPath);
+			rootBlock = BlockExprAST::parsePythonFile(realPath);
 		else
-			rootBlock = parseCFile(realPath);
+			rootBlock = BlockExprAST::parseCFile(realPath);
 	} catch (CompileError err) {
 		err.print(std::cerr);
 		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
@@ -93,10 +93,10 @@ int main(int argc, char** argv)
 		const size_t dt = rootBlockName.rfind(".");
 		if (dt != -1) rootBlockName = rootBlockName.substr(0, dt);
 
-		setBlockExprASTName(rootBlock, rootBlockName);
+		rootBlock->name = rootBlockName;
 	}
 	else
-		setBlockExprASTName(rootBlock, "stdin");
+		rootBlock->name = "stdin";
 
 	// >>> Print AST
 
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 	{
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
-			codegenExpr((ExprAST*)rootBlock, nullptr);
+			rootBlock->codegen(nullptr);
 		} catch (ExitException err) {
 			result = err.code;
 		} catch (CompileError err) {

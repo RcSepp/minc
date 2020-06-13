@@ -159,53 +159,66 @@ void yy::CParser::error( const location_type &l, const std::string &err_message 
 	std::cerr << "Error: " << err_message << " at " << l << "\n"; //TODO: throw syntax error
 }
 
-BlockExprAST* parseCFile(const char* filename)
+extern "C"
 {
-	// Open source file
-	std::ifstream in(filename);
-	if (!in.good())
+	BlockExprAST* parseCFile(const char* filename)
 	{
-		std::cerr << "\033[31merror:\033[0m " << std::string(filename) << ": No such file or directory\n";
-		return nullptr;
+		// Open source file
+		std::ifstream in(filename);
+		if (!in.good())
+		{
+			std::cerr << "\033[31merror:\033[0m " << std::string(filename) << ": No such file or directory\n";
+			return nullptr;
+		}
+
+		// Parse file into rootBlock
+		BlockExprAST* rootBlock;
+		CLexer lexer(&in, &std::cout);
+		yy::CParser parser(lexer, filename, &rootBlock);
+		parser.parse();
+
+		// Close source file
+		in.close();
+
+		return rootBlock;
 	}
 
-	// Parse file into rootBlock
-	BlockExprAST* rootBlock;
-	CLexer lexer(&in, &std::cout);
-	yy::CParser parser(lexer, filename, &rootBlock);
-	parser.parse();
+	const std::vector<ExprAST*> parseCTplt(const char* tpltStr)
+	{
+		// Append STOP expr to make tpltStr a valid statement
+		std::stringstream ss(tpltStr);
+		ss << tpltStr << ';';
 
-	// Close source file
-	in.close();
+		// Parse tpltStr into tpltBlock
+		CLexer lexer(ss, std::cout);
+		BlockExprAST* tpltBlock;
+		yy::CParser parser(lexer, nullptr, &tpltBlock);
+		if (parser.parse())
+		{
+			std::cerr << "\033[31merror:\033[0merror parsing template " << std::string(tpltStr) << '\n';
+			return {};
+		} //TODO: Throw CompileError instead:
+			//throw CompileError("error parsing template " + std::string(tpltStr));
 
-	return rootBlock;
+		// Remove appended STOP expr if last expr is $B
+		assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
+		if (tpltBlock->exprs->size() >= 2)
+		{
+			const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
+				tpltBlock->exprs->pop_back();
+		}
+
+		return *tpltBlock->exprs;
+	}
 }
 
-const std::vector<ExprAST*> parseCTplt(const char* tpltStr)
+BlockExprAST* BlockExprAST::parseCFile(const char* filename)
 {
-	// Append STOP expr to make tpltStr a valid statement
-	std::stringstream ss(tpltStr);
-	ss << tpltStr << ';';
+	return ::parseCFile(filename);
+}
 
-	// Parse tpltStr into tpltBlock
-	CLexer lexer(ss, std::cout);
-	BlockExprAST* tpltBlock;
-	yy::CParser parser(lexer, nullptr, &tpltBlock);
-	if (parser.parse())
-	{
-		std::cerr << "\033[31merror:\033[0merror parsing template " << std::string(tpltStr) << '\n';
-		return {};
-	} //TODO: Throw CompileError instead:
-		//throw CompileError("error parsing template " + std::string(tpltStr));
-
-	// Remove appended STOP expr if last expr is $B
-	assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
-	if (tpltBlock->exprs->size() >= 2)
-	{
-		const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-		if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
-			tpltBlock->exprs->pop_back();
-	}
-
-	return *tpltBlock->exprs;
+const std::vector<ExprAST*> BlockExprAST::parseCTplt(const char* tpltStr)
+{
+	return ::parseCTplt(tpltStr);
 }

@@ -6,6 +6,7 @@
 #include <limits> // For NaN
 #include <cmath> // For isnan()
 #include "ast.h" // Including "ast.h" instead of "minc_api.h" for CompileError
+#include "minc_api.h"
 #include "paws_types.h"
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"

@@ -5,7 +5,6 @@
 #include <queue>
 #include <limits> // For NaN
 #include <cmath> // For isnan()
-#include "ast.h" // Including "ast.h" instead of "minc_api.h" for CompileError
 #include "minc_api.h"
 #include "paws_types.h"
 #include "paws_subroutine.h"
@@ -340,7 +339,7 @@ defineOpaqueInheritanceCast(getRootScope(), PawsEventInstance::TYPE, PawsAwaitab
 FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, EventPool* eventPool)
 	: frame(frame), instance(cloneBlockExprAST(frame->body)), eventPool(eventPool)
 {
-	instance->parent = frame->body;
+	setBlockExprASTParent(instance, frame->body);
 
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)

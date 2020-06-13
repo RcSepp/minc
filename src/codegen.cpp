@@ -949,6 +949,189 @@ void BlockExprAST::clearCache(size_t targetSize)
 	resultCache.erase(resultCache.begin() + targetSize, resultCache.end());
 }
 
+const std::string& BlockExprAST::getName() const
+{
+	return name;
+}
+
+void BlockExprAST::setName(const std::string& name)
+{
+	this->name = name;
+}
+
+const std::string& LiteralExprAST::getValue() const
+{
+	return value;
+}
+
+const std::string& IdExprAST::getName() const
+{
+	return name;
+}
+
+const Cast* CastExprAST::getCast() const
+{
+	return cast;
+}
+
+char PlchldExprAST::getP1() const
+{
+	return p1;
+}
+const char* PlchldExprAST::getP2() const
+{
+	return p2;
+}
+bool PlchldExprAST::getAllowCast() const
+{
+	return allowCast;
+}
+
+int ParamExprAST::getIndex() const
+{
+	return idx;
+}
+
+const ExprAST* EllipsisExprAST::getExpr() const
+{
+	return expr;
+}
+
+int ArgOpExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* ArgOpExprAST::getVar() const
+{
+	return var;
+}
+
+const ListExprAST* ArgOpExprAST::getArgs() const
+{
+	return args;
+}
+
+int EncOpExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* EncOpExprAST::getVal() const
+{
+	return val;
+}
+
+const std::string& EncOpExprAST::getOOpStr() const
+{
+	return oopstr;
+}
+
+const std::string& EncOpExprAST::getCOpStr() const
+{
+	return copstr;
+}
+
+int TerOpExprAST::getOp1() const
+{
+	return op1;
+}
+
+int TerOpExprAST::getOp2() const
+{
+	return op2;
+}
+
+const ExprAST* TerOpExprAST::getA() const
+{
+	return a;
+}
+
+const ExprAST* TerOpExprAST::getB() const
+{
+	return b;
+}
+
+const ExprAST* TerOpExprAST::getC() const
+{
+	return c;
+}
+
+const std::string& TerOpExprAST::getOpStr1() const
+{
+	return opstr1;
+}
+
+const std::string& TerOpExprAST::getOpStr2() const
+{
+	return opstr2;
+}
+
+int PrefixExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* PrefixExprAST::getA() const
+{
+	return a;
+}
+
+const std::string& PrefixExprAST::getOpStr() const
+{
+	return opstr;
+}
+
+int PostfixExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* PostfixExprAST::getA() const
+{
+	return a;
+}
+
+const std::string& PostfixExprAST::getOpStr() const
+{
+	return opstr;
+}
+
+int BinOpExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* BinOpExprAST::getA() const
+{
+	return a;
+}
+
+const ExprAST* BinOpExprAST::getB() const
+{
+	return b;
+}
+
+const std::string& BinOpExprAST::getOpStr() const
+{
+	return opstr;
+}
+
+int VarBinOpExprAST::getOp() const
+{
+	return op;
+}
+
+const ExprAST* VarBinOpExprAST::getA() const
+{
+	return a;
+}
+
+const std::string& VarBinOpExprAST::getOpStr() const
+{
+	return opstr;
+}
+
 Variable ExprAST::codegen(BlockExprAST* parentBlock)
 {
 #ifndef DISABLE_RESULT_CACHING

@@ -324,7 +324,7 @@ void collectStmt(const BlockExprAST* block, ExprASTIter tplt, const ExprASTIter 
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
-bool ListExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+bool ListExprAST::match(const BlockExprAST* block, const ::ExprAST* expr, MatchScore& score) const
 {
 	StreamingExprASTIter listExprEnd;
 	if (expr->exprtype == ExprAST::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
@@ -334,7 +334,7 @@ bool ListExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchSco
 	return false;
 }
 
-void ListExprAST::collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const
+void ListExprAST::collectParams(const BlockExprAST* block, ::ExprAST* exprs, std::vector<::ExprAST*>& params, size_t& paramIdx) const
 {
 	if (exprs->exprtype == ExprAST::ExprType::LIST)
 		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), StreamingExprASTIter(&((ListExprAST*)exprs)->exprs), params, paramIdx);
@@ -510,7 +510,7 @@ void StatementRegister::iterateExprs(std::function<void(const ExprAST* tplt, con
 			cbk(iter.first, iter.second);
 }
 
-bool BlockExprAST::lookupExpr(::ExprAST* expr) const
+bool BlockExprAST::lookupExpr(ExprAST* expr) const
 {
 #ifdef DEBUG_STMTREG
 	printf("%slookupExpr(%s)\n", indent.c_str(), expr->str().c_str());

@@ -13,11 +13,12 @@ struct BaseValue
 };
 
 class ExprAST;
+class ListExprAST;
 class IdExprAST;
 class CastExprAST;
 class LiteralExprAST;
 class PlchldExprAST;
-class ExprListAST;
+class ListExprAST;
 class StmtAST;
 class BlockExprAST;
 

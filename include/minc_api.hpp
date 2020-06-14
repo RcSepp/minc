@@ -89,6 +89,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	std::vector<ExprAST*>::iterator begin();
 	std::vector<ExprAST*>::const_iterator cbegin() const;
@@ -184,6 +185,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -340,6 +342,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -356,6 +359,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -371,6 +375,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -386,6 +391,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -401,6 +407,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -416,6 +423,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -433,6 +441,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };
@@ -448,6 +457,7 @@ public:
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	void resolveTypes(const BlockExprAST* block);
 	std::string str() const;
+	std::string shortStr() const;
 	int comp(const ExprAST* other) const;
 	ExprAST* clone() const;
 };

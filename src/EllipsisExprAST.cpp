@@ -34,6 +34,11 @@ std::string EllipsisExprAST::str() const
 	return expr->str() + ", ...";
 }
 
+std::string EllipsisExprAST::shortStr() const
+{
+	return expr->shortStr() + ", ...";
+}
+
 int EllipsisExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

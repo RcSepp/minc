@@ -89,6 +89,16 @@ std::string StmtAST::str() const
 	return result;
 }
 
+std::string StmtAST::shortStr() const
+{
+	if (begin == end)
+		return "";
+	std::string result = (*begin)->shortStr();
+	for (ExprASTIter expr = begin; ++expr != end;)
+		result += (*expr)->exprtype == ExprAST::ExprType::STOP ? (*expr)->shortStr() : ' ' + (*expr)->shortStr();
+	return result;
+}
+
 int StmtAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

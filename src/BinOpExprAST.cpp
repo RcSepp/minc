@@ -30,6 +30,11 @@ std::string BinOpExprAST::str() const
 	return a->str() + " " + opstr + " " + b->str();
 }
 
+std::string BinOpExprAST::shortStr() const
+{
+	return a->shortStr() + " " + opstr + " " + b->shortStr();
+}
+
 int BinOpExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

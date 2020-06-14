@@ -29,6 +29,11 @@ std::string EncOpExprAST::str() const
 	return oopstr + val->str() + copstr;
 }
 
+std::string EncOpExprAST::shortStr() const
+{
+	return oopstr + val->shortStr() + copstr;
+}
+
 int EncOpExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

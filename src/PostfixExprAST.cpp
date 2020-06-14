@@ -26,6 +26,11 @@ std::string PostfixExprAST::str() const
 	return a->str() + (std::isalpha(opstr.front()) ? opstr + ' ' : opstr);
 }
 
+std::string PostfixExprAST::shortStr() const
+{
+	return a->shortStr() + (std::isalpha(opstr.front()) ? opstr + ' ' : opstr);
+}
+
 int PostfixExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

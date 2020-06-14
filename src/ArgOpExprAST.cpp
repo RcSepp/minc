@@ -32,6 +32,11 @@ std::string ArgOpExprAST::str() const
 	return var->str() + oopstr + args->str() + copstr;
 }
 
+std::string ArgOpExprAST::shortStr() const
+{
+	return var->shortStr() + oopstr + args->shortStr() + copstr;
+}
+
 int ArgOpExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

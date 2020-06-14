@@ -36,6 +36,11 @@ std::string TerOpExprAST::str() const
 	return a->str() + " " + opstr1 + " " + b->str() + " " + opstr2 + " " + c->str();
 }
 
+std::string TerOpExprAST::shortStr() const
+{
+	return a->shortStr() + " " + opstr1 + " " + b->shortStr() + " " + opstr2 + " " + c->shortStr();
+}
+
 int TerOpExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

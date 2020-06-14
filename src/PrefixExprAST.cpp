@@ -25,6 +25,11 @@ std::string PrefixExprAST::str() const
 	return (std::isalpha(opstr.back()) ? opstr + ' ' : opstr) + a->str();
 }
 
+std::string PrefixExprAST::shortStr() const
+{
+	return (std::isalpha(opstr.back()) ? opstr + ' ' : opstr) + a->shortStr();
+}
+
 int PrefixExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

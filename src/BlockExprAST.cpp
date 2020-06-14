@@ -452,7 +452,7 @@ std::string BlockExprAST::str() const
 
 std::string BlockExprAST::shortStr() const
 {
-	return "{}";
+	return "{ ... }";
 }
 
 int BlockExprAST::comp(const ExprAST* other) const

@@ -48,6 +48,11 @@ std::string VarBinOpExprAST::str() const
 	return a->str() + " " + opstr + " ...";
 }
 
+std::string VarBinOpExprAST::shortStr() const
+{
+	return a->shortStr() + " " + opstr + " ...";
+}
+
 int VarBinOpExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

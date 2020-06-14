@@ -65,6 +65,26 @@ std::string ListExprAST::str() const
 	return result;
 }
 
+std::string ListExprAST::shortStr() const
+{
+	if (exprs.empty())
+		return "";
+
+	std::string s;
+	const std::string _(1, ' ');
+	switch(separator)
+	{
+	case '\0': s = _; break;
+	case ',': case ';': s = separator + _; break;
+	default: s = _ + separator + _; break;
+	}
+
+	std::string result = exprs[0]->shortStr();
+	for (auto expriter = exprs.begin() + 1; expriter != exprs.end(); ++expriter)
+		result += (*expriter)->exprtype == ExprAST::ExprType::STOP ? (*expriter)->shortStr() : s + (*expriter)->shortStr();
+	return result;
+}
+
 int ListExprAST::comp(const ExprAST* other) const
 {
 	int c = ExprAST::comp(other);

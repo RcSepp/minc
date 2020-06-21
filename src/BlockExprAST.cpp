@@ -49,6 +49,20 @@ void BlockExprAST::defineStmt(const std::vector<ExprAST*>& tplt, CodegenContext*
 	stmtreg.defineStmt(new ListExprAST('\0', tplt), stmt);
 }
 
+void BlockExprAST::defineStmt(const std::vector<ExprAST*>& tplt, std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegen)
+{
+	struct StmtCodegenContext : public CodegenContext
+	{
+		const std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegenCtx;
+		StmtCodegenContext(std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegen)
+			: codegenCtx(codegen) {}
+		virtual ~StmtCodegenContext() {}
+		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { codegenCtx(parentBlock, params); return VOID; }
+		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return VOID.type; }
+	};
+	defineStmt(tplt, new StmtCodegenContext(codegen));
+}
+
 void BlockExprAST::lookupStmtCandidates(const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const
 {
 	for (const BlockExprAST* block = this; block; block = block->parent)
@@ -78,6 +92,36 @@ void BlockExprAST::defineExpr(ExprAST* tplt, CodegenContext* expr)
 {
 	tplt->resolveTypes(this);
 	stmtreg.defineExpr(tplt, expr);
+}
+
+void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, BaseType* type)
+{
+	struct ExprCodegenContext : public CodegenContext
+	{
+		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
+		BaseType* const type;
+		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, BaseType* type)
+			: codegenCbk(codegen), type(type) {}
+		virtual ~ExprCodegenContext() {}
+		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
+		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return type; }
+	};
+	defineExpr(tplt, new ExprCodegenContext(codegen, type));
+}
+
+void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+{
+	struct ExprCodegenContext : public CodegenContext
+	{
+		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
+		const std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getTypeCbk;
+		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+			: codegenCbk(codegen), getTypeCbk(getType) {}
+		virtual ~ExprCodegenContext() {}
+		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
+		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return getTypeCbk(parentBlock, params); }
+	};
+	defineExpr(tplt, new ExprCodegenContext(codegen, getType));
 }
 
 void BlockExprAST::lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const

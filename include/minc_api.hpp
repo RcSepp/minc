@@ -17,7 +17,9 @@ extern "C"
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
 	const Variable& getVoid();
+	void defineType(const char* name, const BaseType* type);
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
+	void raiseCompileError(const char* msg, const ExprAST* loc);
 }
 
 class ExprAST
@@ -212,6 +214,7 @@ public:
 	bool isBusy;
 	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs);
 	void defineStmt(const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
+	void defineStmt(const std::vector<ExprAST*>& tplt, std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> code);
 	bool lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const;
 	void lookupStmtCandidates(const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const;
 	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
@@ -219,6 +222,8 @@ public:
 	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
 	void defineAntiStmt(CodegenContext* stmt);
 	void defineExpr(ExprAST* tplt, CodegenContext* expr);
+	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, BaseType* type);
+	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> type);
 	bool lookupExpr(ExprAST* expr) const;
 	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
 	size_t countExprs() const;

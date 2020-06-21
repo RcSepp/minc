@@ -4,7 +4,6 @@
 #include <dirent.h>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <string>
 #include "minc_api.h"
 #include "minc_pkgmgr.h"
@@ -13,9 +12,6 @@
 #define USE_BINARY_PACKAGES
 #define USE_PYTHON_PACKAGES
 #define USE_NODE_PACKAGES
-
-const std::string	PACKAGE_PATH_ENV = "MINC_PATH";
-const char			PACKAGE_PATH_ENV_SEPARATOR = ':';
 
 #ifdef USE_PYTHON_PACKAGES
 #define PY_SSIZE_T_CLEAN
@@ -41,6 +37,9 @@ bool hasSubdir(const char* path, const char* subdir)
 
 MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 {
+	if (pkgName.empty())
+		return nullptr; // Package not found
+
 	// Search registered packages
 	auto pkg = packages.find(pkgName);
 	if (pkg != packages.end())
@@ -50,22 +49,11 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 	std::stringstream pkgNameStream(pkgName);
 	std::string subpkgName;
 	std::vector<std::string> subpkgList;
-	while (std::getline(pkgNameStream, subpkgName, '.'))
+	while (std::getline(pkgNameStream, subpkgName, PKG_PATH_SEPARATOR))
 		subpkgList.push_back(subpkgName);
-	
-	// Search PACKAGE_PATH_ENV
-	const char* packagePaths = std::getenv(PACKAGE_PATH_ENV.c_str());
-	if (packagePaths == nullptr)
-		raiseCompileError(("environment variable " + PACKAGE_PATH_ENV + " not set").c_str());
-	std::stringstream packagePathsStream(packagePaths);
-	std::string pkgDir;
-	while (std::getline(packagePathsStream, pkgDir, PACKAGE_PATH_ENV_SEPARATOR)) // Traverse package paths
-	{
-		// Skip empty package paths
-		if (pkgDir.empty())
-			continue;
 
-		// Append trailing path separator
+	auto discover = [&](std::string pkgDir) -> MincPackage*
+	{
 		if (pkgDir.back() != '/' && pkgDir.back() != '\\')
 #ifdef _WIN32
 			pkgDir.push_back('\\');
@@ -189,7 +177,22 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 
 				//TODO: Raise warning that subpkgName was not defined in pkgPath
 			}
-	}
 
-	return nullptr; // Package not found
+		return nullptr; // Package not found
+	};
+
+	if (subpkgList[0].empty())
+	{
+		pkgName = pkgName.substr(1);
+		subpkgList.erase(subpkgList.begin());
+		return discover(std::filesystem::current_path());
+	}
+	else
+	{
+		MincPackage* pkg;
+		for (std::string pkgSearchPath: pkgSearchPaths)
+			if ((pkg = discover(pkgSearchPath)) != nullptr)
+				return pkg;
+		return nullptr; // Package not found
+	}
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <mutex>
+#include <vector>
 
 class BlockExprAST;
 
@@ -18,6 +19,7 @@ private:
 	const MincPackageFunc defineFunc;
 
 protected:
+	static const char PKG_PATH_SEPARATOR;
 	virtual void definePackage(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
 
 public:
@@ -31,6 +33,7 @@ class MincPackageManager : public MincPackage
 {
 private:
 	std::map<std::string, MincPackage*> packages;
+	std::vector<std::string> pkgSearchPaths;
 	void definePackage(BlockExprAST* pkgScope);
 	MincPackage* discoverPackage(std::string pkgName) const;
 

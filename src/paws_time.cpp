@@ -59,11 +59,10 @@ MincPackage PAWS_TIME("paws.time", [](BlockExprAST* pkgScope) {
 	);
 
 	// Define function to measure runtime
-	defineStmt2(pkgScope, "measure $I($E<PawsString>) $S",
+	defineStmt2(pkgScope, "measure $I $S",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			const char* varName = getIdExprASTName((IdExprAST*)params[0]);
-			const std::string& taskName = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
-			ExprAST* stmt = params[2];
+			ExprAST* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();

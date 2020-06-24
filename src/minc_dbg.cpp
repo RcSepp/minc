@@ -244,7 +244,7 @@ dap::array<dap::Variable> Packages::variables()
 	for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
 		for (const BlockExprAST* ref: getBlockExprASTReferences(block))
 		{
-			var.name = getBlockExprASTName(ref);
+			var.name = dap::string(getBlockExprASTName(ref));
 			if (var.name == "")
 				var.name = "Unnamed Package " + std::to_string(i++);
 			variables.push_back(var);
@@ -470,7 +470,7 @@ public:
 
 		StackFrame(const BlockExprAST* block) : block(block), locals(block), statements(block), expressions(block), mincScope(block)
 		{
-			name = getBlockExprASTName(block);
+			name = dap::string(getBlockExprASTName(block));
 			if (name.empty())
 				name = "Anonymous Block";
 
@@ -685,7 +685,7 @@ private:
 		if (ExprASTIsBlock(loc))
 		{
 			// Skip anonymous blocks if they are disabled, unless this is a root block
-			if (!traceAnonymousBlocks && !callStack.empty() && getBlockExprASTName((BlockExprAST*)loc).empty())
+			if (!traceAnonymousBlocks && !callStack.empty() && getBlockExprASTName((BlockExprAST*)loc)[0] == '\0')
 				return;
 
 			switch (type)

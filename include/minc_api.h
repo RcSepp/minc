@@ -61,8 +61,8 @@ extern "C"
 	void iterateBlockExprASTSymbols(const BlockExprAST* expr, std::function<void(const std::string& name, const Variable& symbol)> cbk);
 	void setBlockExprASTParent(BlockExprAST* expr, BlockExprAST* parent);
 	void setBlockExprASTParams(BlockExprAST* expr, std::vector<Variable>& blockParams);
-	const std::string& getBlockExprASTName(const BlockExprAST* expr);
-	void setBlockExprASTName(BlockExprAST* expr, std::string name);
+	const char* getBlockExprASTName(const BlockExprAST* expr);
+	void setBlockExprASTName(BlockExprAST* expr, const char* name);
 	const StmtAST* getCurrentBlockExprASTStmt(const BlockExprAST* expr);
 	ExprAST* getCastExprASTSource(const CastExprAST* expr);
 	char getPlchldExprASTLabel(const PlchldExprAST* expr);

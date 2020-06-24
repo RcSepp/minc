@@ -530,7 +530,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 					frameFullName += getTypeName(frame->argTypes[i]) + ", ";
 			}
 			frameFullName += ')';
-			setBlockExprASTName(block, frameFullName);
+			setBlockExprASTName(block, frameFullName.c_str());
 
 			// Set frame parent to frame definition scope
 			setBlockExprASTParent(block, parentBlock);

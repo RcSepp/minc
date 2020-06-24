@@ -82,7 +82,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 							funcFullName += getTypeName(method.argTypes[i]) + ", ";
 					}
 					funcFullName += ')';
-					setBlockExprASTName(block, funcFullName);
+					setBlockExprASTName(block, funcFullName.c_str());
 				}, strct
 			);
 

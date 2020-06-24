@@ -313,11 +313,11 @@ extern "C"
 	{
 		expr->blockParams = blockParams;
 	}
-	const std::string& getBlockExprASTName(const BlockExprAST* expr)
+	const char* getBlockExprASTName(const BlockExprAST* expr)
 	{
-		return expr->name;
+		return expr->name.c_str();
 	}
-	void setBlockExprASTName(BlockExprAST* expr, std::string name)
+	void setBlockExprASTName(BlockExprAST* expr, const char* name)
 	{
 		expr->name = name;
 	}

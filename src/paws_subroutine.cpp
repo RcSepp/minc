@@ -78,7 +78,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 					funcFullName += getTypeName(func->argTypes[i]) + ", ";
 			}
 			funcFullName += ')';
-			setBlockExprASTName(block, funcFullName);
+			setBlockExprASTName(block, funcFullName.c_str());
 
 			// Define function symbol in calling scope
 			PawsType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);

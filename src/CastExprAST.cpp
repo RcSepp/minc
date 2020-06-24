@@ -24,7 +24,12 @@ std::string CastExprAST::str() const
 	return "cast expression from " + getTypeNameInternal(cast->fromType) + " to " + getTypeNameInternal(cast->toType);
 }
 
-ExprAST* CastExprAST::getDerivedExpr()
+ExprAST* CastExprAST::getSourceExpr() const
+{
+	return resolvedParams[0];
+}
+
+ExprAST* CastExprAST::getDerivedExpr() const
 {
 	Cast* derivedCast = cast->derive();
 	return derivedCast ? new CastExprAST(derivedCast, resolvedParams[0]) : resolvedParams[0];

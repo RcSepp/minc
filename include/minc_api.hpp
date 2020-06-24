@@ -16,10 +16,13 @@ extern "C"
 {
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
+	const std::string& getTypeName(const BaseType* type);
 	const Variable& getVoid();
 	void defineType(const char* name, const BaseType* type);
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
 	void raiseCompileError(const char* msg, const ExprAST* loc);
+	void registerStepEventListener(StepEvent listener, void* eventArgs);
+	void deregisterStepEventListener(StepEvent listener);
 }
 
 class ExprAST
@@ -303,7 +306,8 @@ public:
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	ExprAST* getDerivedExpr();
+	ExprAST* getSourceExpr() const;
+	ExprAST* getDerivedExpr() const;
 	ExprAST* clone() const;
 };
 

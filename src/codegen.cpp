@@ -1,4 +1,5 @@
 // STD
+#include <cstring>
 #include <string>
 #include <vector>
 #include <set>
@@ -129,9 +130,14 @@ extern "C"
 		stmt->codegen(scope);
 	}
 
-	BaseType* getType(ExprAST* expr, const BlockExprAST* scope)
+	BaseType* getType(const ExprAST* expr, const BlockExprAST* scope)
 	{
 		return expr->getType(scope);
+	}
+
+	const Location& getLocation(const ExprAST* expr)
+	{
+		return expr->loc;
 	}
 
 	void importBlock(BlockExprAST* scope, BlockExprAST* block)
@@ -145,13 +151,19 @@ extern "C"
 		tplt->collectParams(scope, expr, params, paramIdx);
 	}
 
-	std::string ExprASTToString(const ExprAST* expr)
+	char* ExprASTToString(const ExprAST* expr)
 	{
-		return expr->str();
+		const std::string str = expr->str();
+		char* cstr = new char[str.size() + 1];
+		memcpy(cstr, str.c_str(), (str.size() + 1) * sizeof(char));
+		return cstr;
 	}
-	std::string ExprASTToShortString(const ExprAST* expr)
+	char* ExprASTToShortString(const ExprAST* expr)
 	{
-		return expr->shortStr();
+		const std::string str = expr->shortStr();
+		char* cstr = new char[str.size() + 1];
+		memcpy(cstr, str.c_str(), (str.size() + 1) * sizeof(char));
+		return cstr;
 	}
 
 	bool ExprASTIsId(const ExprAST* expr)

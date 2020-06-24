@@ -567,9 +567,9 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 					if (castExpr == nullptr)
 					{
 						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-						raiseCompileError(
-							("invalid frame argument type: " + ExprASTToString(argExpr) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
-							argExpr
+						throw CompileError(
+							getLocation(argExpr), "invalid frame argument type: %E<%t>, expected: <%t>\n%S",
+							argExpr, gotType, expectedType, candidateReport
 						);
 					}
 					argExprs[i] = castExpr;
@@ -662,9 +662,9 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 				if (castExpr == nullptr)
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-					raiseCompileError(
-						("invalid event type: " + ExprASTToString(argExpr) + "<" + getTypeName(argType) + ">, expected: <" + getTypeName(msgType) + ">\n" + candidateReport).c_str(),
-						argExpr
+					throw CompileError(
+						getLocation(argExpr), "invalid event type: %E<%t>, expected: <%t>\n%S",
+						argExpr, argType, msgType, candidateReport
 					);
 				}
 				argExpr = castExpr;

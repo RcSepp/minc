@@ -52,7 +52,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
 			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
-			ExprAST* valueExpr = params[2];
+			ExprAST* valueExpr = valueExpr = getCastExprASTSource((CastExprAST*)params[2]);
 
 			BaseType *expectedType = valueType, *gotType = getType(valueExpr, parentBlock);
 			if (expectedType != gotType)
@@ -61,9 +61,9 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 				if (castExpr == nullptr)
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, valueExpr);
-					raiseCompileError(
-						("invalid conversion of " + ExprASTToString(valueExpr) + " from <" + getTypeName(gotType) + "> to <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
-						valueExpr
+					throw CompileError(
+						getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>\n%S",
+						valueExpr, gotType, expectedType, candidateReport
 					);
 				}
 				valueExpr = castExpr;

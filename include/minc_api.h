@@ -23,11 +23,12 @@ extern "C"
 
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
-	BaseType* getType(ExprAST* expr, const BlockExprAST* scope);
+	BaseType* getType(const ExprAST* expr, const BlockExprAST* scope);
+	const Location& getLocation(const ExprAST* expr);
 	void importBlock(BlockExprAST* scope, BlockExprAST* block);
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params);
-	std::string ExprASTToString(const ExprAST* expr);
-	std::string ExprASTToShortString(const ExprAST* expr);
+	char* ExprASTToString(const ExprAST* expr);
+	char* ExprASTToShortString(const ExprAST* expr);
 	bool ExprASTIsId(const ExprAST* expr);
 	bool ExprASTIsCast(const ExprAST* expr);
 	bool ExprASTIsParam(const ExprAST* expr);

@@ -238,7 +238,10 @@ template<> const std::string PawsDouble::toString() const
 
 template<> const std::string PawsValue<const ExprAST*>::toString() const
 {
-	return ExprASTToString(val);
+	char* cstr = ExprASTToString(val);
+	std::string str(cstr);
+	delete[] cstr;
+	return str;
 }
 
 MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
@@ -541,9 +544,9 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 				if (condExpr == nullptr)
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, params[1]);
-					raiseCompileError(
-						("invalid for condition type: " + ExprASTToString(params[1]) + "<" + getTypeName(condType) + ">, expected: <" + getTypeName(PawsInt::TYPE) + ">\n" + candidateReport).c_str(),
-						params[1]
+					throw CompileError(
+						getLocation(params[1]), "invalid for condition type: %E<%t>, expected: <%t>\n%S",
+						params[1], condType, PawsInt::TYPE, candidateReport
 					);
 				}
 			}

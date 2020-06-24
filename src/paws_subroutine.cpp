@@ -108,9 +108,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 					if (castExpr == nullptr)
 					{
 						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-						raiseCompileError(
-							("invalid function argument type: " + ExprASTToString(argExpr) + "<" + getTypeName(gotType) + ">, expected: <" + getTypeName(expectedType) + ">\n" + candidateReport).c_str(),
-							argExpr
+						throw CompileError(
+							getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>\n%S",
+							argExpr, gotType, expectedType, candidateReport
 						);
 					}
 					argExprs[i] = castExpr;

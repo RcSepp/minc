@@ -264,7 +264,7 @@ dap::array<dap::Variable> Parameters::variables()
 	for (ExprAST* param: params)
 	{
 		var.name = "$" + std::to_string(i++);
-		var.value = ExprASTToShortString(param);
+		char* cstr = ExprASTToShortString(param); var.value = std::string(cstr); delete[] cstr;
 		var.type = getTypeName(getType(param, block));
 		var.variablesReference = (new ExprCandidates(param, block))->id;
 		variables.push_back(var);
@@ -281,7 +281,7 @@ dap::array<dap::Variable> ExprCandidates::variables()
 	{
 		expr = getCastExprASTSource((CastExprAST*)expr);
 		var.name = "$0";
-		var.value = ExprASTToShortString(expr);
+		char* cstr = ExprASTToShortString(expr); var.value = std::string(cstr); delete[] cstr;
 		var.type = getTypeName(getType(expr, block));
 		var.variablesReference = (new ExprCandidates(expr, block))->id;
 		variables.push_back(var);
@@ -294,7 +294,7 @@ dap::array<dap::Variable> ExprCandidates::variables()
 		for (auto& candidate: candidates)
 		{
 			var.name = "Expression Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
-			var.value = ExprASTToShortString(candidate.second.first);
+			char* cstr = ExprASTToShortString(candidate.second.first); var.value = std::string(cstr); delete[] cstr;
 			std::vector<ExprAST*> params;
 			collectParams(block, candidate.second.first, expr, params);
 			if (params.size() > 0 && params[0] != expr)
@@ -316,7 +316,7 @@ dap::array<dap::Variable> StmtCandidates::variables()
 	for (auto& candidate: candidates)
 	{
 		var.name = "Statement Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
-		var.value = ExprASTToShortString(candidate.second.first);
+		char* cstr = ExprASTToShortString(candidate.second.first); var.value = std::string(cstr); delete[] cstr;
 		var.variablesReference = (new Parameters(candidate.second.first, const_cast<StmtAST*>(stmt), block))->id; //TODO: Remove const_cast
 		variables.push_back(var);
 	}
@@ -387,7 +387,7 @@ public:
 				dap::array<dap::Variable> variables;
 				auto cbk = [&](const ListExprAST* tplt, const CodegenContext* stmt) {
 					dap::Variable var;
-					var.name = ExprASTToShortString(tplt);
+					char* cstr = ExprASTToShortString(tplt); var.name = std::string(cstr); delete[] cstr;
 					variables.push_back(var);
 				};
 				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
@@ -417,7 +417,7 @@ public:
 				dap::array<dap::Variable> variables;
 				auto cbk = [&](const ExprAST* tplt, const CodegenContext* expr) {
 					dap::Variable var;
-					var.name = ExprASTToShortString(tplt);
+					char* cstr = ExprASTToShortString(tplt); var.name = std::string(cstr); delete[] cstr;
 					variables.push_back(var);
 				};
 				for (const BlockExprAST* block = this->block; block != nullptr; block = getBlockExprASTParent(block))
@@ -457,7 +457,7 @@ public:
 
 				const StmtAST* stmt = getCurrentBlockExprASTStmt(block);
 				var.name = "Current Statement";
-				var.value = ExprASTToShortString(stmt);
+				char* cstr = ExprASTToShortString(stmt); var.value = std::string(cstr); delete[] cstr;
 				var.namedVariables = dap::optional<dap::integer>();
 				var.variablesReference = (new StmtCandidates(stmt, block))->id;
 				variables.push_back(var);

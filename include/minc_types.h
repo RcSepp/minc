@@ -65,10 +65,13 @@ struct Location
 struct CompileError
 {
 	const Location loc;
-	const std::string msg;
-	std::vector<std::string> hints;
-	CompileError(std::string msg, Location loc={0}) : loc(loc), msg(msg) {}
-	void addHint(const std::string& hint) { hints.push_back(hint); }
+	char* msg;
+	int* refcount;
+	CompileError(const char* msg, Location loc={0});
+	CompileError(std::string msg, Location loc={0});
+	CompileError(Location loc, const char* fmt, ...);
+	CompileError(CompileError& other);
+	~CompileError();
 	void print(std::ostream& out=std::cerr);
 };
 struct UndefinedStmtException : public CompileError

@@ -604,9 +604,9 @@ bool BlockExprAST::lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const
 	// Update location
 	stmt.loc.filename = stmt.begin[0]->loc.filename;
 	stmt.loc.begin_line = stmt.begin[0]->loc.begin_line;
-	stmt.loc.begin_col = stmt.begin[0]->loc.begin_col;
+	stmt.loc.begin_column = stmt.begin[0]->loc.begin_column;
 	stmt.loc.end_line = stmt.end[-(int)(stmt.end != stmt.begin)]->loc.end_line;
-	stmt.loc.end_col = stmt.end[-(int)(stmt.end != stmt.begin)]->loc.end_col;
+	stmt.loc.end_column = stmt.end[-(int)(stmt.end != stmt.begin)]->loc.end_column;
 
 	if (context.first != nullptr)
 	{

@@ -341,9 +341,9 @@ extern "C"
 	const Location* getExprLoc(const ExprAST* expr) { return &expr->loc; }
 	const char* getExprFilename(const ExprAST* expr) { return expr->loc.filename; }
 	unsigned getExprLine(const ExprAST* expr) { return expr->loc.begin_line; }
-	unsigned getExprColumn(const ExprAST* expr) { return expr->loc.begin_col; }
+	unsigned getExprColumn(const ExprAST* expr) { return expr->loc.begin_column; }
 	unsigned getExprEndLine(const ExprAST* expr) { return expr->loc.end_line; }
-	unsigned getExprEndColumn(const ExprAST* expr) { return expr->loc.end_col; }
+	unsigned getExprEndColumn(const ExprAST* expr) { return expr->loc.end_column; }
 
 	ExprAST* getDerivedExprAST(ExprAST* expr)
 	{

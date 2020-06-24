@@ -64,7 +64,7 @@ file
 ;
 
 block
-	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(Location{filename, (unsigned)@1.begin.line, (unsigned)@1.begin.column, $2->back()->loc.end_line, $2->back()->loc.end_col}, $2); }
+	: INDENT stmt_string OUTDENT { $$ = new BlockExprAST(Location{filename, (unsigned)@1.begin.line, (unsigned)@1.begin.column, $2->back()->loc.end_line, $2->back()->loc.end_column}, $2); }
 ;
 
 stmt_string
@@ -90,7 +90,7 @@ stmt
 							}
 	| stmt '=' expr	{
 								ListExprAST* stmt = $1;
-								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_col, (unsigned)@3.end.line, (unsigned)@3.end.column};
+								const Location& loc = Location{filename, stmt->exprs.back()->loc.begin_line, stmt->exprs.back()->loc.begin_column, (unsigned)@3.end.line, (unsigned)@3.end.column};
 								stmt->exprs.back() = new BinOpExprAST(loc, (int)'=', "=", stmt->exprs.back(), $3);
 								$$ = stmt;
 							}

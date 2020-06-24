@@ -58,8 +58,8 @@ struct Cast
 struct Location
 {
 	const char* filename;
-	unsigned begin_line, begin_col;
-	unsigned end_line, end_col;
+	unsigned begin_line, begin_column;
+	unsigned end_line, end_column;
 };
 
 struct CompileError

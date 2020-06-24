@@ -601,9 +601,9 @@ auto t = std::thread([](Debugger* debugger, BlockExprAST* rootBlock2) {
 	} catch (CompileError err) {
 		StackFrame& top = debugger->getCurrentThread().callStack.back();
 		top.line = err.loc.begin_line;
-		top.column = err.loc.begin_col;
+		top.column = err.loc.begin_column;
 		top.endLine = err.loc.end_line;
-		top.endColumn = err.loc.end_col;
+		top.endColumn = err.loc.end_column;
 		debugger->sendStopEvent(StopEventReason::Exception, err.msg);
 	}
 }, this, rootBlock2);
@@ -620,9 +620,9 @@ auto t = std::thread([](Debugger* debugger, BlockExprAST* rootBlock2) {
 		} catch (CompileError err) {
 			StackFrame& top = getCurrentThread().callStack.back();
 			top.line = err.loc.begin_line;
-			top.column = err.loc.begin_col;
+			top.column = err.loc.begin_column;
 			top.endLine = err.loc.end_line;
-			top.endColumn = err.loc.end_col;
+			top.endColumn = err.loc.end_column;
 			sendStopEvent(StopEventReason::Exception, err.msg);
 		}
 
@@ -713,9 +713,9 @@ private:
 			{
 			case STEP_IN:
 				top.line = expr->loc.begin_line;
-				top.column = expr->loc.begin_col;
+				top.column = expr->loc.begin_column;
 				top.endLine = expr->loc.end_line;
-				top.endColumn = expr->loc.end_col;
+				top.endColumn = expr->loc.end_column;
 
 				if (breakpoints[top.source->path.value()].count(top.line))
 					sendStopEvent(StopEventReason::BreakpointHit, "");
@@ -742,9 +742,9 @@ private:
 
 			case STEP_RESUME:
 				top.line = expr->loc.begin_line;
-				top.column = expr->loc.begin_col;
+				top.column = expr->loc.begin_column;
 				top.endLine = expr->loc.end_line;
-				top.endColumn = expr->loc.end_col;
+				top.endColumn = expr->loc.end_column;
 				break;
 			}
 		}

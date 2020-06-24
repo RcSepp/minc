@@ -90,10 +90,10 @@ out << std::endl;
 	if (loc.filename != nullptr)
 		out << loc.filename << ':';
 	out << loc.begin_line << ':';
-	out << loc.begin_col << ':';
+	out << loc.begin_column << ':';
 	out << " \e[1;31merror:\e[0m ";
 	out << (msg != nullptr ? msg : "") << std::endl;
-	if (loc.filename != nullptr && loc.begin_line == loc.end_line && loc.begin_col > loc.end_col) //TODO: Cleanup
+	if (loc.filename != nullptr && loc.begin_line == loc.end_line && loc.begin_column > loc.end_column) //TODO: Cleanup
 	{
 		std::ifstream in(loc.filename);
 		char c;
@@ -103,12 +103,12 @@ out << std::endl;
 		char linebuf[0x1000]; //TODO: Read line without fixed buffer size
 		linebuf[0] = c;
 		in.getline(linebuf + 1, 0x1000);
-		out << std::string(linebuf, linebuf + loc.begin_col - 1);
-		out << "\e[31m" << std::string(linebuf + loc.begin_col - 1, linebuf + loc.end_col - 1) << "\e[0m";
-		out << std::string(linebuf + loc.end_col - 1) << std::endl;
-		for (int i = 0; i < loc.begin_col; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
-		out << std::string(linebuf, linebuf + loc.begin_col - 1);
-		out << "\e[31m" << std::string(1, '^') << std::string(loc.end_col - loc.begin_col - 1, '~') << "\e[0m" << std::endl;
+		out << std::string(linebuf, linebuf + loc.begin_column - 1);
+		out << "\e[31m" << std::string(linebuf + loc.begin_column - 1, linebuf + loc.end_column - 1) << "\e[0m";
+		out << std::string(linebuf + loc.end_column - 1) << std::endl;
+		for (int i = 0; i < loc.begin_column; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
+		out << std::string(linebuf, linebuf + loc.begin_column - 1);
+		out << "\e[31m" << std::string(1, '^') << std::string(loc.end_column - loc.begin_column - 1, '~') << "\e[0m" << std::endl;
 		in.close();
 	}
 }

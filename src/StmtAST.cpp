@@ -3,7 +3,7 @@
 void raiseStepEvent(const ExprAST* loc, StepEventType type);
 
 StmtAST::StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context)
-	: ExprAST(Location{ exprBegin[0]->loc.filename, exprBegin[0]->loc.begin_line, exprBegin[0]->loc.begin_col, exprEnd[-1]->loc.end_line, exprEnd[-1]->loc.end_col }, ExprAST::ExprType::STMT), begin(exprBegin), end(exprEnd)
+	: ExprAST(Location{ exprBegin[0]->loc.filename, exprBegin[0]->loc.begin_line, exprBegin[0]->loc.begin_column, exprEnd[-1]->loc.end_line, exprEnd[-1]->loc.end_column }, ExprAST::ExprType::STMT), begin(exprBegin), end(exprEnd)
 {
 	resolvedContext = context;
 }

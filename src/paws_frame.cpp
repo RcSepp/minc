@@ -93,7 +93,7 @@ public:
 	Variable result;
 	double delay; //TODO: Replace delays with timestamps
 
-	SingleshotAwaitableInstance(double delay = 0.0) : blocked(new std::list<SingleshotAwaitableInstance*>()), delay(delay), result(nullptr, nullptr)
+	SingleshotAwaitableInstance(double delay = 0.0) : blocked(new std::list<SingleshotAwaitableInstance*>()), result(nullptr, nullptr), delay(delay)
 	{
 		if (std::isnan(delay))
 			throw std::invalid_argument("Trying to create awaitable with NaN delay");
@@ -241,7 +241,7 @@ private:
 	EventPool* const eventPool;
 
 public:
-	EventInstance(PawsType* type, EventPool* eventPool) : type(type), eventPool(eventPool), blockedAwaitable(nullptr) {}
+	EventInstance(PawsType* type, EventPool* eventPool) : type(type), blockedAwaitable(nullptr), eventPool(eventPool) {}
 	void invoke(SingleshotAwaitableInstance* invokeInstance, BaseValue* value)
 	{
 		mutex.lock();
@@ -422,11 +422,11 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 
 	// >>> Type hierarchy
 	//
-	// Frame instance:		frame -> PawsFrameInstance ---------------\
+	// Frame instance:		frame -> PawsFrameInstance ---------------|
 	//																  |
 	// Event instance:		PawsEvent<msgType> -> PawsEventInstance --|--> PawsAwaitableInstance
 	//																  |
-	// Awaitable instance:	PawsAwaitable<returnType> ----------------/
+	// Awaitable instance:	PawsAwaitable<returnType> ----------------|
 	//
 	// Frame class:			PawsFrame<frame> -> PawsFrame -> PawsAwaitable -> PawsMetaType
 	//
@@ -457,11 +457,12 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	// Define event definition
 	defineExpr3(pkgScope, "event<$E<PawsMetaType>>()",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			//PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
 			return Variable(Event::get(PawsString::TYPE), new PawsEventInstance(new EventInstance(PawsString::TYPE, (EventPool*)exprArgs)));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			PawsType* returnType = (PawsType*)getType(params[0], parentBlock);
-			//TODO: getType() returns PawsMetaType, not the the passed type (e.g. PawsString)
+			//PawsType* returnType = (PawsType*)getType(params[0], parentBlock);
+			//TODO: Use returnType instead of PawsString
+			//TODO	getType() returns PawsMetaType, not the passed type (e.g. PawsString)
 			//TODO	How can returnType be retrieved in a constant context?
 			return Event::get(PawsString::TYPE);
 		}, eventPool

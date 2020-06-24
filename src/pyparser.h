@@ -19,7 +19,7 @@ class PyLexer : public yyFlexLexer
 {
 private:
 int g_current_line_indent;
-std::stack<size_t> g_indent_levels;
+std::stack<int> g_indent_levels;
 int g_is_fake_outdent_symbol;
 int g_current_rbkt_level, g_current_sbkt_level, g_current_cbkt_level;
 

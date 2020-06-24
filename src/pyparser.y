@@ -222,7 +222,11 @@ expr
 		else if ($1->exprtype == ExprAST::ExprType::LIST && $3->exprtype != ExprAST::ExprType::LIST)
 			l1->exprs.push_back($3);
 		else if ($1->exprtype != ExprAST::ExprType::LIST && $3->exprtype == ExprAST::ExprType::LIST)
-			(l1 = new ListExprAST(',', { $1 }))->exprs.insert(l1->end(), l3->begin(), l3->end());
+		{
+			ListExprAST* const lout = new ListExprAST(',', { $1 });
+			lout->exprs.insert(l1->end(), l3->begin(), l3->end());
+			l1 = lout;
+		}
 		else
 			l1 = new ListExprAST(',', { $1, $3 });
 		$$ = l1;

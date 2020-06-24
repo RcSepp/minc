@@ -10,7 +10,7 @@ namespace Json
 		bool escape = false, err = false;
 		enum Mode
 		{
-			BEGIN, END, STRING, COLON, KEY, ANY, VALUE, ARRAY, LIST, LIST_NEXT
+			BEGIN, END, STRING, COLON, KEY, ANY, VALUE, ARRAY, LIST
 		};
 		std::stack<Mode> mode;
 		mode.push(END);

@@ -470,7 +470,7 @@ public:
 		const BlockExprAST* const block;
 
 
-		StackFrame(const BlockExprAST* block) : block(block), locals(block), statements(block), expressions(block), mincScope(block)
+		StackFrame(const BlockExprAST* block) : locals(block), statements(block), expressions(block), mincScope(block), block(block)
 		{
 			name = block->name;
 			if (name.empty())
@@ -533,7 +533,7 @@ private:
 
 public:
 	Debugger(BlockExprAST* rootBlock, std::shared_ptr<dap::Writer> log)
-		: session(dap::Session::create()), rootBlock(rootBlock), stepType(StepType::Run), traceAnonymousBlocks(false), log(log)
+		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false), rootBlock(rootBlock), log(log)
 	{
 		registerStepEventListener([](const ExprAST* loc, StepEventType type, void* eventArgs) { ((Debugger*)eventArgs)->onStep(loc, type); }, this);
 		registerHandler(&Debugger::onInitialize);
@@ -727,7 +727,7 @@ private:
 					sendStopEvent(StopEventReason::Stepped, "");
 				else if (stepType == StepType::StepInitial)
 				{
-					stepType == StepType::Run;
+					stepType = StepType::Run;
 					sendStopEvent(StopEventReason::PauseOnEntry, "");
 				}
 				else
@@ -746,6 +746,8 @@ private:
 				top.endLine = expr->loc.end_line;
 				top.endColumn = expr->loc.end_column;
 				break;
+
+			default: break;
 			}
 		}
 	}
@@ -846,7 +848,7 @@ private:
 		if (frame == nullptr)
 			return dap::Error("Unknown frameId '%d'", int(request.frameId));
 
-		const BlockExprAST* const block = frame->block;
+		//const BlockExprAST* const block = frame->block;
 		dap::ScopesResponse response;
 		response.scopes.push_back(frame->locals.scope());
 		response.scopes.push_back(frame->expressions.scope());

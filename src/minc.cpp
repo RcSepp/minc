@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 	{
 		std::string rootBlockName = std::max(realPath, std::max(strrchr(realPath, '/') + 1, strrchr(realPath, '\\') + 1));
 		const size_t dt = rootBlockName.rfind(".");
-		if (dt != -1) rootBlockName = rootBlockName.substr(0, dt);
+		if (dt != std::string::npos) rootBlockName = rootBlockName.substr(0, dt);
 
 		rootBlock->name = rootBlockName;
 	}

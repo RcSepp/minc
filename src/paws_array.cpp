@@ -52,7 +52,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
 			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
-			ExprAST* valueExpr = valueExpr = getCastExprASTSource((CastExprAST*)params[2]);
+			ExprAST* valueExpr = getCastExprASTSource((CastExprAST*)params[2]);
 
 			BaseType *expectedType = valueType, *gotType = getType(valueExpr, parentBlock);
 			if (expectedType != gotType)

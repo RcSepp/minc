@@ -97,7 +97,7 @@ out << std::endl;
 	{
 		std::ifstream in(loc.filename);
 		char c;
-		for (int lineno = 1; lineno < loc.begin_line; in.read(&c, 1))
+		for (unsigned lineno = 1; lineno < loc.begin_line; in.read(&c, 1))
 			if (c == '\n')
 				++lineno;
 		char linebuf[0x1000]; //TODO: Read line without fixed buffer size
@@ -106,7 +106,7 @@ out << std::endl;
 		out << std::string(linebuf, linebuf + loc.begin_column - 1);
 		out << "\e[31m" << std::string(linebuf + loc.begin_column - 1, linebuf + loc.end_column - 1) << "\e[0m";
 		out << std::string(linebuf + loc.end_column - 1) << std::endl;
-		for (int i = 0; i < loc.begin_column; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
+		for (unsigned i = 0; i < loc.begin_column; ++i) linebuf[i] = linebuf[i] == '\t' ? '\t' : ' ';
 		out << std::string(linebuf, linebuf + loc.begin_column - 1);
 		out << "\e[31m" << std::string(1, '^') << std::string(loc.end_column - loc.begin_column - 1, '~') << "\e[0m" << std::endl;
 		in.close();

@@ -2,7 +2,7 @@
 
 void raiseStepEvent(const ExprAST* loc, StepEventType type);
 
-ParamExprAST::ParamExprAST(const Location& loc, int idx)
+ParamExprAST::ParamExprAST(const Location& loc, size_t idx)
 	: ExprAST(loc, ExprAST::ExprType::PARAM), idx(idx)
 {
 }

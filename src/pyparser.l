@@ -104,7 +104,7 @@ DM			->
 						// See the same code below (<indent>.) for a rationale.
 						if(g_current_line_indent != g_indent_levels.top()) {
 							unput('\n');
-							for(size_t i = 0 ; i < g_indent_levels.top() ; ++i) {
+							for(int i = 0 ; i < g_indent_levels.top() ; ++i) {
 								unput(' ');
 							}
 						} else {
@@ -144,7 +144,7 @@ DM			->
 						if(g_current_line_indent != g_indent_levels.top()) {
 							// Unput the rest of the current line, including the newline.
 							// We want to keep it untouched.
-							for(size_t i = 0 ; i < g_current_line_indent ; ++i) {
+							for(int i = 0 ; i < g_current_line_indent ; ++i) {
 								unput(' ');
 							}
 							unput('\n');
@@ -154,7 +154,7 @@ DM			->
 							// Though we need to remember that it's a fake one
 							// so we can ignore the symbol.
 							g_is_fake_outdent_symbol = 1;
-							for(size_t i = 0 ; i < g_indent_levels.top() ; ++i) {
+							for(int i = 0 ; i < g_indent_levels.top() ; ++i) {
 								unput(' ');
 							}
 							unput('\n');

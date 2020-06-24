@@ -12,7 +12,7 @@ template<> const std::string PawsStringMap::toString() const
 	//TODO: Use stringstream instead
 	std::string str = "{";
 	for (const std::pair<const std::string, std::string>& pair: val)
-		str += "TODO ";
+		str += pair.first + '.' + pair.second;
 	str += "}";
 	return str;
 }

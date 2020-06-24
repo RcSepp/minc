@@ -15,8 +15,8 @@ class MincPackage
 private:
 	std::mutex loadMutex;
 	std::string parentName;
-	BlockExprAST *pkgScope, *defineBlock;
 	const MincPackageFunc defineFunc;
+	BlockExprAST *pkgScope, *defineBlock;
 
 protected:
 	static const char PKG_PATH_SEPARATOR;

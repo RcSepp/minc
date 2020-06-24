@@ -331,8 +331,8 @@ public:
 class ParamExprAST : public ExprAST
 {
 public:
-	int idx;
-	ParamExprAST(const Location& loc, int idx);
+	size_t idx;
+	ParamExprAST(const Location& loc, size_t idx);
 	Variable codegen(BlockExprAST* parentBlock);
 	BaseType* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;

@@ -48,7 +48,7 @@ void registerValueSerializer(GetValueStrFunc serializer)
 {
 	valueSerializers.push_back(serializer);
 }
-bool getValueStr(const BaseValue* value, std::string* valueStr)
+bool getValueStr(const MincObject* value, std::string* valueStr)
 {
 	for (GetValueStrFunc valueSerializer: valueSerializers)
 		if (valueSerializer(value, valueStr))

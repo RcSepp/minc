@@ -1,6 +1,6 @@
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const BaseType* type);
+const std::string& getTypeNameInternal(const MincObject* type);
 
 CastExprAST::CastExprAST(const Cast* cast, ExprAST* source) : ExprAST(source->loc, ExprAST::ExprType::CAST), cast(cast)
 {

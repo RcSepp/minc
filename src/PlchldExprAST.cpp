@@ -35,14 +35,14 @@ PlchldExprAST::PlchldExprAST(const Location& loc, const char* p2)
 	}
 }
 
-BaseType* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
+MincObject* PlchldExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	if (p2 == nullptr || p1 == 'L')
 		return nullptr;
 	const Variable* var = parentBlock->lookupSymbol(p2);
 	if (var == nullptr)
 		throw UndefinedIdentifierException(new IdExprAST(loc, p2));
-	return (BaseType*)var->value->getConstantValue();
+	return var->value;
 }
 
 bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
@@ -97,8 +97,8 @@ bool PlchldExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchS
 	}
 	else
 	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
+		MincObject* exprType = expr->getType(block);
+		MincObject* tpltType = getType(block);
 		if (exprType == tpltType)
 		{
 			score += 5; // Reward exact match
@@ -119,8 +119,8 @@ void PlchldExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std:
 {
 	if (p2 != nullptr && p1 != 'L')
 	{
-		BaseType* exprType = expr->getType(block);
-		BaseType* tpltType = getType(block);
+		MincObject* exprType = expr->getType(block);
+		MincObject* tpltType = getType(block);
 		if (exprType != tpltType)
 		{
 			const Cast* cast = block->lookupCast(exprType, tpltType);

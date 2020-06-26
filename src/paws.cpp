@@ -43,7 +43,6 @@ const std::string PawsBase::toString() const
 	return str;
 }
 
-template<> uint64_t PawsValue<PawsType*>::getConstantValue() { return (uint64_t)val; }
 std::mutex PawsTpltType::mutex;
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
@@ -52,7 +51,7 @@ bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 		|| (lhs.baseType == rhs.baseType && lhs.tpltType < rhs.tpltType);
 }
 
-void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName)
+void definePawsReturnStmt(BlockExprAST* scope, const MincObject* returnType, const char* funcName)
 {
 	if (returnType == PawsVoid::TYPE)
 	{
@@ -80,7 +79,7 @@ void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const
 		// Define return statement with incorrect type in function scope
 		defineStmt2(scope, "return $E",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-				BaseType* returnType = getType(params[0], parentBlock);
+				MincObject* returnType = getType(params[0], parentBlock);
 				raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
 			}
 		);
@@ -126,7 +125,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 				if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 					break;
 				if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-					paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value->getConstantValue());
+					paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value);
 			}
 		}
 		else if (ExprASTIsList(param))
@@ -146,7 +145,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 					if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 						break;
 					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-						paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value->getConstantValue());
+						paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value);
 				}
 				paramType = PawsTpltType::get(PawsListExprAST::TYPE, paramType);
 			}
@@ -155,7 +154,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 	}
 }
 
-PawsCodegenContext::PawsCodegenContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams)
+PawsCodegenContext::PawsCodegenContext(BlockExprAST* expr, MincObject* type, const std::vector<Variable>& blockParams)
 	: expr(expr), type(type), blockParams(blockParams) {}
 
 Variable PawsCodegenContext::codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
@@ -185,7 +184,7 @@ Variable PawsCodegenContext::codegen(BlockExprAST* parentBlock, std::vector<Expr
 	return getVoid();
 }
 
-BaseType* PawsCodegenContext::getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+MincObject* PawsCodegenContext::getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 {
 	return type;
 }
@@ -209,13 +208,13 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 			raiseCompileError("parameter index out of bounds", (ExprAST*)parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first();
 	};
-	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second();
 	};
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-bool getPawsValueStr(const BaseValue* value, std::string* valueStr)
+bool getPawsValueStr(const MincObject* value, std::string* valueStr)
 {
 	const PawsBase* pawsValue = dynamic_cast<const PawsBase*>(value);
 	if (pawsValue != nullptr)
@@ -226,9 +225,9 @@ bool getPawsValueStr(const BaseValue* value, std::string* valueStr)
 	return false;
 }
 
-template<> const std::string PawsMetaType::toString() const
+const std::string PawsType::toString() const
 {
-	return getTypeName(val);
+	return getTypeName(this);
 }
 
 template<> const std::string PawsDouble::toString() const
@@ -248,7 +247,7 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 	registerValueSerializer(getPawsValueStr);
 	registerType<PawsBase>(pkgScope, "PawsBase");
 	registerType<PawsVoid>(pkgScope, "PawsVoid");
-	registerType<PawsMetaType>(pkgScope, "PawsMetaType");
+	registerType<PawsType>(pkgScope, "PawsType");
 	registerType<PawsInt>(pkgScope, "PawsInt");
 	registerType<PawsDouble>(pkgScope, "PawsDouble");
 	registerType<PawsString>(pkgScope, "PawsString");
@@ -310,7 +309,7 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return codegenExpr(params[0], parentBlock);
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			return getType(params[0], parentBlock);
 		}
 	);
@@ -336,7 +335,7 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 				raiseCompileError(("`" + std::string(getIdExprASTName((IdExprAST*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
 			return *var;
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			const Variable* var = lookupSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
 			return var != nullptr ? var->type : nullptr;
 		}
@@ -367,7 +366,7 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 				intValue = std::stoi(value, 0, 10);
 			return Variable(PawsInt::TYPE, new PawsInt(intValue));
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
 			if (*valueEnd == '"' || *valueEnd == '\'')
@@ -399,14 +398,14 @@ MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
 			}
 			return expr;
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			ExprAST* exprAST = params[1];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
 			return getType(exprAST, parentBlock);
 		}
 	);
-defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL` for both paws and builtin.cpp
+defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for both paws and builtin.cpp
 	defineExpr3(pkgScope, "$I<_NULL> = $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[1];
@@ -417,7 +416,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			defineSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]), expr.type, ((PawsBase*)expr.value)->copy());
 			return expr;
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			ExprAST* exprAST = params[1];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
@@ -439,12 +438,12 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		PawsInt::TYPE
 	);
 
-	defineExpr(pkgScope, "$E<PawsMetaType> == $E<PawsMetaType>",
+	defineExpr(pkgScope, "$E<PawsType> == $E<PawsType>",
 		+[](PawsType* a, PawsType* b) -> int {
 			return a == b;
 		}
 	);
-	defineExpr(pkgScope, "$E<PawsMetaType> != $E<PawsMetaType>",
+	defineExpr(pkgScope, "$E<PawsType> != $E<PawsType>",
 		+[](PawsType* a, PawsType* b) -> int {
 			return a != b;
 		}
@@ -498,9 +497,9 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
-			BaseType* ta = getType(params[1], parentBlock);
-			BaseType* tb = getType(params[2], parentBlock);
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
+			MincObject* ta = getType(params[1], parentBlock);
+			MincObject* tb = getType(params[2], parentBlock);
 			if (ta != tb)
 				raiseCompileError("TODO", params[0]);
 			return ta;
@@ -537,7 +536,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 
 			// Cast condition expression to PawsInt
 			ExprAST* condExpr = params[1];
-			BaseType* condType = getType(condExpr, forBlock);
+			MincObject* condType = getType(condExpr, forBlock);
 			if (condType != PawsInt::TYPE)
 			{
 				condExpr = lookupCast(parentBlock, condExpr, PawsInt::TYPE);
@@ -606,7 +605,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			std::cerr << '\n';
 		}
 	);
-	defineExpr2(pkgScope, "printerr($E<PawsMetaType>)",
+	defineExpr2(pkgScope, "printerr($E<PawsType>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
@@ -630,9 +629,9 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			ExprAST* exprAST = params[0];
 			if (ExprASTIsCast(exprAST))
 				exprAST = getCastExprASTSource((CastExprAST*)exprAST);
-			return Variable(PawsMetaType::TYPE, new PawsMetaType((PawsType*)getType(exprAST, parentBlock)));
+			return Variable(PawsType::TYPE, getType(exprAST, parentBlock));
 		},
-		PawsMetaType::TYPE
+		PawsType::TYPE
 	);
 
 	defineStmt2(pkgScope, "assert $E<PawsInt>",
@@ -716,7 +715,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			}
 			return codegenExpr(expr, scope);
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprASTIsCast(params[0]))
 				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
 			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
@@ -734,7 +733,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			}
 			return codegenExpr(expr, scope);
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprASTIsCast(params[0]))
 				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated ExprAST", params[0]);
 			PawsType* type = (PawsType*)getType(getDerivedExprAST(params[0]), parentBlock);
@@ -818,7 +817,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
 			return Variable(((PawsTpltType*)exprsVar.type)->tpltType, new PawsExprAST(getListExprASTExprs(exprs)[idx]));
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
 		}
@@ -843,7 +842,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 	);
 
 	defineExpr(pkgScope, "$E<PawsVariable>.type",
-		+[](Variable var) -> BaseType* {
+		+[](Variable var) -> MincObject* {
 			return var.type;
 		}
 	);
@@ -881,10 +880,10 @@ defineSymbol(pkgScope, "_NULL", nullptr, new PawsVoid()); //TODO: Use one `NULL`
 	defineExpr3(pkgScope, "& $E<PawsBase>",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
 			Variable value = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
-			BaseValue* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)value.value)->get());
+			MincObject* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)value.value)->get());
 			return Variable(((PawsType*)value.type)->ptrType, ptr);
 		},
-		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			return ((PawsType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->ptrType;
 		}

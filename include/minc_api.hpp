@@ -16,10 +16,10 @@ extern "C"
 {
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
-	const std::string& getTypeName(const BaseType* type);
+	const std::string& getTypeName(const MincObject* type);
 	const Variable& getVoid();
-	void defineType(const char* name, const BaseType* type);
-	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
+	void defineType(const char* name, const MincObject* type);
+	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 	void registerStepEventListener(StepEvent listener, void* eventArgs);
 	void deregisterStepEventListener(StepEvent listener);
@@ -42,7 +42,7 @@ public:
 	ExprAST(const Location& loc, ExprType exprtype);
 	virtual ~ExprAST();
 	virtual Variable codegen(BlockExprAST* parentBlock);
-	virtual BaseType* getType(const BlockExprAST* parentBlock) const;
+	virtual MincObject* getType(const BlockExprAST* parentBlock) const;
 	virtual bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
 	virtual void resolveTypes(const BlockExprAST* block);
@@ -146,14 +146,14 @@ public:
 
 struct InheritanceCast : public Cast
 {
-	InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context);
+	InheritanceCast(MincObject* fromType, MincObject* toType, CodegenContext* context);
 	int getCost() const;
 	Cast* derive() const;
 };
 
 struct TypeCast : public Cast
 {
-	TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context);
+	TypeCast(MincObject* fromType, MincObject* toType, CodegenContext* context);
 	int getCost() const;
 	Cast* derive() const;
 };
@@ -162,15 +162,15 @@ class CastRegister
 {
 private:
 	BlockExprAST* const block;
-	std::map<std::pair<BaseType*, BaseType*>, Cast*> casts;
-	std::multimap<BaseType*, Cast*> fwdCasts, bwdCasts;
+	std::map<std::pair<MincObject*, MincObject*>, Cast*> casts;
+	std::multimap<MincObject*, Cast*> fwdCasts, bwdCasts;
 public:
 	CastRegister(BlockExprAST* block);
 	void defineDirectCast(Cast* cast);
 	void defineIndirectCast(const CastRegister& castreg, Cast* cast);
-	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const;
-	bool isInstance(BaseType* derivedType, BaseType* baseType) const;
-	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const;
+	const Cast* lookupCast(MincObject* fromType, MincObject* toType) const;
+	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
+	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
 	void iterateCasts(std::function<void(const Cast* cast)> cbk) const;
 };
@@ -225,21 +225,21 @@ public:
 	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
 	void defineAntiStmt(CodegenContext* stmt);
 	void defineExpr(ExprAST* tplt, CodegenContext* expr);
-	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, BaseType* type);
-	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> type);
+	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, MincObject* type);
+	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> type);
 	bool lookupExpr(ExprAST* expr) const;
 	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
 	void defineAntiExpr(CodegenContext* expr);
 	void defineCast(Cast* cast);
-	const Cast* lookupCast(BaseType* fromType, BaseType* toType) const;
-	bool isInstance(BaseType* derivedType, BaseType* baseType) const;
-	void listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const;
+	const Cast* lookupCast(MincObject* fromType, MincObject* toType) const;
+	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
+	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
 	void iterateCasts(std::function<void(const Cast* cast)> cbk) const;
 	void import(BlockExprAST* importBlock);
-	void defineSymbol(std::string name, BaseType* type, BaseValue* var);
+	void defineSymbol(std::string name, MincObject* type, MincObject* value);
 	const Variable* lookupSymbol(const std::string& name) const;
 	size_t countSymbols() const;
 	void iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const;
@@ -320,7 +320,7 @@ public:
 	PlchldExprAST(const Location& loc, char p1);
 	PlchldExprAST(const Location& loc, char p1, const char* p2, bool allowCast);
 	PlchldExprAST(const Location& loc, const char* p2);
-	BaseType* getType(const BlockExprAST* parentBlock) const;
+	MincObject* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	std::string str() const;
@@ -334,7 +334,7 @@ public:
 	size_t idx;
 	ParamExprAST(const Location& loc, size_t idx);
 	Variable codegen(BlockExprAST* parentBlock);
-	BaseType* getType(const BlockExprAST* parentBlock) const;
+	MincObject* getType(const BlockExprAST* parentBlock) const;
 	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
 	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
 	std::string str() const;

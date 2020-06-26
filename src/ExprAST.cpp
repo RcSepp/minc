@@ -1,6 +1,6 @@
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const BaseType* type);
+const std::string& getTypeNameInternal(const MincObject* type);
 void raiseStepEvent(const ExprAST* loc, StepEventType type);
 
 ExprAST::ExprAST(const Location& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedContext(nullptr)
@@ -42,7 +42,7 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		}
 		parentBlock->isExprSuspended = false;
 
-		const BaseType *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
+		const MincObject *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
 		{
 			throw CompileError(
@@ -72,7 +72,7 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 		throw UndefinedExprException{this};
 }
 
-BaseType* ExprAST::getType(const BlockExprAST* parentBlock) const
+MincObject* ExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
 }

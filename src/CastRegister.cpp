@@ -2,9 +2,9 @@
 
 #define DETECT_UNDEFINED_TYPE_CASTS
 
-const std::string& getTypeNameInternal(const BaseType* type);
+const std::string& getTypeNameInternal(const MincObject* type);
 
-InheritanceCast::InheritanceCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+InheritanceCast::InheritanceCast(MincObject* fromType, MincObject* toType, CodegenContext* context)
 	: Cast(fromType, toType, context)
 {
 }
@@ -19,7 +19,7 @@ Cast* InheritanceCast::derive() const
 	return nullptr;
 }
 
-TypeCast::TypeCast(BaseType* fromType, BaseType* toType, CodegenContext* context)
+TypeCast::TypeCast(MincObject* fromType, MincObject* toType, CodegenContext* context)
 	: Cast(fromType, toType, context)
 {
 }
@@ -53,7 +53,7 @@ struct IndirectCast : public Cast, public CodegenContext
 		std::vector<ExprAST*> _params(1, new CastExprAST(first, params[0])); //TODO: make params const and implement this inline (`codegen(parentBlock, { new CastExprAST(first, params[0]) });`)
 		return second->context->codegen(parentBlock, _params);
 	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
 		return second->context->getType(parentBlock, { new CastExprAST(first, params[0]) });
 	}
@@ -82,7 +82,7 @@ void CastRegister::defineDirectCast(Cast* cast)
 // if (fromTypeName[fromTypeName.size() - 1] != ')'
 // 	&& fromTypeName.rfind("ExprAST<", 0)
 // 	&& fromTypeName.find("UNKNOWN_TYPE") == std::string::npos
-// 	&& (toTypeName != "BaseType")
+// 	&& (toTypeName != "MincObject")
 // 	&& (toTypeName != "BuiltinType")
 // 	&& (toTypeName != "PawsBase")
 // 	&& cast->getCost() >= 1
@@ -92,7 +92,7 @@ void CastRegister::defineDirectCast(Cast* cast)
 
 void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
 {
-	std::map<std::pair<BaseType*, BaseType*>, Cast*>::const_iterator existingCast;
+	std::map<std::pair<MincObject*, MincObject*>, Cast*>::const_iterator existingCast;
 
 	auto toTypefwdCasts = castreg.fwdCasts.equal_range(cast->toType);
 	for (auto iter = toTypefwdCasts.first; iter != toTypefwdCasts.second; ++iter)
@@ -136,21 +136,21 @@ void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
 	}
 }
 
-const Cast* CastRegister::lookupCast(BaseType* fromType, BaseType* toType) const
+const Cast* CastRegister::lookupCast(MincObject* fromType, MincObject* toType) const
 {
 	const auto& cast = casts.find(std::make_pair(fromType, toType));
 	return cast == casts.end() ? nullptr : cast->second;
 }
 
-bool CastRegister::isInstance(BaseType* derivedType, BaseType* baseType) const
+bool CastRegister::isInstance(MincObject* derivedType, MincObject* baseType) const
 {
 	const auto& cast = casts.find(std::make_pair(derivedType, baseType));
 	return cast != casts.end() && cast->second->getCost() == 0; // Zero-cost casts are inheritance casts
 }
 
-void CastRegister::listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
+void CastRegister::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
 {
-	for (const std::pair<std::pair<BaseType*, BaseType*>, Cast*>& cast: this->casts)
+	for (const std::pair<std::pair<MincObject*, MincObject*>, Cast*>& cast: this->casts)
 		casts.push_back(cast.first);
 }
 
@@ -161,6 +161,6 @@ size_t CastRegister::countCasts() const
 
 void CastRegister::iterateCasts(std::function<void(const Cast* cast)> cbk) const
 {
-	for (const std::pair<const std::pair<BaseType*, BaseType*>, Cast*>& iter: casts)
+	for (const std::pair<const std::pair<MincObject*, MincObject*>, Cast*>& iter: casts)
 		cbk(iter.second);
 }

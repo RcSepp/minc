@@ -23,7 +23,7 @@ extern "C"
 
 	Variable codegenExpr(ExprAST* expr, BlockExprAST* scope);
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope);
-	BaseType* getType(const ExprAST* expr, const BlockExprAST* scope);
+	MincObject* getType(const ExprAST* expr, const BlockExprAST* scope);
 	const Location& getLocation(const ExprAST* expr);
 	void importBlock(BlockExprAST* scope, BlockExprAST* block);
 	void collectParams(const BlockExprAST* scope, const ExprAST* tplt, ExprAST* expr, std::vector<ExprAST*>& params);
@@ -77,35 +77,35 @@ extern "C"
 	BlockExprAST* getFileScope();
 	BaseScopeType* getScopeType(const BlockExprAST* scope);
 	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType);
-	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock);
-	const std::string& getTypeName(const BaseType* type);
+	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
+	const std::string& getTypeName(const MincObject* type);
 
-	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value);
-	void defineType(const char* name, const BaseType* type);
+	void defineSymbol(BlockExprAST* scope, const char* name, MincObject* type, MincObject* value);
+	void defineType(const char* name, const MincObject* type);
 	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
 	void defineStmt4(BlockExprAST* scope, const char* tpltStr, CodegenContext* stmt);
 	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt);
-	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
+	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs = nullptr);
 	void defineExpr3(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineExpr5(BlockExprAST* scope, ExprAST* tplt, CodegenContext* expr);
 	void defineExpr6(BlockExprAST* scope, const char* tpltStr, CodegenContext* expr);
-	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, BaseType* type, void* exprArgs = nullptr);
+	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs = nullptr);
 	void defineAntiExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs = nullptr);
 	void defineAntiExpr5(BlockExprAST* scope, CodegenContext* expr);
-	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
-	void defineTypeCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
-	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
-	void defineInheritanceCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs = nullptr);
-	void defineInheritanceCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast);
-	void defineOpaqueInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType);
+	void defineTypeCast2(BlockExprAST* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs = nullptr);
+	void defineTypeCast3(BlockExprAST* scope, MincObject* fromType, MincObject* toType, CodegenContext* cast);
+	void defineOpaqueTypeCast(BlockExprAST* scope, MincObject* fromType, MincObject* toType);
+	void defineInheritanceCast2(BlockExprAST* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs = nullptr);
+	void defineInheritanceCast3(BlockExprAST* scope, MincObject* fromType, MincObject* toType, CodegenContext* cast);
+	void defineOpaqueInheritanceCast(BlockExprAST* scope, MincObject* fromType, MincObject* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name);
 	Variable* importSymbol(BlockExprAST* scope, const char* name);
-	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType);
-	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType);
+	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, MincObject* toType);
+	bool isInstance(const BlockExprAST* scope, MincObject* fromType, MincObject* toType);
 	void lookupStmtCandidates(const BlockExprAST* scope, const StmtAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates);
 	void lookupExprCandidates(const BlockExprAST* scope, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates);
 	std::string reportExprCandidates(const BlockExprAST* scope, const ExprAST* expr);

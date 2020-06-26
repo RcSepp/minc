@@ -1,11 +1,11 @@
 #include "minc_api.h"
 #include "minc_api.hpp"
 
-const Variable VOID = Variable(new BaseType(), nullptr);
+const Variable VOID = Variable(new MincObject(), nullptr);
 BlockExprAST* const rootBlock = new BlockExprAST({0}, {});
 BlockExprAST* fileBlock = nullptr;
 BlockExprAST* topLevelBlock = nullptr;
-std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<BaseType*, ImptBlock>> importRules;
+std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
 
 extern "C"
 {
@@ -24,7 +24,7 @@ extern "C"
 		return fileBlock;
 	}
 
-	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, BaseType* symbolType, ImptBlock imptBlock)
+	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock)
 	{
 		const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(fromScope, toScope);
 		auto rules = importRules.find(key);
@@ -58,7 +58,7 @@ void BlockExprAST::defineStmt(const std::vector<ExprAST*>& tplt, std::function<v
 			: codegenCtx(codegen) {}
 		virtual ~StmtCodegenContext() {}
 		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { codegenCtx(parentBlock, params); return VOID; }
-		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return VOID.type; }
+		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return VOID.type; }
 	};
 	defineStmt(tplt, new StmtCodegenContext(codegen));
 }
@@ -94,32 +94,32 @@ void BlockExprAST::defineExpr(ExprAST* tplt, CodegenContext* expr)
 	stmtreg.defineExpr(tplt, expr);
 }
 
-void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, BaseType* type)
+void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, MincObject* type)
 {
 	struct ExprCodegenContext : public CodegenContext
 	{
 		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
-		BaseType* const type;
-		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, BaseType* type)
+		MincObject* const type;
+		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, MincObject* type)
 			: codegenCbk(codegen), type(type) {}
 		virtual ~ExprCodegenContext() {}
 		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
-		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return type; }
+		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return type; }
 	};
 	defineExpr(tplt, new ExprCodegenContext(codegen, type));
 }
 
-void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
 {
 	struct ExprCodegenContext : public CodegenContext
 	{
 		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
-		const std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getTypeCbk;
-		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<BaseType*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+		const std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getTypeCbk;
+		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
 			: codegenCbk(codegen), getTypeCbk(getType) {}
 		virtual ~ExprCodegenContext() {}
 		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
-		BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return getTypeCbk(parentBlock, params); }
+		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return getTypeCbk(parentBlock, params); }
 	};
 	defineExpr(tplt, new ExprCodegenContext(codegen, getType));
 }
@@ -171,7 +171,7 @@ void BlockExprAST::defineCast(Cast* cast)
 	}
 }
 
-const Cast* BlockExprAST::lookupCast(BaseType* fromType, BaseType* toType) const
+const Cast* BlockExprAST::lookupCast(MincObject* fromType, MincObject* toType) const
 {
 	const Cast* cast;
 	for (const BlockExprAST* block = this; block; block = block->parent)
@@ -185,7 +185,7 @@ const Cast* BlockExprAST::lookupCast(BaseType* fromType, BaseType* toType) const
 	return nullptr;
 }
 
-bool BlockExprAST::isInstance(BaseType* derivedType, BaseType* baseType) const
+bool BlockExprAST::isInstance(MincObject* derivedType, MincObject* baseType) const
 {
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
@@ -198,7 +198,7 @@ bool BlockExprAST::isInstance(BaseType* derivedType, BaseType* baseType) const
 	return false;
 }
 
-void BlockExprAST::listAllCasts(std::list<std::pair<BaseType*, BaseType*>>& casts) const
+void BlockExprAST::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
 {
 	for (const BlockExprAST* block = this; block; block = block->parent)
 	{
@@ -240,9 +240,9 @@ void BlockExprAST::import(BlockExprAST* importBlock)
 		references.insert(references.begin(), importBlock);
 }
 
-void BlockExprAST::defineSymbol(std::string name, BaseType* type, BaseValue* var)
+void BlockExprAST::defineSymbol(std::string name, MincObject* type, MincObject* value)
 {
-	scope[name] = Variable(type, var);
+	scope[name] = Variable(type, value);
 }
 
 const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
@@ -294,7 +294,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 				return symbol; // No import rules defined from ref scope to local scope
 
 			// Search for import rule on symbol type
-			const std::map<BaseType*, ImptBlock>::iterator rule = rules->second.find(symbol->type);
+			const std::map<MincObject*, ImptBlock>::iterator rule = rules->second.find(symbol->type);
 			if (rule != rules->second.end())
 			{
 				rule->second(*symbol, ref->scopeType, scopeType); // Execute import rule
@@ -303,7 +303,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 			}
 
 			// Search for import rule on any base type of symbol type
-			for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
+			for (std::pair<MincObject* const, ImptBlock> rule: rules->second)
 				if (isInstance(symbol->type, rule.first))
 				{
 					//TODO: Should we cast symbol to rule.first?
@@ -331,7 +331,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 		}
 
 		// Search for import rule on symbol type
-		const std::map<BaseType*, ImptBlock>::const_iterator rule = rules->second.find(symbol->type);
+		const std::map<MincObject*, ImptBlock>::const_iterator rule = rules->second.find(symbol->type);
 		if (rule != rules->second.end())
 		{
 			rule->second(*symbol, parent->scopeType, scopeType); // Execute import rule
@@ -340,7 +340,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 		}
 
 		// Search for import rule on any base type of symbol type
-		for (std::pair<BaseType* const, ImptBlock> rule: rules->second)
+		for (std::pair<MincObject* const, ImptBlock> rule: rules->second)
 			if (isInstance(symbol->type, rule.first))
 			{
 				//TODO: Should we cast symbol to rule.first?

@@ -32,7 +32,7 @@ Variable ParamExprAST::codegen(BlockExprAST* parentBlock)
 	return blockParams->at(idx);
 }
 
-BaseType* ParamExprAST::getType(const BlockExprAST* parentBlock) const
+MincObject* ParamExprAST::getType(const BlockExprAST* parentBlock) const
 {
 	const std::vector<Variable>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr || idx >= blockParams->size())

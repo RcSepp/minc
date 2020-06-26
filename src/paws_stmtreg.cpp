@@ -104,7 +104,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](BlockExprAST* pkgScope) {
 			ExprMap const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = exprs;
 			ExprAST* exprParamAST = params[1];
-			BaseType* exprType = (BaseType*)codegenExpr(params[2], parentBlock).value->getConstantValue();
+			MincObject* exprType = (MincObject*)codegenExpr(params[2], parentBlock).value;
 			//TODO: Check for errors
 			BlockExprAST* blockAST = (BlockExprAST*)params[3];
 

@@ -37,7 +37,7 @@ defineExpr3(pkgScope, "$L",
 			raiseCompileError("Non-string literals not implemented", params[0]);
 		return Variable(&STRING_TYPE, new String(std::string(value + 1, strlen(value) - 2)));
 	},
-	[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+	[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 		return &STRING_TYPE;
 	}
 );

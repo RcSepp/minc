@@ -26,7 +26,7 @@ void defineStruct(BlockExprAST* scope, const char* name, Struct* strct);
 
 struct StructInstance
 {
-	std::map<std::string, BaseValue*> variables;
+	std::map<std::string, MincObject*> variables;
 };
 typedef PawsValue<StructInstance*> PawsStructInstance;
 

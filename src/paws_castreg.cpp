@@ -38,12 +38,12 @@ MincPackage PAWS_CASTREG("paws.castreg", [](BlockExprAST* pkgScope) {
 		}
 	);
 
-	defineStmt2(pkgScope, "$E<PawsCastMap>[$E<PawsMetaType> -> $E<PawsMetaType>] = $B",
+	defineStmt2(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 			CastMap const casts = ((PawsCastMap*)codegenExpr(params[0], parentBlock).value)->get();
 			BlockExprAST* const scope = casts;
-			PawsType* fromType = ((PawsMetaType*)codegenExpr(params[1], parentBlock).value)->get();
-			PawsType* toType = ((PawsMetaType*)codegenExpr(params[2], parentBlock).value)->get();
+			PawsType* fromType = (PawsType*)codegenExpr(params[1], parentBlock).value;
+			PawsType* toType = (PawsType*)codegenExpr(params[2], parentBlock).value;
 			BlockExprAST* blockAST = (BlockExprAST*)params[3];
 
 			// Get block parameter types
@@ -57,13 +57,13 @@ MincPackage PAWS_CASTREG("paws.castreg", [](BlockExprAST* pkgScope) {
 	);
 
 	defineExpr(pkgScope, "$E<PawsCast>.fromType",
-		+[](const Cast* cast) -> BaseType* {
+		+[](const Cast* cast) -> MincObject* {
 			return cast->fromType;
 		}
 	);
 
 	defineExpr(pkgScope, "$E<PawsCast>.toType",
-		+[](const Cast* cast) -> BaseType* {
+		+[](const Cast* cast) -> MincObject* {
 			return cast->toType;
 		}
 	);

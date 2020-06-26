@@ -11,16 +11,14 @@ struct BaseScopeType;
 
 extern BaseScopeType* FILE_SCOPE_TYPE;
 
-struct PawsType : public BaseType
-{
-	PawsType *valType, *ptrType;
-	PawsType() : valType(nullptr), ptrType(nullptr) {}
-};
+template<typename T> struct PawsValue;
 
-struct PawsBase : BaseValue
+class _Type;
+
+struct PawsBase : MincObject
 {
 	typedef void CType;
-	static inline PawsType* TYPE = new PawsType();
+	static PawsValue<_Type*>* const TYPE;
 	virtual PawsBase* copy() { return new PawsBase(); }
 	virtual const std::string toString() const;
 };
@@ -32,19 +30,27 @@ private:
 
 public:
 	typedef T CType;
-	static inline PawsType* TYPE = new PawsType();
+	static PawsValue<_Type*>* const TYPE;
 	PawsValue() {}
 	PawsValue(const T& val) : val(val) {}
-	uint64_t getConstantValue() { return 0; }
 	PawsBase* copy() { return new PawsValue<T>(val); }
 	const std::string toString() const { return PawsBase::toString(); }
 	T& get() { return val; }
 	void set(const T& val) { this->val = val; }
 };
+template<> struct PawsValue<_Type*> : PawsBase
+{
+	typedef _Type* CType;
+	static PawsValue<_Type*>* const TYPE;
+	PawsValue<_Type*> *valType, *ptrType;
+	PawsValue() : valType(nullptr), ptrType(nullptr) {}
+	PawsBase* copy() { return this; /* Pass all types by reference to allow matching of aliased types */ }
+	const std::string toString() const;
+};
 template<> struct PawsValue<void> : PawsBase
 {
 	typedef void CType;
-	static inline PawsType* TYPE = new PawsType();
+	static PawsValue<_Type*>* const TYPE;
 	PawsValue() {}
 	PawsBase* copy() { return new PawsValue<void>(); }
 };
@@ -56,16 +62,16 @@ namespace std
 	};
 }
 
-struct PawsTpltType : PawsType
+struct PawsTpltType : PawsValue<_Type*>
 {
 private:
 	static std::mutex mutex;
 	static std::set<PawsTpltType> tpltTypes;
-	PawsTpltType(PawsType* baseType, PawsType* tpltType) : baseType(baseType), tpltType(tpltType) {}
+	PawsTpltType(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType) : baseType(baseType), tpltType(tpltType) {}
 
 public:
-	PawsType *const baseType, *const tpltType;
-	static PawsTpltType* get(PawsType* baseType, PawsType* tpltType)
+	PawsValue<_Type*> *const baseType, *const tpltType;
+	static PawsTpltType* get(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
 	{
 		std::unique_lock<std::mutex> lock(mutex);
 		std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
@@ -82,8 +88,8 @@ public:
 };
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs);
 
+typedef PawsValue<_Type*> PawsType;
 typedef PawsValue<void> PawsVoid;
-typedef PawsValue<PawsType*> PawsMetaType;
 typedef PawsValue<int> PawsInt;
 typedef PawsValue<double> PawsDouble;
 typedef PawsValue<std::string> PawsString;
@@ -97,13 +103,18 @@ typedef PawsValue<Variable> PawsVariable;
 typedef PawsValue<BaseScopeType*> PawsScopeType;
 typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;
 
+inline PawsType* const PawsBase::TYPE = new PawsType();
+template <typename T> inline PawsType* const PawsValue<T>::TYPE = new PawsType();
+inline PawsType* const PawsType::TYPE = new PawsType();
+inline PawsType* const PawsVoid::TYPE = new PawsType();
+
 template<typename T> void registerType(BlockExprAST* scope, const char* name)
 {
 	const size_t nameLen = strlen(name);
 
 	// Define type and add type symbol to scope
 	defineType(name, T::TYPE);
-	defineSymbol(scope, name, PawsMetaType::TYPE, new PawsMetaType(T::TYPE));
+	defineSymbol(scope, name, PawsType::TYPE, T::TYPE);
 
 	if (T::TYPE != PawsBase::TYPE)
 	{
@@ -173,7 +184,7 @@ struct ReturnException
 	ReturnException(const Variable& result) : result(result) {}
 };
 
-void definePawsReturnStmt(BlockExprAST* scope, const BaseType* returnType, const char* funcName = nullptr);
+void definePawsReturnStmt(BlockExprAST* scope, const MincObject* returnType, const char* funcName = nullptr);
 
 void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> params, std::vector<Variable>& blockParams);
 
@@ -181,12 +192,12 @@ struct PawsCodegenContext : public CodegenContext
 {
 protected:
 	BlockExprAST* const expr;
-	BaseType* const type;
+	MincObject* const type;
 	std::vector<Variable> blockParams;
 public:
-	PawsCodegenContext(BlockExprAST* expr, BaseType* type, const std::vector<Variable>& blockParams);
+	PawsCodegenContext(BlockExprAST* expr, MincObject* type, const std::vector<Variable>& blockParams);
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params);
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const;
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const;
 };
 
 // Templated version of defineStmt2():
@@ -653,7 +664,7 @@ template<class P0> void defineExpr(BlockExprAST* scope, const char* tpltStr, Var
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
 	};
-	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0);
 	};
@@ -670,7 +681,7 @@ template<class P0, class P1> void defineExpr(BlockExprAST* scope, const char* tp
  		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
 	};
-	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
 		PawsType* p1 = getType(params[1], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1);
@@ -689,7 +700,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(BlockExprAST* sc
  		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get(), p2->get());
 	};
-	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+	ExprTypeBlock typeCodeBlock = [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
 		PawsType* p1 = getType(params[1], parentBlock);
 		PawsType* p2 = getType(params[2], parentBlock);

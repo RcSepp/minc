@@ -5,7 +5,7 @@
 #include <string.h>
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const BaseType* type);
+const std::string& getTypeNameInternal(const MincObject* type);
 
 UndefinedStmtException::UndefinedStmtException(const StmtAST* stmt)
 	: CompileError("undefined statement " + stmt->str(), stmt->loc) {}
@@ -59,7 +59,7 @@ CompileError::CompileError(Location loc, const char* fmt, ...)
 		case 's': msg << va_arg(args, char*); break;
 		case 'E': msg << va_arg(args, ExprAST*)->str(); break;
 		case 'e': msg << va_arg(args, ExprAST*)->shortStr(); break;
-		case 't': msg << getTypeNameInternal(va_arg(args, BaseType*)); break;
+		case 't': msg << getTypeNameInternal(va_arg(args, MincObject*)); break;
 		}
 	}
 	this->msg = new char[msg.str().size() + 1];

@@ -20,7 +20,7 @@ struct TypeDescription
 {
 	std::string name;
 };
-std::map<const BaseType*, TypeDescription> typereg;
+std::map<const MincObject*, TypeDescription> typereg;
 std::map<StepEvent, void*> stepEventListeners;
 const std::string NULL_TYPE = "NULL";
 const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
@@ -37,7 +37,7 @@ public:
 		cbk(parentBlock, params, stmtArgs);
 		return getVoid();
 	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
 		return getVoid().type;
 	}
@@ -46,15 +46,15 @@ struct StaticExprContext : public CodegenContext
 {
 private:
 	ExprBlock cbk;
-	BaseType* const type;
+	MincObject* const type;
 	void* exprArgs;
 public:
-	StaticExprContext(ExprBlock cbk, BaseType* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
+	StaticExprContext(ExprBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		return cbk(parentBlock, params, exprArgs);
 	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
 		return type;
 	}
@@ -71,7 +71,7 @@ public:
 	{
 		return cbk(parentBlock, params, exprArgs);
 	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
 		return typecbk(parentBlock, params, exprArgs);
 	}
@@ -79,20 +79,20 @@ public:
 struct OpaqueExprContext : public CodegenContext
 {
 private:
-	BaseType* const type;
+	MincObject* const type;
 public:
-	OpaqueExprContext(BaseType* type) : type(type) {}
+	OpaqueExprContext(MincObject* type) : type(type) {}
 	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
 	{
 		return Variable(type, params[0]->codegen(parentBlock).value);
 	}
-	BaseType* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
 	{
 		return type;
 	}
 };
 
-const std::string& getTypeNameInternal(const BaseType* type)
+const std::string& getTypeNameInternal(const MincObject* type)
 {
 	if (type == nullptr)
 		return NULL_TYPE;
@@ -102,7 +102,7 @@ const std::string& getTypeNameInternal(const BaseType* type)
 	else
 		return typeDesc->second.name;
 }
-const char* getTypeName2Internal(const BaseType* type)
+const char* getTypeName2Internal(const MincObject* type)
 {
 	if (type == nullptr)
 		return NULL_TYPE.c_str();
@@ -120,17 +120,12 @@ extern "C"
 		return expr->codegen(scope);
 	}
 
-	uint64_t codegenExprConstant(ExprAST* expr, BlockExprAST* scope)
-	{
-		return expr->codegen(scope).value->getConstantValue();
-	}
-
 	void codegenStmt(StmtAST* stmt, BlockExprAST* scope)
 	{
 		stmt->codegen(scope);
 	}
 
-	BaseType* getType(const ExprAST* expr, const BlockExprAST* scope)
+	MincObject* getType(const ExprAST* expr, const BlockExprAST* scope)
 	{
 		return expr->getType(scope);
 	}
@@ -359,21 +354,21 @@ extern "C"
 		scope->scopeType = scopeType;
 	}
 
-	const std::string& getTypeName(const BaseType* type)
+	const std::string& getTypeName(const MincObject* type)
 	{
 		return getTypeNameInternal(type);
 	}
-	const char* getTypeName2(const BaseType* type)
+	const char* getTypeName2(const MincObject* type)
 	{
 		return getTypeName2Internal(type);
 	}
 
-	void defineSymbol(BlockExprAST* scope, const char* name, BaseType* type, BaseValue* value)
+	void defineSymbol(BlockExprAST* scope, const char* name, MincObject* type, MincObject* value)
 	{
 		scope->defineSymbol(name, type, value);
 	}
 
-	void defineType(const char* name, const BaseType* type)
+	void defineType(const char* name, const MincObject* type)
 	{
 #ifdef DETECT_REDEFINED_TYPES
 		if (typereg.find(type) != typereg.end())
@@ -461,7 +456,7 @@ extern "C"
 		scope->defineAntiStmt(stmt);
 	}
 
-	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, BaseType* type, void* exprArgs)
+	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs)
 	{
 		std::stringstream ss(tpltStr);
 		ss << tpltStr << ';';
@@ -505,7 +500,7 @@ extern "C"
 		scope->defineExpr(tplt, expr);
 	}
 
-	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, BaseType* type, void* exprArgs)
+	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs)
 	{
 		scope->defineAntiExpr(codeBlock == nullptr ? nullptr : new StaticExprContext(codeBlock, type, exprArgs));
 	}
@@ -520,29 +515,29 @@ extern "C"
 		scope->defineAntiExpr(expr);
 	}
 
-	void defineTypeCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
+	void defineTypeCast2(BlockExprAST* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs)
 	{
 		scope->defineCast(new TypeCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs)));
 	}
-	void defineInheritanceCast2(BlockExprAST* scope, BaseType* fromType, BaseType* toType, ExprBlock codeBlock, void* castArgs)
+	void defineInheritanceCast2(BlockExprAST* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs)
 	{
 		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprContext(codeBlock, toType, castArgs)));
 	}
 
-	void defineTypeCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast)
+	void defineTypeCast3(BlockExprAST* scope, MincObject* fromType, MincObject* toType, CodegenContext* cast)
 	{
 		scope->defineCast(new TypeCast(fromType, toType, cast));
 	}
-	void defineInheritanceCast3(BlockExprAST* scope, BaseType* fromType, BaseType* toType, CodegenContext* cast)
+	void defineInheritanceCast3(BlockExprAST* scope, MincObject* fromType, MincObject* toType, CodegenContext* cast)
 	{
 		scope->defineCast(new InheritanceCast(fromType, toType, cast));
 	}
 
-	void defineOpaqueTypeCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	void defineOpaqueTypeCast(BlockExprAST* scope, MincObject* fromType, MincObject* toType)
 	{
 		scope->defineCast(new TypeCast(fromType, toType, new OpaqueExprContext(toType)));
 	}
-	void defineOpaqueInheritanceCast(BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	void defineOpaqueInheritanceCast(BlockExprAST* scope, MincObject* fromType, MincObject* toType)
 	{
 		scope->defineCast(new InheritanceCast(fromType, toType, new OpaqueExprContext(toType)));
 	}
@@ -556,9 +551,9 @@ extern "C"
 		return scope->importSymbol(name);
 	}
 
-	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, BaseType* toType)
+	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, MincObject* toType)
 	{
-		BaseType* fromType = expr->getType(scope);
+		MincObject* fromType = expr->getType(scope);
 		if (fromType == toType)
 			return expr;
 
@@ -566,7 +561,7 @@ extern "C"
 		return cast == nullptr ? nullptr : new CastExprAST(cast, expr);
 	}
 
-	bool isInstance(const BlockExprAST* scope, BaseType* fromType, BaseType* toType)
+	bool isInstance(const BlockExprAST* scope, MincObject* fromType, MincObject* toType)
 	{
 		return fromType == toType || scope->isInstance(fromType, toType);
 	}
@@ -603,7 +598,7 @@ extern "C"
 	std::string reportCasts(const BlockExprAST* scope)
 	{
 		std::string report = "";
-		std::list<std::pair<BaseType*, BaseType*>> casts;
+		std::list<std::pair<MincObject*, MincObject*>> casts;
 		scope->listAllCasts(casts);
 		for (auto& cast: casts)
 			report += "\t" +  getTypeNameInternal(cast.first) + " -> " + getTypeNameInternal(cast.second) + "\n";

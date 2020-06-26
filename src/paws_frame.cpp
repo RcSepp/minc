@@ -173,7 +173,7 @@ private:
 	EventPool* const eventPool;
 
 public:
-	std::map<std::string, BaseValue*> variables;
+	std::map<std::string, MincObject*> variables;
 
 	FrameInstance(const Frame* frame, BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, EventPool* eventPool);
 	~FrameInstance() { removeBlockExprAST(instance); }
@@ -230,7 +230,7 @@ struct EventInstance : public AwaitableInstance
 private:
 	struct Message
 	{
-		BaseValue* value;
+		MincObject* value;
 		SingleshotAwaitableInstance* invokeInstance;
 	};
 	PawsType* const type;
@@ -242,7 +242,7 @@ private:
 
 public:
 	EventInstance(PawsType* type, EventPool* eventPool) : type(type), blockedAwaitable(nullptr), eventPool(eventPool) {}
-	void invoke(SingleshotAwaitableInstance* invokeInstance, BaseValue* value)
+	void invoke(SingleshotAwaitableInstance* invokeInstance, MincObject* value)
 	{
 		mutex.lock();
 		msgQueue.push(Message{value, invokeInstance}); // Queue message
@@ -348,7 +348,7 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 	// Initialize and define frame variables in frame instance
 	for (const std::pair<const std::string, Frame::Variable>& pair: frame->variables)
 	{
-		BaseValue* const value = codegenExpr(pair.second.initExpr, frame->body).value;
+		MincObject* const value = codegenExpr(pair.second.initExpr, frame->body).value;
 		defineSymbol(instance, pair.first.c_str(), pair.second.type, value);
 		variables[pair.first] = value;
 	}
@@ -362,7 +362,7 @@ FrameInstance::FrameInstance(const Frame* frame, BlockExprAST* callerScope, cons
 				return blockerResult;
 			else
 				throw AwaitException();
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
 			return event->returnType;
@@ -428,14 +428,14 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	//																  |
 	// Awaitable instance:	PawsAwaitable<returnType> ----------------|
 	//
-	// Frame class:			PawsFrame<frame> -> PawsFrame -> PawsAwaitable -> PawsMetaType
+	// Frame class:			PawsFrame<frame> -> PawsFrame -> PawsAwaitable -> PawsType
 	//
 
 	registerType<PawsAwaitable>(pkgScope, "PawsAwaitable");
 	registerType<PawsEvent>(pkgScope, "PawsEvent");
 	registerType<PawsFrame>(pkgScope, "PawsFrame");
 	defineOpaqueInheritanceCast(pkgScope, PawsFrame::TYPE, PawsAwaitable::TYPE);
-	defineOpaqueInheritanceCast(pkgScope, PawsAwaitable::TYPE, PawsMetaType::TYPE);
+	defineOpaqueInheritanceCast(pkgScope, PawsAwaitable::TYPE, PawsType::TYPE);
 
 	registerType<PawsAwaitableInstance>(pkgScope, "PawsAwaitableInstance");
 	registerType<PawsEventInstance>(pkgScope, "PawsEventInstance");
@@ -455,23 +455,23 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	);
 
 	// Define event definition
-	defineExpr3(pkgScope, "event<$E<PawsMetaType>>()",
+	defineExpr3(pkgScope, "event<$E<PawsType>>()",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			//PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			//PawsType* returnType = ((PawsType*)codegenExpr(params[0], parentBlock).value)->get();
 			return Variable(Event::get(PawsString::TYPE), new PawsEventInstance(new EventInstance(PawsString::TYPE, (EventPool*)exprArgs)));
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			//PawsType* returnType = (PawsType*)getType(params[0], parentBlock);
 			//TODO: Use returnType instead of PawsString
-			//TODO	getType() returns PawsMetaType, not the passed type (e.g. PawsString)
+			//TODO	getType() returns PawsType, not the passed type (e.g. PawsString)
 			//TODO	How can returnType be retrieved in a constant context?
 			return Event::get(PawsString::TYPE);
 		}, eventPool
 	);
 
 	// Define frame definition
-	defineStmt2(pkgScope, "$E<PawsMetaType> frame $I($E<PawsMetaType> $I, ...) $B",
+	defineStmt2(pkgScope, "$E<PawsType> frame $I($E<PawsType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
 			const char* frameName = getIdExprASTName((IdExprAST*)params[1]);
 			const std::vector<ExprAST*>& argTypeExprs = getListExprASTExprs((ListExprAST*)params[2]);
 			const std::vector<ExprAST*>& argNameExprs = getListExprASTExprs((ListExprAST*)params[3]);
@@ -481,7 +481,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			frame->returnType = returnType;
 			frame->argTypes.reserve(argTypeExprs.size());
 			for (ExprAST* argTypeExpr: argTypeExprs)
-				frame->argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->get());
+				frame->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
 			frame->argNames.reserve(argNameExprs.size());
 			for (ExprAST* argNameExpr: argNameExprs)
 				frame->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
@@ -541,7 +541,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 
 			defineType(frameName, frame);
 			defineOpaqueInheritanceCast(parentBlock, frame, PawsFrameInstance::TYPE);
-			defineOpaqueInheritanceCast(parentBlock, PawsTpltType::get(PawsFrame::TYPE, frame), PawsMetaType::TYPE);
+			defineOpaqueInheritanceCast(parentBlock, PawsTpltType::get(PawsFrame::TYPE, frame), PawsType::TYPE);
 			defineSymbol(parentBlock, frameName, PawsTpltType::get(PawsFrame::TYPE, frame), new PawsFrame(frame));
 		}
 	);
@@ -560,7 +560,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				ExprAST* argExpr = argExprs[i];
-				BaseType *expectedType = frame->argTypes[i], *gotType = getType(argExpr, parentBlock);
+				MincObject *expectedType = frame->argTypes[i], *gotType = getType(argExpr, parentBlock);
 
 				if (expectedType != gotType)
 				{
@@ -583,7 +583,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			eventPool->post(std::bind(&FrameInstance::wakeup, instance, Variable(PawsVoid::TYPE, nullptr)), 0.0f);
 
 			return Variable(frame, new PawsFrameInstance(instance));
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			Frame* frame = (Frame*)((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
 			return frame;
@@ -603,7 +603,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(strct) + "'").c_str(), params[1]);
 
 			return Variable(variable->second.type, instance->variables[memberName]);
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			Frame* frame = (Frame*)(getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock));
 			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
@@ -641,7 +641,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			eventPool->run();
 			blocker->getResult(&result);
 			return result;
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			const Awaitable* event = (Awaitable*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
 			return event->returnType;
@@ -655,7 +655,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			EventInstance* const event = ((PawsEventInstance*)eventVar.value)->get();
 			ExprAST* argExpr = params[1];
 
-			BaseType* const argType = getType(argExpr, parentBlock);
+			MincObject* const argType = getType(argExpr, parentBlock);
 			PawsType* const msgType = ((Event*)eventVar.type)->msgType;
 			if (msgType != argType)
 			{
@@ -676,7 +676,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			((EventPool*)exprArgs)->post(std::bind(&EventInstance::invoke, event, invokeInstance, codegenExpr(argExpr, parentBlock).value), 0.0f);
 
 			return Variable(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(invokeInstance));
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			return Awaitable::get(PawsVoid::TYPE);
 		}, eventPool
 	);

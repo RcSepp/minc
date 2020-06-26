@@ -44,9 +44,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
 
 	// Define function definition
-	defineStmt2(pkgScope, "$E<PawsMetaType> $I($E<PawsMetaType> $I, ...) $B",
+	defineStmt2(pkgScope, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			PawsType* returnType = ((PawsMetaType*)codegenExpr(params[0], parentBlock).value)->get();
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
 			const char* funcName = getIdExprASTName((IdExprAST*)params[1]);
 			const std::vector<ExprAST*>& argTypeExprs = getListExprASTExprs((ListExprAST*)params[2]);
 			const std::vector<ExprAST*>& argNameExprs = getListExprASTExprs((ListExprAST*)params[3]);
@@ -62,7 +62,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			func->returnType = returnType;
 			func->argTypes.reserve(argTypeExprs.size());
 			for (ExprAST* argTypeExpr: argTypeExprs)
-				func->argTypes.push_back(((PawsMetaType*)codegenExpr(argTypeExpr, parentBlock).value)->get());
+				func->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
 			func->argNames.reserve(argNameExprs.size());
 			for (ExprAST* argNameExpr: argNameExprs)
 				func->argNames.push_back(getIdExprASTName((IdExprAST*)argNameExpr));
@@ -100,7 +100,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				ExprAST* argExpr = argExprs[i];
-				BaseType *expectedType = func->argTypes[i], *gotType = getType(argExpr, parentBlock);
+				MincObject *expectedType = func->argTypes[i], *gotType = getType(argExpr, parentBlock);
 
 				if (expectedType != gotType)
 				{
@@ -119,7 +119,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 
 			// Call function
 			return func->call(parentBlock, argExprs);
-		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> BaseType* {
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprASTIsCast(params[0]));
 			return ((PawsTpltType*)getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock))->tpltType;
 		}
@@ -145,8 +145,8 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 		PawsBase::TYPE
 	);
 
-	defineExpr(pkgScope, "PawsFunction<$E<PawsMetaType>>",
-		+[](PawsType* returnType) -> BaseType* {
+	defineExpr(pkgScope, "PawsFunction<$E<PawsType>>",
+		+[](PawsType* returnType) -> MincObject* {
 			return PawsTpltType::get(PawsFunction::TYPE, returnType);
 		}
 	);

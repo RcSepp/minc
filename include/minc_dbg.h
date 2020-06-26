@@ -3,9 +3,9 @@
 
 #include <functional>
 
-struct BaseValue;
+struct MincObject;
 
-typedef std::function<bool(const BaseValue*, std::string*)> GetValueStrFunc;
+typedef std::function<bool(const MincObject*, std::string*)> GetValueStrFunc;
 
 int launchDebugClient(BlockExprAST* rootBlock);
 void registerValueSerializer(GetValueStrFunc serializer);

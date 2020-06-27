@@ -48,10 +48,10 @@ void registerValueSerializer(GetValueStrFunc serializer)
 {
 	valueSerializers.push_back(serializer);
 }
-bool getValueStr(const MincObject* value, std::string* valueStr)
+bool getValueStr(const Variable& symbol, std::string* valueStr)
 {
 	for (GetValueStrFunc valueSerializer: valueSerializers)
-		if (valueSerializer(value, valueStr))
+		if (valueSerializer(symbol, valueStr))
 			return true;
 	return false;
 }
@@ -357,7 +357,7 @@ public:
 				auto cbk = [&](const std::string& name, const Variable& symbol) {
 					dap::Variable var;
 					var.name = name;
-					if (!getValueStr(symbol.value, &var.value))
+					if (!getValueStr(symbol, &var.value))
 						var.value = "UNKNOWN";
 					var.type = getTypeName(symbol.type);
 					variables.push_back(var);

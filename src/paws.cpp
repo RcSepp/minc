@@ -214,17 +214,6 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-bool getPawsValueStr(const MincObject* value, std::string* valueStr)
-{
-	const PawsBase* pawsValue = dynamic_cast<const PawsBase*>(value);
-	if (pawsValue != nullptr)
-	{
-		*valueStr = pawsValue->toString();
-		return true;
-	}
-	return false;
-}
-
 const std::string PawsType::toString() const
 {
 	return getTypeName(this);
@@ -244,7 +233,15 @@ template<> const std::string PawsValue<const ExprAST*>::toString() const
 }
 
 MincPackage PAWS("paws", [](BlockExprAST* pkgScope) {
-	registerValueSerializer(getPawsValueStr);
+	registerValueSerializer([pkgScope](const Variable& value, std::string* valueStr) -> bool {
+		if (isInstance(pkgScope, value.type, PawsBase::TYPE))
+		{
+			*valueStr = ((PawsBase*)value.value)->toString();
+			return true;
+		}
+		else
+			return false;
+	});
 	registerType<PawsBase>(pkgScope, "PawsBase");
 	registerType<PawsVoid>(pkgScope, "PawsVoid");
 	registerType<PawsType>(pkgScope, "PawsType");

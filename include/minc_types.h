@@ -5,10 +5,7 @@
 #include <string>
 #include <vector>
 
-struct MincObject
-{
-	virtual ~MincObject() {}
-};
+struct MincObject {};
 struct BaseScopeType {};
 
 class ExprAST;

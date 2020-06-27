@@ -5,7 +5,7 @@
 
 struct MincObject;
 
-typedef std::function<bool(const MincObject*, std::string*)> GetValueStrFunc;
+typedef std::function<bool(const Variable&, std::string*)> GetValueStrFunc;
 
 int launchDebugClient(BlockExprAST* rootBlock);
 void registerValueSerializer(GetValueStrFunc serializer);

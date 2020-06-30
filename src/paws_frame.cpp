@@ -10,6 +10,8 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
+BlockExprAST* importScope = nullptr; //TODO: This will not work if this package is imported more than once
+
 struct Awaitable : public PawsType
 {
 private:
@@ -31,7 +33,6 @@ bool operator<(const Awaitable& lhs, const Awaitable& rhs)
 {
 	return lhs.returnType < rhs.returnType;
 }
-typedef PawsValue<Awaitable*> PawsAwaitable;
 
 struct Event : public PawsType
 {
@@ -54,7 +55,6 @@ bool operator<(const Event& lhs, const Event& rhs)
 {
 	return lhs.msgType < rhs.msgType;
 }
-typedef PawsValue<Event*> PawsEvent;
 
 struct Frame : public Awaitable
 {
@@ -73,7 +73,6 @@ struct Frame : public Awaitable
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
 		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
 };
-typedef PawsValue<Frame*> PawsFrame;
 
 struct SingleshotAwaitableInstance;
 struct AwaitableInstance
@@ -313,9 +312,10 @@ Awaitable* Awaitable::get(PawsType* returnType)
 	{
 		iter = awaitableTypes.insert(Awaitable(returnType)).first;
 		Awaitable* t = const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
-		defineType(("Awaitable<" + getTypeName(returnType) + '>').c_str(), t);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsAwaitableInstance::TYPE);
+		t->name = "Awaitable<" + returnType->name + '>';
+		defineSymbol(importScope, t->name.c_str(), PawsType::TYPE, t);
+		defineOpaqueInheritanceCast(importScope, t, PawsBase::TYPE);
+		defineOpaqueInheritanceCast(importScope, t, PawsAwaitableInstance::TYPE);
 	}
 	return const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
 }
@@ -328,10 +328,11 @@ Event* Event::get(PawsType* msgType)
 	{
 		iter = eventTypes.insert(Event(msgType)).first;
 		Event* t = const_cast<Event*>(&*iter); //TODO: Find a way to avoid const_cast
-		defineType(("Event<" + getTypeName(msgType) + '>').c_str(), t);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE);
-		defineOpaqueInheritanceCast(getRootScope(), t, PawsEventInstance::TYPE);
-defineOpaqueInheritanceCast(getRootScope(), PawsEventInstance::TYPE, PawsAwaitableInstance::TYPE); //TODO: This shouldn't be necessary
+		t->name = "Event<" + msgType->name + '>';
+		defineSymbol(importScope, t->name.c_str(), PawsType::TYPE, t);
+		defineOpaqueInheritanceCast(importScope, t, PawsBase::TYPE);
+		defineOpaqueInheritanceCast(importScope, t, PawsEventInstance::TYPE);
+defineOpaqueInheritanceCast(importScope, PawsEventInstance::TYPE, PawsAwaitableInstance::TYPE); //TODO: This shouldn't be necessary
 	}
 	return const_cast<Event*>(&*iter); //TODO: Find a way to avoid const_cast
 }
@@ -417,6 +418,7 @@ public:
 void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 {
 	eventPool = new EventPool(1);
+	importScope = pkgScope;
 
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.subroutine");
 
@@ -431,11 +433,11 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	// Frame class:			PawsFrame<frame> -> PawsFrame -> PawsAwaitable -> PawsType
 	//
 
-	registerType<PawsAwaitable>(pkgScope, "PawsAwaitable");
-	registerType<PawsEvent>(pkgScope, "PawsEvent");
-	registerType<PawsFrame>(pkgScope, "PawsFrame");
-	defineOpaqueInheritanceCast(pkgScope, PawsFrame::TYPE, PawsAwaitable::TYPE);
-	defineOpaqueInheritanceCast(pkgScope, PawsAwaitable::TYPE, PawsType::TYPE);
+	registerType<Awaitable>(pkgScope, "PawsAwaitable");
+	registerType<Event>(pkgScope, "PawsEvent");
+	registerType<Frame>(pkgScope, "PawsFrame");
+	defineOpaqueInheritanceCast(pkgScope, Frame::TYPE, Awaitable::TYPE);
+	defineOpaqueInheritanceCast(pkgScope, Awaitable::TYPE, PawsType::TYPE);
 
 	registerType<PawsAwaitableInstance>(pkgScope, "PawsAwaitableInstance");
 	registerType<PawsEventInstance>(pkgScope, "PawsEventInstance");
@@ -457,14 +459,12 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 	// Define event definition
 	defineExpr3(pkgScope, "event<$E<PawsType>>()",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			//PawsType* returnType = ((PawsType*)codegenExpr(params[0], parentBlock).value)->get();
-			return Variable(Event::get(PawsString::TYPE), new PawsEventInstance(new EventInstance(PawsString::TYPE, (EventPool*)exprArgs)));
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return Variable(Event::get(returnType), new PawsEventInstance(new EventInstance(returnType, (EventPool*)exprArgs)));
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
-			//PawsType* returnType = (PawsType*)getType(params[0], parentBlock);
-			//TODO: Use returnType instead of PawsString
-			//TODO	getType() returns PawsType, not the passed type (e.g. PawsString)
+			PawsType* returnType = (PawsType*)codegenExpr(const_cast<ExprAST*>(params[0]), const_cast<BlockExprAST*>(parentBlock)).value; //TODO: Remove const_cast
 			//TODO	How can returnType be retrieved in a constant context?
-			return Event::get(PawsString::TYPE);
+			return Event::get(returnType);
 		}, eventPool
 	);
 
@@ -526,9 +526,9 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			frameFullName += '(';
 			if (frame->argTypes.size())
 			{
-				frameFullName += getTypeName(frame->argTypes[0]);
+				frameFullName += frame->argTypes[0]->name;
 				for (size_t i = 1; i != frame->argTypes.size(); ++i)
-					frameFullName += getTypeName(frame->argTypes[i]) + ", ";
+					frameFullName += frame->argTypes[i]->name + ", ";
 			}
 			frameFullName += ')';
 			setBlockExprASTName(block, frameFullName.c_str());
@@ -539,17 +539,17 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			// Define return statement in frame scope
 			definePawsReturnStmt(block, returnType);
 
-			defineType(frameName, frame);
+			frame->name = frameName;
+			defineSymbol(parentBlock, frameName, PawsTpltType::get(parentBlock, Frame::TYPE, frame), frame);
 			defineOpaqueInheritanceCast(parentBlock, frame, PawsFrameInstance::TYPE);
-			defineOpaqueInheritanceCast(parentBlock, PawsTpltType::get(PawsFrame::TYPE, frame), PawsType::TYPE);
-			defineSymbol(parentBlock, frameName, PawsTpltType::get(PawsFrame::TYPE, frame), new PawsFrame(frame));
+			defineOpaqueInheritanceCast(parentBlock, PawsTpltType::get(parentBlock, Frame::TYPE, frame), PawsType::TYPE);
 		}
 	);
 
 	// Define frame call
 	defineExpr3(pkgScope, "$E<PawsFrame>($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Frame* frame = ((PawsFrame*)codegenExpr(params[0], parentBlock).value)->get();
+			Frame* frame = (Frame*)codegenExpr(params[0], parentBlock).value;
 			std::vector<ExprAST*>& argExprs = getListExprASTExprs((ListExprAST*)params[1]);
 
 			// Check number of arguments
@@ -569,7 +569,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 					{
 						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
 						throw CompileError(
-							getLocation(argExpr), "invalid frame argument type: %E<%t>, expected: <%t>\n%S",
+							parentBlock, getLocation(argExpr), "invalid frame argument type: %E<%t>, expected: <%t>\n%S",
 							argExpr, gotType, expectedType, candidateReport
 						);
 					}
@@ -600,7 +600,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 
 			auto variable = strct->variables.find(memberName);
 			if (variable == strct->variables.end())
-				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(strct) + "'").c_str(), params[1]);
+				raiseCompileError(("no member named '" + memberName + "' in '" + strct->name + "'").c_str(), params[1]);
 
 			return Variable(variable->second.type, instance->variables[memberName]);
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
@@ -664,7 +664,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
 					throw CompileError(
-						getLocation(argExpr), "invalid event type: %E<%t>, expected: <%t>\n%S",
+						parentBlock, getLocation(argExpr), "invalid event type: %E<%t>, expected: <%t>\n%S",
 						argExpr, argType, msgType, candidateReport
 					);
 				}

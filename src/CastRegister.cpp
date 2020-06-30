@@ -1,9 +1,5 @@
 #include "minc_api.hpp"
 
-#define DETECT_UNDEFINED_TYPE_CASTS
-
-const std::string& getTypeNameInternal(const MincObject* type);
-
 InheritanceCast::InheritanceCast(MincObject* fromType, MincObject* toType, CodegenContext* context)
 	: Cast(fromType, toType, context)
 {
@@ -71,12 +67,6 @@ void CastRegister::defineDirectCast(Cast* cast)
 
 	fwdCasts.insert(std::make_pair(cast->fromType, cast));
 	bwdCasts.insert(std::make_pair(cast->toType, cast));
-
-#ifdef DETECT_UNDEFINED_TYPE_CASTS
-	std::string fromTypeName = getTypeNameInternal(cast->fromType), toTypeName = getTypeNameInternal(cast->toType);
-	if (fromTypeName.find("UNKNOWN_TYPE") != std::string::npos || toTypeName.find("UNKNOWN_TYPE") != std::string::npos)
-		throw CompileError("type-cast defined from " + fromTypeName + " to " + toTypeName);
-#endif
 
 // // Print type-casts
 // if (fromTypeName[fromTypeName.size() - 1] != ')'

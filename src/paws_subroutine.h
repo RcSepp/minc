@@ -112,7 +112,7 @@ void defineConstantFunction(BlockExprAST* scope, const char* name, PawsType* ret
 template<class F> void defineExternFunction(BlockExprAST* scope, const char* name, F func)
 {
 	PawsFunc* pawsFunc = new PawsExternFunc(func);
-	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
 
 #endif

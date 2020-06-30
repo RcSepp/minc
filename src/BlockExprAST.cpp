@@ -1,6 +1,8 @@
 #include "minc_api.h"
 #include "minc_api.hpp"
 
+#define DETECT_UNDEFINED_TYPE_CASTS
+
 const Variable VOID = Variable(new MincObject(), nullptr);
 BlockExprAST* const rootBlock = new BlockExprAST({0}, {});
 BlockExprAST* fileBlock = nullptr;
@@ -161,6 +163,11 @@ void BlockExprAST::defineCast(Cast* cast)
 		|| ((existingCast = lookupCast(cast->toType, cast->fromType)) != nullptr && existingCast->getCost() == 0 && cast->getCost() == 0))
 		return;
 
+#ifdef DETECT_UNDEFINED_TYPE_CASTS
+	if (lookupSymbolName1(this, cast->fromType) == nullptr || lookupSymbolName1(this, cast->toType) == nullptr)
+		throw CompileError("type-cast defined from " + lookupSymbolName2(this, cast->fromType, "UNKNOWN_TYPE") + " to " + lookupSymbolName2(this, cast->toType, "UNKNOWN_TYPE"));
+#endif
+
 	castreg.defineDirectCast(cast);
 
 	for (const BlockExprAST* block = this; block; block = block->parent)
@@ -242,46 +249,81 @@ void BlockExprAST::import(BlockExprAST* importBlock)
 
 void BlockExprAST::defineSymbol(std::string name, MincObject* type, MincObject* value)
 {
-	scope[name] = Variable(type, value);
+	symbolMap[name] = Variable(type, value); // Insert or replace forward mapping
+	symbolNameMap[value] = name; // Insert or replace backward mapping
 }
 
 const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
 {
 	std::map<std::string, Variable>::const_iterator symbolIter;
-	if ((symbolIter = scope.find(name)) != scope.cend())
+	if ((symbolIter = symbolMap.find(name)) != symbolMap.cend())
 		return &symbolIter->second; // Symbol found in local scope
 
-	const Variable* symbol;
 	for (const BlockExprAST* ref: references)
-		if ((symbolIter = ref->scope.find(name)) != ref->scope.cend())
+		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
 			return &symbolIter->second; // Symbol found in ref scope
-	
+
+	const Variable* symbol;
 	if (parent != nullptr && (symbol = parent->lookupSymbol(name)))
 		return symbol; // Symbol found in parent scope
 
 	return nullptr; // Symbol not found
 }
 
+const std::string* BlockExprAST::lookupSymbolName(const MincObject* value) const
+{
+	std::map<const MincObject*, std::string>::const_iterator symbolIter;
+	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
+		return &symbolIter->second; // Symbol found in local scope
+
+	for (const BlockExprAST* ref: references)
+		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
+			return &symbolIter->second; // Symbol found in ref scope
+
+	const std::string* name;
+	if (parent != nullptr && (name = parent->lookupSymbolName(value)))
+		return name; // Symbol found in parent scope
+
+	return nullptr; // Symbol not found
+}
+
+const std::string& BlockExprAST::lookupSymbolName(const MincObject* value, const std::string& defaultName) const
+{
+	std::map<const MincObject*, std::string>::const_iterator symbolIter;
+	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
+		return symbolIter->second; // Symbol found in local scope
+
+	for (const BlockExprAST* ref: references)
+		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
+			return symbolIter->second; // Symbol found in ref scope
+
+	const std::string* name;
+	if (parent != nullptr && (name = parent->lookupSymbolName(value)))
+		return name != nullptr ? *name : defaultName; // Symbol found in parent scope
+
+	return defaultName; // Symbol not found
+}
+
 size_t BlockExprAST::countSymbols() const
 {
-	return scope.size();
+	return symbolMap.size();
 }
 
 void BlockExprAST::iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const
 {
-	for (const std::pair<std::string, Variable>& iter: scope)
+	for (const std::pair<std::string, Variable>& iter: symbolMap)
 		cbk(iter.first, iter.second);
 }
 
 Variable* BlockExprAST::importSymbol(const std::string& name)
 {
 	std::map<std::string, Variable>::iterator symbolIter;
-	if ((symbolIter = scope.find(name)) != scope.end())
+	if ((symbolIter = symbolMap.find(name)) != symbolMap.end())
 		return &symbolIter->second; // Symbol found in local scope
 
 	Variable* symbol;
 	for (BlockExprAST* ref: references)
-		if ((symbolIter = ref->scope.find(name)) != ref->scope.end())
+		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.end())
 		{
 			symbol = &symbolIter->second; // Symbol found in ref scope
 
@@ -298,7 +340,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 			if (rule != rules->second.end())
 			{
 				rule->second(*symbol, ref->scopeType, scopeType); // Execute import rule
-				scope[name] = *symbol; // Import symbol into local scope
+				symbolMap[name] = *symbol; // Import symbol into local scope
 				return symbol; // Symbol and import rule found in ref scope
 			}
 
@@ -308,7 +350,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 				{
 					//TODO: Should we cast symbol to rule.first?
 					rule.second(*symbol, ref->scopeType, scopeType); // Execute import rule
-					scope[name] = *symbol; // Import symbol into local scope
+					symbolMap[name] = *symbol; // Import symbol into local scope
 					return symbol; // Symbol and import rule found in ref scope
 				}
 
@@ -326,7 +368,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 		const auto rules = importRules.find(key);
 		if (rules == importRules.end())
 		{
-			scope[name] = *symbol; // Import symbol into local scope
+			symbolMap[name] = *symbol; // Import symbol into local scope
 			return symbol; // No import rules defined from parent scope to local scope
 		}
 
@@ -335,7 +377,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 		if (rule != rules->second.end())
 		{
 			rule->second(*symbol, parent->scopeType, scopeType); // Execute import rule
-			scope[name] = *symbol; // Import symbol into local scope
+			symbolMap[name] = *symbol; // Import symbol into local scope
 			return symbol; // Symbol and import rule found in parent scope
 		}
 
@@ -345,11 +387,11 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 			{
 				//TODO: Should we cast symbol to rule.first?
 				rule.second(*symbol, parent->scopeType, scopeType); // Execute import rule
-				scope[name] = *symbol; // Import symbol into local scope
+				symbolMap[name] = *symbol; // Import symbol into local scope
 				return symbol; // Symbol and import rule found in parent scope
 			}
 
-		scope[name] = *symbol; // Import symbol into local scope
+		symbolMap[name] = *symbol; // Import symbol into local scope
 		return symbol; // No import rules on symbol type defined from parent scope to local scope
 	}
 

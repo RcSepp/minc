@@ -15,7 +15,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 			arr->get().reserve(values.size());
 			for (ExprAST* value: values)
 				arr->get().push_back(codegenExpr(value, parentBlock).value);
-			return Variable(PawsTpltType::get(PawsArray::TYPE, (PawsType*)getType(getDerivedExprAST(values[0]), parentBlock)), arr);
+			return Variable(PawsTpltType::get(parentBlock, PawsArray::TYPE, (PawsType*)getType(getDerivedExprAST(values[0]), parentBlock)), arr);
 		},
 		[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
@@ -24,7 +24,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 			valueTypes.reserve(values.size());
 			for (ExprAST* value: values)
 				valueTypes.push_back((PawsType*)getType(getDerivedExprAST(value), parentBlock));
-			return PawsTpltType::get(PawsArray::TYPE, valueTypes[0]);
+			return PawsTpltType::get(const_cast<BlockExprAST*>(parentBlock), PawsArray::TYPE, valueTypes[0]); //TODO: Remove const_cast
 		}
 	);
 
@@ -62,7 +62,7 @@ MincPackage PAWS_ARRAY("paws.array", [](BlockExprAST* pkgScope) {
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, valueExpr);
 					throw CompileError(
-						getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>\n%S",
+						parentBlock, getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>\n%S",
 						valueExpr, gotType, expectedType, candidateReport
 					);
 				}

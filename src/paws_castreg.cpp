@@ -47,7 +47,7 @@ MincPackage PAWS_CASTREG("paws.castreg", [](BlockExprAST* pkgScope) {
 			BlockExprAST* blockAST = (BlockExprAST*)params[3];
 
 			// Get block parameter types
-			std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(PawsExprAST::TYPE, fromType), nullptr));
+			std::vector<Variable> blockParams(1, Variable(PawsTpltType::get(parentBlock, PawsExprAST::TYPE, fromType), nullptr));
 
 			setBlockExprASTParent(blockAST, scope);
 			definePawsReturnStmt(blockAST, toType);

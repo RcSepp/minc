@@ -264,8 +264,8 @@ dap::array<dap::Variable> Parameters::variables()
 	for (ExprAST* param: params)
 	{
 		var.name = "$" + std::to_string(i++);
-		var.value = param->shortStr();;
-		var.type = getTypeName(param->getType(block));
+		var.value = param->shortStr();
+		var.type = block->lookupSymbolName(param->getType(block), "UNKNOWN_TYPE");
 		var.variablesReference = (new ExprCandidates(param, block))->id;
 		variables.push_back(var);
 	}
@@ -282,7 +282,7 @@ dap::array<dap::Variable> ExprCandidates::variables()
 		expr = ((CastExprAST*)expr)->getSourceExpr();
 		var.name = "$0";
 		var.value = expr->shortStr();
-		var.type = getTypeName(expr->getType(block));
+		var.type = block->lookupSymbolName(expr->getType(block), "UNKNOWN_TYPE");
 		var.variablesReference = (new ExprCandidates(expr, block))->id;
 		variables.push_back(var);
 	}
@@ -359,7 +359,7 @@ public:
 					var.name = name;
 					if (!getValueStr(symbol, &var.value))
 						var.value = "UNKNOWN";
-					var.type = getTypeName(symbol.type);
+					var.type = "thee ol' mighty " + block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
 					variables.push_back(var);
 				};
 				for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)

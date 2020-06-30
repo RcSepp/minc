@@ -1,6 +1,5 @@
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const MincObject* type);
 void raiseStepEvent(const ExprAST* loc, StepEventType type);
 
 ExprAST::ExprAST(const Location& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedContext(nullptr)
@@ -46,7 +45,7 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		if (expectedType != gotType)
 		{
 			throw CompileError(
-				("invalid expression return type: " + this->str() + "<" + getTypeNameInternal(gotType) + ">, expected: <" + getTypeNameInternal(expectedType) + ">").c_str(),
+				("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
 				this->loc
 			);
 		}

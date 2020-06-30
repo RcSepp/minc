@@ -78,10 +78,8 @@ extern "C"
 	BaseScopeType* getScopeType(const BlockExprAST* scope);
 	void setScopeType(BlockExprAST* scope, BaseScopeType* scopeType);
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
-	const std::string& getTypeName(const MincObject* type);
 
 	void defineSymbol(BlockExprAST* scope, const char* name, MincObject* type, MincObject* value);
-	void defineType(const char* name, const MincObject* type);
 	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt2(BlockExprAST* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs = nullptr);
 	void defineStmt3(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
@@ -103,6 +101,8 @@ extern "C"
 	void defineOpaqueInheritanceCast(BlockExprAST* scope, MincObject* fromType, MincObject* toType);
 
 	const Variable* lookupSymbol(const BlockExprAST* scope, const char* name);
+	const std::string* lookupSymbolName1(const BlockExprAST* scope, const MincObject* value);
+	const std::string& lookupSymbolName2(const BlockExprAST* scope, const MincObject* value, const std::string& defaultName);
 	Variable* importSymbol(BlockExprAST* scope, const char* name);
 	ExprAST* lookupCast(const BlockExprAST* scope, ExprAST* expr, MincObject* toType);
 	bool isInstance(const BlockExprAST* scope, MincObject* fromType, MincObject* toType);

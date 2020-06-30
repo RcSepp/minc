@@ -20,7 +20,6 @@ struct Struct : public PawsType
 	std::multimap<std::string, Method> methods;
 	std::vector<PawsType*> constructors;
 };
-typedef PawsValue<Struct*> PawsStruct;
 
 void defineStruct(BlockExprAST* scope, const char* name, Struct* strct);
 

@@ -65,7 +65,7 @@ struct CompileError
 	int* refcount;
 	CompileError(const char* msg, Location loc={0});
 	CompileError(std::string msg, Location loc={0});
-	CompileError(Location loc, const char* fmt, ...);
+	CompileError(const BlockExprAST* scope, Location loc, const char* fmt, ...);
 	CompileError(CompileError& other);
 	~CompileError();
 	void print(std::ostream& out=std::cerr);

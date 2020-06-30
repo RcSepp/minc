@@ -31,13 +31,13 @@ Variable PawsRegularFunc::call(BlockExprAST* callerScope, const std::vector<Expr
 void defineFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
 {
 	PawsFunc* pawsFunc = new PawsRegularFunc(returnType, argTypes, argNames, body);
-	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
 
 void defineConstantFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs)
 {
 	PawsFunc* pawsFunc = new PawsConstFunc(returnType, argTypes, argNames, body, funcArgs);
-	defineSymbol(scope, name, PawsTpltType::get(PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
 
 MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
@@ -73,15 +73,15 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 			funcFullName += '(';
 			if (func->argTypes.size())
 			{
-				funcFullName += getTypeName(func->argTypes[0]);
+				funcFullName += func->argTypes[0]->name;
 				for (size_t i = 1; i != func->argTypes.size(); ++i)
-					funcFullName += getTypeName(func->argTypes[i]) + ", ";
+					funcFullName += ", " + func->argTypes[i]->name;
 			}
 			funcFullName += ')';
 			setBlockExprASTName(block, funcFullName.c_str());
 
 			// Define function symbol in calling scope
-			PawsType* funcType = PawsTpltType::get(PawsFunction::TYPE, returnType);
+			PawsType* funcType = PawsTpltType::get(parentBlock, PawsFunction::TYPE, returnType);
 			defineSymbol(parentBlock, funcName, funcType, new PawsFunction(func));
 		}
 	);
@@ -109,7 +109,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 					{
 						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
 						throw CompileError(
-							getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>\n%S",
+							parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>\n%S",
 							argExpr, gotType, expectedType, candidateReport
 						);
 					}
@@ -145,9 +145,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](BlockExprAST* pkgScope) {
 		PawsBase::TYPE
 	);
 
-	defineExpr(pkgScope, "PawsFunction<$E<PawsType>>",
+/*	defineExpr(pkgScope, "PawsFunction<$E<PawsType>>",
 		+[](PawsType* returnType) -> MincObject* {
-			return PawsTpltType::get(PawsFunction::TYPE, returnType);
+			return PawsTpltType::get(pkgScope, PawsFunction::TYPE, returnType); //TODO
 		}
-	);
+	);*/
 });

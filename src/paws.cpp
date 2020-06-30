@@ -80,12 +80,12 @@ void definePawsReturnStmt(BlockExprAST* scope, const MincObject* returnType, con
 		defineStmt2(scope, "return $E",
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				MincObject* returnType = getType(params[0], parentBlock);
-				raiseCompileError(("invalid return type `" + getTypeName(returnType) + "`").c_str(), params[0]);
+				raiseCompileError(("invalid return type `" + lookupSymbolName2(parentBlock, returnType, "UNKNOWN_TYPE") + "`").c_str(), params[0]);
 			}
 		);
 
 		// Define return statement with correct type in function scope
-		defineStmt2(scope, ("return $E<" + getTypeName(returnType) + ">").c_str(),
+		defineStmt2(scope, ("return $E<" + lookupSymbolName2(scope, returnType, "UNKNOWN_TYPE") + ">").c_str(),
 			[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 				throw ReturnException(codegenExpr(params[0], parentBlock));
 			}
@@ -125,7 +125,7 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 				if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 					break;
 				if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-					paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value);
+					paramType = PawsTpltType::get(scope, PawsExprAST::TYPE, (PawsType*)var->value);
 			}
 		}
 		else if (ExprASTIsList(param))
@@ -145,9 +145,9 @@ void getBlockParameterTypes(BlockExprAST* scope, const std::vector<ExprAST*> par
 					if (getPlchldExprASTSublabel(plchldParam) == nullptr)
 						break;
 					if (const Variable* var = importSymbol(scope, getPlchldExprASTSublabel(plchldParam)))
-						paramType = PawsTpltType::get(PawsExprAST::TYPE, (PawsType*)var->value);
+						paramType = PawsTpltType::get(scope, PawsExprAST::TYPE, (PawsType*)var->value);
 				}
-				paramType = PawsTpltType::get(PawsListExprAST::TYPE, paramType);
+				paramType = PawsTpltType::get(scope, PawsListExprAST::TYPE, paramType);
 			}
 		}
 		blockParams.push_back(Variable(paramType, nullptr));
@@ -216,7 +216,7 @@ void defineExpr(BlockExprAST* scope, const char* tpltStr, Variable (*exprFunc)()
 
 const std::string PawsType::toString() const
 {
-	return getTypeName(this);
+	return name;
 }
 
 template<> const std::string PawsDouble::toString() const
@@ -541,7 +541,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 				{
 					std::string candidateReport = reportExprCandidates(parentBlock, params[1]);
 					throw CompileError(
-						getLocation(params[1]), "invalid for condition type: %E<%t>, expected: <%t>\n%S",
+						parentBlock, getLocation(params[1]), "invalid for condition type: %E<%t>, expected: <%t>\n%S",
 						params[1], condType, PawsInt::TYPE, candidateReport
 					);
 				}

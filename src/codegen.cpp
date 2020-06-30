@@ -11,19 +11,7 @@
 #include "minc_api.hpp"
 #include "cparser.h"
 
-#define DETECT_REDEFINED_TYPES
-
-class KaleidoscopeJIT;
-class FileModule;
-
-struct TypeDescription
-{
-	std::string name;
-};
-std::map<const MincObject*, TypeDescription> typereg;
 std::map<StepEvent, void*> stepEventListeners;
-const std::string NULL_TYPE = "NULL";
-const std::string UNKNOWN_TYPE = "UNKNOWN_TYPE";
 
 struct StaticStmtContext : public CodegenContext
 {
@@ -91,27 +79,6 @@ public:
 		return type;
 	}
 };
-
-const std::string& getTypeNameInternal(const MincObject* type)
-{
-	if (type == nullptr)
-		return NULL_TYPE;
-	const auto typeDesc = typereg.find(type);
-	if (typeDesc == typereg.cend())
-		return UNKNOWN_TYPE;
-	else
-		return typeDesc->second.name;
-}
-const char* getTypeName2Internal(const MincObject* type)
-{
-	if (type == nullptr)
-		return NULL_TYPE.c_str();
-	const auto typeDesc = typereg.find(type);
-	if (typeDesc == typereg.cend())
-		return UNKNOWN_TYPE.c_str();
-	else
-		return typeDesc->second.name.c_str();
-}
 
 extern "C"
 {
@@ -354,27 +321,9 @@ extern "C"
 		scope->scopeType = scopeType;
 	}
 
-	const std::string& getTypeName(const MincObject* type)
-	{
-		return getTypeNameInternal(type);
-	}
-	const char* getTypeName2(const MincObject* type)
-	{
-		return getTypeName2Internal(type);
-	}
-
 	void defineSymbol(BlockExprAST* scope, const char* name, MincObject* type, MincObject* value)
 	{
 		scope->defineSymbol(name, type, value);
-	}
-
-	void defineType(const char* name, const MincObject* type)
-	{
-#ifdef DETECT_REDEFINED_TYPES
-		if (typereg.find(type) != typereg.end())
-			throw CompileError("redefined type " + std::string(name));
-#endif
-		typereg[type] = TypeDescription{name};
 	}
 
 	void defineStmt1(BlockExprAST* scope, const std::vector<ExprAST*>& tplt, StmtBlock codeBlock, void* stmtArgs)
@@ -546,6 +495,18 @@ extern "C"
 	{
 		return scope->lookupSymbol(name);
 	}
+
+	const std::string* lookupSymbolName1(const BlockExprAST* scope, const MincObject* value)
+	{
+		return scope->lookupSymbolName(value);
+	}
+
+	const std::string& lookupSymbolName2(const BlockExprAST* scope, const MincObject* value, const std::string& defaultName)
+	{
+		return scope->lookupSymbolName(value, defaultName);
+	}
+
+
 	Variable* importSymbol(BlockExprAST* scope, const char* name)
 	{
 		return scope->importSymbol(name);
@@ -589,7 +550,7 @@ extern "C"
 			size_t paramIdx = 0;
 			resolvedParams.clear();
 			context.first->collectParams(scope, const_cast<ExprAST*>(expr), resolvedParams, paramIdx);
-			const std::string& typeName = getTypeNameInternal(context.second->getType(scope, resolvedParams));
+			const std::string& typeName = scope->lookupSymbolName(context.second->getType(scope, resolvedParams), "UNKNOWN_TYPE");
 			report += "\tcandidate(score=" + std::to_string(score) + "): " +  context.first->str() + "<" + typeName + ">\n";
 		}
 		return report;
@@ -601,7 +562,7 @@ extern "C"
 		std::list<std::pair<MincObject*, MincObject*>> casts;
 		scope->listAllCasts(casts);
 		for (auto& cast: casts)
-			report += "\t" +  getTypeNameInternal(cast.first) + " -> " + getTypeNameInternal(cast.second) + "\n";
+			report += "\t" + scope->lookupSymbolName(cast.first, "UNKNOWN_TYPE") + " -> " + scope->lookupSymbolName(cast.second, "UNKNOWN_TYPE") + "\n";
 		return report;
 	}
 

@@ -5,8 +5,6 @@
 #include <string.h>
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const MincObject* type);
-
 UndefinedStmtException::UndefinedStmtException(const StmtAST* stmt)
 	: CompileError("undefined statement " + stmt->str(), stmt->loc) {}
 UndefinedExprException::UndefinedExprException(const ExprAST* expr)
@@ -28,7 +26,7 @@ CompileError::CompileError(std::string msg, Location loc)
 	strcpy(this->msg, msg.c_str());
 }
 
-CompileError::CompileError(Location loc, const char* fmt, ...)
+CompileError::CompileError(const BlockExprAST* scope, Location loc, const char* fmt, ...)
 	: loc(loc), refcount(new int(1))
 {
 	va_list args;
@@ -59,7 +57,8 @@ CompileError::CompileError(Location loc, const char* fmt, ...)
 		case 's': msg << va_arg(args, char*); break;
 		case 'E': msg << va_arg(args, ExprAST*)->str(); break;
 		case 'e': msg << va_arg(args, ExprAST*)->shortStr(); break;
-		case 't': msg << getTypeNameInternal(va_arg(args, MincObject*)); break;
+		case 'T': msg << scope->lookupSymbolName(va_arg(args, ExprAST*)->getType(scope), "UNKNOWN_TYPE"); break;
+		case 't': msg << scope->lookupSymbolName(va_arg(args, MincObject*), "UNKNOWN_TYPE"); break;
 		}
 	}
 	this->msg = new char[msg.str().size() + 1];

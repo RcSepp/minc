@@ -16,9 +16,7 @@ extern "C"
 {
 	BlockExprAST* getRootScope();
 	BlockExprAST* getFileScope();
-	const std::string& getTypeName(const MincObject* type);
 	const Variable& getVoid();
-	void defineType(const char* name, const MincObject* type);
 	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
 	void raiseCompileError(const char* msg, const ExprAST* loc);
 	void registerStepEventListener(StepEvent listener, void* eventArgs);
@@ -199,7 +197,8 @@ class BlockExprAST : public ExprAST
 {
 private:
 	StatementRegister stmtreg;
-	std::map<std::string, Variable> scope;
+	std::map<std::string, Variable> symbolMap;
+	std::map<const MincObject*, std::string> symbolNameMap;
 	CastRegister castreg;
 	StmtAST currentStmt;
 
@@ -241,6 +240,8 @@ public:
 	void import(BlockExprAST* importBlock);
 	void defineSymbol(std::string name, MincObject* type, MincObject* value);
 	const Variable* lookupSymbol(const std::string& name) const;
+	const std::string* lookupSymbolName(const MincObject* value) const;
+	const std::string& lookupSymbolName(const MincObject* value, const std::string& defaultName) const;
 	size_t countSymbols() const;
 	void iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const;
 	Variable* importSymbol(const std::string& name);

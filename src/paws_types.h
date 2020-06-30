@@ -43,7 +43,8 @@ template<> struct PawsValue<_Type*> : PawsBase
 	typedef _Type* CType;
 	static PawsValue<_Type*>* const TYPE;
 	PawsValue<_Type*> *valType, *ptrType;
-	PawsValue() : valType(nullptr), ptrType(nullptr) {}
+	std::string name;
+	PawsValue() : valType(nullptr), ptrType(nullptr), name("UNKNOWN_PAWS_TYPE") {}
 	PawsBase* copy() { return this; /* Pass all types by reference to allow matching of aliased types */ }
 	const std::string toString() const;
 };
@@ -71,7 +72,7 @@ private:
 
 public:
 	PawsValue<_Type*> *const baseType, *const tpltType;
-	static PawsTpltType* get(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
+	static PawsTpltType* get(BlockExprAST* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
 	{
 		std::unique_lock<std::mutex> lock(mutex);
 		std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
@@ -79,9 +80,10 @@ public:
 		{
 			iter = tpltTypes.insert(PawsTpltType(baseType, tpltType)).first;
 			PawsTpltType* t = const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
-			defineType((getTypeName(baseType) + '<' + getTypeName(tpltType) + '>').c_str(), t);
-			defineOpaqueInheritanceCast(getRootScope(), t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
-			defineOpaqueInheritanceCast(getRootScope(), t, baseType); // Let baseType<tpltType> derive from baseType
+			t->name = baseType->name + '<' + tpltType->name + '>';
+			defineSymbol(scope, t->name.c_str(), PawsValue<_Type*>::TYPE, t);
+			defineOpaqueInheritanceCast(scope, t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
+			defineOpaqueInheritanceCast(scope, t, baseType); // Let baseType<tpltType> derive from baseType
 		}
 		return const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
 	}
@@ -113,7 +115,7 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 	const size_t nameLen = strlen(name);
 
 	// Define type and add type symbol to scope
-	defineType(name, T::TYPE);
+	T::TYPE->name = name;
 	defineSymbol(scope, name, PawsType::TYPE, T::TYPE);
 
 	if (T::TYPE != PawsBase::TYPE)
@@ -123,7 +125,7 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 
 		// Register pointer-relationship
 		typedef PawsValue<typename std::add_pointer<typename T::CType>::type> ptrT;
-		if (getTypeName(ptrT::TYPE) != "UNKNOWN_TYPE") //TODO: Replace with something like hasType(...)
+		if (!ptrT::TYPE->name.empty())
 		{
 			T::TYPE->ptrType = ptrT::TYPE;
 			ptrT::TYPE->valType = T::TYPE;
@@ -133,7 +135,7 @@ template<typename T> void registerType(BlockExprAST* scope, const char* name)
 			&& std::is_constructible<typename std::remove_pointer<typename T::CType>::type>::value) // If *T::CType is not an incomplete type
 		{
 			typedef PawsValue<typename std::remove_pointer<typename T::CType>::type> valT;
-			if (getTypeName(valT::TYPE) != "UNKNOWN_TYPE") //TODO: Replace with something like hasType(...)
+			if (!valT::TYPE->name.empty())
 			{
 				valT::TYPE->ptrType = T::TYPE;
 				T::TYPE->valType = valT::TYPE;

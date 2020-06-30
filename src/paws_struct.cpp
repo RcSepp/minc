@@ -8,10 +8,10 @@
 
 void defineStruct(BlockExprAST* scope, const char* name, Struct* strct)
 {
-	defineType(name, strct);
+	strct->name = name;
+	defineSymbol(scope, name, PawsTpltType::get(scope, Struct::TYPE, strct), strct);
 	defineOpaqueInheritanceCast(scope, strct, PawsStructInstance::TYPE);
-	defineOpaqueInheritanceCast(scope, PawsTpltType::get(PawsStruct::TYPE, strct), PawsType::TYPE);
-	defineSymbol(scope, name, PawsTpltType::get(PawsStruct::TYPE, strct), strct);
+	defineOpaqueInheritanceCast(scope, PawsTpltType::get(scope, Struct::TYPE, strct), PawsType::TYPE);
 }
 
 void defineStructInstance(BlockExprAST* scope, const char* name, Struct* strct, StructInstance* instance)
@@ -20,8 +20,8 @@ void defineStructInstance(BlockExprAST* scope, const char* name, Struct* strct, 
 }
 
 MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
-	registerType<PawsStruct>(pkgScope, "PawsStruct");
-	defineOpaqueInheritanceCast(pkgScope, PawsStruct::TYPE, PawsType::TYPE);
+	registerType<Struct>(pkgScope, "PawsStruct");
+	defineOpaqueInheritanceCast(pkgScope, Struct::TYPE, PawsType::TYPE);
 	registerType<PawsStructInstance>(pkgScope, "PawsStructInstance");
 
 	// Define struct
@@ -77,9 +77,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 					funcFullName += '(';
 					if (method.argTypes.size())
 					{
-						funcFullName += getTypeName(method.argTypes[0]);
+						funcFullName += method.argTypes[0]->name;
 						for (size_t i = 1; i != method.argTypes.size(); ++i)
-							funcFullName += getTypeName(method.argTypes[i]) + ", ";
+							funcFullName += ", " + method.argTypes[i]->name;
 					}
 					funcFullName += ')';
 					setBlockExprASTName(block, funcFullName.c_str());
@@ -123,7 +123,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 
 			auto pair = strct->variables.find(memberName);
 			if (pair == strct->variables.end())
-				raiseCompileError(("no member named '" + memberName + "' in '" + getTypeName(strct) + "'").c_str(), params[1]);
+				raiseCompileError(("no member named '" + memberName + "' in '" + strct->name + "'").c_str(), params[1]);
 
 			return Variable(pair->second.type, instance->variables[memberName]);
 		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
@@ -146,7 +146,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 
 			auto pair = strct->methods.find(methodName);
 			if (pair == strct->methods.end())
-				raiseCompileError(("no method named '" + methodName + "' in '" + getTypeName(strct) + "'").c_str(), params[1]);
+				raiseCompileError(("no method named '" + methodName + "' in '" + strct->name + "'").c_str(), params[1]);
 
 			const Struct::Method& method = pair->second;
 			std::vector<ExprAST*>& argExprs = getListExprASTExprs((ListExprAST*)params[2]);
@@ -168,7 +168,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 					{
 						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
 						throw CompileError(
-							getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>\n%S",
+							parentBlock, getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>\n%S",
 							argExpr, gotType, expectedType, candidateReport
 						);
 					}

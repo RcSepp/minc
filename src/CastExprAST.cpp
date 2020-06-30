@@ -1,7 +1,5 @@
 #include "minc_api.hpp"
 
-const std::string& getTypeNameInternal(const MincObject* type);
-
 CastExprAST::CastExprAST(const Cast* cast, ExprAST* source) : ExprAST(source->loc, ExprAST::ExprType::CAST), cast(cast)
 {
 	resolvedContext = cast->context;
@@ -21,7 +19,9 @@ void CastExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::v
 
 std::string CastExprAST::str() const
 {
-	return "cast expression from " + getTypeNameInternal(cast->fromType) + " to " + getTypeNameInternal(cast->toType);
+	return "cast expression";
+	//TODO: Think of a way to pass scope to make this more verbose
+	//TODO	Example: `return "cast expression from " + scope->lookupSymbolName(cast->fromType, "UNKNOWN_TYPE") + " to " + scope->lookupSymbolName(cast->toType, "UNKNOWN_TYPE");`
 }
 
 ExprAST* CastExprAST::getSourceExpr() const

@@ -700,6 +700,24 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		}
 	);
 
+	// Define getType
+	defineExpr2(pkgScope, "$E<PawsConstExprAST>.getType($E<PawsBlockExprAST>)",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->get();
+			BlockExprAST* scope = ((PawsBlockExprAST*)codegenExpr(params[1], parentBlock).value)->get();
+			return Variable(PawsType::TYPE, getType(expr, scope));
+		},
+		PawsType::TYPE
+	);
+	defineExpr2(pkgScope, "$E<PawsConstExprAST>.getType()",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			ExprAST* expr = ((PawsExprAST*)codegenExpr(params[0], parentBlock).value)->get();
+			BlockExprAST* scope = getBlockExprASTParent(parentBlock);
+			return Variable(PawsType::TYPE, getType(expr, scope));
+		},
+		PawsType::TYPE
+	);
+
 	// Define codegen
 	defineExpr3(pkgScope, "$E<PawsExprAST>.codegen($E<PawsBlockExprAST>)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

@@ -136,6 +136,47 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 		}
 	);
 
+	// Define struct member setter
+	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I = $E<PawsBase>",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
+			const Variable& var = codegenExpr(getCastExprASTSource((CastExprAST*)params[0]), parentBlock);
+			Struct* strct = (Struct*)var.type;
+			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto pair = strct->variables.find(memberName);
+			if (pair == strct->variables.end())
+				raiseCompileError(("no member named '" + memberName + "' in '" + strct->name + "'").c_str(), params[1]);
+
+			assert(ExprASTIsCast(params[2]));
+			ExprAST* valueExpr = getDerivedExprAST(params[2]);
+			MincObject *memberType = pair->second.type, *valueType = getType(valueExpr, parentBlock);
+			if (memberType != valueType)
+			{
+				ExprAST* castExpr = lookupCast(parentBlock, valueExpr, memberType);
+				if (castExpr == nullptr)
+				{
+					std::string candidateReport = reportExprCandidates(parentBlock, valueExpr);
+					throw CompileError(
+						parentBlock, getLocation(valueExpr), "cannot assign value of type <%t> to variable of type <%t>\n%S",
+						valueType, memberType, candidateReport
+					);
+				}
+				valueExpr = castExpr;
+			}
+			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
+
+			return Variable(pair->second.type, instance->variables[memberName] = value->copy());
+		}, [](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
+			assert(ExprASTIsCast(params[0]));
+			Struct* strct = (Struct*)(getType(getCastExprASTSource((CastExprAST*)params[0]), parentBlock));
+			std::string memberName = getIdExprASTName((IdExprAST*)params[1]);
+
+			auto pair = strct->variables.find(memberName);
+			return pair == strct->variables.end() ? nullptr : pair->second.type;
+		}
+	);
+
 	// Define method call
 	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I($E, ...)",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {

@@ -159,6 +159,28 @@ void MincPackageManager::definePackage(BlockExprAST* pkgScope)
 			raiseCompileError("Missing export block", pkgPath.empty() ? nullptr : pkgPath.front());
 		}
 	);
+
+	// Define export statement
+	defineStmt2(pkgScope, "export $L $B",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			std::string pkgName = getLiteralExprASTValue((LiteralExprAST*)params[0]);
+			BlockExprAST* exportBlock = (BlockExprAST*)params[1];
+
+			// Trim '"'
+			if (pkgName.back() == '"' || pkgName.back() == '\'')
+				pkgName = pkgName.substr(1, pkgName.size() - 2);
+
+			setBlockExprASTParent(exportBlock, parentBlock);
+
+			// Export package
+			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
+		}
+	);
+	defineStmt2(pkgScope, "export $L",
+		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+			raiseCompileError("Missing export block", params[0]);
+		}
+	);
 }
 
 bool MincPackageManager::registerPackage(std::string pkgName, MincPackage* package)

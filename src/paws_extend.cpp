@@ -24,9 +24,9 @@ MincPackage PAWS_EXTEND("paws.extend", [](BlockExprAST* pkgScope) {
 		}
 	);
 
-	defineStmt2(pkgScope, "$E<PawsType> expr $E $B",
+	defineStmt2(pkgScope, "$E expr $E $B",
 		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			PawsType* exprType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			MincObject* exprType = codegenExpr(params[0], parentBlock).value;
 			ExprAST* exprParamAST = params[1];
 			BlockExprAST* blockAST = (BlockExprAST*)params[2];
 

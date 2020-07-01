@@ -507,7 +507,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 				}, frame
 			);
 
-			defineAntiStmt2(block,
+			defineDefaultStmt2(block,
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 					throw ReturnException(Variable(PawsVoid::TYPE, nullptr));
 				}
@@ -519,7 +519,7 @@ void PawsFramePackage::definePackage(BlockExprAST* pkgScope)
 			}
 			catch(ReturnException) {}
 
-			defineAntiStmt2(block, nullptr);
+			defineDefaultStmt2(block, nullptr);
 
 			// Name frame block
 			std::string frameFullName(frameName);

@@ -132,14 +132,14 @@ public:
 	void lookupStmtCandidates(const BlockExprAST* block, const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
-	void defineAntiStmt(CodegenContext* stmt);
+	void defineDefaultStmt(CodegenContext* stmt);
 
 	void defineExpr(const ExprAST* tplt, CodegenContext* expr);
 	std::pair<const ExprAST*, CodegenContext*> lookupExpr(const BlockExprAST* block, ExprAST* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
-	void defineAntiExpr(CodegenContext* expr) { antiExpr = expr; }
+	void defineDefaultExpr(CodegenContext* expr) { antiExpr = expr; }
 };
 
 struct InheritanceCast : public Cast
@@ -222,7 +222,7 @@ public:
 	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
-	void defineAntiStmt(CodegenContext* stmt);
+	void defineDefaultStmt(CodegenContext* stmt);
 	void defineExpr(ExprAST* tplt, CodegenContext* expr);
 	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, MincObject* type);
 	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> type);
@@ -230,7 +230,7 @@ public:
 	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
-	void defineAntiExpr(CodegenContext* expr);
+	void defineDefaultExpr(CodegenContext* expr);
 	void defineCast(Cast* cast);
 	const Cast* lookupCast(MincObject* fromType, MincObject* toType) const;
 	bool isInstance(MincObject* derivedType, MincObject* baseType) const;

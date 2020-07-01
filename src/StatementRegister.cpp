@@ -378,7 +378,7 @@ void StatementRegister::iterateStmts(std::function<void(const ListExprAST* tplt,
 		cbk(iter.first, iter.second);
 }
 
-void StatementRegister::defineAntiStmt(CodegenContext* stmt)
+void StatementRegister::defineDefaultStmt(CodegenContext* stmt)
 {
 	antiStmt = stmt;
 }

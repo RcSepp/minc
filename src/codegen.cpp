@@ -395,14 +395,14 @@ extern "C"
 		scope->defineStmt(*tpltBlock->exprs, stmt);
 	}
 
-	void defineAntiStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs)
+	void defineDefaultStmt2(BlockExprAST* scope, StmtBlock codeBlock, void* stmtArgs)
 	{
-		scope->defineAntiStmt(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
+		scope->defineDefaultStmt(codeBlock == nullptr ? nullptr : new StaticStmtContext(codeBlock, stmtArgs));
 	}
 
-	void defineAntiStmt3(BlockExprAST* scope, CodegenContext* stmt)
+	void defineDefaultStmt3(BlockExprAST* scope, CodegenContext* stmt)
 	{
-		scope->defineAntiStmt(stmt);
+		scope->defineDefaultStmt(stmt);
 	}
 
 	void defineExpr2(BlockExprAST* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs)
@@ -449,19 +449,19 @@ extern "C"
 		scope->defineExpr(tplt, expr);
 	}
 
-	void defineAntiExpr2(BlockExprAST* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs)
+	void defineDefaultExpr2(BlockExprAST* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs)
 	{
-		scope->defineAntiExpr(codeBlock == nullptr ? nullptr : new StaticExprContext(codeBlock, type, exprArgs));
+		scope->defineDefaultExpr(codeBlock == nullptr ? nullptr : new StaticExprContext(codeBlock, type, exprArgs));
 	}
 
-	void defineAntiExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs)
+	void defineDefaultExpr3(BlockExprAST* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs)
 	{
-		scope->defineAntiExpr(codeBlock == nullptr ? nullptr : new StaticExprContext2(codeBlock, typeBlock, exprArgs));
+		scope->defineDefaultExpr(codeBlock == nullptr ? nullptr : new StaticExprContext2(codeBlock, typeBlock, exprArgs));
 	}
 
-	void defineAntiExpr5(BlockExprAST* scope, CodegenContext* expr)
+	void defineDefaultExpr5(BlockExprAST* scope, CodegenContext* expr)
 	{
-		scope->defineAntiExpr(expr);
+		scope->defineDefaultExpr(expr);
 	}
 
 	void defineTypeCast2(BlockExprAST* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs)

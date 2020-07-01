@@ -87,7 +87,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](BlockExprAST* pkgScope) {
 			);
 
 			// Disallow any other statements in struct body
-			defineAntiStmt2(block,
+			defineDefaultStmt2(block,
 				[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
 					raiseCompileError("Invalid command in struct context", (ExprAST*)parentBlock);
 				}

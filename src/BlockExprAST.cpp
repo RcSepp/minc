@@ -85,9 +85,9 @@ void BlockExprAST::iterateStmts(std::function<void(const ListExprAST* tplt, cons
 	stmtreg.iterateStmts(cbk);
 }
 
-void BlockExprAST::defineAntiStmt(CodegenContext* stmt)
+void BlockExprAST::defineDefaultStmt(CodegenContext* stmt)
 {
-	stmtreg.defineAntiStmt(stmt);
+	stmtreg.defineDefaultStmt(stmt);
 }
 
 void BlockExprAST::defineExpr(ExprAST* tplt, CodegenContext* expr)
@@ -146,9 +146,9 @@ void BlockExprAST::iterateExprs(std::function<void(const ExprAST* tplt, const Co
 	stmtreg.iterateExprs(cbk);
 }
 
-void BlockExprAST::defineAntiExpr(CodegenContext* expr)
+void BlockExprAST::defineDefaultExpr(CodegenContext* expr)
 {
-	stmtreg.defineAntiExpr(expr);
+	stmtreg.defineDefaultExpr(expr);
 }
 
 void BlockExprAST::defineCast(Cast* cast)

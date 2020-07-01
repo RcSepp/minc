@@ -9,6 +9,7 @@
 #include "minc_pkgmgr.h"
 #include "json.h"
 
+#define USE_MINC_PACKAGES
 #define USE_BINARY_PACKAGES
 #define USE_PYTHON_PACKAGES
 #define USE_NODE_PACKAGES
@@ -106,6 +107,15 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 							}
 					}
 				}
+
+#ifdef USE_MINC_PACKAGES
+				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".minc")) // If a Python package library exists for this sub-package, ...
+				{
+					BlockExprAST* pkgBlock = parseCFile(pkgPath.c_str());
+					MINC_PACKAGE_MANAGER().import(pkgBlock);
+					codegenExpr((ExprAST*)pkgBlock, nullptr);
+				} else
+#endif
 
 #ifdef USE_BINARY_PACKAGES
 				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".so")) // If a binary package library exists for this sub-package, ...

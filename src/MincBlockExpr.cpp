@@ -3,32 +3,32 @@
 
 #define DETECT_UNDEFINED_TYPE_CASTS
 
-const Variable VOID = Variable(new MincObject(), nullptr);
-BlockExprAST* const rootBlock = new BlockExprAST({0}, {});
-BlockExprAST* fileBlock = nullptr;
-BlockExprAST* topLevelBlock = nullptr;
-std::map<std::pair<BaseScopeType*, BaseScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
+const MincSymbol VOID = MincSymbol(new MincObject(), nullptr);
+MincBlockExpr* const rootBlock = new MincBlockExpr({0}, {});
+MincBlockExpr* fileBlock = nullptr;
+MincBlockExpr* topLevelBlock = nullptr;
+std::map<std::pair<MincScopeType*, MincScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
 
 extern "C"
 {
-	const Variable& getVoid()
+	const MincSymbol& getVoid()
 	{
 		return VOID;
 	}
 
-	BlockExprAST* getRootScope()
+	MincBlockExpr* getRootScope()
 	{
 		return rootBlock;
 	}
 
-	BlockExprAST* getFileScope()
+	MincBlockExpr* getFileScope()
 	{
 		return fileBlock;
 	}
 
-	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock)
+	void defineImportRule(MincScopeType* fromScope, MincScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock)
 	{
-		const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(fromScope, toScope);
+		const auto& key = std::pair<MincScopeType*, MincScopeType*>(fromScope, toScope);
 		auto rules = importRules.find(key);
 		if (rules == importRules.end())
 			importRules[key] = { {symbolType, imptBlock } };
@@ -37,127 +37,127 @@ extern "C"
 	}
 }
 
-void raiseStepEvent(const ExprAST* loc, StepEventType type);
+void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-BlockExprAST::BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs)
-	: ExprAST(loc, ExprAST::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false)
+MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false)
 {
 }
 
-void BlockExprAST::defineStmt(const std::vector<ExprAST*>& tplt, CodegenContext* stmt)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
 {
-	for (ExprAST* tpltExpr: tplt)
+	for (MincExpr* tpltExpr: tplt)
 		tpltExpr->resolveTypes(this);
-	stmtreg.defineStmt(new ListExprAST('\0', tplt), stmt);
+	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
 }
 
-void BlockExprAST::defineStmt(const std::vector<ExprAST*>& tplt, std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegen)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
 {
-	struct StmtCodegenContext : public CodegenContext
+	struct StmtKernel : public MincKernel
 	{
-		const std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegenCtx;
-		StmtCodegenContext(std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> codegen)
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCtx;
+		StmtKernel(std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
 			: codegenCtx(codegen) {}
-		virtual ~StmtCodegenContext() {}
-		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { codegenCtx(parentBlock, params); return VOID; }
-		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return VOID.type; }
+		virtual ~StmtKernel() {}
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { codegenCtx(parentBlock, params); return VOID; }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
-	defineStmt(tplt, new StmtCodegenContext(codegen));
+	defineStmt(tplt, new StmtKernel(codegen));
 }
 
-void BlockExprAST::lookupStmtCandidates(const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const
+void MincBlockExpr::lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
 {
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		block->stmtreg.lookupStmtCandidates(this, stmt, candidates);
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			ref->stmtreg.lookupStmtCandidates(this, stmt, candidates);
 	}
 }
 
-size_t BlockExprAST::countStmts() const
+size_t MincBlockExpr::countStmts() const
 {
 	return stmtreg.countStmts();
 }
 
-void BlockExprAST::iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const
+void MincBlockExpr::iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const
 {
 	stmtreg.iterateStmts(cbk);
 }
 
-void BlockExprAST::defineDefaultStmt(CodegenContext* stmt)
+void MincBlockExpr::defineDefaultStmt(MincKernel* stmt)
 {
 	stmtreg.defineDefaultStmt(stmt);
 }
 
-void BlockExprAST::defineExpr(ExprAST* tplt, CodegenContext* expr)
+void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 {
 	tplt->resolveTypes(this);
 	stmtreg.defineExpr(tplt, expr);
 }
 
-void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, MincObject* type)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
 {
-	struct ExprCodegenContext : public CodegenContext
+	struct ExprKernel : public MincKernel
 	{
-		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
+		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
 		MincObject* const type;
-		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, MincObject* type)
+		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
 			: codegenCbk(codegen), type(type) {}
-		virtual ~ExprCodegenContext() {}
-		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
-		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return type; }
+		virtual ~ExprKernel() {}
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return codegenCbk(parentBlock, params); }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return type; }
 	};
-	defineExpr(tplt, new ExprCodegenContext(codegen, type));
+	defineExpr(tplt, new ExprKernel(codegen, type));
 }
 
-void BlockExprAST::defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 {
-	struct ExprCodegenContext : public CodegenContext
+	struct ExprKernel : public MincKernel
 	{
-		const std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegenCbk;
-		const std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getTypeCbk;
-		ExprCodegenContext(std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> codegen, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> getType)
+		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
+		const std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getTypeCbk;
+		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 			: codegenCbk(codegen), getTypeCbk(getType) {}
-		virtual ~ExprCodegenContext() {}
-		Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) { return codegenCbk(parentBlock, params); }
-		MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const { return getTypeCbk(parentBlock, params); }
+		virtual ~ExprKernel() {}
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return codegenCbk(parentBlock, params); }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getTypeCbk(parentBlock, params); }
 	};
-	defineExpr(tplt, new ExprCodegenContext(codegen, getType));
+	defineExpr(tplt, new ExprKernel(codegen, getType));
 }
 
-void BlockExprAST::lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const
+void MincBlockExpr::lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const
 {
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		block->stmtreg.lookupExprCandidates(this, expr, candidates);
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			ref->stmtreg.lookupExprCandidates(this, expr, candidates);
 	}
 }
 
-size_t BlockExprAST::countExprs() const
+size_t MincBlockExpr::countExprs() const
 {
 	return stmtreg.countExprs();
 }
 
-void BlockExprAST::iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const
+void MincBlockExpr::iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const
 {
 	stmtreg.iterateExprs(cbk);
 }
 
-void BlockExprAST::defineDefaultExpr(CodegenContext* expr)
+void MincBlockExpr::defineDefaultExpr(MincKernel* expr)
 {
 	stmtreg.defineDefaultExpr(expr);
 }
 
-void BlockExprAST::defineCast(Cast* cast)
+void MincBlockExpr::defineCast(MincCast* cast)
 {
 	// Skip if one of the following is true
 	// 1. fromType == toType
 	// 2. A cast exists from fromType to toType with a lower or equal cost
 	// 3. Cast is an inheritance and another inheritance cast exists from toType to fromType (inheritance loop avoidance)
-	const Cast* existingCast;
+	const MincCast* existingCast;
 	if (cast->fromType == cast->toType
 		|| ((existingCast = lookupCast(cast->fromType, cast->toType)) != nullptr && existingCast->getCost() <= cast->getCost())
 		|| ((existingCast = lookupCast(cast->toType, cast->fromType)) != nullptr && existingCast->getCost() == 0 && cast->getCost() == 0))
@@ -170,67 +170,67 @@ void BlockExprAST::defineCast(Cast* cast)
 
 	castreg.defineDirectCast(cast);
 
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		castreg.defineIndirectCast(block->castreg, cast);
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			castreg.defineIndirectCast(ref->castreg, cast);
 	}
 }
 
-const Cast* BlockExprAST::lookupCast(MincObject* fromType, MincObject* toType) const
+const MincCast* MincBlockExpr::lookupCast(MincObject* fromType, MincObject* toType) const
 {
-	const Cast* cast;
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	const MincCast* cast;
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		if ((cast = block->castreg.lookupCast(fromType, toType)) != nullptr)
 			return cast;
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			if ((cast = ref->castreg.lookupCast(fromType, toType)) != nullptr)
 				return cast;
 	}
 	return nullptr;
 }
 
-bool BlockExprAST::isInstance(MincObject* derivedType, MincObject* baseType) const
+bool MincBlockExpr::isInstance(MincObject* derivedType, MincObject* baseType) const
 {
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		if (block->castreg.isInstance(derivedType, baseType))
 			return true;
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			if (ref->castreg.isInstance(derivedType, baseType))
 				return true;
 	}
 	return false;
 }
 
-void BlockExprAST::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
+void MincBlockExpr::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
 {
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		block->castreg.listAllCasts(casts);
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			ref->castreg.listAllCasts(casts);
 	}
 }
 
-size_t BlockExprAST::countCasts() const
+size_t MincBlockExpr::countCasts() const
 {
 	return castreg.countCasts();
 }
 
-void BlockExprAST::iterateCasts(std::function<void(const Cast* cast)> cbk) const
+void MincBlockExpr::iterateCasts(std::function<void(const MincCast* cast)> cbk) const
 {
 	castreg.iterateCasts(cbk);
 }
 
-void BlockExprAST::import(BlockExprAST* importBlock)
+void MincBlockExpr::import(MincBlockExpr* importBlock)
 {
-	const BlockExprAST* block;
+	const MincBlockExpr* block;
 
 	// Import all references of importBlock
-	for (BlockExprAST* importRef: importBlock->references)
+	for (MincBlockExpr* importRef: importBlock->references)
 	{
 		for (block = this; block; block = block->parent)
 			if (importRef == block || std::find(block->references.begin(), block->references.end(), importRef) != block->references.end())
@@ -247,36 +247,36 @@ void BlockExprAST::import(BlockExprAST* importBlock)
 		references.insert(references.begin(), importBlock);
 }
 
-void BlockExprAST::defineSymbol(std::string name, MincObject* type, MincObject* value)
+void MincBlockExpr::defineSymbol(std::string name, MincObject* type, MincObject* value)
 {
-	symbolMap[name] = Variable(type, value); // Insert or replace forward mapping
+	symbolMap[name] = MincSymbol(type, value); // Insert or replace forward mapping
 	symbolNameMap[value] = name; // Insert or replace backward mapping
 }
 
-const Variable* BlockExprAST::lookupSymbol(const std::string& name) const
+const MincSymbol* MincBlockExpr::lookupSymbol(const std::string& name) const
 {
-	std::map<std::string, Variable>::const_iterator symbolIter;
+	std::map<std::string, MincSymbol>::const_iterator symbolIter;
 	if ((symbolIter = symbolMap.find(name)) != symbolMap.cend())
 		return &symbolIter->second; // Symbol found in local scope
 
-	for (const BlockExprAST* ref: references)
+	for (const MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
 			return &symbolIter->second; // Symbol found in ref scope
 
-	const Variable* symbol;
+	const MincSymbol* symbol;
 	if (parent != nullptr && (symbol = parent->lookupSymbol(name)))
 		return symbol; // Symbol found in parent scope
 
 	return nullptr; // Symbol not found
 }
 
-const std::string* BlockExprAST::lookupSymbolName(const MincObject* value) const
+const std::string* MincBlockExpr::lookupSymbolName(const MincObject* value) const
 {
 	std::map<const MincObject*, std::string>::const_iterator symbolIter;
 	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
 		return &symbolIter->second; // Symbol found in local scope
 
-	for (const BlockExprAST* ref: references)
+	for (const MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
 			return &symbolIter->second; // Symbol found in ref scope
 
@@ -287,13 +287,13 @@ const std::string* BlockExprAST::lookupSymbolName(const MincObject* value) const
 	return nullptr; // Symbol not found
 }
 
-const std::string& BlockExprAST::lookupSymbolName(const MincObject* value, const std::string& defaultName) const
+const std::string& MincBlockExpr::lookupSymbolName(const MincObject* value, const std::string& defaultName) const
 {
 	std::map<const MincObject*, std::string>::const_iterator symbolIter;
 	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
 		return symbolIter->second; // Symbol found in local scope
 
-	for (const BlockExprAST* ref: references)
+	for (const MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
 			return symbolIter->second; // Symbol found in ref scope
 
@@ -304,25 +304,25 @@ const std::string& BlockExprAST::lookupSymbolName(const MincObject* value, const
 	return defaultName; // Symbol not found
 }
 
-size_t BlockExprAST::countSymbols() const
+size_t MincBlockExpr::countSymbols() const
 {
 	return symbolMap.size();
 }
 
-void BlockExprAST::iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const
+void MincBlockExpr::iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const
 {
-	for (const std::pair<std::string, Variable>& iter: symbolMap)
+	for (const std::pair<std::string, MincSymbol>& iter: symbolMap)
 		cbk(iter.first, iter.second);
 }
 
-Variable* BlockExprAST::importSymbol(const std::string& name)
+MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 {
-	std::map<std::string, Variable>::iterator symbolIter;
+	std::map<std::string, MincSymbol>::iterator symbolIter;
 	if ((symbolIter = symbolMap.find(name)) != symbolMap.end())
 		return &symbolIter->second; // Symbol found in local scope
 
-	Variable* symbol;
-	for (BlockExprAST* ref: references)
+	MincSymbol* symbol;
+	for (MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.end())
 		{
 			symbol = &symbolIter->second; // Symbol found in ref scope
@@ -330,7 +330,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 			if (ref->scopeType == nullptr || scopeType == nullptr)
 				return symbol; // Scope type undefined for either ref scope or local scope
 
-			const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(ref->scopeType, scopeType);
+			const auto& key = std::pair<MincScopeType*, MincScopeType*>(ref->scopeType, scopeType);
 			const auto rules = importRules.find(key);
 			if (rules == importRules.end())
 				return symbol; // No import rules defined from ref scope to local scope
@@ -364,7 +364,7 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 		if (parent->scopeType == nullptr || scopeType == nullptr)
 			return symbol; // Scope type undefined for either parent scope or local scope
 
-		const auto& key = std::pair<BaseScopeType*, BaseScopeType*>(parent->scopeType, scopeType);
+		const auto& key = std::pair<MincScopeType*, MincScopeType*>(parent->scopeType, scopeType);
 		const auto rules = importRules.find(key);
 		if (rules == importRules.end())
 		{
@@ -398,25 +398,25 @@ Variable* BlockExprAST::importSymbol(const std::string& name)
 	return nullptr; // Symbol not found
 }
 
-const std::vector<Variable>* BlockExprAST::getBlockParams() const
+const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 {
-	for (const BlockExprAST* block = this; block; block = block->parent)
+	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		if (block->blockParams.size())
 			return &block->blockParams;
-		for (const BlockExprAST* ref: block->references)
+		for (const MincBlockExpr* ref: block->references)
 			if (ref->blockParams.size())
 				return &ref->blockParams;
 	}
 	return nullptr;
 }
 
-Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
+MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
 	if (isBusy)
-		throw CompileError("block expression already executing. Use BlockExprAST::clone() when executing blocks recursively", this->loc);
+		throw CompileError("block expression already executing. Use MincBlockExpr::clone() when executing blocks recursively", this->loc);
 	isBusy = true;
 
 	try
@@ -434,14 +434,14 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	parent = parentBlock;
 
-	BlockExprAST* oldTopLevelBlock = topLevelBlock;
+	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
 	if (parentBlock == nullptr)
 	{
 		parent = rootBlock;
 		topLevelBlock = this;
 	}
 
-	BlockExprAST* oldFileBlock = fileBlock;
+	MincBlockExpr* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
 		fileBlock = this;
 
@@ -450,7 +450,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 
 	try
 	{
-		for (ExprASTIter stmtBeginExpr = exprs->cbegin() + exprIdx; stmtBeginExpr != exprs->cend(); exprIdx = stmtBeginExpr - exprs->cbegin())
+		for (MincExprIter stmtBeginExpr = exprs->cbegin() + exprIdx; stmtBeginExpr != exprs->cend(); exprIdx = stmtBeginExpr - exprs->cbegin())
 		{
 			if (!isStmtSuspended && !lookupStmt(stmtBeginExpr, currentStmt))
 				throw UndefinedStmtException(&currentStmt);
@@ -462,7 +462,7 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 			// Clear cached expressions
 			// Coroutines exit codegen() without clearing resultCache by throwing an exception
 			// They use the resultCache on reentry to avoid reexecuting expressions
-			for (Variable* cachedResult: resultCache)
+			for (MincSymbol* cachedResult: resultCache)
 				if (cachedResult)
 					delete cachedResult;
 			resultCache.clear();
@@ -500,16 +500,16 @@ Variable BlockExprAST::codegen(BlockExprAST* parentBlock)
 	return VOID;
 }
 
-bool BlockExprAST::match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const
+bool MincBlockExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const
 {
 	return expr->exprtype == this->exprtype;
 }
 
-void BlockExprAST::collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const
+void MincBlockExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
 }
 
-std::string BlockExprAST::str() const
+std::string MincBlockExpr::str() const
 {
 	if (exprs->empty())
 		return "{}";
@@ -517,9 +517,9 @@ std::string BlockExprAST::str() const
 	std::string result = "{\n";
 	for (auto expr: *exprs)
 	{
-		if (expr->exprtype == ExprAST::ExprType::STOP)
+		if (expr->exprtype == MincExpr::ExprType::STOP)
 		{
-			if (expr->exprtype == ExprAST::ExprType::STOP)
+			if (expr->exprtype == MincExpr::ExprType::STOP)
 				result.pop_back(); // Remove ' ' before STOP string
 			result += expr->str() + '\n';
 		}
@@ -536,19 +536,19 @@ std::string BlockExprAST::str() const
 	return result + '}';
 }
 
-std::string BlockExprAST::shortStr() const
+std::string MincBlockExpr::shortStr() const
 {
 	return "{ ... }";
 }
 
-int BlockExprAST::comp(const ExprAST* other) const
+int MincBlockExpr::comp(const MincExpr* other) const
 {
-	int c = ExprAST::comp(other);
+	int c = MincExpr::comp(other);
 	if (c) return c;
-	const BlockExprAST* _other = (const BlockExprAST*)other;
+	const MincBlockExpr* _other = (const MincBlockExpr*)other;
 	c = (int)this->exprs->size() - (int)_other->exprs->size();
 	if (c) return c;
-	for (std::vector<ExprAST*>::const_iterator t = this->exprs->cbegin(), o = _other->exprs->cbegin(); t != this->exprs->cend(); ++t, ++o)
+	for (std::vector<MincExpr*>::const_iterator t = this->exprs->cbegin(), o = _other->exprs->cbegin(); t != this->exprs->cend(); ++t, ++o)
 	{
 		c = (*t)->comp(*o);
 		if (c) return c;
@@ -556,9 +556,9 @@ int BlockExprAST::comp(const ExprAST* other) const
 	return 0;
 }
 
-ExprAST* BlockExprAST::clone() const
+MincExpr* MincBlockExpr::clone() const
 {
-	BlockExprAST* clone = new BlockExprAST(this->loc, this->exprs);
+	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs);
 	clone->parent = this->parent;
 	clone->references = this->references;
 	clone->name = this->name;
@@ -567,9 +567,9 @@ ExprAST* BlockExprAST::clone() const
 	return clone;
 }
 
-void BlockExprAST::reset()
+void MincBlockExpr::reset()
 {
-	for (Variable* cachedResult: resultCache)
+	for (MincSymbol* cachedResult: resultCache)
 		if (cachedResult)
 			delete cachedResult;
 	resultCache.clear();
@@ -580,39 +580,39 @@ void BlockExprAST::reset()
 	isExprSuspended = false;
 }
 
-void BlockExprAST::clearCache(size_t targetSize)
+void MincBlockExpr::clearCache(size_t targetSize)
 {
 	if (targetSize > resultCache.size())
 		targetSize = resultCache.size();
 
 	resultCacheIdx = targetSize;
-	for (std::vector<Variable*>::iterator cachedResult = resultCache.begin() + targetSize; cachedResult != resultCache.end(); ++cachedResult)
+	for (std::vector<MincSymbol*>::iterator cachedResult = resultCache.begin() + targetSize; cachedResult != resultCache.end(); ++cachedResult)
 		if (*cachedResult)
 			delete *cachedResult;
 	resultCache.erase(resultCache.begin() + targetSize, resultCache.end());
 }
 
-const StmtAST* BlockExprAST::getCurrentStmt() const
+const MincStmt* MincBlockExpr::getCurrentStmt() const
 {
 	return &currentStmt;
 }
 
-BlockExprAST* BlockExprAST::parseCFile(const char* filename)
+MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)
 {
 	return ::parseCFile(filename);
 }
 
-const std::vector<ExprAST*> BlockExprAST::parseCTplt(const char* tpltStr)
+const std::vector<MincExpr*> MincBlockExpr::parseCTplt(const char* tpltStr)
 {
 	return ::parseCTplt(tpltStr);
 }
 
-BlockExprAST* BlockExprAST::parsePythonFile(const char* filename)
+MincBlockExpr* MincBlockExpr::parsePythonFile(const char* filename)
 {
 	return ::parsePythonFile(filename);
 }
 
-const std::vector<ExprAST*> BlockExprAST::parsePythonTplt(const char* tpltStr)
+const std::vector<MincExpr*> MincBlockExpr::parsePythonTplt(const char* tpltStr)
 {
 	return ::parsePythonTplt(tpltStr);
 }

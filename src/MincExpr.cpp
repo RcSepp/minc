@@ -1,16 +1,16 @@
 #include "minc_api.hpp"
 
-void raiseStepEvent(const ExprAST* loc, StepEventType type);
+void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-ExprAST::ExprAST(const Location& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedContext(nullptr)
+MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedKernel(nullptr)
 {
 }
 
-ExprAST::~ExprAST()
+MincExpr::~MincExpr()
 {
 }
 
-Variable ExprAST::codegen(BlockExprAST* parentBlock)
+MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
 {
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
@@ -25,13 +25,13 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 	}
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 
-	if (resolvedContext)
+	if (resolvedKernel)
 	{
-		Variable var;
+		MincSymbol var;
 		try
 		{
 			raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
-			var = resolvedContext->codegen(parentBlock, resolvedParams);
+			var = resolvedKernel->codegen(parentBlock, resolvedParams);
 		}
 		catch (...)
 		{
@@ -41,7 +41,7 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		}
 		parentBlock->isExprSuspended = false;
 
-		const MincObject *expectedType = resolvedContext->getType(parentBlock, resolvedParams), *gotType = var.type;
+		const MincObject *expectedType = resolvedKernel->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
 		{
 			throw CompileError(
@@ -51,11 +51,11 @@ Variable ExprAST::codegen(BlockExprAST* parentBlock)
 		}
 
 		// Cache expression result for coroutines
-		parentBlock->resultCache[resultCacheIdx] = new Variable(var);
+		parentBlock->resultCache[resultCacheIdx] = new MincSymbol(var);
 
 assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypothesis
 //TODO: If this hypothesis stays true, then the following delete-loop and erase() can be replaced with a delete if-block and pop_back()!
-		for (std::vector<Variable*>::iterator cachedResult = parentBlock->resultCache.begin() + resultCacheIdx + 1; cachedResult != parentBlock->resultCache.end(); ++cachedResult)
+		for (std::vector<MincSymbol*>::iterator cachedResult = parentBlock->resultCache.begin() + resultCacheIdx + 1; cachedResult != parentBlock->resultCache.end(); ++cachedResult)
 		{
 			--parentBlock->resultCacheIdx;
 			if (*cachedResult)
@@ -71,28 +71,28 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 		throw UndefinedExprException{this};
 }
 
-MincObject* ExprAST::getType(const BlockExprAST* parentBlock) const
+MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 {
-	return resolvedContext ? resolvedContext->getType(parentBlock, resolvedParams) : nullptr;
+	return resolvedKernel ? resolvedKernel->getType(parentBlock, resolvedParams) : nullptr;
 }
 
-void ExprAST::resolveTypes(const BlockExprAST* block)
+void MincExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedContext == nullptr)
+	if (this->resolvedKernel == nullptr)
 		block->lookupExpr(this);
 }
 
-std::string ExprAST::shortStr() const
+std::string MincExpr::shortStr() const
 {
 	return str();
 }
 
-int ExprAST::comp(const ExprAST* other) const
+int MincExpr::comp(const MincExpr* other) const
 {
 	return this->exprtype - other->exprtype;
 }
 
-bool operator<(const ExprAST& left, const ExprAST& right)
+bool operator<(const MincExpr& left, const MincExpr& right)
 {
 	return left.comp(&right) < 0;
 }

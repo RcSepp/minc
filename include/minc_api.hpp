@@ -10,23 +10,23 @@
 
 #include "minc_types.h"
 
-typedef std::vector<ExprAST*>::const_iterator ExprASTIter;
+typedef std::vector<MincExpr*>::const_iterator MincExprIter;
 
 extern "C"
 {
-	BlockExprAST* getRootScope();
-	BlockExprAST* getFileScope();
-	const Variable& getVoid();
-	void defineImportRule(BaseScopeType* fromScope, BaseScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
-	void raiseCompileError(const char* msg, const ExprAST* loc);
+	MincBlockExpr* getRootScope();
+	MincBlockExpr* getFileScope();
+	const MincSymbol& getVoid();
+	void defineImportRule(MincScopeType* fromScope, MincScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
+	void raiseCompileError(const char* msg, const MincExpr* loc);
 	void registerStepEventListener(StepEvent listener, void* eventArgs);
 	void deregisterStepEventListener(StepEvent listener);
 }
 
-class ExprAST
+class MincExpr
 {
 public:
-	Location loc;
+	MincLocation loc;
 	enum ExprType {
 		STMT, LIST, STOP, LITERAL, ID, CAST, PLCHLD, PARAM, ELLIPSIS, ARGOP, ENCOP, TEROP, BINOP, VARBINOP, PREOP, POSTOP, BLOCK,
 		NUM_EXPR_TYPES
@@ -34,442 +34,442 @@ public:
 	const ExprType exprtype;
 
 	// Resolved state
-	CodegenContext* resolvedContext;
-	std::vector<ExprAST*> resolvedParams;
+	MincKernel* resolvedKernel;
+	std::vector<MincExpr*> resolvedParams;
 
-	ExprAST(const Location& loc, ExprType exprtype);
-	virtual ~ExprAST();
-	virtual Variable codegen(BlockExprAST* parentBlock);
-	virtual MincObject* getType(const BlockExprAST* parentBlock) const;
-	virtual bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const = 0;
-	virtual void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const = 0;
-	virtual void resolveTypes(const BlockExprAST* block);
+	MincExpr(const MincLocation& loc, ExprType exprtype);
+	virtual ~MincExpr();
+	virtual MincSymbol codegen(MincBlockExpr* parentBlock);
+	virtual MincObject* getType(const MincBlockExpr* parentBlock) const;
+	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
+	virtual void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const = 0;
+	virtual void resolveTypes(const MincBlockExpr* block);
 	virtual std::string str() const = 0;
 	virtual std::string shortStr() const;
-	virtual int comp(const ExprAST* other) const;
-	virtual ExprAST* clone() const = 0;
+	virtual int comp(const MincExpr* other) const;
+	virtual MincExpr* clone() const = 0;
 };
-bool operator<(const ExprAST& left, const ExprAST& right);
+bool operator<(const MincExpr& left, const MincExpr& right);
 
 namespace std
 {
-	template<> struct less<const ExprAST*>
+	template<> struct less<const MincExpr*>
 	{
-		bool operator()(const ExprAST* lhs, const ExprAST* rhs) const { return lhs->comp(rhs) < 0; }
+		bool operator()(const MincExpr* lhs, const MincExpr* rhs) const { return lhs->comp(rhs) < 0; }
 	};
 }
 
-class StreamingExprASTIter
+class StreamingMincExprIter
 {
-	const std::vector<ExprAST*>* buffer;
+	const std::vector<MincExpr*>* buffer;
 	size_t idx;
 	std::function<bool()> next;
 
 public:
 	static bool defaultNext() { return false; }
-	StreamingExprASTIter(const std::vector<ExprAST*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext);
-	StreamingExprASTIter(const StreamingExprASTIter& other) = default;
+	StreamingMincExprIter(const std::vector<MincExpr*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext);
+	StreamingMincExprIter(const StreamingMincExprIter& other) = default;
 	bool done();
-	ExprAST* operator*();
-	ExprAST* operator[](int i);
-	size_t operator-(const StreamingExprASTIter& other) const;
-	StreamingExprASTIter& operator=(const StreamingExprASTIter& other) = default;
-	StreamingExprASTIter operator+(int n) const;
-	StreamingExprASTIter operator++(int);
-	StreamingExprASTIter& operator++();
-	ExprASTIter iter() const;
+	MincExpr* operator*();
+	MincExpr* operator[](int i);
+	size_t operator-(const StreamingMincExprIter& other) const;
+	StreamingMincExprIter& operator=(const StreamingMincExprIter& other) = default;
+	StreamingMincExprIter operator+(int n) const;
+	StreamingMincExprIter operator++(int);
+	StreamingMincExprIter& operator++();
+	MincExprIter iter() const;
 };
 
-class ListExprAST : public ExprAST
+class MincListExpr : public MincExpr
 {
 public:
 	char separator;
-	std::vector<ExprAST*> exprs;
-	ListExprAST(char separator);
-	ListExprAST(char separator, std::vector<ExprAST*> exprs);
-	Variable codegen(BlockExprAST* parentBlock);
-	bool match(const BlockExprAST* block, const ExprAST* exprs, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* exprs, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	std::vector<MincExpr*> exprs;
+	MincListExpr(char separator);
+	MincListExpr(char separator, std::vector<MincExpr*> exprs);
+	MincSymbol codegen(MincBlockExpr* parentBlock);
+	bool match(const MincBlockExpr* block, const MincExpr* exprs, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* exprs, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	std::vector<ExprAST*>::iterator begin();
-	std::vector<ExprAST*>::const_iterator cbegin() const;
-	std::vector<ExprAST*>::iterator end();
-	std::vector<ExprAST*>::const_iterator cend() const;
+	int comp(const MincExpr* other) const;
+	std::vector<MincExpr*>::iterator begin();
+	std::vector<MincExpr*>::const_iterator cbegin() const;
+	std::vector<MincExpr*>::iterator end();
+	std::vector<MincExpr*>::const_iterator cend() const;
 	size_t size() const;
-	ExprAST* at(size_t index);
-	const ExprAST* at(size_t index) const;
-	ExprAST* operator[](size_t index);
-	const ExprAST* operator[](size_t index) const;
-	void push_back(ExprAST* expr);
-	ExprAST* clone() const;
+	MincExpr* at(size_t index);
+	const MincExpr* at(size_t index) const;
+	MincExpr* operator[](size_t index);
+	const MincExpr* operator[](size_t index) const;
+	void push_back(MincExpr* expr);
+	MincExpr* clone() const;
 };
-std::vector<ExprAST*>::iterator begin(ListExprAST& exprs);
-std::vector<ExprAST*>::iterator begin(ListExprAST* exprs);
-std::vector<ExprAST*>::iterator end(ListExprAST& exprs);
-std::vector<ExprAST*>::iterator end(ListExprAST* exprs);
+std::vector<MincExpr*>::iterator begin(MincListExpr& exprs);
+std::vector<MincExpr*>::iterator begin(MincListExpr* exprs);
+std::vector<MincExpr*>::iterator end(MincListExpr& exprs);
+std::vector<MincExpr*>::iterator end(MincListExpr* exprs);
 
 namespace std
 {
-	template<> struct less<const ListExprAST*>
+	template<> struct less<const MincListExpr*>
 	{
-		bool operator()(const ListExprAST* lhs, const ListExprAST* rhs) const { return lhs->comp(rhs) < 0; }
+		bool operator()(const MincListExpr* lhs, const MincListExpr* rhs) const { return lhs->comp(rhs) < 0; }
 	};
 }
 
 class StatementRegister
 {
 private:
-	std::map<const ListExprAST*, CodegenContext*> stmtreg;
-	std::array<std::map<const ExprAST*, CodegenContext*>, ExprAST::NUM_EXPR_TYPES> exprreg;
-	CodegenContext *antiStmt, *antiExpr;
+	std::map<const MincListExpr*, MincKernel*> stmtreg;
+	std::array<std::map<const MincExpr*, MincKernel*>, MincExpr::NUM_EXPR_TYPES> exprreg;
+	MincKernel *antiStmt, *antiExpr;
 public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
-	void defineStmt(const ListExprAST* tplt, CodegenContext* stmt);
-	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(const BlockExprAST* block, StreamingExprASTIter stmt, StreamingExprASTIter& stmtEnd, MatchScore& score) const;
-	void lookupStmtCandidates(const BlockExprAST* block, const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const;
+	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
+	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, StreamingMincExprIter stmt, StreamingMincExprIter& stmtEnd, MatchScore& score) const;
+	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	size_t countStmts() const;
-	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
-	void defineDefaultStmt(CodegenContext* stmt);
+	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
+	void defineDefaultStmt(MincKernel* stmt);
 
-	void defineExpr(const ExprAST* tplt, CodegenContext* expr);
-	std::pair<const ExprAST*, CodegenContext*> lookupExpr(const BlockExprAST* block, ExprAST* expr, MatchScore& bestScore) const;
-	void lookupExprCandidates(const BlockExprAST* block, const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
+	void defineExpr(const MincExpr* tplt, MincKernel* expr);
+	std::pair<const MincExpr*, MincKernel*> lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const;
+	void lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
-	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
-	void defineDefaultExpr(CodegenContext* expr) { antiExpr = expr; }
+	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
+	void defineDefaultExpr(MincKernel* expr) { antiExpr = expr; }
 };
 
-struct InheritanceCast : public Cast
+struct InheritanceCast : public MincCast
 {
-	InheritanceCast(MincObject* fromType, MincObject* toType, CodegenContext* context);
+	InheritanceCast(MincObject* fromType, MincObject* toType, MincKernel* kernel);
 	int getCost() const;
-	Cast* derive() const;
+	MincCast* derive() const;
 };
 
-struct TypeCast : public Cast
+struct TypeCast : public MincCast
 {
-	TypeCast(MincObject* fromType, MincObject* toType, CodegenContext* context);
+	TypeCast(MincObject* fromType, MincObject* toType, MincKernel* kernel);
 	int getCost() const;
-	Cast* derive() const;
+	MincCast* derive() const;
 };
 
 class CastRegister
 {
 private:
-	BlockExprAST* const block;
-	std::map<std::pair<MincObject*, MincObject*>, Cast*> casts;
-	std::multimap<MincObject*, Cast*> fwdCasts, bwdCasts;
+	MincBlockExpr* const block;
+	std::map<std::pair<MincObject*, MincObject*>, MincCast*> casts;
+	std::multimap<MincObject*, MincCast*> fwdCasts, bwdCasts;
 public:
-	CastRegister(BlockExprAST* block);
-	void defineDirectCast(Cast* cast);
-	void defineIndirectCast(const CastRegister& castreg, Cast* cast);
-	const Cast* lookupCast(MincObject* fromType, MincObject* toType) const;
+	CastRegister(MincBlockExpr* block);
+	void defineDirectCast(MincCast* cast);
+	void defineIndirectCast(const CastRegister& castreg, MincCast* cast);
+	const MincCast* lookupCast(MincObject* fromType, MincObject* toType) const;
 	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
-	void iterateCasts(std::function<void(const Cast* cast)> cbk) const;
+	void iterateCasts(std::function<void(const MincCast* cast)> cbk) const;
 };
 
-class StmtAST : public ExprAST
+class MincStmt : public MincExpr
 {
 public:
-	ExprASTIter begin, end;
-	std::vector<ExprAST*> resolvedExprs;
-	ExprASTIter sourceExprPtr;
+	MincExprIter begin, end;
+	std::vector<MincExpr*> resolvedExprs;
+	MincExprIter sourceExprPtr;
 
-	StmtAST(ExprASTIter exprBegin, ExprASTIter exprEnd, CodegenContext* context);
-	StmtAST();
-	~StmtAST();
-	Variable codegen(BlockExprAST* parentBlock);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincStmt(MincExprIter exprBegin, MincExprIter exprEnd, MincKernel* kernel);
+	MincStmt();
+	~MincStmt();
+	MincSymbol codegen(MincBlockExpr* parentBlock);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class BlockExprAST : public ExprAST
+class MincBlockExpr : public MincExpr
 {
 private:
 	StatementRegister stmtreg;
-	std::map<std::string, Variable> symbolMap;
+	std::map<std::string, MincSymbol> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	CastRegister castreg;
-	StmtAST currentStmt;
+	MincStmt currentStmt;
 
 public:
-	BlockExprAST* parent;
-	std::vector<BlockExprAST*> references;
-	std::vector<ExprAST*>* exprs;
+	MincBlockExpr* parent;
+	std::vector<MincBlockExpr*> references;
+	std::vector<MincExpr*>* exprs;
 	std::string name;
 	size_t exprIdx;
-	BaseScopeType* scopeType;
-	std::vector<Variable> blockParams;
-	std::vector<Variable*> resultCache;
+	MincScopeType* scopeType;
+	std::vector<MincSymbol> blockParams;
+	std::vector<MincSymbol*> resultCache;
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended;
 	bool isBusy;
-	BlockExprAST(const Location& loc, std::vector<ExprAST*>* exprs);
-	void defineStmt(const std::vector<ExprAST*>& tplt, CodegenContext* stmt);
-	void defineStmt(const std::vector<ExprAST*>& tplt, std::function<void(BlockExprAST*, std::vector<ExprAST*>&)> code);
-	bool lookupStmt(ExprASTIter beginExpr, StmtAST& stmt) const;
-	void lookupStmtCandidates(const ListExprAST* stmt, std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>>& candidates) const;
-	std::pair<const ListExprAST*, CodegenContext*> lookupStmt(StreamingExprASTIter stmt, StreamingExprASTIter& bestStmtEnd, MatchScore& bestScore) const;
+	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
+	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
+	bool lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const;
+	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
+	std::pair<const MincListExpr*, MincKernel*> lookupStmt(StreamingMincExprIter stmt, StreamingMincExprIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStmts() const;
-	void iterateStmts(std::function<void(const ListExprAST* tplt, const CodegenContext* stmt)> cbk) const;
-	void defineDefaultStmt(CodegenContext* stmt);
-	void defineExpr(ExprAST* tplt, CodegenContext* expr);
-	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, MincObject* type);
-	void defineExpr(ExprAST* tplt, std::function<Variable(BlockExprAST*, std::vector<ExprAST*>&)> code, std::function<MincObject*(const BlockExprAST*, const std::vector<ExprAST*>&)> type);
-	bool lookupExpr(ExprAST* expr) const;
-	void lookupExprCandidates(const ExprAST* expr, std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>>& candidates) const;
+	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
+	void defineDefaultStmt(MincKernel* stmt);
+	void defineExpr(MincExpr* tplt, MincKernel* expr);
+	void defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> code, MincObject* type);
+	void defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> code, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> type);
+	bool lookupExpr(MincExpr* expr) const;
+	void lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
-	void iterateExprs(std::function<void(const ExprAST* tplt, const CodegenContext* expr)> cbk) const;
-	void defineDefaultExpr(CodegenContext* expr);
-	void defineCast(Cast* cast);
-	const Cast* lookupCast(MincObject* fromType, MincObject* toType) const;
+	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
+	void defineDefaultExpr(MincKernel* expr);
+	void defineCast(MincCast* cast);
+	const MincCast* lookupCast(MincObject* fromType, MincObject* toType) const;
 	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
-	void iterateCasts(std::function<void(const Cast* cast)> cbk) const;
-	void import(BlockExprAST* importBlock);
+	void iterateCasts(std::function<void(const MincCast* cast)> cbk) const;
+	void import(MincBlockExpr* importBlock);
 	void defineSymbol(std::string name, MincObject* type, MincObject* value);
-	const Variable* lookupSymbol(const std::string& name) const;
+	const MincSymbol* lookupSymbol(const std::string& name) const;
 	const std::string* lookupSymbolName(const MincObject* value) const;
 	const std::string& lookupSymbolName(const MincObject* value, const std::string& defaultName) const;
 	size_t countSymbols() const;
-	void iterateSymbols(std::function<void(const std::string& name, const Variable& symbol)> cbk) const;
-	Variable* importSymbol(const std::string& name);
-	const std::vector<Variable>* getBlockParams() const;
-	Variable codegen(BlockExprAST* parentBlock);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	void iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
+	MincSymbol* importSymbol(const std::string& name);
+	const std::vector<MincSymbol>* getBlockParams() const;
+	MincSymbol codegen(MincBlockExpr* parentBlock);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 	void reset();
 	void clearCache(size_t targetSize);
-	const StmtAST* getCurrentStmt() const;
+	const MincStmt* getCurrentStmt() const;
 
-	static BlockExprAST* parseCFile(const char* filename);
-	static const std::vector<ExprAST*> parseCTplt(const char* tpltStr);
+	static MincBlockExpr* parseCFile(const char* filename);
+	static const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
 
-	static BlockExprAST* parsePythonFile(const char* filename);
-	static const std::vector<ExprAST*> parsePythonTplt(const char* tpltStr);
+	static MincBlockExpr* parsePythonFile(const char* filename);
+	static const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
 };
 
-class StopExprAST : public ExprAST
+class MincStopExpr : public MincExpr
 {
 public:
-	StopExprAST(const Location& loc);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincStopExpr(const MincLocation& loc);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	ExprAST* clone() const;
+	MincExpr* clone() const;
 };
 
-class LiteralExprAST : public ExprAST
+class MincLiteralExpr : public MincExpr
 {
 public:
 	const std::string value;
-	LiteralExprAST(const Location& loc, const char* value);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincLiteralExpr(const MincLocation& loc, const char* value);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class IdExprAST : public ExprAST
+class MincIdExpr : public MincExpr
 {
 public:
 	const std::string name;
-	IdExprAST(const Location& loc, const char* name);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincIdExpr(const MincLocation& loc, const char* name);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class CastExprAST : public ExprAST
+class MincCastExpr : public MincExpr
 {
-	const Cast* const cast;
+	const MincCast* const cast;
 
 public:
-	CastExprAST(const Cast* cast, ExprAST* source);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincCastExpr(const MincCast* cast, MincExpr* source);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	ExprAST* getSourceExpr() const;
-	ExprAST* getDerivedExpr() const;
-	ExprAST* clone() const;
+	MincExpr* getSourceExpr() const;
+	MincExpr* getDerivedExpr() const;
+	MincExpr* clone() const;
 };
 
-class PlchldExprAST : public ExprAST
+class MincPlchldExpr : public MincExpr
 {
 public:
 	char p1;
 	char* p2;
 	bool allowCast;
-	PlchldExprAST(const Location& loc, char p1);
-	PlchldExprAST(const Location& loc, char p1, const char* p2, bool allowCast);
-	PlchldExprAST(const Location& loc, const char* p2);
-	MincObject* getType(const BlockExprAST* parentBlock) const;
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincPlchldExpr(const MincLocation& loc, char p1);
+	MincPlchldExpr(const MincLocation& loc, char p1, const char* p2, bool allowCast);
+	MincPlchldExpr(const MincLocation& loc, const char* p2);
+	MincObject* getType(const MincBlockExpr* parentBlock) const;
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class ParamExprAST : public ExprAST
+class MincParamExpr : public MincExpr
 {
 public:
 	size_t idx;
-	ParamExprAST(const Location& loc, size_t idx);
-	Variable codegen(BlockExprAST* parentBlock);
-	MincObject* getType(const BlockExprAST* parentBlock) const;
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
+	MincParamExpr(const MincLocation& loc, size_t idx);
+	MincSymbol codegen(MincBlockExpr* parentBlock);
+	MincObject* getType(const MincBlockExpr* parentBlock) const;
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class EllipsisExprAST : public ExprAST
+class MincEllipsisExpr : public MincExpr
 {
 public:
-	ExprAST* expr;
-	EllipsisExprAST(const Location& loc, ExprAST* expr);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincExpr* expr;
+	MincEllipsisExpr(const MincLocation& loc, MincExpr* expr);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class ArgOpExprAST : public ExprAST
-{
-public:
-	int op;
-	ExprAST *var;
-	ListExprAST* args;
-	const std::string oopstr, copstr;
-	ArgOpExprAST(const Location& loc, int op, const char* oopstr, const char* copstr, ExprAST* var, ListExprAST* args);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
-	std::string str() const;
-	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
-};
-
-class EncOpExprAST : public ExprAST
+class MincArgOpExpr : public MincExpr
 {
 public:
 	int op;
-	ExprAST *val;
+	MincExpr *var;
+	MincListExpr* args;
 	const std::string oopstr, copstr;
-	EncOpExprAST(const Location& loc, int op, const char* oopstr, const char* copstr, ExprAST* val);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincArgOpExpr(const MincLocation& loc, int op, const char* oopstr, const char* copstr, MincExpr* var, MincListExpr* args);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class TerOpExprAST : public ExprAST
+class MincEncOpExpr : public MincExpr
+{
+public:
+	int op;
+	MincExpr *val;
+	const std::string oopstr, copstr;
+	MincEncOpExpr(const MincLocation& loc, int op, const char* oopstr, const char* copstr, MincExpr* val);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
+	std::string str() const;
+	std::string shortStr() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
+};
+
+class MincTerOpExpr : public MincExpr
 {
 public:
 	int op1, op2;
-	ExprAST *a, *b, *c;
+	MincExpr *a, *b, *c;
 	const std::string opstr1, opstr2;
-	TerOpExprAST(const Location& loc, int op1, int op2, const char* opstr1, const char* opstr2, ExprAST* a, ExprAST* b, ExprAST* c);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincTerOpExpr(const MincLocation& loc, int op1, int op2, const char* opstr1, const char* opstr2, MincExpr* a, MincExpr* b, MincExpr* c);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class PrefixExprAST : public ExprAST
+class MincPrefixExpr : public MincExpr
 {
 public:
 	int op;
-	ExprAST *a;
+	MincExpr *a;
 	const std::string opstr;
-	PrefixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincPrefixExpr(const MincLocation& loc, int op, const char* opstr, MincExpr* a);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class PostfixExprAST : public ExprAST
+class MincPostfixExpr : public MincExpr
 {
 public:
 	int op;
-	ExprAST *a;
+	MincExpr *a;
 	const std::string opstr;
-	PostfixExprAST(const Location& loc, int op, const char* opstr, ExprAST* a);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincPostfixExpr(const MincLocation& loc, int op, const char* opstr, MincExpr* a);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class BinOpExprAST : public ExprAST
+class MincBinOpExpr : public MincExpr
 {
 public:
 	int op;
-	ExprAST *a, *b;
+	MincExpr *a, *b;
 	const std::string opstr;
-	PostfixExprAST a_post;
-	PrefixExprAST b_pre;
-	BinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a, ExprAST* b);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincPostfixExpr a_post;
+	MincPrefixExpr b_pre;
+	MincBinOpExpr(const MincLocation& loc, int op, const char* opstr, MincExpr* a, MincExpr* b);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
-class VarBinOpExprAST : public ExprAST
+class MincVarBinOpExpr : public MincExpr
 {
 public:
 	int op;
-	ExprAST *a;
+	MincExpr *a;
 	const std::string opstr;
-	VarBinOpExprAST(const Location& loc, int op, const char* opstr, ExprAST* a);
-	bool match(const BlockExprAST* block, const ExprAST* expr, MatchScore& score) const;
-	void collectParams(const BlockExprAST* block, ExprAST* expr, std::vector<ExprAST*>& params, size_t& paramIdx) const;
-	void resolveTypes(const BlockExprAST* block);
+	MincVarBinOpExpr(const MincLocation& loc, int op, const char* opstr, MincExpr* a);
+	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
+	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
-	int comp(const ExprAST* other) const;
-	ExprAST* clone() const;
+	int comp(const MincExpr* other) const;
+	MincExpr* clone() const;
 };
 
 #endif

@@ -6,7 +6,7 @@ struct PawsFunc
 	PawsType* returnType;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
-	virtual Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const = 0;
+	virtual MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const = 0;
 
 	PawsFunc() = default;
 	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
@@ -16,20 +16,20 @@ typedef PawsValue<PawsFunc*> PawsFunction;
 
 struct PawsRegularFunc : public PawsFunc
 {
-	BlockExprAST* body;
-	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const;
+	MincBlockExpr* body;
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const;
 
 	PawsRegularFunc() = default;
-	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body)
+	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: PawsFunc(returnType, argTypes, argNames), body(body) {}
 };
 
-typedef Variable (*FuncBlock)(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs, void* funcArgs);
+typedef MincSymbol (*FuncBlock)(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, void* funcArgs);
 struct PawsConstFunc : public PawsFunc
 {
 	FuncBlock body;
 	void* funcArgs;
-	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& argExprs) const
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs) const
 	{
 		return body(callerScope, argExprs, funcArgs);
 	}
@@ -82,7 +82,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 		});
 	}
 
-	Variable call(BlockExprAST* callerScope, const std::vector<ExprAST*>& args) const
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const
 	{
 		if constexpr (std::is_void<R>::value)
 		{
@@ -91,10 +91,10 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
 				return p->get();
 			});
-			return Variable(PawsValue<R>::TYPE, nullptr);
+			return MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return Variable(
+			return MincSymbol(
 				PawsValue<R>::TYPE,
 				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
@@ -107,9 +107,9 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 	}
 };
 
-void defineFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, BlockExprAST* body);
-void defineConstantFunction(BlockExprAST* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr);
-template<class F> void defineExternFunction(BlockExprAST* scope, const char* name, F func)
+void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body);
+void defineConstantFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr);
+template<class F> void defineExternFunction(MincBlockExpr* scope, const char* name, F func)
 {
 	PawsFunc* pawsFunc = new PawsExternFunc(func);
 	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));

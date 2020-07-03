@@ -11,27 +11,27 @@ LIBMINC_OBJS = \
 	cparser.yy.o \
 	pyparser.o \
 	pyparser.yy.o \
-	ArgOpExprAST.o \
-	BinOpExprAST.o \
-	BlockExprAST.o \
-	CastExprAST.o \
+	MincArgOpExpr.o \
+	MincBinOpExpr.o \
+	MincBlockExpr.o \
+	MincCastExpr.o \
 	CastRegister.o \
-	EllipsisExprAST.o \
-	EncOpExprAST.o \
-	ExprAST.o \
-	IdExprAST.o \
-	ListExprAST.o \
-	LiteralExprAST.o \
-	ParamExprAST.o \
-	PlchldExprAST.o \
-	PostfixExprAST.o \
-	PrefixExprAST.o \
+	MincEllipsisExpr.o \
+	MincEncOpExpr.o \
+	MincExpr.o \
+	MincIdExpr.o \
+	MincListExpr.o \
+	MincLiteralExpr.o \
+	MincParamExpr.o \
+	MincPlchldExpr.o \
+	MincPostfixExpr.o \
+	MincPrefixExpr.o \
 	StatementRegister.o \
-	StmtAST.o \
-	StopExprAST.o \
-	StreamingExprASTIter.o \
-	TerOpExprAST.o \
-	VarBinOpExprAST.o \
+	MincStmt.o \
+	MincStopExpr.o \
+	StreamingMincExprIter.o \
+	MincTerOpExpr.o \
+	MincVarBinOpExpr.o \
 
 LIBMINC_PKGMGR_OBJS = \
 	minc_pkgmgr.o \

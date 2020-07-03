@@ -8,7 +8,7 @@
 typedef std::chrono::duration<double> duration;
 typedef PawsValue<duration> PawsDuration;
 
-MincPackage PAWS_TIME("paws.time", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	registerType<PawsDuration>(pkgScope, "PawsDuration");
 
 	// Define PawsDuration getters
@@ -43,9 +43,9 @@ MincPackage PAWS_TIME("paws.time", [](BlockExprAST* pkgScope) {
 
 	// Define function to print measured runtime
 	defineStmt2(pkgScope, "measure($E<PawsString>) $S",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const std::string& taskName = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
-			ExprAST* stmt = params[1];
+			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
@@ -60,9 +60,9 @@ MincPackage PAWS_TIME("paws.time", [](BlockExprAST* pkgScope) {
 
 	// Define function to measure runtime
 	defineStmt2(pkgScope, "measure $I $S",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			const char* varName = getIdExprASTName((IdExprAST*)params[0]);
-			ExprAST* stmt = params[1];
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			const char* varName = getIdExprName((MincIdExpr*)params[0]);
+			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();

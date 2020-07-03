@@ -5,28 +5,28 @@
 #include <string.h>
 #include "minc_api.hpp"
 
-UndefinedStmtException::UndefinedStmtException(const StmtAST* stmt)
+UndefinedStmtException::UndefinedStmtException(const MincStmt* stmt)
 	: CompileError("undefined statement " + stmt->str(), stmt->loc) {}
-UndefinedExprException::UndefinedExprException(const ExprAST* expr)
+UndefinedExprException::UndefinedExprException(const MincExpr* expr)
 	: CompileError("undefined expression " + expr->str(), expr->loc) {}
-UndefinedIdentifierException::UndefinedIdentifierException(const IdExprAST* id)
+UndefinedIdentifierException::UndefinedIdentifierException(const MincIdExpr* id)
 	: CompileError('`' + id->str() + "` was not declared in this scope", id->loc) {}
-InvalidTypeException::InvalidTypeException(const PlchldExprAST* plchld)
+InvalidTypeException::InvalidTypeException(const MincPlchldExpr* plchld)
 	: CompileError('`' + std::string(plchld->p2) + "` is not a type", plchld->loc) {}
 
-CompileError::CompileError(const char* msg, Location loc)
+CompileError::CompileError(const char* msg, MincLocation loc)
 	: loc(loc), msg(new char[strlen(msg) + 1]), refcount(new int(1))
 {
 	strcpy(this->msg, msg);
 }
 
-CompileError::CompileError(std::string msg, Location loc)
+CompileError::CompileError(std::string msg, MincLocation loc)
 	: loc(loc), msg(new char[msg.size() + 1]), refcount(new int(1))
 {
 	strcpy(this->msg, msg.c_str());
 }
 
-CompileError::CompileError(const BlockExprAST* scope, Location loc, const char* fmt, ...)
+CompileError::CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...)
 	: loc(loc), refcount(new int(1))
 {
 	va_list args;
@@ -55,9 +55,9 @@ CompileError::CompileError(const BlockExprAST* scope, Location loc, const char* 
 		case 'f': msg << va_arg(args, double); break;
 		case 'S': msg << va_arg(args, std::string); break;
 		case 's': msg << va_arg(args, char*); break;
-		case 'E': msg << va_arg(args, ExprAST*)->str(); break;
-		case 'e': msg << va_arg(args, ExprAST*)->shortStr(); break;
-		case 'T': msg << scope->lookupSymbolName(va_arg(args, ExprAST*)->getType(scope), "UNKNOWN_TYPE"); break;
+		case 'E': msg << va_arg(args, MincExpr*)->str(); break;
+		case 'e': msg << va_arg(args, MincExpr*)->shortStr(); break;
+		case 'T': msg << scope->lookupSymbolName(va_arg(args, MincExpr*)->getType(scope), "UNKNOWN_TYPE"); break;
 		case 't': msg << scope->lookupSymbolName(va_arg(args, MincObject*), "UNKNOWN_TYPE"); break;
 		}
 	}

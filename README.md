@@ -10,7 +10,7 @@ A programming language that can run hello world programs can be defined in less 
 1) Define a package, so that your language can be imported in `minc`:
 
 ```C++
-MincPackage HELLOWORLD_PKG("helloworld", [](BlockExprAST* pkgScope) {
+MincPackage HELLOWORLD_PKG("helloworld", [](MincBlockExpr* pkgScope) {
 	...
 });
 ```
@@ -31,13 +31,13 @@ defineSymbol(pkgScope, "string", &META_TYPE, &STRING_META_TYPE);
 
 ```C++
 defineExpr3(pkgScope, "$L",
-	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) {
-		const char* value = getLiteralExprASTValue((LiteralExprAST*)params[0]);
+	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
+		const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
 		if (value[0] != '"' && value[0] != '\'')
 			raiseCompileError("Non-string literals not implemented", params[0]);
-		return Variable(&STRING_TYPE, new String(std::string(value + 1, strlen(value) - 2)));
+		return MincSymbol(&STRING_TYPE, new String(std::string(value + 1, strlen(value) - 2)));
 	},
-	[](const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs) -> MincObject* {
+	[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 		return &STRING_TYPE;
 	}
 );
@@ -47,7 +47,7 @@ defineExpr3(pkgScope, "$L",
 
 ```C++
 defineStmt2(pkgScope, "print($E<string>)",
-	[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
+	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		String* const message = (String*)codegenExpr(params[0], parentBlock).value;
 		std::cout << *message << '\n';
 	}

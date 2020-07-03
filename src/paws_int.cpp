@@ -8,14 +8,14 @@ template<> const std::string PawsInt::toString() const
 	return std::to_string(val);
 }
 
-MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 	// >>> PawsInt expressions
 
 	// Define integer prefix increment
 	defineExpr2(pkgScope, "++$I<PawsInt>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			++((PawsInt*)var->value)->get();
 			return *var;
 		},
@@ -24,8 +24,8 @@ MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 
 	// Define integer prefix decrement
 	defineExpr2(pkgScope, "--$I<PawsInt>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			--((PawsInt*)var->value)->get();
 			return *var;
 		},
@@ -34,18 +34,18 @@ MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 
 	// Define integer postfix increment
 	defineExpr2(pkgScope, "$I<PawsInt>++",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
-			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()++));
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()++));
 		},
 		PawsInt::TYPE
 	);
 
 	// Define integer postfix decrement
 	defineExpr2(pkgScope, "$I<PawsInt>--",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			Variable* var = importSymbol(parentBlock, getIdExprASTName((IdExprAST*)params[0]));
-			return Variable(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()--));
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()--));
 		},
 		PawsInt::TYPE
 	);
@@ -112,8 +112,8 @@ MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 
 	// Define logical operators
 	defineExpr2(pkgScope, "$E<PawsInt> && $E<PawsInt>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			return Variable(PawsInt::TYPE, new PawsInt(
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() &&
 					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
 			));
@@ -121,8 +121,8 @@ MincPackage PAWS_INT("paws.int", [](BlockExprAST* pkgScope) {
 		PawsInt::TYPE
 	);
 	defineExpr2(pkgScope, "$E<PawsInt> || $E<PawsInt>",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			return Variable(PawsInt::TYPE, new PawsInt(
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ||
 					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
 			));

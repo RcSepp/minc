@@ -6,52 +6,61 @@
 #include <vector>
 
 struct MincObject {};
-struct BaseScopeType {};
+struct MincScopeType {};
 
-class ExprAST;
-class ListExprAST;
-class IdExprAST;
-class CastExprAST;
-class LiteralExprAST;
-class PlchldExprAST;
-class ListExprAST;
-class StmtAST;
-class BlockExprAST;
+class MincExpr;
+class MincListExpr;
+class MincStmt;
+class MincBlockExpr;
+class MincStopExpr;
+class MincLiteralExpr;
+class MincIdExpr;
+class MincCastExpr;
+class MincPlchldExpr;
+class MincParamExpr;
+class MincEllipsisExpr;
+class MincArgOpExpr;
+class MincEncOpExpr;
+class MincTerOpExpr;
+class MincPrefixExpr;
+class MincPostfixExpr;
+class MincBinOpExpr;
+class MincVarBinOpExpr;
 
 typedef int MatchScore;
 
 enum StepEventType { STEP_IN, STEP_OUT, STEP_SUSPEND, STEP_RESUME };
 
-struct Variable
+struct MincSymbol
 {
 	MincObject* type;
 	MincObject* value;
-	Variable() = default;
-	Variable(const Variable& v) = default;
-	Variable(MincObject* type, MincObject* value) : type(type), value(value) {}
+	MincSymbol() = default;
+	MincSymbol(const MincSymbol& v) = default;
+	MincSymbol(MincObject* type, MincObject* value) : type(type), value(value) {}
 };
 
-struct CodegenContext
+struct MincKernel
 {
-	virtual ~CodegenContext() {}
-	virtual Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params) = 0;
-	virtual MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const = 0;
+	virtual ~MincKernel() {}
+	virtual MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) = 0;
+	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };
 
-struct Cast
+struct MincCast
 {
 	MincObject* const fromType;
 	MincObject* const toType;
-	CodegenContext* const context;
-	Cast() = default;
-	Cast(const Cast&) = default;
-	Cast(MincObject* fromType, MincObject* toType, CodegenContext* context)
-		: fromType(fromType), toType(toType), context(context) {}
+	MincKernel* const kernel;
+	MincCast() = default;
+	MincCast(const MincCast&) = default;
+	MincCast(MincObject* fromType, MincObject* toType, MincKernel* kernel)
+		: fromType(fromType), toType(toType), kernel(kernel) {}
 	virtual int getCost() const = 0;
-	virtual Cast* derive() const = 0;
+	virtual MincCast* derive() const = 0;
 };
 
-struct Location
+struct MincLocation
 {
 	const char* filename;
 	unsigned begin_line, begin_column;
@@ -60,37 +69,37 @@ struct Location
 
 struct CompileError
 {
-	const Location loc;
+	const MincLocation loc;
 	char* msg;
 	int* refcount;
-	CompileError(const char* msg, Location loc={0});
-	CompileError(std::string msg, Location loc={0});
-	CompileError(const BlockExprAST* scope, Location loc, const char* fmt, ...);
+	CompileError(const char* msg, MincLocation loc={0});
+	CompileError(std::string msg, MincLocation loc={0});
+	CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
 	CompileError(CompileError& other);
 	~CompileError();
 	void print(std::ostream& out=std::cerr);
 };
 struct UndefinedStmtException : public CompileError
 {
-	UndefinedStmtException(const StmtAST* stmt);
+	UndefinedStmtException(const MincStmt* stmt);
 };
 struct UndefinedExprException : public CompileError
 {
-	UndefinedExprException(const ExprAST* expr);
+	UndefinedExprException(const MincExpr* expr);
 };
 struct UndefinedIdentifierException : public CompileError
 {
-	UndefinedIdentifierException(const IdExprAST* id);
+	UndefinedIdentifierException(const MincIdExpr* id);
 };
 struct InvalidTypeException : public CompileError
 {
-	InvalidTypeException(const PlchldExprAST* plchld);
+	InvalidTypeException(const MincPlchldExpr* plchld);
 };
 
-typedef void (*StmtBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs);
-typedef Variable (*ExprBlock)(BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs);
-typedef MincObject* (*ExprTypeBlock)(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params, void* exprArgs);
-typedef void (*ImptBlock)(Variable& symbol, BaseScopeType* fromScope, BaseScopeType* toScope);
-typedef void (*StepEvent)(const ExprAST* loc, StepEventType type, void* eventArgs);
+typedef void (*StmtBlock)(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs);
+typedef MincSymbol (*ExprBlock)(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs);
+typedef MincObject* (*ExprTypeBlock)(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs);
+typedef void (*ImptBlock)(MincSymbol& symbol, MincScopeType* fromScope, MincScopeType* toScope);
+typedef void (*StepEvent)(const MincExpr* loc, StepEventType type, void* eventArgs);
 
 #endif

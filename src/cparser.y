@@ -7,7 +7,7 @@
 %define api.value.type variant
 %parse-param {CLexer& scanner}
 %parse-param {const char* filename}
-%parse-param {BlockExprAST** rootBlock}
+%parse-param {MincBlockExpr** rootBlock}
 
 %code requires{
 	class CLexer;
@@ -23,7 +23,7 @@
 #undef yylex
 #define yylex scanner.yylex
 
-#define getloc(b, e) Location{filename, (unsigned)b.begin.line, (unsigned)b.begin.column, (unsigned)e.end.line, (unsigned)e.end.column}
+#define getloc(b, e) MincLocation{filename, (unsigned)b.begin.line, (unsigned)b.begin.column, (unsigned)e.end.line, (unsigned)e.end.column}
 %}
 
 %token ELLIPSIS // ...
@@ -32,9 +32,9 @@
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
-%type<std::vector<ExprAST*>*> block stmt_string
-%type<ListExprAST*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
-%type<ExprAST*> id_or_plchld expr
+%type<std::vector<MincExpr*>*> block stmt_string
+%type<MincListExpr*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
+%type<MincExpr*> id_or_plchld expr
 
 %start file
 %right '=' '?' ':'
@@ -53,7 +53,7 @@
 %%
 
 file
-	: block { *rootBlock = new BlockExprAST(getloc(@1, @1), $1); }
+	: block { *rootBlock = new MincBlockExpr(getloc(@1, @1), $1); }
 ;
 
 block
@@ -61,96 +61,96 @@ block
 ;
 
 stmt_string
-	: %empty { $$ = new std::vector<ExprAST*>(); }
-	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new StopExprAST(getloc(@3, @3))); }
-	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new BlockExprAST(getloc(@3, @5), $4)); }
+	: %empty { $$ = new std::vector<MincExpr*>(); }
+	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new MincStopExpr(getloc(@3, @3))); }
+	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new MincBlockExpr(getloc(@3, @5), $4)); }
 ;
 
 expr_string
-	: expr { $$ = new ListExprAST('\0'); $$->exprs.push_back($1); }
+	: expr { $$ = new MincListExpr('\0'); $$->exprs.push_back($1); }
 	| expr_string expr { ($$ = $1)->exprs.push_back($2); }
-	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@2, @2), $1->exprs.back()); }
+	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@2, @2), $1->exprs.back()); }
 ;
 
 optional_expr_string
-	: %empty { $$ = new ListExprAST('\0'); }
+	: %empty { $$ = new MincListExpr('\0'); }
 	| expr_string { $$ = $1; }
 ;
 
 expr_list
-	: expr_string { $$ = new ListExprAST(','); $$->exprs.push_back($1); }
+	: expr_string { $$ = new MincListExpr(','); $$->exprs.push_back($1); }
 	| expr_list ',' expr_string { ($$ = $1)->exprs.push_back($3); }
-	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
+	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
 ;
 
 expr_lists
-	: expr_list { $$ = new ListExprAST(';'); $$->exprs.push_back($1); }
+	: expr_list { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
 	| expr_lists ';' expr_list { ($$ = $1)->exprs.push_back($3); }
-	| expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new EllipsisExprAST(getloc(@3, @3), $1->exprs.back()); }
+	| expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
 ;
 
 optional_expr_lists
-	: %empty { $$ = new ListExprAST(';'); }
+	: %empty { $$ = new MincListExpr(';'); }
 	| expr_lists { $$ = $1; }
 ;
 
 id_or_plchld
-	: ID { $$ = new IdExprAST(getloc(@1, @1), $1); }
-	| PLCHLD1 { $$ = new PlchldExprAST(getloc(@1, @1), $1); }
-	| PLCHLD2 { $$ = new PlchldExprAST(getloc(@1, @1), $1); }
+	: ID { $$ = new MincIdExpr(getloc(@1, @1), $1); }
+	| PLCHLD1 { $$ = new MincPlchldExpr(getloc(@1, @1), $1); }
+	| PLCHLD2 { $$ = new MincPlchldExpr(getloc(@1, @1), $1); }
 ;
 
 expr
-	: LITERAL { $$ = new LiteralExprAST(getloc(@1, @1), $1); }
-	| PARAM { $$ = new ParamExprAST(getloc(@1, @1), $1); }
+	: LITERAL { $$ = new MincLiteralExpr(getloc(@1, @1), $1); }
+	| PARAM { $$ = new MincParamExpr(getloc(@1, @1), $1); }
 	| id_or_plchld { $$ = $1; }
 
 	// Enclosed expressions
-	| '(' optional_expr_lists ')' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'(', "(", ")", $2); }
-	| '[' optional_expr_lists ']' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'[', "[", "]", $2); }
-	| '<' optional_expr_lists '>' %prec ENC { $$ = new EncOpExprAST(getloc(@1, @3), (int)'<', "<", ">", $2); }
-	| '{' block '}' { $$ = new BlockExprAST(getloc(@1, @3), $2); }
+	| '(' optional_expr_lists ')' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'(', "(", ")", $2); }
+	| '[' optional_expr_lists ']' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'[', "[", "]", $2); }
+	| '<' optional_expr_lists '>' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'<', "<", ">", $2); }
+	| '{' block '}' { $$ = new MincBlockExpr(getloc(@1, @3), $2); }
 
 	// Parameterized expressions
-	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
-	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new ArgOpExprAST(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
+	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '[' optional_expr_lists ']' %prec SUBSCRIPT { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
+	| id_or_plchld '<' optional_expr_lists '>' %prec TPLT { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'<', "<", ">", $1, $3); }
 
 	// Tertiary operators
-	| expr '?' expr ':' expr { $$ = new TerOpExprAST(getloc(@1, @5), (int)'?', (int)':', "?", ":", $1, $3, $5); }
+	| expr '?' expr ':' expr { $$ = new MincTerOpExpr(getloc(@1, @5), (int)'?', (int)':', "?", ":", $1, $3, $5); }
 
 	// Binary operators
-	| expr '=' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'=', "=", $1, $3); }
-	| expr '.' id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)'.', ".", $1, $3); }
-	| expr '.' ELLIPSIS { $$ = new VarBinOpExprAST(getloc(@1, @3), (int)'.', ".", $1); }
-	| expr DM id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
-	| expr SR id_or_plchld { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::SR, "::", $1, $3); }
-	| expr '+' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'+', "+", $1, $3); }
-	| expr '-' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'-', "-", $1, $3); }
-	| expr '*' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'*', "*", $1, $3); }
-	| expr '/' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'/', "/", $1, $3); }
-	| expr '&' expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)'&', "&", $1, $3); }
-	| expr EQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::EQ, "==", $1, $3); }
-	| expr NE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
-	| expr GEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
-	| expr LEQ expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
-	| expr GR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::GR, ">>", $1, $3); }
-	| expr LE expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::LE, "<<", $1, $3); }
-	| expr AND expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
-	| expr OR expr { $$ = new BinOpExprAST(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
+	| expr '=' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'=', "=", $1, $3); }
+	| expr '.' id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'.', ".", $1, $3); }
+	| expr '.' ELLIPSIS { $$ = new MincVarBinOpExpr(getloc(@1, @3), (int)'.', ".", $1); }
+	| expr DM id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::DM, "->", $1, $3); }
+	| expr SR id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::SR, "::", $1, $3); }
+	| expr '+' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'+', "+", $1, $3); }
+	| expr '-' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'-', "-", $1, $3); }
+	| expr '*' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'*', "*", $1, $3); }
+	| expr '/' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'/', "/", $1, $3); }
+	| expr '&' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'&', "&", $1, $3); }
+	| expr EQ expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::EQ, "==", $1, $3); }
+	| expr NE expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::NE, "!=", $1, $3); }
+	| expr GEQ expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::GEQ, ">=", $1, $3); }
+	| expr LEQ expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::LEQ, "<=", $1, $3); }
+	| expr GR expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::GR, ">>", $1, $3); }
+	| expr LE expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::LE, "<<", $1, $3); }
+	| expr AND expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
+	| expr OR expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
 
 	// Unary operators
-	| '*' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'*', "*", $2); }
-	| expr '*' { $$ = new PostfixExprAST(getloc(@1, @2), (int)'*', "*", $1); }
-	| '!' expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)'!', "!", $2); }
-	| '&' expr %prec REF { $$ = new PrefixExprAST(getloc(@1, @2), (int)'&', "&", $2); }
-	| expr ':' { $$ = new PostfixExprAST(getloc(@1, @2), (int)':', ":", $1); }
-	| AWT expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::AWT, "await", $2); }
-	| NEW expr { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::NEW, "new", $2); }
-	| INC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::INC, "++", $2); }
-	| DEC id_or_plchld %prec PREINC { $$ = new PrefixExprAST(getloc(@1, @2), (int)token::DEC, "--", $2); }
-	| id_or_plchld INC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::INC, "++", $1); }
-	| id_or_plchld DEC %prec POSTINC { $$ = new PostfixExprAST(getloc(@1, @2), (int)token::DEC, "--", $1); }
+	| '*' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'*', "*", $2); }
+	| expr '*' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)'*', "*", $1); }
+	| '!' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'!', "!", $2); }
+	| '&' expr %prec REF { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'&', "&", $2); }
+	| expr ':' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)':', ":", $1); }
+	| AWT expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::AWT, "await", $2); }
+	| NEW expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NEW, "new", $2); }
+	| INC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::INC, "++", $2); }
+	| DEC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::DEC, "--", $2); }
+	| id_or_plchld INC %prec POSTINC { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::INC, "++", $1); }
+	| id_or_plchld DEC %prec POSTINC { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::DEC, "--", $1); }
 ;
 
 %%
@@ -162,7 +162,7 @@ void yy::CParser::error( const location_type &l, const std::string &err_message 
 
 extern "C"
 {
-	BlockExprAST* parseCFile(const char* filename)
+	MincBlockExpr* parseCFile(const char* filename)
 	{
 		// Open source file
 		std::ifstream in(filename);
@@ -173,7 +173,7 @@ extern "C"
 		}
 
 		// Parse file into rootBlock
-		BlockExprAST* rootBlock;
+		MincBlockExpr* rootBlock;
 		CLexer lexer(&in, &std::cout);
 		yy::CParser parser(lexer, filename, &rootBlock);
 		parser.parse();
@@ -184,7 +184,7 @@ extern "C"
 		return rootBlock;
 	}
 
-	const std::vector<ExprAST*> parseCTplt(const char* tpltStr)
+	const std::vector<MincExpr*> parseCTplt(const char* tpltStr)
 	{
 		// Append STOP expr to make tpltStr a valid statement
 		std::stringstream ss(tpltStr);
@@ -192,7 +192,7 @@ extern "C"
 
 		// Parse tpltStr into tpltBlock
 		CLexer lexer(ss, std::cout);
-		BlockExprAST* tpltBlock;
+		MincBlockExpr* tpltBlock;
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
 		if (parser.parse())
 		{
@@ -202,11 +202,11 @@ extern "C"
 			//throw CompileError("error parsing template " + std::string(tpltStr));
 
 		// Remove appended STOP expr if last expr is $B
-		assert(tpltBlock->exprs->back()->exprtype == ExprAST::ExprType::STOP);
+		assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);
 		if (tpltBlock->exprs->size() >= 2)
 		{
-			const PlchldExprAST* lastExpr = (const PlchldExprAST*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-			if (lastExpr->exprtype == ExprAST::ExprType::PLCHLD && lastExpr->p1 == 'B')
+			const MincPlchldExpr* lastExpr = (const MincPlchldExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if (lastExpr->exprtype == MincExpr::ExprType::PLCHLD && lastExpr->p1 == 'B')
 				tpltBlock->exprs->pop_back();
 		}
 

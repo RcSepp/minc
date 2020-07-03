@@ -6,27 +6,27 @@
 #include <mutex>
 #include <vector>
 
-class BlockExprAST;
+class MincBlockExpr;
 
-typedef void (*MincPackageFunc)(BlockExprAST* pkgScope);
+typedef void (*MincPkgFunc)(MincBlockExpr* pkgScope);
 
 class MincPackage
 {
 private:
 	std::mutex loadMutex;
 	std::string parentName;
-	const MincPackageFunc defineFunc;
-	BlockExprAST *pkgScope, *defineBlock;
+	const MincPkgFunc defineFunc;
+	MincBlockExpr *pkgScope, *defineBlock;
 
 protected:
 	static const char PKG_PATH_SEPARATOR;
-	virtual void definePackage(BlockExprAST* pkgScope) { defineFunc(pkgScope); }
+	virtual void definePackage(MincBlockExpr* pkgScope) { defineFunc(pkgScope); }
 
 public:
-	MincPackage(const char* name, MincPackageFunc defineFunc=nullptr, BlockExprAST* defineBlock=nullptr);
+	MincPackage(const char* name, MincPkgFunc defineFunc=nullptr, MincBlockExpr* defineBlock=nullptr);
 	virtual ~MincPackage();
-	BlockExprAST* load(BlockExprAST* importer);
-	void import(BlockExprAST* scope);
+	MincBlockExpr* load(MincBlockExpr* importer);
+	void import(MincBlockExpr* scope);
 };
 
 class MincPackageManager : public MincPackage
@@ -34,15 +34,15 @@ class MincPackageManager : public MincPackage
 private:
 	std::map<std::string, MincPackage*> packages;
 	std::vector<std::string> pkgSearchPaths;
-	void definePackage(BlockExprAST* pkgScope);
+	void definePackage(MincBlockExpr* pkgScope);
 	MincPackage* discoverPackage(std::string pkgName) const;
 
 public:
 	MincPackageManager();
 	bool registerPackage(std::string pkgName, MincPackage* package);
-	BlockExprAST* loadPackage(std::string pkgName, BlockExprAST* importer) const;
-	void importPackage(BlockExprAST* scope, std::string pkgName) const;
-	bool tryImportPackage(BlockExprAST* scope, std::string pkgName) const;
+	MincBlockExpr* loadPackage(std::string pkgName, MincBlockExpr* importer) const;
+	void importPackage(MincBlockExpr* scope, std::string pkgName) const;
+	bool tryImportPackage(MincBlockExpr* scope, std::string pkgName) const;
 };
 MincPackageManager& MINC_PACKAGE_MANAGER();
 

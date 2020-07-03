@@ -17,7 +17,7 @@ template<> const std::string PawsStringMap::toString() const
 	return str;
 }
 
-MincPackage PAWS_STRING("paws.string", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 
 	// >>> PawsString expressions
 
@@ -91,13 +91,13 @@ MincPackage PAWS_STRING("paws.string", [](BlockExprAST* pkgScope) {
 
 	// Define string map constructor
 	defineExpr2(pkgScope, "map($E<PawsString>: $E<PawsString>, ...)",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* exprArgs) -> Variable {
-			std::vector<ExprAST*>& keys = getListExprASTExprs((ListExprAST*)params[0]);
-			std::vector<ExprAST*>& values = getListExprASTExprs((ListExprAST*)params[1]);
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			std::vector<MincExpr*>& keys = getListExprExprs((MincListExpr*)params[0]);
+			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[1]);
 			std::map<std::string, std::string> map;
 			for (size_t i = 0; i < keys.size(); ++i)
 				map[((PawsString*)codegenExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)codegenExpr(values[i], parentBlock).value)->get();
-			return Variable(PawsStringMap::TYPE, new PawsStringMap(map));
+			return MincSymbol(PawsStringMap::TYPE, new PawsStringMap(map));
 		},
 		PawsStringMap::TYPE
 	);
@@ -119,19 +119,19 @@ MincPackage PAWS_STRING("paws.string", [](BlockExprAST* pkgScope) {
 
 	// Define string map iterating for statement
 	defineStmt2(pkgScope, "for ($I, $I: $E<PawsStringMap>) $B",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			IdExprAST* keyExpr = (IdExprAST*)params[0];
-			IdExprAST* valueExpr = (IdExprAST*)params[1];
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
+			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
 			PawsStringMap* map = (PawsStringMap*)codegenExpr(params[2], parentBlock).value;
-			BlockExprAST* body = (BlockExprAST*)params[3];
+			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString key, value;
-			defineSymbol(body, getIdExprASTName(keyExpr), PawsString::TYPE, &key);
-			defineSymbol(body, getIdExprASTName(valueExpr), PawsString::TYPE, &value);
+			defineSymbol(body, getIdExprName(keyExpr), PawsString::TYPE, &key);
+			defineSymbol(body, getIdExprName(valueExpr), PawsString::TYPE, &value);
 			for (std::pair<const std::string, std::string> pair: map->get())
 			{
 				key.set(pair.first);
 				value.set(pair.second);
-				codegenExpr((ExprAST*)body, parentBlock);
+				codegenExpr((MincExpr*)body, parentBlock);
 			}
 		}
 	);

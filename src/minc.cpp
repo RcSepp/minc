@@ -70,14 +70,14 @@ int main(int argc, char** argv)
 
 	// >>> Parse source code from file or stdin into AST
 
-	BlockExprAST* rootBlock = nullptr;
+	MincBlockExpr* rootBlock = nullptr;
 	const char* const PY_EXT = ".py";
 	const int LEN_PY_EXT = 3;
 	try {
 		if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
-			rootBlock = BlockExprAST::parsePythonFile(realPath);
+			rootBlock = MincBlockExpr::parsePythonFile(realPath);
 		else
-			rootBlock = BlockExprAST::parseCFile(realPath);
+			rootBlock = MincBlockExpr::parseCFile(realPath);
 	} catch (CompileError err) {
 		err.print(std::cerr);
 		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }

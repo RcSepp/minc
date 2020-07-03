@@ -6,15 +6,15 @@
 
 typedef PawsValue<std::fstream&> PawsFile;
 
-MincPackage PAWS_FILEIO("paws.fileio", [](BlockExprAST* pkgScope) {
+MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
 
 	defineStmt2(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
-		[](BlockExprAST* parentBlock, std::vector<ExprAST*>& params, void* stmtArgs) {
-			const char* varname = getIdExprASTName((IdExprAST*)params[0]);
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			const char* varname = getIdExprName((MincIdExpr*)params[0]);
 			const std::string& filename = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
 			const std::string& mode = ((PawsString*)codegenExpr(params[2], parentBlock).value)->get();
-			BlockExprAST* block = (BlockExprAST*)params[3];
+			MincBlockExpr* block = (MincBlockExpr*)params[3];
 
 			std::ios_base::openmode openmode = (std::ios_base::openmode)0;
 			for (char m: mode)
@@ -34,7 +34,7 @@ MincPackage PAWS_FILEIO("paws.fileio", [](BlockExprAST* pkgScope) {
 
 			try
 			{
-				codegenExpr((ExprAST*)block, parentBlock);
+				codegenExpr((MincExpr*)block, parentBlock);
 			}
 			catch (...)
 			{

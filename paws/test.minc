@@ -6,7 +6,7 @@ import paws.stmtreg;
 PawsVoid test_basic()
 {
 	// Test expression `getFileScope()` and expression `test($E<PawsBase>)`
-	assert type(getFileScope()) == PawsBlockExprAST;
+	assert type(getFileScope()) == PawsBlockExpr;
 
 	// Test symbol `FILE_SCOPE_TYPE`
 	assert type(FILE_SCOPE_TYPE) == PawsScopeType;

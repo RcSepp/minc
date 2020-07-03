@@ -1,7 +1,7 @@
 #include "minc_api.hpp"
 
-InheritanceCast::InheritanceCast(MincObject* fromType, MincObject* toType, CodegenContext* context)
-	: Cast(fromType, toType, context)
+InheritanceCast::InheritanceCast(MincObject* fromType, MincObject* toType, MincKernel* kernel)
+	: MincCast(fromType, toType, kernel)
 {
 }
 
@@ -10,13 +10,13 @@ int InheritanceCast::getCost() const
 	return 0;
 }
 
-Cast* InheritanceCast::derive() const
+MincCast* InheritanceCast::derive() const
 {
 	return nullptr;
 }
 
-TypeCast::TypeCast(MincObject* fromType, MincObject* toType, CodegenContext* context)
-	: Cast(fromType, toType, context)
+TypeCast::TypeCast(MincObject* fromType, MincObject* toType, MincKernel* kernel)
+	: MincCast(fromType, toType, kernel)
 {
 }
 
@@ -25,42 +25,42 @@ int TypeCast::getCost() const
 	return 1;
 }
 
-Cast* TypeCast::derive() const
+MincCast* TypeCast::derive() const
 {
-	return new TypeCast(fromType, toType, context);
+	return new TypeCast(fromType, toType, kernel);
 }
 
-struct IndirectCast : public Cast, public CodegenContext
+struct IndirectCast : public MincCast, public MincKernel
 {
-	Cast* first;
-	Cast* second;
+	MincCast* first;
+	MincCast* second;
 
-	IndirectCast(Cast* first, Cast* second)
-		: Cast(first->fromType, second->toType, this), first(first), second(second) {}
+	IndirectCast(MincCast* first, MincCast* second)
+		: MincCast(first->fromType, second->toType, this), first(first), second(second) {}
 	int getCost() const { return first->getCost() + second->getCost(); }
-	Cast* derive() const
+	MincCast* derive() const
 	{
-		Cast* derivedSecond = second->derive();
+		MincCast* derivedSecond = second->derive();
 		return derivedSecond == nullptr ? first : new IndirectCast(first, derivedSecond);
 	}
 
-	Variable codegen(BlockExprAST* parentBlock, std::vector<ExprAST*>& params)
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		std::vector<ExprAST*> _params(1, new CastExprAST(first, params[0])); //TODO: make params const and implement this inline (`codegen(parentBlock, { new CastExprAST(first, params[0]) });`)
-		return second->context->codegen(parentBlock, _params);
+		std::vector<MincExpr*> _params(1, new MincCastExpr(first, params[0])); //TODO: make params const and implement this inline (`codegen(parentBlock, { new MincCastExpr(first, params[0]) });`)
+		return second->kernel->codegen(parentBlock, _params);
 	}
-	MincObject* getType(const BlockExprAST* parentBlock, const std::vector<ExprAST*>& params) const
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
-		return second->context->getType(parentBlock, { new CastExprAST(first, params[0]) });
+		return second->kernel->getType(parentBlock, { new MincCastExpr(first, params[0]) });
 	}
 };
 
-CastRegister::CastRegister(BlockExprAST* block)
+CastRegister::CastRegister(MincBlockExpr* block)
 	: block(block)
 {
 }
 
-void CastRegister::defineDirectCast(Cast* cast)
+void CastRegister::defineDirectCast(MincCast* cast)
 {
 	const auto& key = std::make_pair(cast->fromType, cast->toType);
 	casts[key] = cast;
@@ -70,7 +70,7 @@ void CastRegister::defineDirectCast(Cast* cast)
 
 // // Print type-casts
 // if (fromTypeName[fromTypeName.size() - 1] != ')'
-// 	&& fromTypeName.rfind("ExprAST<", 0)
+// 	&& fromTypeName.rfind("MincExpr<", 0)
 // 	&& fromTypeName.find("UNKNOWN_TYPE") == std::string::npos
 // 	&& (toTypeName != "MincObject")
 // 	&& (toTypeName != "BuiltinType")
@@ -80,14 +80,14 @@ void CastRegister::defineDirectCast(Cast* cast)
 // 	std::cout << "    " << fromTypeName << "-->|" << cast->getCost() << "|" << toTypeName << ";\n";
 }
 
-void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
+void CastRegister::defineIndirectCast(const CastRegister& castreg, MincCast* cast)
 {
-	std::map<std::pair<MincObject*, MincObject*>, Cast*>::const_iterator existingCast;
+	std::map<std::pair<MincObject*, MincObject*>, MincCast*>::const_iterator existingCast;
 
 	auto toTypefwdCasts = castreg.fwdCasts.equal_range(cast->toType);
 	for (auto iter = toTypefwdCasts.first; iter != toTypefwdCasts.second; ++iter)
 	{
-		Cast* c = iter->second;
+		MincCast* c = iter->second;
 		// Define cast        |----------------------->|
 		//             cast->fromType cast->toType c->toType
 
@@ -107,7 +107,7 @@ void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
 	auto fromTypebwdCasts = castreg.bwdCasts.equal_range(cast->fromType);
 	for (auto iter = fromTypebwdCasts.first; iter != fromTypebwdCasts.second; ++iter)
 	{
-		Cast* c = iter->second;
+		MincCast* c = iter->second;
 		// Define cast      |------------------------->|
 		//             c->fromType cast->fromType cast->toType
 
@@ -126,7 +126,7 @@ void CastRegister::defineIndirectCast(const CastRegister& castreg, Cast* cast)
 	}
 }
 
-const Cast* CastRegister::lookupCast(MincObject* fromType, MincObject* toType) const
+const MincCast* CastRegister::lookupCast(MincObject* fromType, MincObject* toType) const
 {
 	const auto& cast = casts.find(std::make_pair(fromType, toType));
 	return cast == casts.end() ? nullptr : cast->second;
@@ -140,7 +140,7 @@ bool CastRegister::isInstance(MincObject* derivedType, MincObject* baseType) con
 
 void CastRegister::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
 {
-	for (const std::pair<std::pair<MincObject*, MincObject*>, Cast*>& cast: this->casts)
+	for (const std::pair<std::pair<MincObject*, MincObject*>, MincCast*>& cast: this->casts)
 		casts.push_back(cast.first);
 }
 
@@ -149,8 +149,8 @@ size_t CastRegister::countCasts() const
 	return casts.size();
 }
 
-void CastRegister::iterateCasts(std::function<void(const Cast* cast)> cbk) const
+void CastRegister::iterateCasts(std::function<void(const MincCast* cast)> cbk) const
 {
-	for (const std::pair<const std::pair<MincObject*, MincObject*>, Cast*>& iter: casts)
+	for (const std::pair<const std::pair<MincObject*, MincObject*>, MincCast*>& iter: casts)
 		cbk(iter.second);
 }

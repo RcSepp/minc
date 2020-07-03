@@ -7,21 +7,21 @@
 
 struct Struct : public PawsType
 {
-	struct Variable
+	struct MincSymbol
 	{
 		PawsType* type;
-		ExprAST* initExpr;
+		MincExpr* initExpr;
 	};
 	struct Method : public PawsRegularFunc
 	{
 	};
 
-	std::map<std::string, Variable> variables;
+	std::map<std::string, MincSymbol> variables;
 	std::multimap<std::string, Method> methods;
 	std::vector<PawsType*> constructors;
 };
 
-void defineStruct(BlockExprAST* scope, const char* name, Struct* strct);
+void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct);
 
 struct StructInstance
 {
@@ -29,6 +29,6 @@ struct StructInstance
 };
 typedef PawsValue<StructInstance*> PawsStructInstance;
 
-void defineStructInstance(BlockExprAST* scope, const char* name, Struct* strct, StructInstance* instance);
+void defineStructInstance(MincBlockExpr* scope, const char* name, Struct* strct, StructInstance* instance);
 
 #endif

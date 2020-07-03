@@ -48,7 +48,7 @@ void registerValueSerializer(GetValueStrFunc serializer)
 {
 	valueSerializers.push_back(serializer);
 }
-bool getValueStr(const Variable& symbol, std::string* valueStr)
+bool getValueStr(const MincSymbol& symbol, std::string* valueStr)
 {
 	for (GetValueStrFunc valueSerializer: valueSerializers)
 		if (valueSerializer(symbol, valueStr))
@@ -204,33 +204,33 @@ struct Scope
 };
 struct Packages : public Scope, public Identifiable
 {
-	const BlockExprAST* const block;
-	Packages(const BlockExprAST* const block) : block(block) {}
+	const MincBlockExpr* const block;
+	Packages(const MincBlockExpr* const block) : block(block) {}
 	dap::Scope scope() { return dap::Scope(); }
 	dap::array<dap::Variable> variables();
 };
 struct Parameters : public Scope, public Identifiable
 {
-	const ExprAST* tplt;
-	ExprAST* expr;
-	const BlockExprAST* const block;
-	Parameters(const ExprAST* tplt, ExprAST* expr, const BlockExprAST* const block) : tplt(tplt), expr(expr), block(block) {}
+	const MincExpr* tplt;
+	MincExpr* expr;
+	const MincBlockExpr* const block;
+	Parameters(const MincExpr* tplt, MincExpr* expr, const MincBlockExpr* const block) : tplt(tplt), expr(expr), block(block) {}
 	dap::Scope scope() { return dap::Scope(); }
 	dap::array<dap::Variable> variables();
 };
 struct ExprCandidates : public Scope, public Identifiable
 {
-	ExprAST* expr;
-	const BlockExprAST* const block;
-	ExprCandidates(ExprAST* expr, const BlockExprAST* const block) : expr(expr), block(block) {}
+	MincExpr* expr;
+	const MincBlockExpr* const block;
+	ExprCandidates(MincExpr* expr, const MincBlockExpr* const block) : expr(expr), block(block) {}
 	dap::Scope scope() { return dap::Scope(); }
 	dap::array<dap::Variable> variables();
 };
 struct StmtCandidates : public Scope, public Identifiable
 {
-	const StmtAST* stmt;
-	const BlockExprAST* const block;
-	StmtCandidates(const StmtAST* stmt, const BlockExprAST* const block) : stmt(stmt), block(block) {}
+	const MincStmt* stmt;
+	const MincBlockExpr* const block;
+	StmtCandidates(const MincStmt* stmt, const MincBlockExpr* const block) : stmt(stmt), block(block) {}
 	dap::Scope scope() { return dap::Scope(); }
 	dap::array<dap::Variable> variables();
 };
@@ -240,8 +240,8 @@ dap::array<dap::Variable> Packages::variables()
 	dap::Variable var;
 
 	int i = 1;
-	for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)
-		for (const BlockExprAST* ref: block->references)
+	for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
+		for (const MincBlockExpr* ref: block->references)
 		{
 			var.name = dap::string(ref->name);
 			if (var.name == "")
@@ -257,11 +257,11 @@ dap::array<dap::Variable> Parameters::variables()
 	dap::array<dap::Variable> variables;
 	dap::Variable var;
 
-	std::vector<ExprAST*> params;
+	std::vector<MincExpr*> params;
 	size_t paramIdx = params.size();
 	tplt->collectParams(block, expr, params, paramIdx);
 	int i = 0;
-	for (ExprAST* param: params)
+	for (MincExpr* param: params)
 	{
 		var.name = "$" + std::to_string(i++);
 		var.value = param->shortStr();
@@ -277,9 +277,9 @@ dap::array<dap::Variable> ExprCandidates::variables()
 	dap::array<dap::Variable> variables;
 	dap::Variable var;
 
-	if (expr->exprtype == ExprAST::CAST)
+	if (expr->exprtype == MincExpr::CAST)
 	{
-		expr = ((CastExprAST*)expr)->getSourceExpr();
+		expr = ((MincCastExpr*)expr)->getSourceExpr();
 		var.name = "$0";
 		var.value = expr->shortStr();
 		var.type = block->lookupSymbolName(expr->getType(block), "UNKNOWN_TYPE");
@@ -288,14 +288,14 @@ dap::array<dap::Variable> ExprCandidates::variables()
 	}
 	else
 	{
-		std::multimap<MatchScore, const std::pair<const ExprAST*, CodegenContext*>> candidates;
+		std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>> candidates;
 		block->lookupExprCandidates(expr, candidates);
 		int i = 1;
 		for (auto& candidate: candidates)
 		{
 			var.name = "Expression Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
 			var.value = candidate.second.first->shortStr();
-			std::vector<ExprAST*> params;
+			std::vector<MincExpr*> params;
 			size_t paramIdx = params.size();
 			candidate.second.first->collectParams(block, expr, params, paramIdx);
 			if (params.size() > 0 && params[0] != expr)
@@ -311,15 +311,15 @@ dap::array<dap::Variable> StmtCandidates::variables()
 	dap::array<dap::Variable> variables;
 	dap::Variable var;
 
-	std::multimap<MatchScore, const std::pair<const ListExprAST*, CodegenContext*>> candidates;
-	ListExprAST stmtExprs('\0', std::vector<ExprAST*>(stmt->begin, stmt->end));
+	std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>> candidates;
+	MincListExpr stmtExprs('\0', std::vector<MincExpr*>(stmt->begin, stmt->end));
 	this->block->lookupStmtCandidates(&stmtExprs, candidates);
 	int i = 1;
 	for (auto& candidate: candidates)
 	{
 		var.name = "Statement Candidate " + std::to_string(i++) + " (Score=" + std::to_string(candidate.first) + ")";
 		var.value = candidate.second.first->shortStr();
-		var.variablesReference = (new Parameters(candidate.second.first, const_cast<StmtAST*>(stmt), block))->id; //TODO: Remove const_cast
+		var.variablesReference = (new Parameters(candidate.second.first, const_cast<MincStmt*>(stmt), block))->id; //TODO: Remove const_cast
 		variables.push_back(var);
 	}
 
@@ -340,8 +340,8 @@ public:
 	{
 		struct Locals : public Scope, public Identifiable
 		{
-			const BlockExprAST* const block;
-			Locals(const BlockExprAST* const block) : block(block) {}
+			const MincBlockExpr* const block;
+			Locals(const MincBlockExpr* const block) : block(block) {}
 			dap::Scope scope()
 			{
 				dap::Scope scope;
@@ -354,7 +354,7 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const std::string& name, const Variable& symbol) {
+				auto cbk = [&](const std::string& name, const MincSymbol& symbol) {
 					dap::Variable var;
 					var.name = name;
 					if (!getValueStr(symbol, &var.value))
@@ -362,10 +362,10 @@ public:
 					var.type = "thee ol' mighty " + block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
 					variables.push_back(var);
 				};
-				for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)
+				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
 				{
 					block->iterateSymbols(cbk);
-					for (const BlockExprAST* ref: block->references)
+					for (const MincBlockExpr* ref: block->references)
 						ref->iterateSymbols(cbk);
 				}
 				return variables;
@@ -373,8 +373,8 @@ public:
 		} locals;
 		struct Statements : public Scope, public Identifiable //TODO: Move to MincScope -> Packages
 		{
-			const BlockExprAST* const block;
-			Statements(const BlockExprAST* const block) : block(block) {}
+			const MincBlockExpr* const block;
+			Statements(const MincBlockExpr* const block) : block(block) {}
 			dap::Scope scope()
 			{
 				dap::Scope scope;
@@ -387,15 +387,15 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const ListExprAST* tplt, const CodegenContext* stmt) {
+				auto cbk = [&](const MincListExpr* tplt, const MincKernel* stmt) {
 					dap::Variable var;
 					var.name = tplt->shortStr();
 					variables.push_back(var);
 				};
-				for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)
+				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
 				{
 					block->iterateStmts(cbk);
-					for (const BlockExprAST* ref: block->references)
+					for (const MincBlockExpr* ref: block->references)
 						ref->iterateStmts(cbk);
 				}
 				return variables;
@@ -403,8 +403,8 @@ public:
 		} statements;
 		struct Expressions : public Scope, public Identifiable //TODO: Move to MincScope -> Packages
 		{
-			const BlockExprAST* const block;
-			Expressions(const BlockExprAST* const block) : block(block) {}
+			const MincBlockExpr* const block;
+			Expressions(const MincBlockExpr* const block) : block(block) {}
 			dap::Scope scope()
 			{
 				dap::Scope scope;
@@ -417,15 +417,15 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const ExprAST* tplt, const CodegenContext* expr) {
+				auto cbk = [&](const MincExpr* tplt, const MincKernel* expr) {
 					dap::Variable var;
 					var.name = tplt->shortStr();
 					variables.push_back(var);
 				};
-				for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)
+				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
 				{
 					block->iterateExprs(cbk);
-					for (const BlockExprAST* ref: block->references)
+					for (const MincBlockExpr* ref: block->references)
 						ref->iterateExprs(cbk);
 				}
 				return variables;
@@ -433,8 +433,8 @@ public:
 		} expressions;
 		struct MincScope : public Scope, public Identifiable
 		{
-			const BlockExprAST* const block;
-			MincScope(const BlockExprAST* const block) : block(block) {}
+			const MincBlockExpr* const block;
+			MincScope(const MincBlockExpr* const block) : block(block) {}
 			dap::Scope scope()
 			{
 				dap::Scope scope;
@@ -451,13 +451,13 @@ public:
 
 				var.name = "Packages";
 				size_t numReferences = 0;
-				for (const BlockExprAST* block = this->block; block != nullptr; block = block->parent)
+				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
 					numReferences += block->references.size();
 				var.namedVariables = numReferences;
 				var.variablesReference = (new Packages(block))->id;
 				variables.push_back(var);
 
-				const StmtAST* stmt = block->getCurrentStmt();
+				const MincStmt* stmt = block->getCurrentStmt();
 				var.name = "Current Statement";
 				var.value = stmt->shortStr();
 				var.namedVariables = dap::optional<dap::integer>();
@@ -467,10 +467,10 @@ public:
 				return variables;
 			}
 		} mincScope;
-		const BlockExprAST* const block;
+		const MincBlockExpr* const block;
 
 
-		StackFrame(const BlockExprAST* block) : locals(block), statements(block), expressions(block), mincScope(block), block(block)
+		StackFrame(const MincBlockExpr* block) : locals(block), statements(block), expressions(block), mincScope(block), block(block)
 		{
 			name = block->name;
 			if (name.empty())
@@ -491,7 +491,7 @@ public:
 	};
 
 private:
-	BlockExprAST* const rootBlock;
+	MincBlockExpr* const rootBlock;
 	std::shared_ptr<dap::Writer> log;
 	std::mutex mutex;
 	int line = 1;
@@ -532,10 +532,10 @@ private:
 	}
 
 public:
-	Debugger(BlockExprAST* rootBlock, std::shared_ptr<dap::Writer> log)
+	Debugger(MincBlockExpr* rootBlock, std::shared_ptr<dap::Writer> log)
 		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false), rootBlock(rootBlock), log(log)
 	{
-		registerStepEventListener([](const ExprAST* loc, StepEventType type, void* eventArgs) { ((Debugger*)eventArgs)->onStep(loc, type); }, this);
+		registerStepEventListener([](const MincExpr* loc, StepEventType type, void* eventArgs) { ((Debugger*)eventArgs)->onStep(loc, type); }, this);
 		registerHandler(&Debugger::onInitialize);
 		registerSentHandler(&Debugger::onInitializeResponse);
 		registerHandler(&Debugger::onConfigurationDoneRequest);
@@ -577,7 +577,7 @@ public:
 
 #ifdef DEBUG_MULTITHREADING
 const char* path = "/home/sepp/Development/minc/paws/example11.minc";
-BlockExprAST* rootBlock2;
+MincBlockExpr* rootBlock2;
 std::ifstream in(path);
 if (!in.good())
 {
@@ -592,9 +592,9 @@ if (parser.parse())
 	return -1;
 }
 MINC_PACKAGE_MANAGER().import(rootBlock2); // Import package manager
-auto t = std::thread([](Debugger* debugger, BlockExprAST* rootBlock2) {
+auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 	try {
-		codegenExpr((ExprAST*)rootBlock2, nullptr);
+		codegenExpr((MincExpr*)rootBlock2, nullptr);
 		debugger->session->send(dap::TerminatedEvent());
 	} catch (ExitException err) {
 		debugger->session->send(dap::TerminatedEvent());
@@ -647,7 +647,7 @@ t.join();
 	// >>> MINC EVENT HANDLERS
 
 private:
-	void onStep(const ExprAST* expr, StepEventType type)
+	void onStep(const MincExpr* expr, StepEventType type)
 	{
 		std::unique_lock<std::mutex> lock(mutex);
 
@@ -676,25 +676,25 @@ private:
 		case STEP_RESUME: dap::writef(log, "RESUME"); break;
 		}
 
-		if (expr->exprtype == ExprAST::BLOCK) dap::writef(log, " BLOCK");
-		else if (expr->exprtype == ExprAST::STMT) dap::writef(log, " STMT");
+		if (expr->exprtype == MincExpr::BLOCK) dap::writef(log, " BLOCK");
+		else if (expr->exprtype == MincExpr::STMT) dap::writef(log, " STMT");
 		else dap::writef(log, " EXPR");
 
 		if (expr->loc.begin_line == expr->loc.end_line) dap::writef(log, " %i\n", expr->loc.begin_line);
 		else dap::writef(log, " %i...%i\n", expr->loc.begin_line, expr->loc.end_line);
 #endif
 
-		if (expr->exprtype == ExprAST::BLOCK)
+		if (expr->exprtype == MincExpr::BLOCK)
 		{
 			// Skip anonymous blocks if they are disabled, unless this is a root block
-			if (!traceAnonymousBlocks && !callStack.empty() && ((BlockExprAST*)expr)->name.empty())
+			if (!traceAnonymousBlocks && !callStack.empty() && ((MincBlockExpr*)expr)->name.empty())
 				return;
 
 			switch (type)
 			{
 			case STEP_IN:
 			case STEP_RESUME:
-				callStack.push_back(StackFrame((BlockExprAST*)expr));
+				callStack.push_back(StackFrame((MincBlockExpr*)expr));
 				break;
 
 			case STEP_OUT:
@@ -703,7 +703,7 @@ private:
 				break;
 			}
 		}
-		else if (expr->exprtype == ExprAST::STMT)
+		else if (expr->exprtype == MincExpr::STMT)
 		{
 			assert(!callStack.empty());
 			StackFrame& top = callStack.back();
@@ -848,7 +848,7 @@ private:
 		if (frame == nullptr)
 			return dap::Error("Unknown frameId '%d'", int(request.frameId));
 
-		//const BlockExprAST* const block = frame->block;
+		//const MincBlockExpr* const block = frame->block;
 		dap::ScopesResponse response;
 		response.scopes.push_back(frame->locals.scope());
 		response.scopes.push_back(frame->expressions.scope());
@@ -992,7 +992,7 @@ private:
 	}
 };
 
-int launchDebugClient(BlockExprAST* rootBlock)
+int launchDebugClient(MincBlockExpr* rootBlock)
 {
 #ifdef OS_WINDOWS
   // Change stdin & stdout from text mode to binary mode.

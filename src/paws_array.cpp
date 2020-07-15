@@ -4,6 +4,20 @@
 
 typedef PawsValue<std::vector<MincObject*>> PawsArray;
 
+template<> const std::string PawsArray::toString() const
+{
+	const size_t size = val.size();
+	if (size == 0)
+		return "[]";
+	else
+	{
+		std::string str = "[" + ((PawsBase*)val[0])->toString(); //TODO: Check if val is instance of PawsBase
+		for (size_t i = 1; i < size; ++i)
+			str += ", " + ((PawsBase*)val[i])->toString(); //TODO: Check if val is instance of PawsBase
+		return str + ']';
+	}
+}
+
 MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 	registerType<PawsArray>(pkgScope, "PawsArray");
 

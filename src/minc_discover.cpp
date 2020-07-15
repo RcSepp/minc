@@ -21,6 +21,121 @@
 
 #ifdef USE_NODE_PACKAGES
 #include <node.h>
+#define NODE_WANT_INTERNALS true
+#include "tracing/trace_event.h"
+
+struct NodeContext
+{
+	//TODO: This will hang in node::LoadEnvironment() when trying to load more than one file
+	//TODO: This uses highly volatile internal API's and will likely be incompatible with any version but Node.js v10.x
+
+	static const int DEFAULT_THREAD_POOL_SIZE = 4;
+
+	struct NodeIsolateContext
+	{
+		const v8::Locker locker;
+		const v8::Isolate::Scope isolate_scope;
+		const v8::HandleScope h_scope;
+		const v8::Local<v8::Context> context;
+		const v8::Context::Scope context_scope;
+		node::IsolateData* isolate_data;
+
+		NodeIsolateContext(node::NodePlatform* v8_platform, v8::Isolate* isolate) :
+			locker(v8::Locker(isolate)),
+			isolate_scope(v8::Isolate::Scope(isolate)),
+			h_scope(v8::HandleScope(isolate)),
+			context(v8::Context::New(isolate)),
+			context_scope(v8::Context::Scope(context))
+		{
+#if NODE_MAJOR_VERSION == 8
+			isolate_data = node::CreateIsolateData(isolate, uv_default_loop());
+#elif NODE_MAJOR_VERSION > 8
+			isolate_data = node::CreateIsolateData(isolate, uv_default_loop(), v8_platform);
+#endif
+		}
+
+		~NodeIsolateContext()
+		{
+			node::FreeIsolateData(isolate_data);
+		}
+	};
+
+	node::NodePlatform* v8_platform;
+	v8::Isolate* isolate;
+	NodeIsolateContext* isolateContext;
+	std::vector<node::Environment*> environments;
+
+	NodeContext() : v8_platform(nullptr), isolate(nullptr), isolateContext(nullptr) {}
+	~NodeContext()
+	{
+		free();
+	}
+	void free()
+	{
+		// for (node::Environment* environment: environments)
+		// 	node::FreeEnvironment(environment);
+		// environments.clear();
+
+		if (isolateContext != nullptr)
+		{
+			delete isolateContext;
+			isolateContext = nullptr;
+		}
+
+		if (isolate != nullptr)
+		{
+			isolate->Dispose();
+			isolate = nullptr;
+		}
+
+		if (v8_platform != nullptr)
+		{
+			v8::V8::Dispose();
+			v8::V8::ShutdownPlatform();
+			v8_platform->Shutdown();
+			delete v8_platform;
+			v8_platform = nullptr;
+		}
+	}
+	void Run(int argc, const char * argv[])
+	{
+		if (v8_platform == nullptr)
+		{
+#if NODE_MAJOR_VERSION > 8
+			auto tracing_agent = new node::tracing::Agent();
+			node::tracing::TraceEventHelper::SetAgent(tracing_agent);
+#endif
+#if NODE_MAJOR_VERSION == 8
+			v8_platform = new node::NodePlatform(DEFAULT_THREAD_POOL_SIZE, uv_default_loop(), nullptr);
+#elif NODE_MAJOR_VERSION > 8
+			v8_platform = new node::NodePlatform(DEFAULT_THREAD_POOL_SIZE, tracing_agent->GetTracingController());
+			node::tracing::TraceEventHelper::SetAgent(tracing_agent);
+#endif
+			v8::V8::InitializePlatform(v8_platform);
+			v8::V8::Initialize();
+		}
+
+		if (isolate == nullptr)
+		{
+			v8::Isolate::CreateParams params;
+			params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+			isolate = v8::Isolate::New(params);
+		}
+
+		if (isolateContext == nullptr)
+		{
+			isolateContext = new NodeIsolateContext(v8_platform, isolate);
+		}
+
+		int exec_argc;
+		const char ** exec_argv;
+		node::Init(&argc, argv, &exec_argc, &exec_argv);
+		node::Environment* environment = node::CreateEnvironment(isolateContext->isolate_data, isolateContext->context, argc, argv, exec_argc, exec_argv);
+		node::LoadEnvironment(environment);
+		environments.push_back(environment);
+	}
+} NODE_CONTEXT;
+
 #endif
 
 bool hasSubdir(const char* path, const char* subdir)
@@ -170,7 +285,7 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 					args[0] = '\0';
 					strcpy(args + 1, pkgPath.c_str());
 					char* argv[] = {args + 0, args + 1};
-					node::Start(2, argv);
+					NODE_CONTEXT.Run(2, const_cast<const char**>(argv));
 					delete[] args;
 				} else
 #endif

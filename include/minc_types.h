@@ -72,8 +72,8 @@ struct CompileError
 	const MincLocation loc;
 	char* msg;
 	int* refcount;
-	CompileError(const char* msg, MincLocation loc={0});
-	CompileError(std::string msg, MincLocation loc={0});
+	CompileError(const char* msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
+	CompileError(std::string msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
 	CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
 	CompileError(CompileError& other);
 	~CompileError();

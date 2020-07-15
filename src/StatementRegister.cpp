@@ -21,6 +21,8 @@
 // -1      | Ellipsis
 
 //#define DEBUG_STMTREG
+extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
+unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 
 #include <assert.h>
 #include "minc_api.hpp"
@@ -483,6 +485,8 @@ void StatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, co
 
 bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 {
+	++EXPR_RESOLVE_COUNTER;
+
 #ifdef DEBUG_STMTREG
 	printf("%slookupExpr(%s)\n", indent.c_str(), expr->str().c_str());
 	indent += '\t';
@@ -540,6 +544,8 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 
 bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 {
+	++STMT_RESOLVE_COUNTER;
+
 	// Initialize stmt
 	stmt.resolvedKernel = nullptr;
 	stmt.resolvedParams.clear();

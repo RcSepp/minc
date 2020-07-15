@@ -3,6 +3,8 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
+
 struct StmtMap { MincBlockExpr* block; operator MincBlockExpr*() const { return block; } };
 typedef PawsValue<StmtMap> PawsStmtMap;
 
@@ -153,6 +155,14 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			const MincSymbol& symbol = codegenExpr(params[2], parentBlock);
 
 			defineSymbol(scope, getIdExprName(symbolNameAST), symbol.type, symbol.value);
+		}
+	);
+
+	defineExpr(pkgScope, "stmtreg.stats",
+		+[]() -> std::string {
+			std::string stats = "resolved " + std::to_string(EXPR_RESOLVE_COUNTER) + " expressions and " + std::to_string(STMT_RESOLVE_COUNTER) + " statements";
+			EXPR_RESOLVE_COUNTER = STMT_RESOLVE_COUNTER = 0;
+			return stats;
 		}
 	);
 });

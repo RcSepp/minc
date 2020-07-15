@@ -1,4 +1,5 @@
 import paws.array;
+import paws.stmtreg;
 import paws.subroutine;
 import paws.time;
 int = PawsInt;
@@ -12,6 +13,7 @@ int fib(int n)
 }
 measure("fib(17)")
 	print(fib(17));
+print(stmtreg.stats);
 
 void swapArray(int n)
 {
@@ -30,3 +32,4 @@ void swapArray(int n)
 }
 measure("swapArray(800)")
 	swapArray(800);
+print(stmtreg.stats);

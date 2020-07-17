@@ -21,8 +21,8 @@ void getCommandLineArgs(int* argc, char*** argv)
 }
 void setCommandLineArgs(int argc, char** argv)
 {
-	argc = ARGC;
-	argv = ARGV;
+	ARGC = argc;
+	ARGV = argv;
 }
 
 void quit(int code)

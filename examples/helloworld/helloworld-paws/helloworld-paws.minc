@@ -1,0 +1,26 @@
+import paws.extend;
+import paws.struct;
+
+_1 = 1;
+_2 = 2;
+_from_paws = " from Paws!";
+
+export "helloworld-paws"
+{
+	struct string
+	{
+		s = "";
+	}
+
+	string expr $L
+	{
+		str = string();
+		str.s = $0.value.substr(_1, $0.value.length - _2);
+		return str;
+	}
+
+	stmt print($E<string>)
+	{
+		print($0.codegen().s + _from_paws);
+	}
+}

@@ -1,0 +1,14 @@
+import ".helloworld-C";
+print("Hello World");
+
+import ".helloworld-C++";
+print("Hello World");
+
+import ".helloworld-llvm";
+print("Hello World");
+
+import ".helloworld-paws";
+print("Hello World");
+
+import ".helloworld-node";
+print("Hello World");

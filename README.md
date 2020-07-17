@@ -4,10 +4,10 @@ Language compilers and interpreters are complex programs that can take years to 
 
 ## Just how easy can it be?
 
-A programming language in Minc consists of 5 components: **packages**, **types**, **symbols**, **statements** and **expressions**.
+Any language created with Minc consists of 4 components: **packages**, **symbols**, **statements** and **expressions**.
 A programming language that can run hello world programs can be defined in less than 100 lines of code:
 
-1) Define a package, so that your language can be imported in `minc`:
+1. Define a package, so that your language can be imported in `minc`:
 
 ```C++
 MincPackage HELLOWORLD_PKG("helloworld", [](MincBlockExpr* pkgScope) {
@@ -15,40 +15,40 @@ MincPackage HELLOWORLD_PKG("helloworld", [](MincBlockExpr* pkgScope) {
 });
 ```
 
-2) Define some types (Every language needs to have at least one):
+2. Define the language's symbols:
 
 ```C++
-defineType("string", &STRING_TYPE);
+// Create `string` data type
+pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
 ```
 
-3) Define a few symbols (Here we define the meta-type of our string type, so that Minc knows how to interpret the statement template "print($E<string>)" below):
+3. Define the language's expressions:
 
 ```C++
-defineSymbol(pkgScope, "string", &META_TYPE, &STRING_META_TYPE);
-```
+// Create expression kernel for interpreting literal expressions
+pkgScope->defineExpr("$L",
+	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) -> MincSymbol {
+		const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
-4) Define the language's expressions:
+		if (value.back() == '"' || value.back() == '\'')
+			return MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
 
-```C++
-defineExpr3(pkgScope, "$L",
-	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
-		const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
-		if (value[0] != '"' && value[0] != '\'')
-			raiseCompileError("Non-string literals not implemented", params[0]);
-		return MincSymbol(&STRING_TYPE, new String(std::string(value + 1, strlen(value) - 2)));
+		raiseCompileError("Non-string literals not implemented", params[0]);
+		return MincSymbol(nullptr, nullptr);
 	},
-	[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
+	[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
 		return &STRING_TYPE;
 	}
 );
 ```
 
-5) Define the language's statements:
+4. Define the language's statements:
 
 ```C++
-defineStmt2(pkgScope, "print($E<string>)",
-	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-		String* const message = (String*)codegenExpr(params[0], parentBlock).value;
+// Create statement kernel for interpreting the `print(...)` statement
+pkgScope->defineStmt("print($E<string>)",
+	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+		String* const message = (String*)params[0]->codegen(parentBlock).value;
 		std::cout << *message << '\n';
 	}
 );
@@ -68,7 +68,7 @@ Note: You may have noticed we didn't declare the "import" statement. Import and 
 
 ## Where to go from here
 
-Arbitrarily powerful programming languages can be designed using the same 5 components as our `helloworld` language. Arithmetic expressions, "if" statements, "class" types, ... Just add as many as you like.
+Arbitrarily powerful programming languages can be designed using the same 4 components as our `helloworld` language. Arithmetic expressions, "if" statements, "class" types, ... Just add as many as you like.
 
 The Paws programming language is an excellent reference on how to implement many of the classic programming language constructs, but feel free to be creative!
 
@@ -102,8 +102,7 @@ The dependency cycle cannot be fully broken, but it's exponential blast radius c
 
 ### Compiling source code
 
-You say compiler, but all Minc does is interpret source code...
-Correct, at it's current stage Minc consists only of lexer, parser and code generator. To upgrade your language to a compiled language, you need to emit intermediary byte-code or a program binary (e.g. using LLVM) in your statements and expressions. In the future this will be (optionally) handled by a separate part of Minc
+Minc matches source code against statements and expressions and executes associated code kernels. To improve execution performance, most modern languages don't execute such kernels directly, but rather emit an intermediate byte-code or compiled program binary that can then be executed separately. LLVM is a powerful compiler framework used by many languages such as Go and Ruby. The [helloworld-llvm](examples/helloworld/helloworld-llvm/helloworld-llvm.cpp) extends our helloworld example to produce executable program binaries.
 
 **TODO: Write heLLVMoworld using LLVM**
 

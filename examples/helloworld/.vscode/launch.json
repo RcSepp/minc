@@ -1,0 +1,47 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "./minc",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../../bin/minc",
+            "args": [
+                "${workspaceFolder}/helloworld.minc"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/../../bin/minc"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "type": "minc",
+            "request": "launch",
+            "name": "Minc: Debug current file",
+            "program": "${file}",
+            "args": [
+                "debug",
+                "/home/sepp/Development/minc/examples/test.acc"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "traceAnonymousBlocks": false
+        }
+    ]
+}

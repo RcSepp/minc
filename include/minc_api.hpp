@@ -209,7 +209,6 @@ public:
 	MincBlockExpr* parent;
 	std::vector<MincBlockExpr*> references;
 	std::vector<MincExpr*>* exprs;
-	std::string name;
 	size_t stmtIdx;
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
@@ -217,6 +216,11 @@ public:
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended;
 	bool isBusy;
+
+	// Meta data
+	std::string name;
+	void *user, *userType;
+
 	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
 	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);

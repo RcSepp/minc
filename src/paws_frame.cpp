@@ -12,6 +12,8 @@
 
 MincBlockExpr* importScope = nullptr; //TODO: This will not work if this package is imported more than once
 
+static struct {} FRAME_INSTANCE_ID;
+
 struct Awaitable : public PawsType
 {
 private:
@@ -341,6 +343,8 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 	: frame(frame), instance(cloneBlockExpr(frame->body)), eventPool(eventPool)
 {
 	setBlockExprParent(instance, frame->body);
+	setBlockExprUser(instance, this);
+	setBlockExprUserType(instance, &FRAME_INSTANCE_ID);
 
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
@@ -353,22 +357,6 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 		defineSymbol(instance, pair.first.c_str(), pair.second.type, value);
 		variables[pair.first] = value;
 	}
-
-	// Define await statement in frame instance scope
-	defineExpr3(instance, "await $E<PawsAwaitableInstance>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock).value)->get();
-			MincSymbol blockerResult;
-			if (blocker->awaitResult((FrameInstance*)exprArgs, &blockerResult))
-				return blockerResult;
-			else
-				throw AwaitException();
-		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			assert(ExprIsCast(params[0]));
-			const Awaitable* event = (Awaitable*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
-			return event->returnType;
-		}, this
-	);
 }
 
 bool FrameInstance::resume(MincSymbol* result)
@@ -520,6 +508,26 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			catch(ReturnException) {}
 
 			defineDefaultStmt2(block, nullptr);
+
+			// Define await statement in frame instance scope
+			defineExpr3(block, "await $E<PawsAwaitableInstance>",
+				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+					AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock).value)->get();
+					MincSymbol blockerResult;
+					MincBlockExpr* instance = parentBlock;
+					while (getBlockExprUserType(instance) != &FRAME_INSTANCE_ID)
+						instance = getBlockExprParent(instance);
+					assert(instance);
+					if (blocker->awaitResult((FrameInstance*)getBlockExprUser(instance), &blockerResult))
+						return blockerResult;
+					else
+						throw AwaitException();
+				}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
+					assert(ExprIsCast(params[0]));
+					const Awaitable* event = (Awaitable*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
+					return event->returnType;
+				}
+			);
 
 			// Name frame block
 			std::string frameFullName(frameName);

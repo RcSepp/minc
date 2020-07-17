@@ -283,6 +283,22 @@ extern "C"
 	{
 		expr->name = name;
 	}
+	void* getBlockExprUser(const MincBlockExpr* expr)
+	{
+		return expr->user;
+	}
+	void setBlockExprUser(MincBlockExpr* expr, void* user)
+	{
+		expr->user = user;
+	}
+	void* getBlockExprUserType(const MincBlockExpr* expr)
+	{
+		return expr->userType;
+	}
+	void setBlockExprUserType(MincBlockExpr* expr, void* userType)
+	{
+		expr->userType = userType;
+	}
 	const MincStmt* getCurrentBlockExprStmt(const MincBlockExpr* expr)
 	{
 		return expr->getCurrentStmt();

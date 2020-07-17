@@ -63,6 +63,10 @@ extern "C"
 	void setBlockExprParams(MincBlockExpr* expr, std::vector<MincSymbol>& blockParams);
 	const char* getBlockExprName(const MincBlockExpr* expr);
 	void setBlockExprName(MincBlockExpr* expr, const char* name);
+	void* getBlockExprUser(const MincBlockExpr* expr);
+	void setBlockExprUser(MincBlockExpr* expr, void* user);
+	void* getBlockExprUserType(const MincBlockExpr* expr);
+	void setBlockExprUserType(MincBlockExpr* expr, void* userType);
 	const MincStmt* getCurrentBlockExprStmt(const MincBlockExpr* expr);
 	MincExpr* getCastExprSource(const MincCastExpr* expr);
 	char getPlchldExprLabel(const MincPlchldExpr* expr);

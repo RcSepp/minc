@@ -70,7 +70,7 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 			const std::string& value = ((const MincLiteralExpr*)expr)->value;
 			if (value.back() == '"' || value.back() == '\'')
 			{
-				size_t prefixLen = value.rfind(value.back());
+				size_t prefixLen = value.find(value.back());
 				return value.compare(0, prefixLen, p2) == 0 && p2[prefixLen] == '\0';
 			}
 			else

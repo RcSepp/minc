@@ -528,8 +528,8 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			codegenExpr(params[0], forBlock);
 
 			// Reresolve condition and update expressions to take loop variable into account
-			resolveExpr(forBlock, params[1]);
-			resolveExpr(forBlock, params[2]);
+			resolveExpr(params[1], forBlock);
+			resolveExpr(params[2], forBlock);
 
 			// Cast condition expression to PawsInt
 			MincExpr* condExpr = params[1];

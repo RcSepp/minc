@@ -161,7 +161,7 @@ extern "C"
 		return expr->exprtype == MincExpr::ExprType::ELLIPSIS;
 	}
 
-	void resolveExpr(MincBlockExpr* scope, MincExpr* expr)
+	void resolveExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
 		expr->resolveTypes(scope);
 	}

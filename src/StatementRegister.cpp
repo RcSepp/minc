@@ -558,9 +558,9 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 		if (stmt.sourceExprPtr != exprs->cend()) // If expressions are available
 		{
 			// Resolve next expression
-			::MincExpr* const clone = (*stmt.sourceExprPtr++)->clone(); //TODO: Make MincBlockExpr::exprs a list of const MincExpr's
-			clone->resolveTypes(this);
-			stmt.resolvedExprs.push_back(clone);
+			::MincExpr* const expr = *stmt.sourceExprPtr++;
+			expr->resolveTypes(this);
+			stmt.resolvedExprs.push_back(expr);
 			return true;
 		}
 		else // If no more expressions are available

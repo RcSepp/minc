@@ -39,9 +39,22 @@ extern "C"
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), parent(nullptr), exprs(exprs), exprIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false)
+MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts)
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(resolvedStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
+	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false)
 {
+}
+
+MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
+	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false)
+{
+}
+
+MincBlockExpr::~MincBlockExpr()
+{
+	if (ownesResolvedStmts)
+		delete resolvedStmts;
 }
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
@@ -445,14 +458,28 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 	if (fileBlock == nullptr)
 		fileBlock = this;
 
-	if (exprIdx >= exprs->size())
-		exprIdx = 0;
-
 	try
 	{
-		for (MincExprIter stmtBeginExpr = exprs->cbegin() + exprIdx; stmtBeginExpr != exprs->cend(); exprIdx = stmtBeginExpr - exprs->cbegin())
+		for (; stmtIdx < resolvedStmts->size(); ++stmtIdx)
 		{
-			if (!isStmtSuspended && !lookupStmt(stmtBeginExpr, currentStmt))
+			MincStmt& currentStmt = resolvedStmts->at(stmtIdx);
+			currentStmt.codegen(this);
+
+			// Clear cached expressions
+			// Coroutines exit codegen() without clearing resultCache by throwing an exception
+			// They use the resultCache on reentry to avoid reexecuting expressions
+			for (MincSymbol* cachedResult: resultCache)
+				if (cachedResult)
+					delete cachedResult;
+			resultCache.clear();
+			resultCacheIdx = 0;
+		}
+		stmtIdx = resolvedStmts->size(); // Handle case `stmtIdx > resolvedStmts->size()`
+		for (MincExprIter stmtBeginExpr = resolvedStmts->size() ? resolvedStmts->back().end : exprs->cbegin(); stmtBeginExpr != exprs->cend(); ++stmtIdx)
+		{
+			resolvedStmts->push_back(MincStmt());
+			MincStmt& currentStmt = resolvedStmts->back();
+			if (!lookupStmt(stmtBeginExpr, currentStmt))
 				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
 
@@ -486,7 +513,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 		throw;
 	}
 
-	exprIdx = 0;
+	stmtIdx = 0;
 
 	if (topLevelBlock == this)
 		topLevelBlock = oldTopLevelBlock;
@@ -558,7 +585,7 @@ int MincBlockExpr::comp(const MincExpr* other) const
 
 MincExpr* MincBlockExpr::clone() const
 {
-	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs);
+	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs, this->resolvedStmts);
 	clone->parent = this->parent;
 	clone->references = this->references;
 	clone->name = this->name;
@@ -574,7 +601,7 @@ void MincBlockExpr::reset()
 			delete cachedResult;
 	resultCache.clear();
 	resultCacheIdx = 0;
-	exprIdx = 0;
+	stmtIdx = 0;
 	isBlockSuspended = false;
 	isStmtSuspended = false;
 	isExprSuspended = false;
@@ -594,7 +621,7 @@ void MincBlockExpr::clearCache(size_t targetSize)
 
 const MincStmt* MincBlockExpr::getCurrentStmt() const
 {
-	return &currentStmt;
+	return resolvedStmts->size() ? &resolvedStmts->back() : nullptr;
 }
 
 MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)

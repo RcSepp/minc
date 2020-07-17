@@ -67,7 +67,8 @@ PawsVoid test_mutable_exprs()
 	assert "" * "" == "b";
 
 	// Test mutable expressions in loop body
-	// Make sure expressions are re-resolved for every loop iteration
+	// Expressions are NOT reresolved for subsequent loop iterations
+	// Reresolving expressions on every loop iteration would incure a significant performance penalty
 	r = "";
 	FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "c"; }
 	for (j = 0; j << 2; j = j + 1)
@@ -75,7 +76,7 @@ PawsVoid test_mutable_exprs()
 		r = r + "" * "";
 		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "d"; }
 	}
-	assert r == "cd";
+	assert r == "cc";
 }
 
 measure("test time")

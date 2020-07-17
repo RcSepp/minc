@@ -200,14 +200,17 @@ private:
 	std::map<std::string, MincSymbol> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	CastRegister castreg;
-	MincStmt currentStmt;
+	std::vector<MincStmt>* resolvedStmts;
+	bool ownesResolvedStmts;
+
+	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts);
 
 public:
 	MincBlockExpr* parent;
 	std::vector<MincBlockExpr*> references;
 	std::vector<MincExpr*>* exprs;
 	std::string name;
-	size_t exprIdx;
+	size_t stmtIdx;
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
 	std::vector<MincSymbol*> resultCache;
@@ -215,6 +218,7 @@ public:
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended;
 	bool isBusy;
 	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
+	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
 	bool lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const;

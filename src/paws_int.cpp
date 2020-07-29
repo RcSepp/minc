@@ -64,6 +64,22 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
+	// Define integer addition
+	defineExpr(pkgScope, "$E<PawsInt> * $E<PawsInt>",
+		+[](int a, int b) -> int {
+			return a * b;
+		}
+	);
+
+	// Define integer subtraction
+	defineExpr(pkgScope, "$E<PawsInt> / $E<PawsInt>",
+		+[](int a, int b) -> int {
+			if (b == 0)
+				throw MincException("Divide by zero exception");
+			return a / b;
+		}
+	);
+
 	// Define integer minimum
 	defineExpr(pkgScope, "min($E<PawsInt>, $E<PawsInt>)",
 		+[](int a, int b) -> int {

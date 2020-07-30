@@ -78,7 +78,7 @@ int main(int argc, char** argv)
 			rootBlock = MincBlockExpr::parsePythonFile(realPath);
 		else
 			rootBlock = MincBlockExpr::parseCFile(realPath);
-	} catch (CompileError err) {
+	} catch (const CompileError& err) {
 		err.print(std::cerr);
 		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
 		free(realPath);
@@ -114,8 +114,11 @@ int main(int argc, char** argv)
 			rootBlock->codegen(nullptr);
 		} catch (ExitException err) {
 			result = err.code;
-		} catch (CompileError err) {
+		} catch (const MincException& err) {
 			err.print(std::cerr);
+			result = -1;
+		} catch (const std::exception& err) {
+			std::cerr << err.what() << '\n';
 			result = -1;
 		}
 	}

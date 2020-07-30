@@ -14,20 +14,44 @@ UndefinedIdentifierException::UndefinedIdentifierException(const MincIdExpr* id)
 InvalidTypeException::InvalidTypeException(const MincPlchldExpr* plchld)
 	: CompileError('`' + std::string(plchld->p2) + "` is not a type", plchld->loc) {}
 
-CompileError::CompileError(const char* msg, MincLocation loc)
-	: loc(loc), msg(new char[strlen(msg) + 1]), refcount(new int(1))
+MincException::MincException(const char* msg, MincLocation loc)
+	: refcount(new int(1)), msg(new char*()), loc(loc)
 {
-	strcpy(this->msg, msg);
+	*this->msg = new char[strlen(msg) + 1];
+	strcpy(*this->msg, msg);
+}
+
+MincException::MincException(std::string msg, MincLocation loc)
+	: refcount(new int(1)), msg(new char*()), loc(loc)
+{
+	*this->msg = new char[msg.size() + 1];
+	strcpy(*this->msg, msg.c_str());
+}
+
+MincException::MincException(MincLocation loc)
+	: refcount(new int(1)), msg(new char*()), loc(loc)
+{
+	*this->msg = nullptr;
+}
+
+MincException::MincException(const MincException& other)
+	: refcount(other.refcount), msg(other.msg), loc(other.loc)
+{
+	++(*refcount);
 }
 
 CompileError::CompileError(std::string msg, MincLocation loc)
-	: loc(loc), msg(new char[msg.size() + 1]), refcount(new int(1))
+	: MincException(msg, loc)
 {
-	strcpy(this->msg, msg.c_str());
+}
+
+CompileError::CompileError(const char* msg, MincLocation loc)
+	: MincException(msg, loc)
+{
 }
 
 CompileError::CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...)
-	: loc(loc), refcount(new int(1))
+	: MincException(loc)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -61,29 +85,24 @@ CompileError::CompileError(const MincBlockExpr* scope, MincLocation loc, const c
 		case 't': msg << scope->lookupSymbolName(va_arg(args, MincObject*), "UNKNOWN_TYPE"); break;
 		}
 	}
-	this->msg = new char[msg.str().size() + 1];
-	strcpy(this->msg, msg.str().c_str());
+	*this->msg = new char[msg.str().size() + 1];
+	strcpy(*this->msg, msg.str().c_str());
 
 	va_end(args);
 }
 
-CompileError::CompileError(CompileError& other)
-	: loc(other.loc), msg(other.msg), refcount(other.refcount)
-{
-	other.msg = nullptr;
-	++(*refcount);
-}
-
-CompileError::~CompileError()
+MincException::~MincException()
 {
 	if (--(*refcount) == 0)
 	{
-		delete[] msg;
+		if (*msg != nullptr)
+			delete[] *msg;
+		delete msg;
 		delete refcount;
 	}
 }
 
-void CompileError::print(std::ostream& out)
+void MincException::print(std::ostream& out) const noexcept
 {
 out << std::endl;
 	if (loc.filename != nullptr)
@@ -91,7 +110,8 @@ out << std::endl;
 	out << loc.begin_line << ':';
 	out << loc.begin_column << ':';
 	out << " \e[1;31merror:\e[0m ";
-	out << (msg != nullptr ? msg : "") << std::endl;
+	const char* what;
+	out << ((what = this->what()) != nullptr ? what : "") << std::endl;
 	if (loc.filename != nullptr && loc.begin_line == loc.end_line && loc.begin_column > loc.end_column) //TODO: Cleanup
 	{
 		std::ifstream in(loc.filename);

@@ -1,6 +1,7 @@
 #ifndef __MINC_TYPES_H
 #define __MINC_TYPES_H
 
+#include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -67,17 +68,29 @@ struct MincLocation
 	unsigned end_line, end_column;
 };
 
-struct CompileError
+struct MincException : public std::exception
 {
+private:
+	mutable int* refcount;
+
+protected:
+	char** const msg;
+
+public:
 	const MincLocation loc;
-	char* msg;
-	int* refcount;
+	MincException(const char* msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
+	MincException(std::string msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
+	MincException(MincLocation loc={ nullptr, 0, 0, 0, 0 });
+	MincException(const MincException& other);
+	~MincException();
+	const char* what() const noexcept { return *msg; }
+	void print(std::ostream& out=std::cerr) const noexcept;
+};
+struct CompileError : public MincException
+{
 	CompileError(const char* msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
 	CompileError(std::string msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
 	CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
-	CompileError(CompileError& other);
-	~CompileError();
-	void print(std::ostream& out=std::cerr);
 };
 struct UndefinedStmtException : public CompileError
 {

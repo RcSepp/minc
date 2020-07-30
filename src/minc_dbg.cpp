@@ -39,7 +39,6 @@
 #endif
 
 #define LOG_TO_FILE "/home/sepp/Development/minc/log.txt"
-// Log file regex: REPLACE "Content-Length[\S\s\n]*?\{" with " {"
 
 #define DEBUG_STEP_EVENTS
 
@@ -486,12 +485,12 @@ public:
 	{
 		std::vector<StackFrame> callStack;
 		size_t prevStackDepth;
+		std::string errMsg;
 
 		Thread() : prevStackDepth(0) {}
 	};
 
 private:
-	MincBlockExpr* const rootBlock;
 	std::shared_ptr<dap::Writer> log;
 	std::mutex mutex;
 	int line = 1;
@@ -532,10 +531,11 @@ private:
 	}
 
 public:
-	Debugger(MincBlockExpr* rootBlock, std::shared_ptr<dap::Writer> log)
-		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false), rootBlock(rootBlock), log(log)
+	Debugger(std::shared_ptr<dap::Writer> log)
+		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false), log(log)
 	{
 		registerStepEventListener([](const MincExpr* loc, StepEventType type, void* eventArgs) { ((Debugger*)eventArgs)->onStep(loc, type); }, this);
+//		registerExceptionHandler([](const MincException& err, void* eventArgs) { return ((Debugger*)eventArgs)->onException(err); }, this);
 		registerHandler(&Debugger::onInitialize);
 		registerSentHandler(&Debugger::onInitializeResponse);
 		registerHandler(&Debugger::onConfigurationDoneRequest);
@@ -551,6 +551,7 @@ public:
 		registerHandler(&Debugger::onNextRequest);
 		registerHandler(&Debugger::onStepInRequest);
 		registerHandler(&Debugger::onStepOutRequest);
+		registerHandler(&Debugger::onExceptionInfoRequest);
 		registerHandler(&Debugger::onDisconnectRequest);
 
 		session->onError([&](const char* msg) {
@@ -566,7 +567,7 @@ public:
 		createThread();
 	}
 
-	int run()
+	int run(MincBlockExpr* rootBlock)
 	{
 		// Make sure configuration has finished
 		configured.wait();
@@ -598,13 +599,13 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 		debugger->session->send(dap::TerminatedEvent());
 	} catch (ExitException err) {
 		debugger->session->send(dap::TerminatedEvent());
-	} catch (CompileError err) {
+	} catch (const MincException& err) {
 		StackFrame& top = debugger->getCurrentThread().callStack.back();
 		top.line = err.loc.begin_line;
 		top.column = err.loc.begin_column;
 		top.endLine = err.loc.end_line;
 		top.endColumn = err.loc.end_column;
-		debugger->sendStopEvent(StopEventReason::Exception, err.msg);
+		debugger->sendStopEvent(StopEventReason::Exception, err.what());
 	}
 }, this, rootBlock2);
 #endif
@@ -617,13 +618,19 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 		} catch (ExitException err) {
 			result = err.code;
 			session->send(dap::TerminatedEvent());
-		} catch (CompileError err) {
-			StackFrame& top = getCurrentThread().callStack.back();
-			top.line = err.loc.begin_line;
-			top.column = err.loc.begin_column;
-			top.endLine = err.loc.end_line;
-			top.endColumn = err.loc.end_column;
-			sendStopEvent(StopEventReason::Exception, err.msg);
+		} catch (const MincException& err) {
+			Thread& currentThread = getCurrentThread();
+			StackFrame& top = currentThread.callStack.back();
+			if (err.loc.begin_line != 0)
+			{
+				top.line = err.loc.begin_line;
+				top.column = err.loc.begin_column;
+				top.endLine = err.loc.end_line;
+				top.endColumn = err.loc.end_column;
+			}
+			currentThread.errMsg = err.what();
+			sendStopEvent(StopEventReason::Exception, err.what());
+			session->send(dap::TerminatedEvent());
 		}
 
 #ifdef DEBUG_MULTITHREADING
@@ -693,14 +700,18 @@ private:
 			switch (type)
 			{
 			case STEP_IN:
-			case STEP_RESUME:
+			//case STEP_RESUME:
 				callStack.push_back(StackFrame((MincBlockExpr*)expr));
 				break;
 
 			case STEP_OUT:
-			case STEP_SUSPEND:
+			//case STEP_SUSPEND:
 				callStack.pop_back();
 				break;
+			case STEP_RESUME:
+				break; // Do nothing
+			case STEP_SUSPEND:
+				break; // Do nothing
 			}
 		}
 		else if (expr->exprtype == MincExpr::STMT)
@@ -752,6 +763,23 @@ private:
 		}
 	}
 
+	bool onException(const MincException& err)
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		Thread& currentThread = getCurrentThread();
+		StackFrame& top = currentThread.callStack.back();
+		if (err.loc.begin_line != 0)
+		{
+			top.line = err.loc.begin_line;
+			top.column = err.loc.begin_column;
+			top.endLine = err.loc.end_line;
+			top.endColumn = err.loc.end_column;
+		}
+		currentThread.errMsg = err.what();
+		sendStopEvent(StopEventReason::Exception, err.what());
+		return true;
+	}
+
 	// >>> DEBUG CLIENT EVENT HANDLERS
 
 	template<class R, class P0> void registerHandler(R (Debugger::*handler)(P0))
@@ -771,6 +799,7 @@ private:
 	{
 		dap::InitializeResponse response;
 		response.supportsConfigurationDoneRequest = true;
+		response.supportsExceptionInfoRequest = true;
 		return response;
 	}
 
@@ -926,6 +955,21 @@ private:
 		return dap::StepOutResponse();
 	}
 
+	dap::ResponseOrError<dap::ExceptionInfoResponse> onExceptionInfoRequest(const dap::ExceptionInfoRequest& request)
+	{
+		Thread* thread = ID_MAP.get<Thread>(request.threadId);
+		if (thread == nullptr)
+			return dap::Error("Unknown threadId '%d'", int(request.threadId));
+
+		dap::ExceptionInfoResponse response;
+		if (thread->errMsg.empty())
+			return response;
+
+		response.description = thread->errMsg;
+
+		return response;
+	}
+
 	dap::DisconnectResponse onDisconnectRequest(const dap::DisconnectRequest& request)
 	{
 		if (request.terminateDebuggee.value(false))
@@ -1006,7 +1050,7 @@ int launchDebugClient(MincBlockExpr* rootBlock)
 	log = dap::file(LOG_TO_FILE);
 #endif
 
-	Debugger debugger(rootBlock, log);
+	Debugger debugger(log);
 	auto session = debugger.session.get();
 
 	DebugOutputBuffer redirectStdout(std::cout, session), redirectStderr(std::cerr, session);
@@ -1018,5 +1062,5 @@ int launchDebugClient(MincBlockExpr* rootBlock)
 	else
 		debugger.bind(in, out);
 
-	return debugger.run();
+	return debugger.run(rootBlock);
 }

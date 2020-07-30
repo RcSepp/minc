@@ -36,6 +36,7 @@ public:
 	PawsBase* copy() { return new PawsValue<T>(val); }
 	const std::string toString() const { return PawsBase::toString(); }
 	T& get() { return val; }
+	const T& get() const { return val; }
 	void set(const T& val) { this->val = val; }
 };
 template<> struct PawsValue<_Type*> : PawsBase
@@ -103,6 +104,7 @@ typedef PawsValue<MincLiteralExpr*> PawsLiteralExpr;
 typedef PawsValue<MincIdExpr*> PawsIdExpr;
 typedef PawsValue<MincSymbol> PawsSym;
 typedef PawsValue<MincScopeType*> PawsScopeType;
+typedef PawsValue<MincException> PawsException;
 typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;
 
 inline PawsType* const PawsBase::TYPE = new PawsType();

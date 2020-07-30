@@ -6,11 +6,11 @@ BIN_DIR = bin/
 
 LIBMINC_OBJS = \
 	codegen.o \
-	CompileError.o \
 	cparser.o \
 	cparser.yy.o \
 	pyparser.o \
 	pyparser.yy.o \
+	MincException.o \
 	MincArgOpExpr.o \
 	MincBinOpExpr.o \
 	MincBlockExpr.o \

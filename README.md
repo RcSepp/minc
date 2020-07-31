@@ -1,4 +1,4 @@
-# Minc - The Minimal Compiler
+![Minc Logo](logo.png)
 
 Language compilers and interpreters are complex programs that can take years to develop. With Minc you can create one in a few hours ...
 

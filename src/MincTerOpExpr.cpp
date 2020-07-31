@@ -25,10 +25,13 @@ void MincTerOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 
 void MincTerOpExpr::resolveTypes(const MincBlockExpr* block)
 {
-	a->resolveTypes(block);
-	b->resolveTypes(block);
-	c->resolveTypes(block);
-	MincExpr::resolveTypes(block);
+	if (this->resolvedKernel == nullptr)
+	{
+		a->resolveTypes(block);
+		b->resolveTypes(block);
+		c->resolveTypes(block);
+		MincExpr::resolveTypes(block);
+	}
 }
 
 std::string MincTerOpExpr::str() const

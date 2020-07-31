@@ -39,8 +39,11 @@ void MincVarBinOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr,
 
 void MincVarBinOpExpr::resolveTypes(const MincBlockExpr* block)
 {
-	a->resolveTypes(block);
-	MincExpr::resolveTypes(block);
+	if (this->resolvedKernel == nullptr)
+	{
+		a->resolveTypes(block);
+		MincExpr::resolveTypes(block);
+	}
 }
 
 std::string MincVarBinOpExpr::str() const

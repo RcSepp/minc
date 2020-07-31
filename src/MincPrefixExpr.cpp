@@ -16,8 +16,11 @@ void MincPrefixExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 
 void MincPrefixExpr::resolveTypes(const MincBlockExpr* block)
 {
-	a->resolveTypes(block);
-	MincExpr::resolveTypes(block);
+	if (this->resolvedKernel == nullptr)
+	{
+		a->resolveTypes(block);
+		MincExpr::resolveTypes(block);
+	}
 }
 
 std::string MincPrefixExpr::str() const

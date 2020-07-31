@@ -22,9 +22,12 @@ void MincArgOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 
 void MincArgOpExpr::resolveTypes(const MincBlockExpr* block)
 {
-	var->resolveTypes(block);
-	args->resolveTypes(block);
-	MincExpr::resolveTypes(block);
+	if (this->resolvedKernel == nullptr)
+	{
+		var->resolveTypes(block);
+		args->resolveTypes(block);
+		MincExpr::resolveTypes(block);
+	}
 }
 
 std::string MincArgOpExpr::str() const

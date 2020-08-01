@@ -61,25 +61,25 @@ namespace std
 	};
 }
 
-class StreamingMincExprIter
+class ResolvingMincExprIter
 {
 	const MincBlockExpr* resolveScope;
 	const std::vector<MincExpr*>* exprs;
 	MincExprIter current;
 
 public:
-	StreamingMincExprIter();
-	StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs);
-	StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current);
-	StreamingMincExprIter(const StreamingMincExprIter& other) = default;
+	ResolvingMincExprIter();
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs);
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current);
+	ResolvingMincExprIter(const ResolvingMincExprIter& other) = default;
 	bool done();
 	MincExpr* operator*();
 	MincExpr* operator[](int i);
-	size_t operator-(const StreamingMincExprIter& other) const;
-	StreamingMincExprIter& operator=(const StreamingMincExprIter& other) = default;
-	StreamingMincExprIter operator+(int n) const;
-	StreamingMincExprIter operator++(int);
-	StreamingMincExprIter& operator++();
+	size_t operator-(const ResolvingMincExprIter& other) const;
+	ResolvingMincExprIter& operator=(const ResolvingMincExprIter& other) = default;
+	ResolvingMincExprIter operator+(int n) const;
+	ResolvingMincExprIter operator++(int);
+	ResolvingMincExprIter& operator++();
 	MincExprIter iter() const;
 };
 
@@ -132,7 +132,7 @@ private:
 public:
 	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
 	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
-	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, StreamingMincExprIter stmt, StreamingMincExprIter& stmtEnd, MatchScore& score) const;
+	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
@@ -232,7 +232,7 @@ public:
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
 	bool lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
-	std::pair<const MincListExpr*, MincKernel*> lookupStmt(StreamingMincExprIter stmt, StreamingMincExprIter& bestStmtEnd, MatchScore& bestScore) const;
+	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
 	void defineDefaultStmt(MincKernel* stmt);

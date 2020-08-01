@@ -29,7 +29,7 @@ LIBMINC_OBJS = \
 	StatementRegister.o \
 	MincStmt.o \
 	MincStopExpr.o \
-	StreamingMincExprIter.o \
+	ResolvingMincExprIter.o \
 	MincTerOpExpr.o \
 	MincVarBinOpExpr.o \
 

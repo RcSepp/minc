@@ -54,7 +54,7 @@ void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx
 	}
 }
 
-bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter tpltEnd, StreamingMincExprIter expr, MatchScore& score, StreamingMincExprIter* stmtEnd=nullptr)
+bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter tpltEnd, ResolvingMincExprIter expr, MatchScore& score, ResolvingMincExprIter* stmtEnd=nullptr)
 {
 	while (tplt != tpltEnd && !expr.done())
 	{
@@ -93,7 +93,7 @@ bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter
 		{
 			++tplt; // Eat $S
 
-			StreamingMincExprIter subStmtEnd;
+			ResolvingMincExprIter subStmtEnd;
 			MatchScore subStmtScore;
 			if (block->lookupStmt(expr, expr, subStmtScore).first == nullptr)
 				return false;
@@ -161,7 +161,7 @@ bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter
 	}
 
 	// Eat unused trailing ellipses and lists only consisting of ellises
-	StreamingMincExprIter listExprEnd;
+	ResolvingMincExprIter listExprEnd;
 	while (
 		tplt != tpltEnd && (
 			tplt[0]->exprtype == MincExpr::ExprType::ELLIPSIS ||
@@ -173,7 +173,7 @@ bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter
 	return tplt == tpltEnd; // We have a match if tplt has been fully traversed
 }
 
-void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter tpltEnd, StreamingMincExprIter expr, std::vector<MincExpr*>& params, size_t& paramIdx)
+void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter tpltEnd, ResolvingMincExprIter expr, std::vector<MincExpr*>& params, size_t& paramIdx)
 {
 	MatchScore score;
 	while (tplt != tpltEnd && !expr.done())
@@ -241,7 +241,7 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 		{
 			++tplt; // Eat $S
 
-			StreamingMincExprIter subStmtBegin = expr;
+			ResolvingMincExprIter subStmtBegin = expr;
 			MatchScore subStmtScore;
 			const std::pair<const MincListExpr*, MincKernel*> stmtKernel = block->lookupStmt(subStmtBegin, expr, subStmtScore);
 			assert(stmtKernel.first != nullptr);
@@ -333,10 +333,10 @@ void StatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt)
 	stmtreg[tplt] = stmt;
 }
 
-std::pair<const MincListExpr*, MincKernel*> StatementRegister::lookupStmt(const MincBlockExpr* block, StreamingMincExprIter stmt, StreamingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const MincListExpr*, MincKernel*> StatementRegister::lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	StreamingMincExprIter currentStmtEnd;
+	ResolvingMincExprIter currentStmtEnd;
 	std::pair<const MincListExpr*, MincKernel*> bestStmt = {nullptr, nullptr};
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 	{
@@ -371,11 +371,11 @@ std::pair<const MincListExpr*, MincKernel*> StatementRegister::lookupStmt(const 
 void StatementRegister::lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
 {
 	MatchScore score;
-	StreamingMincExprIter stmtEnd;
+	ResolvingMincExprIter stmtEnd;
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 	{
 		score = 0;
-		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingMincExprIter(block, &stmt->exprs), score, &stmtEnd) && stmtEnd.done())
+		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), ResolvingMincExprIter(block, &stmt->exprs), score, &stmtEnd) && stmtEnd.done())
 			candidates.insert({ score, iter });
 	}
 }
@@ -567,7 +567,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	stmt.begin = beginExpr;
 
 	// Setup streaming expression iterator
-	StreamingMincExprIter stmtBegin(this, exprs, beginExpr);
+	ResolvingMincExprIter stmtBegin(this, exprs, beginExpr);
 
 #ifdef DEBUG_STMTREG
 	std::vector<MincExpr*> _exprs;
@@ -579,7 +579,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 
 	// Lookup statement in current block and all parents
 	// Get kernel of best match
-	StreamingMincExprIter stmtEnd;
+	ResolvingMincExprIter stmtEnd;
 	MatchScore score;
 	std::pair<const MincListExpr*, MincKernel*> kernel = lookupStmt(stmtBegin, stmtEnd, score);
 
@@ -628,11 +628,11 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	}
 }
 
-std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(StreamingMincExprIter stmt, StreamingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	bestScore = -2147483648;
 	MatchScore currentScore;
-	StreamingMincExprIter currentStmtEnd;
+	ResolvingMincExprIter currentStmtEnd;
 	std::pair<const MincListExpr*, MincKernel*> currentKernel, bestKernel = {nullptr, nullptr};
 	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{

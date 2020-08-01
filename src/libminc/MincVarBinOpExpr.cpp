@@ -75,3 +75,11 @@ MincExpr* MincVarBinOpExpr::clone() const
 {
 	return new MincVarBinOpExpr(loc, op, opstr.c_str(), a->clone());
 }
+
+extern "C"
+{
+	bool ExprIsVarBinOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::VARBINOP;
+	}
+}

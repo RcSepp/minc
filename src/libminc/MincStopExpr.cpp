@@ -23,3 +23,11 @@ MincExpr* MincStopExpr::clone() const
 {
 	return new MincStopExpr(loc);
 }
+
+extern "C"
+{
+	bool ExprIsStop(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::STOP;
+	}
+}

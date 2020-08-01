@@ -31,3 +31,16 @@ MincExpr* MincIdExpr::clone() const
 {
 	return new MincIdExpr(loc, name.c_str());
 }
+
+extern "C"
+{
+	bool ExprIsId(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::ID;
+	}
+
+	const char* getIdExprName(const MincIdExpr* expr)
+	{
+		return expr->name.c_str();
+	}
+}

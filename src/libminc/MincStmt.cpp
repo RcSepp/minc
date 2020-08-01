@@ -130,3 +130,16 @@ MincExpr* MincStmt::clone() const
 {
 	return new MincStmt(begin, end, resolvedKernel);
 }
+
+extern "C"
+{
+	bool ExprIsStmt(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::STMT;
+	}
+
+	void codegenStmt(MincStmt* stmt, MincBlockExpr* scope)
+	{
+		stmt->codegen(scope);
+	}
+}

@@ -53,3 +53,11 @@ MincExpr* MincPrefixExpr::clone() const
 {
 	return new MincPrefixExpr(loc, op, opstr.c_str(), a->clone());
 }
+
+extern "C"
+{
+	bool ExprIsPrefixOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::PREOP;
+	}
+}

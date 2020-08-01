@@ -60,3 +60,11 @@ MincExpr* MincEllipsisExpr::clone() const
 {
 	return new MincEllipsisExpr(loc, expr->clone());
 }
+
+extern "C"
+{
+	bool ExprIsEllipsis(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::ELLIPSIS;
+	}
+}

@@ -164,3 +164,26 @@ MincExpr* MincListExpr::clone() const
 		clone->exprs.push_back(expr->clone());
 	return clone;
 }
+
+extern "C"
+{
+	bool ExprIsList(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::LIST;
+	}
+
+	std::vector<MincExpr*>& getListExprExprs(MincListExpr* expr)
+	{
+		return expr->exprs;
+	}
+
+	MincExpr* getListExprExpr(MincListExpr* expr, size_t index)
+	{
+		return expr->exprs[index];
+	}
+
+	size_t getListExprSize(MincListExpr* expr)
+	{
+		return expr->exprs.size();
+	}
+}

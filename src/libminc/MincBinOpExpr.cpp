@@ -63,3 +63,11 @@ MincExpr* MincBinOpExpr::clone() const
 {
 	return new MincBinOpExpr(loc, op, opstr.c_str(), a->clone(), b->clone());
 }
+
+extern "C"
+{
+	bool ExprIsBinOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::BINOP;
+	}
+}

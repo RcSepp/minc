@@ -32,3 +32,16 @@ MincExpr* MincLiteralExpr::clone() const
 {
 	return new ::MincLiteralExpr(loc, value.c_str());
 }
+
+extern "C"
+{
+	bool ExprIsLiteral(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::LITERAL;
+	}
+
+	const char* getLiteralExprValue(const MincLiteralExpr* expr)
+	{
+		return expr->value.c_str();
+	}
+}

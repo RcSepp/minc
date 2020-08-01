@@ -1,3 +1,4 @@
+#include <cstring>
 #include "minc_api.hpp"
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
@@ -100,4 +101,79 @@ int MincExpr::comp(const MincExpr* other) const
 bool operator<(const MincExpr& left, const MincExpr& right)
 {
 	return left.comp(&right) < 0;
+}
+
+extern "C"
+{
+	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope)
+	{
+		return expr->codegen(scope);
+	}
+
+	MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope)
+	{
+		return expr->getType(scope);
+	}
+
+	void collectParams(const MincBlockExpr* scope, const MincExpr* tplt, MincExpr* expr, std::vector<MincExpr*>& params)
+	{
+		size_t paramIdx = params.size();
+		tplt->collectParams(scope, expr, params, paramIdx);
+	}
+
+	void resolveExpr(MincExpr* expr, MincBlockExpr* scope)
+	{
+		expr->resolve(scope);
+	}
+
+	void forgetExpr(MincExpr* expr)
+	{
+		expr->forget();
+	}
+
+	char* ExprToString(const MincExpr* expr)
+	{
+		const std::string str = expr->str();
+		char* cstr = new char[str.size() + 1];
+		memcpy(cstr, str.c_str(), (str.size() + 1) * sizeof(char));
+		return cstr;
+	}
+
+	char* ExprToShortString(const MincExpr* expr)
+	{
+		const std::string str = expr->shortStr();
+		char* cstr = new char[str.size() + 1];
+		memcpy(cstr, str.c_str(), (str.size() + 1) * sizeof(char));
+		return cstr;
+	}
+
+	const MincLocation& getLocation(const MincExpr* expr)
+	{
+		return expr->loc;
+	}
+
+	const char* getExprFilename(const MincExpr* expr)
+	{
+		return expr->loc.filename;
+	}
+
+	unsigned getExprLine(const MincExpr* expr)
+	{
+		return expr->loc.begin_line;
+	}
+
+	unsigned getExprColumn(const MincExpr* expr)
+	{
+		return expr->loc.begin_column;
+	}
+
+	unsigned getExprEndLine(const MincExpr* expr)
+	{
+		return expr->loc.end_line;
+	}
+
+	unsigned getExprEndColumn(const MincExpr* expr)
+	{
+		return expr->loc.end_column;
+	}
 }

@@ -66,3 +66,11 @@ MincExpr* MincParamExpr::clone() const
 {
 	return new MincParamExpr(loc, idx);
 }
+
+extern "C"
+{
+	bool ExprIsParam(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::PARAM;
+	}
+}

@@ -5,7 +5,6 @@ TMP_DIR = tmp/
 BIN_DIR = bin/
 
 LIBMINC_OBJS = \
-	libminc/codegen.o \
 	libminc/cparser.o \
 	libminc/cparser.yy.o \
 	libminc/pyparser.o \

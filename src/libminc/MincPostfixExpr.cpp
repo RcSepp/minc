@@ -54,3 +54,11 @@ MincExpr* MincPostfixExpr::clone() const
 {
 	return new MincPostfixExpr(loc, op, opstr.c_str(), a->clone());
 }
+
+extern "C"
+{
+	bool ExprIsPostfixOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::POSTOP;
+	}
+}

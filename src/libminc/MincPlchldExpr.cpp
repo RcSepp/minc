@@ -158,3 +158,21 @@ MincExpr* MincPlchldExpr::clone() const
 {
 	return p2 == nullptr ? new MincPlchldExpr(loc, p1) : new MincPlchldExpr(loc, p1, p2, allowCast);
 }
+
+extern "C"
+{
+	bool ExprIsPlchld(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::PLCHLD;
+	}
+
+	char getPlchldExprLabel(const MincPlchldExpr* expr)
+	{
+		return expr->p1;
+	}
+
+	const char* getPlchldExprSublabel(const MincPlchldExpr* expr)
+	{
+		return expr->p2;
+	}
+}

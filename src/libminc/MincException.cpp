@@ -131,3 +131,11 @@ out << std::endl;
 		in.close();
 	}
 }
+
+extern "C"
+{
+	void raiseCompileError(const char* msg, const MincExpr* loc)
+	{
+		throw CompileError(msg, loc ? loc->loc : MincLocation({0}));
+	}
+}

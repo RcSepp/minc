@@ -57,3 +57,11 @@ MincExpr* MincEncOpExpr::clone() const
 {
 	return new MincEncOpExpr(loc, op, oopstr.c_str(), copstr.c_str(), val->clone());
 }
+
+extern "C"
+{
+	bool ExprIsEncOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::ENCOP;
+	}
+}

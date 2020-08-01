@@ -72,3 +72,11 @@ MincExpr* MincTerOpExpr::clone() const
 {
 	return new MincTerOpExpr(loc, op1, op2, opstr1.c_str(), opstr2.c_str(), a->clone(), b->clone(), c->clone());
 }
+
+extern "C"
+{
+	bool ExprIsTerOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::TEROP;
+	}
+}

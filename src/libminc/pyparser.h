@@ -12,8 +12,8 @@
 //class PyLexer;
 #include "minc_api.hpp"
 
-#include "../tmp/location.hh"
-#include "../tmp/pyparser.hh"
+#include "../../tmp/libminc/location.hh"
+#include "../../tmp/libminc/pyparser.hh"
 
 class PyLexer : public yyFlexLexer
 {

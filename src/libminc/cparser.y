@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <fstream>
 #include <sstream>
-#include "../src/cparser.h"
+#include "../../src/libminc/cparser.h"
 
 #undef yylex
 #define yylex scanner.yylex

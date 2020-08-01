@@ -3,7 +3,7 @@
 #include <fstream>
 #include <math.h>
 #include <algorithm>
-#include "../src/cparser.h"
+#include "../../src/libminc/cparser.h"
 using namespace std;
 using token = yy::CParser::token;
 #undef YY_DECL

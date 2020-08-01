@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <fstream>
 #include <sstream>
-#include "../src/pyparser.h"
+#include "../../src/libminc/pyparser.h"
 
 #undef yylex
 #define yylex scanner.yylex

@@ -3,7 +3,7 @@
 #include <fstream>
 #include <math.h>
 #include <algorithm>
-#include "../src/pyparser.h"
+#include "../../src/libminc/pyparser.h"
 using namespace std;
 using token = yy::PyParser::token;
 #undef YY_DECL

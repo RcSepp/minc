@@ -10,8 +10,8 @@
 //class CLexer;
 #include "minc_api.hpp"
 
-#include "../tmp/location.hh"
-#include "../tmp/cparser.hh"
+#include "../../tmp/libminc/location.hh"
+#include "../../tmp/libminc/cparser.hh"
 
 class CLexer : public yyFlexLexer
 {

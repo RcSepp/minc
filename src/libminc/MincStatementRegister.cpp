@@ -328,12 +328,12 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
-void StatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt)
+void MincStatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt)
 {
 	stmtreg[tplt] = stmt;
 }
 
-std::pair<const MincListExpr*, MincKernel*> StatementRegister::lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	ResolvingMincExprIter currentStmtEnd;
@@ -368,7 +368,7 @@ std::pair<const MincListExpr*, MincKernel*> StatementRegister::lookupStmt(const 
 	return bestStmt;
 }
 
-void StatementRegister::lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
+void MincStatementRegister::lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
 {
 	MatchScore score;
 	ResolvingMincExprIter stmtEnd;
@@ -380,28 +380,28 @@ void StatementRegister::lookupStmtCandidates(const MincBlockExpr* block, const M
 	}
 }
 
-size_t StatementRegister::countStmts() const
+size_t MincStatementRegister::countStmts() const
 {
 	return stmtreg.size();
 }
 
-void StatementRegister::iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const
+void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const
 {
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 		cbk(iter.first, iter.second);
 }
 
-void StatementRegister::defineDefaultStmt(MincKernel* stmt)
+void MincStatementRegister::defineDefaultStmt(MincKernel* stmt)
 {
 	antiStmt = stmt;
 }
 
-void StatementRegister::defineExpr(const MincExpr* tplt, MincKernel* expr)
+void MincStatementRegister::defineExpr(const MincExpr* tplt, MincKernel* expr)
 {
 	exprreg[tplt->exprtype][tplt] = expr;
 }
 
-std::pair<const MincExpr*, MincKernel*> StatementRegister::lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const
+std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	std::pair<const MincExpr*, MincKernel*> bestExpr = {nullptr, nullptr};
@@ -462,7 +462,7 @@ std::pair<const MincExpr*, MincKernel*> StatementRegister::lookupExpr(const Minc
 	return bestExpr;
 }
 
-void StatementRegister::lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const
+void MincStatementRegister::lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const
 {
 	MatchScore score;
 	for (auto& iter: exprreg[expr->exprtype])
@@ -479,7 +479,7 @@ void StatementRegister::lookupExprCandidates(const MincBlockExpr* block, const M
 	}
 }
 
-size_t StatementRegister::countExprs() const
+size_t MincStatementRegister::countExprs() const
 {
 	size_t numExprs = 0;
 	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
@@ -487,7 +487,7 @@ size_t StatementRegister::countExprs() const
 	return numExprs;
 }
 
-void StatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const
+void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const
 {
 	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
 		for (const std::pair<const MincExpr*, MincKernel*>& iter: exprreg)

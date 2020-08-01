@@ -123,14 +123,14 @@ namespace std
 	};
 }
 
-class StatementRegister
+class MincStatementRegister
 {
 private:
 	std::map<const MincListExpr*, MincKernel*> stmtreg;
 	std::array<std::map<const MincExpr*, MincKernel*>, MincExpr::NUM_EXPR_TYPES> exprreg;
 	MincKernel *antiStmt, *antiExpr;
 public:
-	StatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
+	MincStatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
 	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
@@ -201,7 +201,7 @@ public:
 class MincBlockExpr : public MincExpr
 {
 private:
-	StatementRegister stmtreg;
+	MincStatementRegister stmtreg;
 	std::map<std::string, MincSymbol> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	CastRegister castreg;

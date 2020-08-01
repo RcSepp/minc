@@ -26,7 +26,7 @@ LIBMINC_OBJS = \
 	libminc/MincPlchldExpr.o \
 	libminc/MincPostfixExpr.o \
 	libminc/MincPrefixExpr.o \
-	libminc/StatementRegister.o \
+	libminc/MincStatementRegister.o \
 	libminc/MincStmt.o \
 	libminc/MincStopExpr.o \
 	libminc/ResolvingMincExprIter.o \

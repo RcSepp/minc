@@ -15,7 +15,7 @@ LIBMINC_OBJS = \
 	libminc/MincBinOpExpr.o \
 	libminc/MincBlockExpr.o \
 	libminc/MincCastExpr.o \
-	libminc/CastRegister.o \
+	libminc/MincCastRegister.o \
 	libminc/MincEllipsisExpr.o \
 	libminc/MincEncOpExpr.o \
 	libminc/MincExpr.o \

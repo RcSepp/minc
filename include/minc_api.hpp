@@ -179,16 +179,16 @@ struct TypeCast : public MincCast
 	MincCast* derive() const;
 };
 
-class CastRegister
+class MincCastRegister
 {
 private:
 	MincBlockExpr* const block;
 	std::map<std::pair<MincObject*, MincObject*>, MincCast*> casts;
 	std::multimap<MincObject*, MincCast*> fwdCasts, bwdCasts;
 public:
-	CastRegister(MincBlockExpr* block);
+	MincCastRegister(MincBlockExpr* block);
 	void defineDirectCast(MincCast* cast);
-	void defineIndirectCast(const CastRegister& castreg, MincCast* cast);
+	void defineIndirectCast(const MincCastRegister& castreg, MincCast* cast);
 	const MincCast* lookupCast(MincObject* fromType, MincObject* toType) const;
 	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
@@ -223,7 +223,7 @@ private:
 	MincStatementRegister stmtreg;
 	std::map<std::string, MincSymbol> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
-	CastRegister castreg;
+	MincCastRegister castreg;
 	std::vector<MincStmt>* resolvedStmts;
 	bool ownesResolvedStmts;
 

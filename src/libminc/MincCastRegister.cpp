@@ -55,12 +55,12 @@ struct IndirectCast : public MincCast, public MincKernel
 	}
 };
 
-CastRegister::CastRegister(MincBlockExpr* block)
+MincCastRegister::MincCastRegister(MincBlockExpr* block)
 	: block(block)
 {
 }
 
-void CastRegister::defineDirectCast(MincCast* cast)
+void MincCastRegister::defineDirectCast(MincCast* cast)
 {
 	const auto& key = std::make_pair(cast->fromType, cast->toType);
 	casts[key] = cast;
@@ -80,7 +80,7 @@ void CastRegister::defineDirectCast(MincCast* cast)
 // 	std::cout << "    " << fromTypeName << "-->|" << cast->getCost() << "|" << toTypeName << ";\n";
 }
 
-void CastRegister::defineIndirectCast(const CastRegister& castreg, MincCast* cast)
+void MincCastRegister::defineIndirectCast(const MincCastRegister& castreg, MincCast* cast)
 {
 	std::map<std::pair<MincObject*, MincObject*>, MincCast*>::const_iterator existingCast;
 
@@ -126,30 +126,30 @@ void CastRegister::defineIndirectCast(const CastRegister& castreg, MincCast* cas
 	}
 }
 
-const MincCast* CastRegister::lookupCast(MincObject* fromType, MincObject* toType) const
+const MincCast* MincCastRegister::lookupCast(MincObject* fromType, MincObject* toType) const
 {
 	const auto& cast = casts.find(std::make_pair(fromType, toType));
 	return cast == casts.end() ? nullptr : cast->second;
 }
 
-bool CastRegister::isInstance(MincObject* derivedType, MincObject* baseType) const
+bool MincCastRegister::isInstance(MincObject* derivedType, MincObject* baseType) const
 {
 	const auto& cast = casts.find(std::make_pair(derivedType, baseType));
 	return cast != casts.end() && cast->second->getCost() == 0; // Zero-cost casts are inheritance casts
 }
 
-void CastRegister::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
+void MincCastRegister::listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const
 {
 	for (const std::pair<std::pair<MincObject*, MincObject*>, MincCast*>& cast: this->casts)
 		casts.push_back(cast.first);
 }
 
-size_t CastRegister::countCasts() const
+size_t MincCastRegister::countCasts() const
 {
 	return casts.size();
 }
 
-void CastRegister::iterateCasts(std::function<void(const MincCast* cast)> cbk) const
+void MincCastRegister::iterateCasts(std::function<void(const MincCast* cast)> cbk) const
 {
 	for (const std::pair<const std::pair<MincObject*, MincObject*>, MincCast*>& iter: casts)
 		cbk(iter.second);

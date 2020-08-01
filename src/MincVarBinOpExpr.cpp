@@ -37,12 +37,12 @@ void MincVarBinOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr,
 			params[i] = new MincListExpr('\0', { params[i] });
 }
 
-void MincVarBinOpExpr::resolveTypes(const MincBlockExpr* block)
+void MincVarBinOpExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		a->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		a->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

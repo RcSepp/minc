@@ -15,12 +15,12 @@ void MincPostfixExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, 
 	a->collectParams(block, ((MincPostfixExpr*)expr)->a, params, paramIdx);
 }
 
-void MincPostfixExpr::resolveTypes(const MincBlockExpr* block)
+void MincPostfixExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		a->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		a->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

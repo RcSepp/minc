@@ -23,12 +23,12 @@ void MincEllipsisExpr::collectParams(const MincBlockExpr* block, MincExpr* expr,
 			params[i] = new MincListExpr('\0', { params[i] });
 }
 
-void MincEllipsisExpr::resolveTypes(const MincBlockExpr* block)
+void MincEllipsisExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		expr->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		expr->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

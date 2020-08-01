@@ -20,13 +20,13 @@ void MincArgOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 	args->collectParams(block, ((MincArgOpExpr*)expr)->args, params, paramIdx);
 }
 
-void MincArgOpExpr::resolveTypes(const MincBlockExpr* block)
+void MincArgOpExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		var->resolveTypes(block);
-		args->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		var->resolve(block);
+		args->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

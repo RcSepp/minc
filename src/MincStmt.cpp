@@ -74,12 +74,12 @@ void MincStmt::collectParams(const MincBlockExpr* block, MincExpr* expr, std::ve
 	assert(0);
 }
 
-void MincStmt::resolveTypes(const MincBlockExpr* block)
+void MincStmt::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
 		for (MincExprIter expr = begin; ++expr != end;)
-			(*expr)->resolveTypes(block);
+			(*expr)->resolve(block);
 		block->lookupStmt(begin, *this);
 	}
 }

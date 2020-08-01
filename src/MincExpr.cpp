@@ -76,7 +76,7 @@ MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 	return resolvedKernel ? resolvedKernel->getType(parentBlock, resolvedParams) : nullptr;
 }
 
-void MincExpr::resolveTypes(const MincBlockExpr* block)
+void MincExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 		block->lookupExpr(this);

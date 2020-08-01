@@ -16,15 +16,15 @@ void MincBinOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 	b->collectParams(block, ((MincBinOpExpr*)expr)->b, params, paramIdx);
 }
 
-void MincBinOpExpr::resolveTypes(const MincBlockExpr* block)
+void MincBinOpExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		a->resolveTypes(block);
-		b->resolveTypes(block);
-		a_post.resolveTypes(block);
-		b_pre.resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		a->resolve(block);
+		b->resolve(block);
+		a_post.resolve(block);
+		b_pre.resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

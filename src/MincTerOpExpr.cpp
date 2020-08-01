@@ -23,14 +23,14 @@ void MincTerOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 	c->collectParams(block, ((MincTerOpExpr*)expr)->c, params, paramIdx);
 }
 
-void MincTerOpExpr::resolveTypes(const MincBlockExpr* block)
+void MincTerOpExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		a->resolveTypes(block);
-		b->resolveTypes(block);
-		c->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		a->resolve(block);
+		b->resolve(block);
+		c->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

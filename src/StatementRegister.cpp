@@ -34,7 +34,7 @@ std::string indent;
 // A mock kernel applied to expressions that can't be resolved, to avoid repeated attempts to resolve those expressions.
 //
 // Example: Keyword identifiers such as "if" or "while" can't be resolved to symbols. If the kernel of such expressions
-// were left at null, subsequent calls to MincExpr::resolveTypes() would keep reattempting to resolve these identifiers.
+// were left at null, subsequent calls to MincExpr::resolve() would keep reattempting to resolve these identifiers.
 // Instead we mark the kernel as UNRESOLVABLE_KERNEL.
 static struct UnresolvableMincKernel : public MincKernel
 {

@@ -60,7 +60,7 @@ MincBlockExpr::~MincBlockExpr()
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
 {
 	for (MincExpr* tpltExpr: tplt)
-		tpltExpr->resolveTypes(this);
+		tpltExpr->resolve(this);
 	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
 }
 
@@ -105,7 +105,7 @@ void MincBlockExpr::defineDefaultStmt(MincKernel* stmt)
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 {
-	tplt->resolveTypes(this);
+	tplt->resolve(this);
 	stmtreg.defineExpr(tplt, expr);
 }
 

@@ -163,7 +163,7 @@ extern "C"
 
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
-		expr->resolveTypes(scope);
+		expr->resolve(scope);
 	}
 
 	void forgetExpr(MincExpr* expr)

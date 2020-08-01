@@ -14,12 +14,12 @@ void MincPrefixExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 	a->collectParams(block, ((MincPrefixExpr*)expr)->a, params, paramIdx);
 }
 
-void MincPrefixExpr::resolveTypes(const MincBlockExpr* block)
+void MincPrefixExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		a->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		a->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

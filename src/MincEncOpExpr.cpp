@@ -18,12 +18,12 @@ void MincEncOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 	val->collectParams(block, ((MincEncOpExpr*)expr)->val, params, paramIdx);
 }
 
-void MincEncOpExpr::resolveTypes(const MincBlockExpr* block)
+void MincEncOpExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		val->resolveTypes(block);
-		MincExpr::resolveTypes(block);
+		val->resolve(block);
+		MincExpr::resolve(block);
 	}
 }
 

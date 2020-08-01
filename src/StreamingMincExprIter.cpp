@@ -26,14 +26,14 @@ bool StreamingMincExprIter::done()
 MincExpr* StreamingMincExprIter::operator*()
 {
 	MincExpr* const expr = *current;
-	expr->resolveTypes(resolveScope);
+	expr->resolve(resolveScope);
 	return expr;
 }
 
 MincExpr* StreamingMincExprIter::operator[](int i)
 {
 	MincExpr* const expr = *(current + i);
-	expr->resolveTypes(resolveScope);
+	expr->resolve(resolveScope);
 	return expr;
 }
 

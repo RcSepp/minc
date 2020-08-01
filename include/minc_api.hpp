@@ -68,19 +68,38 @@ class ResolvingMincExprIter
 	MincExprIter current;
 
 public:
-	ResolvingMincExprIter();
-	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs);
-	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current);
+	ResolvingMincExprIter() : resolveScope(nullptr), exprs(nullptr) {}
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs)
+		: resolveScope(resolveScope), exprs(exprs)
+	{
+		assert(resolveScope != nullptr && exprs != nullptr);
+		current = exprs->begin();
+	}
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current)
+		: resolveScope(resolveScope), exprs(exprs), current(current)
+	{
+		assert(resolveScope != nullptr && exprs != nullptr);
+	}
 	ResolvingMincExprIter(const ResolvingMincExprIter& other) = default;
-	bool done();
-	MincExpr* operator*();
-	MincExpr* operator[](int i);
-	size_t operator-(const ResolvingMincExprIter& other) const;
 	ResolvingMincExprIter& operator=(const ResolvingMincExprIter& other) = default;
-	ResolvingMincExprIter operator+(int n) const;
-	ResolvingMincExprIter operator++(int);
-	ResolvingMincExprIter& operator++();
-	MincExprIter iter() const;
+	inline bool done() { return current == exprs->end(); }
+	inline MincExpr* operator*()
+	{
+		MincExpr* const expr = *current;
+		expr->resolve(resolveScope);
+		return expr;
+	}
+	inline MincExpr* operator[](int i)
+	{
+		MincExpr* const expr = *(current + i);
+		expr->resolve(resolveScope);
+		return expr;
+	}
+	inline size_t operator-(const ResolvingMincExprIter& other) const { return exprs == nullptr || other.exprs == nullptr ? 0 : current - other.current; }
+	inline ResolvingMincExprIter operator+(int n) const { return ResolvingMincExprIter(resolveScope, exprs, current + n); }
+	inline ResolvingMincExprIter operator++(int) { return ResolvingMincExprIter(resolveScope, exprs, current++); }
+	inline ResolvingMincExprIter& operator++() { ++current; return *this; }
+	inline MincExprIter iter() const { return current; }
 };
 
 class MincListExpr : public MincExpr

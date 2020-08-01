@@ -29,7 +29,6 @@ LIBMINC_OBJS = \
 	libminc/MincStatementRegister.o \
 	libminc/MincStmt.o \
 	libminc/MincStopExpr.o \
-	libminc/ResolvingMincExprIter.o \
 	libminc/MincTerOpExpr.o \
 	libminc/MincVarBinOpExpr.o \
 

@@ -76,7 +76,19 @@ void MincStmt::collectParams(const MincBlockExpr* block, MincExpr* expr, std::ve
 
 void MincStmt::resolveTypes(const MincBlockExpr* block)
 {
-	assert(0);
+	if (!isResolved())
+	{
+		for (MincExprIter expr = begin; ++expr != end;)
+			(*expr)->resolveTypes(block);
+		block->lookupStmt(begin, *this);
+	}
+}
+
+void MincStmt::forget()
+{
+	for (MincExprIter expr = begin; ++expr != end;)
+		(*expr)->forget();
+	MincExpr::forget();
 }
 
 std::string MincStmt::str() const

@@ -43,7 +43,9 @@ public:
 	virtual MincObject* getType(const MincBlockExpr* parentBlock) const;
 	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const = 0;
+	inline bool isResolved() { return this->resolvedKernel != nullptr; }
 	virtual void resolveTypes(const MincBlockExpr* block);
+	virtual void forget();
 	virtual std::string str() const = 0;
 	virtual std::string shortStr() const;
 	virtual int comp(const MincExpr* other) const;
@@ -91,6 +93,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* exprs, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* exprs, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -187,6 +190,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -359,6 +363,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -375,6 +380,7 @@ public:
 	MincArgOpExpr(const MincLocation& loc, int op, const char* oopstr, const char* copstr, MincExpr* var, MincListExpr* args);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void forget();
 	void resolveTypes(const MincBlockExpr* block);
 	std::string str() const;
 	std::string shortStr() const;
@@ -392,6 +398,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -408,6 +415,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -424,6 +432,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -440,6 +449,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -458,6 +468,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
@@ -474,6 +485,7 @@ public:
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolveTypes(const MincBlockExpr* block);
+	void forget();
 	std::string str() const;
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;

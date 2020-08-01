@@ -22,12 +22,19 @@ void MincArgOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 
 void MincArgOpExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 	{
 		var->resolveTypes(block);
 		args->resolveTypes(block);
 		MincExpr::resolveTypes(block);
 	}
+}
+
+void MincArgOpExpr::forget()
+{
+	var->forget();
+	args->forget();
+	MincExpr::forget();
 }
 
 std::string MincArgOpExpr::str() const

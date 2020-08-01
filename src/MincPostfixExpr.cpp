@@ -17,11 +17,17 @@ void MincPostfixExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, 
 
 void MincPostfixExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 	{
 		a->resolveTypes(block);
 		MincExpr::resolveTypes(block);
 	}
+}
+
+void MincPostfixExpr::forget()
+{
+	a->forget();
+	MincExpr::forget();
 }
 
 std::string MincPostfixExpr::str() const

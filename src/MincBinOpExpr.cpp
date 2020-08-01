@@ -18,14 +18,23 @@ void MincBinOpExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 
 void MincBinOpExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 	{
 		a->resolveTypes(block);
 		b->resolveTypes(block);
-		MincExpr::resolveTypes(block);
 		a_post.resolveTypes(block);
 		b_pre.resolveTypes(block);
+		MincExpr::resolveTypes(block);
 	}
+}
+
+void MincBinOpExpr::forget()
+{
+	a->forget();
+	b->forget();
+	a_post.forget();
+	b_pre.forget();
+	MincExpr::forget();
 }
 
 std::string MincBinOpExpr::str() const

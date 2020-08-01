@@ -463,6 +463,8 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 		for (; stmtIdx < resolvedStmts->size(); ++stmtIdx)
 		{
 			MincStmt& currentStmt = resolvedStmts->at(stmtIdx);
+			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, currentStmt))
+				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
 
 			// Clear cached expressions

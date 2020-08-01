@@ -166,6 +166,11 @@ extern "C"
 		expr->resolveTypes(scope);
 	}
 
+	void forgetExpr(MincExpr* expr)
+	{
+		expr->forget();
+	}
+
 	MincBlockExpr* wrapExpr(MincExpr* expr)
 	{
 		return new MincBlockExpr(expr->loc, new std::vector<MincExpr*>(1, expr));

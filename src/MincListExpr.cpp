@@ -41,9 +41,15 @@ void MincListExpr::collectParams(const MincBlockExpr* block, MincExpr* exprs, st
 
 void MincListExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 		for (auto expr: exprs)
 			expr->resolveTypes(block);
+}
+
+void MincListExpr::forget()
+{
+	for (auto expr: exprs)
+		expr->forget();
 }
 
 std::string MincListExpr::str() const

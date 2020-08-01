@@ -38,6 +38,7 @@ extern "C"
 	bool ExprIsPlchld(const MincExpr* expr);
 	bool ExprIsEllipsis(const MincExpr* expr);
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope);
+	void forgetExpr(MincExpr* expr);
 	MincBlockExpr* wrapExpr(MincExpr* expr);
 	MincBlockExpr* createEmptyBlockExpr();
 	MincBlockExpr* cloneBlockExpr(MincBlockExpr* block);

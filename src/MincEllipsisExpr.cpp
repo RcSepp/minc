@@ -25,11 +25,17 @@ void MincEllipsisExpr::collectParams(const MincBlockExpr* block, MincExpr* expr,
 
 void MincEllipsisExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 	{
 		expr->resolveTypes(block);
 		MincExpr::resolveTypes(block);
 	}
+}
+
+void MincEllipsisExpr::forget()
+{
+	expr->forget();
+	MincExpr::forget();
 }
 
 std::string MincEllipsisExpr::str() const

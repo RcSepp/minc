@@ -122,6 +122,7 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 			case 'B': paramType = PawsBlockExpr::TYPE; break;
 			case 'S': break;
 			case 'E':
+			case 'D':
 				if (getPlchldExprSublabel(plchldParam) == nullptr)
 					break;
 				if (const MincSymbol* var = importSymbol(scope, getPlchldExprSublabel(plchldParam)))
@@ -142,6 +143,7 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 				case 'B': paramType = PawsBlockExpr::TYPE; break;
 				case 'S': break;
 				case 'E':
+				case 'D':
 					if (getPlchldExprSublabel(plchldParam) == nullptr)
 						break;
 					if (const MincSymbol* var = importSymbol(scope, getPlchldExprSublabel(plchldParam)))
@@ -518,7 +520,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	);
 
 	// Define for statement
-	defineStmt2(pkgScope, "for($E; $E; $E) $B",
+	defineStmt2(pkgScope, "for($E; $D; $D) $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincBlockExpr* forBlock = (MincBlockExpr*)params[3];
 

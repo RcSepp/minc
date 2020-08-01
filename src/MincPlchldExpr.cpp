@@ -83,6 +83,7 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 	case 'B': score += 6; return expr->exprtype == MincExpr::ExprType::BLOCK;
 	case 'P': score += 6; return expr->exprtype == MincExpr::ExprType::PLCHLD;
 	case 'V': score += 6; return expr->exprtype == MincExpr::ExprType::ELLIPSIS;
+	case 'D':
 	case 'E':
 	case 'S':
 		if (expr->exprtype == MincExpr::ExprType::STOP) return false;
@@ -130,6 +131,8 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 			return;
 		}
 	}
+	else if (p1 == 'D')
+		expr->forget(); // Forget kernel for deferred parameters
 	storeParam(expr, params, paramIdx++);
 }
 

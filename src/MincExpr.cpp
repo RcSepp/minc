@@ -78,8 +78,13 @@ MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 
 void MincExpr::resolveTypes(const MincBlockExpr* block)
 {
-	if (this->resolvedKernel == nullptr)
+	if (!isResolved())
 		block->lookupExpr(this);
+}
+
+void MincExpr::forget()
+{
+	resolvedKernel = nullptr;
 }
 
 std::string MincExpr::shortStr() const

@@ -508,6 +508,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			catch(ReturnException) {}
 
 			defineDefaultStmt2(block, nullptr);
+			forgetExpr((MincExpr*)getCurrentBlockExprStmt(block));
 
 			// Define await statement in frame instance scope
 			defineExpr3(block, "await $E<PawsAwaitableInstance>",

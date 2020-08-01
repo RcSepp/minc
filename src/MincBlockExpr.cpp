@@ -587,7 +587,7 @@ int MincBlockExpr::comp(const MincExpr* other) const
 
 MincExpr* MincBlockExpr::clone() const
 {
-	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs);
+	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs, this->resolvedStmts);
 	clone->parent = this->parent;
 	clone->references = this->references;
 	clone->name = this->name;

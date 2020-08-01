@@ -1,58 +1,64 @@
 #include "minc_api.hpp"
 
-StreamingMincExprIter::StreamingMincExprIter(const std::vector<MincExpr*>* buffer, size_t idx, std::function<bool()> next)
-	: buffer(buffer), idx(idx), next(next)
+StreamingMincExprIter::StreamingMincExprIter()
+	: resolveScope(nullptr), exprs(nullptr)
 {
-	if (buffer != nullptr)
-		for(size_t i = buffer->size(); i <= idx; ++i)
-			if (!next())
-			{
-				idx = buffer->size();
-				break;
-			}
+}
+
+StreamingMincExprIter::StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs)
+	: resolveScope(resolveScope), exprs(exprs)
+{
+	assert(resolveScope != nullptr && exprs != nullptr);
+	current = exprs->begin();
+}
+
+StreamingMincExprIter::StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current)
+	: resolveScope(resolveScope), exprs(exprs), current(current)
+{
+	assert(resolveScope != nullptr && exprs != nullptr);
 }
 
 bool StreamingMincExprIter::done()
 {
-	return idx == buffer->size() && !next();
+	return current == exprs->end();
 }
 
 MincExpr* StreamingMincExprIter::operator*()
 {
-	return idx != buffer->size() ? buffer->at(idx) : nullptr;
+	MincExpr* const expr = *current;
+	expr->resolveTypes(resolveScope);
+	return expr;
 }
 
 MincExpr* StreamingMincExprIter::operator[](int i)
 {
-	return idx + i < buffer->size() ? buffer->at(idx + i) : nullptr;
+	MincExpr* const expr = *(current + i);
+	expr->resolveTypes(resolveScope);
+	return expr;
 }
 
 size_t StreamingMincExprIter::operator-(const StreamingMincExprIter& other) const
 {
-	return idx - other.idx;
+	return exprs == nullptr || other.exprs == nullptr ? 0 : current - other.current;
 }
 
 StreamingMincExprIter StreamingMincExprIter::operator+(int n) const
 {
-	return StreamingMincExprIter(buffer, idx + n, next);
+	return StreamingMincExprIter(resolveScope, exprs, current + n);
 }
 
 StreamingMincExprIter StreamingMincExprIter::operator++(int)
 {
-	if (done())
-		return *this;
-	else
-		return StreamingMincExprIter(buffer, idx++, next);
+	return StreamingMincExprIter(resolveScope, exprs, current++);
 }
 
 StreamingMincExprIter& StreamingMincExprIter::operator++()
 {
-	if (!done())
-		++idx;
+	++current;
 	return *this;
 }
 
 MincExprIter StreamingMincExprIter::iter() const
 {
-	return buffer->cbegin() + idx;
+	return current;
 }

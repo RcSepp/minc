@@ -63,13 +63,14 @@ namespace std
 
 class StreamingMincExprIter
 {
-	const std::vector<MincExpr*>* buffer;
-	size_t idx;
-	std::function<bool()> next;
+	const MincBlockExpr* resolveScope;
+	const std::vector<MincExpr*>* exprs;
+	MincExprIter current;
 
 public:
-	static bool defaultNext() { return false; }
-	StreamingMincExprIter(const std::vector<MincExpr*>* buffer=nullptr, size_t idx=0, std::function<bool()> next=defaultNext);
+	StreamingMincExprIter();
+	StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs);
+	StreamingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current);
 	StreamingMincExprIter(const StreamingMincExprIter& other) = default;
 	bool done();
 	MincExpr* operator*();

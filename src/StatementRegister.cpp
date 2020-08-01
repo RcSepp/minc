@@ -21,15 +21,26 @@
 // -1      | Ellipsis
 
 //#define DEBUG_STMTREG
-extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
-unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 
 #include <assert.h>
 #include "minc_api.hpp"
 
+extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
+unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 #ifdef DEBUG_STMTREG
 std::string indent;
 #endif
+
+// A mock kernel applied to expressions that can't be resolved, to avoid repeated attempts to resolve those expressions.
+//
+// Example: Keyword identifiers such as "if" or "while" can't be resolved to symbols. If the kernel of such expressions
+// were left at null, subsequent calls to MincExpr::resolveTypes() would keep reattempting to resolve these identifiers.
+// Instead we mark the kernel as UNRESOLVABLE_KERNEL.
+static struct UnresolvableMincKernel : public MincKernel
+{
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return MincSymbol(nullptr, nullptr); }
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
+} UNRESOLVABLE_KERNEL;
 
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx)
 {
@@ -364,7 +375,7 @@ void StatementRegister::lookupStmtCandidates(const MincBlockExpr* block, const M
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 	{
 		score = 0;
-		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingMincExprIter(&stmt->exprs), score, &stmtEnd) && stmtEnd.done())
+		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), StreamingMincExprIter(block, &stmt->exprs), score, &stmtEnd) && stmtEnd.done())
 			candidates.insert({ score, iter });
 	}
 }
@@ -518,14 +529,15 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 	indent = indent.substr(0, indent.size() - 1);
 #endif
 
-	if (kernel.first != nullptr)
+	if (kernel.first != nullptr) // If a matching kernel was found, ...
 	{
+		// Set resolved kernel and collect kernel parameters
 		size_t paramIdx = 0;
-		if (kernel.first->exprtype ==MincExpr::PLCHLD)
+		if (kernel.first->exprtype == MincExpr::PLCHLD)
 		{
 			expr->resolvedKernel = kernel.second; // Set kernel before collectParams() to enable type-aware matching
 			expr->resolvedParams.push_back(expr); // Set first kernel parameter to self to enable type-aware matching
-			std::vector<::MincExpr*> collectedParams;
+			std::vector<MincExpr*> collectedParams;
 			kernel.first->collectParams(this, expr, collectedParams, paramIdx);
 			expr->resolvedParams.pop_back(); // Remove first kernel parameter
 			expr->resolvedParams = collectedParams; // Replace parameters with collected parameters
@@ -538,8 +550,12 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 		}
 		return true;
 	}
-	else
+	else // If no matching kernel was found, ...
+	{
+		// Mark expr as unresolvable
+		expr->resolvedKernel = &UNRESOLVABLE_KERNEL;
 		return false;
+	}
 }
 
 bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
@@ -547,29 +563,11 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	++STMT_RESOLVE_COUNTER;
 
 	// Initialize stmt
-	stmt.resolvedKernel = nullptr;
 	stmt.resolvedParams.clear();
-	stmt.resolvedExprs.clear();
 	stmt.begin = beginExpr;
 
-	// Define a callback to resolve an expression from this block and append it to stmt.resolvedExprs
-	stmt.sourceExprPtr = beginExpr;
-	auto resolveNextExprs = [&]() -> bool {
-		if (stmt.sourceExprPtr != exprs->cend()) // If expressions are available
-		{
-			// Resolve next expression
-			::MincExpr* const expr = *stmt.sourceExprPtr++;
-			expr->resolveTypes(this);
-			stmt.resolvedExprs.push_back(expr);
-			return true;
-		}
-		else // If no more expressions are available
-			return false;
-	};
-
 	// Setup streaming expression iterator
-	resolveNextExprs(); // Resolve first expression manually to make sure &stmt.resolvedExprs is valid
-	StreamingMincExprIter stmtBegin(&stmt.resolvedExprs, 0, resolveNextExprs);
+	StreamingMincExprIter stmtBegin(this, exprs, beginExpr);
 
 #ifdef DEBUG_STMTREG
 	std::vector<MincExpr*> _exprs;
@@ -614,15 +612,20 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	stmt.loc.end_line = stmt.end[-(int)(stmt.end != stmt.begin)]->loc.end_line;
 	stmt.loc.end_column = stmt.end[-(int)(stmt.end != stmt.begin)]->loc.end_column;
 
-	if (kernel.first != nullptr)
+	if (kernel.first != nullptr) // If a matching kernel was found, ...
 	{
+		// Set resolved kernel and collect kernel parameters
 		size_t paramIdx = 0;
 		collectStmt(this, kernel.first->cbegin(), kernel.first->cend(), stmtBegin, stmt.resolvedParams, paramIdx);
 		stmt.resolvedKernel = kernel.second;
 		return true;
 	}
-	else
+	else // If no matching kernel was found, ...
+	{
+		// Mark stmt as unresolvable
+		stmt.resolvedKernel = &UNRESOLVABLE_KERNEL;
 		return false;
+	}
 }
 
 std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(StreamingMincExprIter stmt, StreamingMincExprIter& bestStmtEnd, MatchScore& bestScore) const

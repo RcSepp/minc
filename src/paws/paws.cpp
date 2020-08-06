@@ -337,7 +337,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			const MincSymbol* var = lookupSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return var != nullptr ? var->type : nullptr;
+			return var != nullptr ? var->type : getErrorType();
 		}
 	);
 

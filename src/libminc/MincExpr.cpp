@@ -1,6 +1,8 @@
 #include <cstring>
 #include "minc_api.hpp"
 
+MincObject ERROR_TYPE;
+
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
 MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedKernel(nullptr)
@@ -45,6 +47,12 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
 		const MincObject *expectedType = resolvedKernel->getType(parentBlock, resolvedParams), *gotType = var.type;
 		if (expectedType != gotType)
 		{
+			if (expectedType == &ERROR_TYPE)
+				throw CompileError(
+					("no exception raised in expression returning error type: " + this->str()).c_str(),
+					this->loc
+				);
+
 			throw CompileError(
 				("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
 				this->loc
@@ -175,5 +183,10 @@ extern "C"
 	unsigned getExprEndColumn(const MincExpr* expr)
 	{
 		return expr->loc.end_column;
+	}
+
+	MincObject* getErrorType()
+	{
+		return &ERROR_TYPE;
 	}
 }

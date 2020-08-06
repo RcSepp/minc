@@ -13,6 +13,8 @@
 // 3     | PLCHLD       | $E<CAST>
 // 2     | PLCHLD       | $I
 // 1     | PLCHLD       | $E
+// 1     | PLCHLD       | $I<ERROR>
+// 0     | PLCHLD       | $E<ERROR>
 //
 // Match score penalties:
 // Penalty | Match type

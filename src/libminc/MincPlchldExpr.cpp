@@ -1,6 +1,8 @@
 #include <cstring>
 #include "minc_api.hpp"
 
+extern MincObject ERROR_TYPE;
+
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx);
 
 MincPlchldExpr::MincPlchldExpr(const MincLocation& loc, char p1)
@@ -99,6 +101,11 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 	else
 	{
 		MincObject* exprType = expr->getType(block);
+		if (exprType == &ERROR_TYPE) // Errors match any template type
+		{
+			// Do not reward erroneous match
+			return true;
+		}
 		MincObject* tpltType = getType(block);
 		if (exprType == tpltType)
 		{
@@ -121,6 +128,11 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 	if (p2 != nullptr && p1 != 'L')
 	{
 		MincObject* exprType = expr->getType(block);
+		if (exprType == &ERROR_TYPE)
+		{
+			storeParam(expr, params, paramIdx++);
+			return;
+		}
 		MincObject* tpltType = getType(block);
 		if (exprType != tpltType)
 		{

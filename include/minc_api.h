@@ -39,6 +39,7 @@ extern "C"
 	unsigned getExprColumn(const MincExpr* expr);
 	unsigned getExprEndLine(const MincExpr* expr);
 	unsigned getExprEndColumn(const MincExpr* expr);
+	MincObject* getErrorType();
 
 	// >>> MincListExpr
 

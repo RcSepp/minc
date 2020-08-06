@@ -14,11 +14,12 @@ typedef std::vector<MincExpr*>::const_iterator MincExprIter;
 
 extern "C"
 {
+	void raiseCompileError(const char* msg, const MincExpr* loc);
+	MincObject* getErrorType();
+	const MincSymbol& getVoid();
 	MincBlockExpr* getRootScope();
 	MincBlockExpr* getFileScope();
-	const MincSymbol& getVoid();
 	void defineImportRule(MincScopeType* fromScope, MincScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
-	void raiseCompileError(const char* msg, const MincExpr* loc);
 	void registerStepEventListener(StepEvent listener, void* eventArgs);
 	void deregisterStepEventListener(StepEvent listener);
 }

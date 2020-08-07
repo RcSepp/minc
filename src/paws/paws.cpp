@@ -258,7 +258,6 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	registerType<PawsIdExpr>(pkgScope, "PawsIdExpr");
 	registerType<PawsSym>(pkgScope, "PawsSym");
 	registerType<PawsScopeType>(pkgScope, "PawsScopeType");
-	registerType<PawsException>(pkgScope, "PawsException");
 	registerType<PawsStringMap>(pkgScope, "PawsStringMap");
 
 	// Import builtin paws packages
@@ -558,39 +557,6 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		}
 	);
 
-	// Define try statement
-	defineStmt2(pkgScope, "try $S catch $S",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			try
-			{
-				codegenExpr(params[0], parentBlock);
-			}
-			catch(const MincException& e)
-			{
-				codegenExpr(params[1], parentBlock);
-			}
-		}
-	);
-	defineStmt2(pkgScope, "try $S catch($E<PawsType> $I) $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			try
-			{
-				codegenExpr(params[0], parentBlock);
-			}
-			catch(const MincException& err)
-			{
-				MincObject* const catchType = codegenExpr(params[1], parentBlock).value;
-				if (isInstance(parentBlock, PawsException::TYPE, catchType))
-				{
-					defineSymbol((MincBlockExpr*)params[3], getIdExprName((MincIdExpr*)params[2]), PawsException::TYPE, new PawsException(err));
-					codegenExpr(params[3], parentBlock);
-				}
-				else
-					throw;
-			}
-		}
-	);
-
 	defineExpr2(pkgScope, "str($E<PawsBase>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincExpr* valueExpr = params[0];
@@ -662,14 +628,6 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			return MincSymbol(PawsType::TYPE, getType(expr, parentBlock));
 		},
 		PawsType::TYPE
-	);
-
-	defineStmt2(pkgScope, "assert $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			int test = ((PawsInt*)codegenExpr(params[0], parentBlock).value)->get();
-			if (!test)
-				raiseCompileError("Assertion failed", params[0]);
-		}
 	);
 
 	defineExpr(pkgScope, "parseCFile($E<PawsString>)",
@@ -892,12 +850,6 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	defineExpr(pkgScope, "$E<PawsSym>.type",
 		+[](MincSymbol var) -> MincObject* {
 			return var.type;
-		}
-	);
-
-	defineExpr(pkgScope, "$E<PawsException>.msg",
-		+[](MincException err) -> std::string {
-			return err.what();
 		}
 	);
 

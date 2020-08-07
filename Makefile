@@ -46,6 +46,8 @@ PAWS_OBJS = \
 	paws/paws.o \
 	paws/paws_int.o \
 	paws/paws_string.o \
+	paws/paws_assert.o \
+	paws/paws_exception.o \
 	paws/paws_extend.o \
 	paws/paws_fileio.o \
 	paws/paws_time.o \

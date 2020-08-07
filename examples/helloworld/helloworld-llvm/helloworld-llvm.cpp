@@ -198,7 +198,7 @@ public:
 				}
 
 				raiseCompileError("Non-string literals not implemented", params[0]);
-				return MincSymbol(nullptr, nullptr); // Unreachable
+				return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
 			},
 			[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
 				const std::string& value = ((MincLiteralExpr*)params[0])->value;

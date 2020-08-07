@@ -16,7 +16,7 @@ MincListExpr::MincListExpr(char separator, std::vector<MincExpr*> exprs)
 MincSymbol MincListExpr::codegen(MincBlockExpr* parentBlock)
 {
 	assert(0);
-	return MincSymbol(nullptr, nullptr); // Unreachable
+	return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
 }
 
 bool MincListExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const

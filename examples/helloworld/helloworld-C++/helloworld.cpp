@@ -27,7 +27,7 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 				return MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
 
 			raiseCompileError("Non-string literals not implemented", params[0]);
-			return MincSymbol(nullptr, nullptr); // Unreachable
+			return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
 			const std::string& value = ((MincLiteralExpr*)params[0])->value;

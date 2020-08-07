@@ -66,7 +66,7 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 bool MincStmt::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const
 {
 	assert(0);
-	return false; // Unreachable
+	return false; // LCOV_EXCL_LINE
 }
 
 void MincStmt::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const

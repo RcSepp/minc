@@ -37,12 +37,25 @@ std::string indent;
 //
 // Example: Keyword identifiers such as "if" or "while" can't be resolved to symbols. If the kernel of such expressions
 // were left at null, subsequent calls to MincExpr::resolve() would keep reattempting to resolve these identifiers.
-// Instead we mark the kernel as UNRESOLVABLE_KERNEL.
-static struct UnresolvableMincKernel : public MincKernel
+// Instead we mark the kernel as UNRESOLVABLE_EXPR_KERNEL or UNRESOLVABLE_STMT_KERNEL.
+static struct UnresolvableExprKernel : public MincKernel
 {
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return MincSymbol(nullptr, nullptr); }
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		MincStopExpr expr(MincLocation{"", 0, 0, 0, 0}); //TODO: Pass calling stmt/expr to codegen instead
+		throw UndefinedExprException{&expr};
+	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
-} UNRESOLVABLE_KERNEL;
+} UNRESOLVABLE_EXPR_KERNEL;
+static struct UnresolvableStmtKernel : public MincKernel
+{
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		MincStmt stmt; //TODO: Pass calling stmt/expr to codegen instead
+		throw UndefinedStmtException{&stmt};
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
+} UNRESOLVABLE_STMT_KERNEL;
 
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx)
 {
@@ -555,7 +568,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 	else // If no matching kernel was found, ...
 	{
 		// Mark expr as unresolvable
-		expr->resolvedKernel = &UNRESOLVABLE_KERNEL;
+		expr->resolvedKernel = &UNRESOLVABLE_EXPR_KERNEL;
 		return false;
 	}
 }
@@ -629,7 +642,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	else // If no matching kernel was found, ...
 	{
 		// Mark stmt as unresolvable
-		stmt.resolvedKernel = &UNRESOLVABLE_KERNEL;
+		stmt.resolvedKernel = &UNRESOLVABLE_STMT_KERNEL;
 		return false;
 	}
 }

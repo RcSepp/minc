@@ -264,6 +264,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.int");
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.string");
 
+	// Define inherent type casts
+	defineTypeCast(pkgScope, +[](int i) -> double { return (double)i; } );
+	defineTypeCast(pkgScope, +[](double d) -> int { return (int)d; } );
+
 	int argc;
 	char** argv;
 	getCommandLineArgs(&argc, &argv);
@@ -323,7 +327,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	defineStmt(pkgScope, "return $E<PawsInt>",
 		+[](int returnCode) {
 			quit(returnCode);
-		}
+		} // LCOV_EXCL_LINE
 	);
 
 	// Define variable lookup
@@ -494,14 +498,17 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	// Define inline if expression
 	defineExpr3(pkgScope, "$E<PawsInt> ? $E : $E",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincObject* ta = getType(params[1], parentBlock);
+			MincObject* tb = getType(params[2], parentBlock);
+			if (ta != tb)
+				throw CompileError(parentBlock, getLocation(params[0]), "operands to ?: have different types <%T> and <%T>", params[1], params[2]);
+
 			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			MincObject* ta = getType(params[1], parentBlock);
 			MincObject* tb = getType(params[2], parentBlock);
-			if (ta != tb)
-				raiseCompileError("TODO", params[0]);
-			return ta;
+			return ta == tb ? ta : getErrorType();
 		}
 	);
 

@@ -26,6 +26,8 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[0]);
 			PawsArray* arr = new PawsArray(std::vector<MincObject*>());
+			if (values.size() == 0)
+				return MincSymbol(PawsArray::TYPE, arr);
 			arr->get().reserve(values.size());
 			for (MincExpr* value: values)
 				arr->get().push_back(codegenExpr(value, parentBlock).value);
@@ -35,6 +37,8 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[0]);
 			std::vector<PawsType*> valueTypes;
+			if (values.size() == 0)
+				return PawsArray::TYPE;
 			valueTypes.reserve(values.size());
 			for (MincExpr* value: values)
 				valueTypes.push_back((PawsType*)getType(getDerivedExpr(value), parentBlock));
@@ -45,6 +49,8 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 	// Array getter
 	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>]",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (!ExprIsCast(params[0]))
+				raiseCompileError("attempting to access array of unspecified type", params[0]);
 			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
@@ -53,7 +59,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
-				raiseCompileError("attempting to access array of unspecified type", params[0]);
+				return getErrorType();
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
@@ -62,6 +68,8 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 	// Array setter
 	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>] = $E<PawsBase>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (!ExprIsCast(params[0]))
+				raiseCompileError("attempting to access array of unspecified type", params[0]);
 			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
@@ -84,7 +92,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
-				raiseCompileError("attempting to access array of unspecified type", params[0]);
+				return getErrorType();
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}

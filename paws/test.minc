@@ -1,61 +1,243 @@
 import paws;
+import paws.assert;
+import paws.exception;
 import paws.subroutine;
 import paws.time;
-import paws.stmtreg;
 
-PawsVoid test_basic()
+PawsVoid test_paws()
 {
 	// Test expression `getFileScope()` and expression `test($E<PawsBase>)`
-	assert type(getFileScope()) == PawsBlockExpr;
+	assert(type(getFileScope()) == PawsBlockExpr);
 
 	// Test symbol `FILE_SCOPE_TYPE`
-	assert type(FILE_SCOPE_TYPE) == PawsScopeType;
+	assert(type(FILE_SCOPE_TYPE) == PawsScopeType);
 
 	// Test statement `$E<PawsBase>`, expression `$I` and expression `$I<PawsBase> = $E<PawsBase>`
 	a = 1;
-	assert a;
+	assert(a == 1);
 
 	// Test statement `$B`
 	b = 0;
 	{
 		b = 1;
 	}
-	assert b;
+	assert(b == 1);
 
 	// Test expression `($E)`
 	c = (1);
-	assert c;
+	assert(c);
 
 	// Test expression `$L`
-	assert "1" == "1";
+	assert("1" == "1");
+
+	// Test symbol lookup exception
+	assert(d = e + 1) throws PawsException("`e` was not declared in this scope");
 
 	// Test statement `if($E<PawsInt>) $S`
-	if (1) assert 1;
+	if (1) assert(1);
 
 	// Test statement `if($E<PawsInt>) $S else $S`
-	if (1) assert 1; else assert 0;
-	if (0) assert 0; else assert 1;
+	if (1) assert(1); else assert(0);
+	if (0) assert(0); else assert(1);
 
 	// Test expression `$E<PawsInt> ? $E : $E`
-	assert 0 ? 0 : 1;
-	assert 1 ? 1 : 0;
+	assert(0 ? 0 : 1);
+	assert(1 ? 1 : 0);
+	assert(1 ? 1 : '0') throws PawsException("operands to ?: have different types <PawsInt> and <PawsString>");
 
 	// Test statement `while($E<PawsInt>) $S`
 	i = 0;
 	while (i != 2) i = i + 1;
-	assert i == 2;
+	assert(i == 2);
 
 	// Test statement `for($E; $E; $E) $B`
 	k = 0;
 	for (j = 0; j != 3; j = j + 1) { k = k + j + 1; }
-	assert k == 6;
+	assert(k == 6);
+	assert { for (j = 0; '0'; j = j + 1) {} } throws PawsException("invalid for condition type: '0'<PawsString>, expected: <PawsInt>");
 
 	// Test expression `str($E<PawsBase>)`
-	assert str(123) == "123";
+	assert(str(123) == "123");
+}
+
+PawsVoid test_paws_int()
+{
+	import paws.int;
+
+	// Test equivalence
+	assert(1 == 1);
+	assert(!(1 == 2));
+	assert(1 != 2);
+	assert(!(1 == 2));
+	assert(2 >> 1);
+	assert(!(1 >> 2));
+	assert(1 << 2);
+	assert(!(2 << 1));
+	assert(1 >= 1);
+	assert(2 >= 1);
+	assert(!(1 >= 2));
+	assert(1 <= 1);
+	assert(1 <= 2);
+	assert(!(2 <= 1));
+
+	// Test logical operators
+	assert(0 == !1);
+	assert(1 == !!1);
+	assert(!(0 && 0));
+	assert(!(0 && 1));
+	assert(!(1 && 0));
+	assert(  1 && 1);
+	assert(!(0 || 0));
+	assert(  0 || 1);
+	assert(  1 || 0);
+	assert(  1 || 1);
+
+	// Test unary operators
+	a = -1;
+	assert(++a == 0); //TODO: Fix matching `assert(++a == 1`
+	assert(a++ == 0);
+	assert(a == 1);
+	assert(--a == 0);
+	assert(a-- == 0);
+	assert(a == -1);
+
+	// Test binary operators
+	a = 7;
+	b = -3;
+	assert(a + b == 4);
+	assert(a - b == 10);
+	assert(a * b == -21);
+	assert(a / b == -2);
+	assert(a / 0) throws PawsException("Divide by zero exception");
+	assert(min(a, b) == -3);
+	assert(max(a, b) == 7);
+
+	// Test builtin functions
+	assert(str(-4) == "-4");
+	assert(type(-4) == PawsInt);
+}
+
+PawsVoid test_paws_string()
+{
+	import paws.string;
+
+	// Test logical operators
+	assert("hat" == "hat");
+	assert("hat" != "had");
+
+	// Test binary operators
+	a = "foo";
+	assert("foobar" == (a += "bar"));
+	assert(a == "foobar");
+	assert("foo" + "bar" == "foobar");
+	assert("la" * 3 == "lalala");
+	assert(3 * "la" == "lalala");
+
+	// Test builtin functions
+	assert("foo".length == 3);
+	assert("spam".substr(2) == "am");
+	assert("spam".substr(1, 2) == "pa");
+	assert("foo".find("o") == 1);
+	assert("foo".rfind("o") == 2);
+	assert(str("foo") == "foo");
+	assert(type("foo") == PawsString);
+
+	// '==' operator tests by-value
+	a = "chateau".substr(1, 3);
+	b = "ha" + "t";
+	assert(a == b);
+
+	// Test string map
+	m = map("apple": "red", "banana": "yellow");
+	assert(m["banana"] == "yellow");
+	assert(m.contains("apple"));
+	assert(!m.contains("orange"));
+	assert(str(m) == "{ apple: red, banana: yellow }");
+	s = "";
+	for (fruit, color: m)
+	{
+		s += fruit + "s are " + color + ", ";
+	}
+	assert(s == "apples are red, bananas are yellow, ");
+}
+
+PawsVoid test_paws_array()
+{
+	import paws.array;
+
+	// Test Inline array declaration
+	a = [0, 1];
+	assert(str(a) == "[0, 1]");
+	b = [];
+	assert(str(b) == "[]");
+
+	// Test array getter
+	assert(a[1] == 1);
+	assert(b[0]) throws PawsException("attempting to access array of unspecified type");
+
+	// Test array setter
+	a[1] = 2;
+	assert(a[1] == 2);
+	a[1] = 3.9;
+	assert(a[1] == 3);
+	assert(a[1] = '4') throws PawsException("invalid conversion of '4' from <PawsString> to <PawsInt>");
+	assert(b[0] = 5) throws PawsException("attempting to access array of unspecified type");
+
+	// Test builtin functions
+	assert(str(a) == "[0, 3]");
+	assert(type(a) == PawsArray); //TODO: Fix `assert(type(a) == PawsArray<PawsInt>;`
+}
+
+PawsVoid test_paws_subroutine()
+{
+	import paws.subroutine;
+
+	// Test return from void function
+	PawsVoid f()
+	{
+		assert { return '1'; } throws PawsException("void function should not return a value");
+		return;
+		assert(0); // Should never be hit
+	}
+	f();
+	assert(type(f()) == PawsVoid);
+
+	// Test return from non-void function
+	PawsInt f()
+	{
+		assert { return '1'; } throws PawsException("invalid return type `PawsString`");
+		assert { return; } throws PawsException("non-void function should return a value");
+		return 1;
+	}
+	assert(f() == 1);
+
+	// Test void function without return
+	PawsVoid f() {}
+	f();
+
+	// Test non-void function without return
+	PawsInt f() {}
+	assert(f()) throws PawsException("invalid expression return type: f()<PawsVoid>, expected: <PawsInt>");
+
+	// Test function arguments
+	PawsInt f(PawsInt a, PawsInt b) { return a - b; }
+	assert(f(1)) throws PawsException("invalid number of function arguments");
+	assert(f(1, 2) == -1);
+	assert(f(1, 2, 3)) throws PawsException("invalid number of function arguments");
+	assert(f(1, '2')) throws PawsException("invalid function argument type: '2'<PawsString>, expected: <PawsInt>");
+	assert(f(1.1, 2.9) == -1);
+
+	// Test non-function call
+	g = 1;
+	assert(g()) throws PawsException("`g` cannot be used as a function");
+	assert(h()) throws PawsException("`h` was not declared in this scope");
+	assert(1()) throws PawsException("expression cannot be used as a function");
 }
 
 PawsVoid test_mutable_exprs()
 {
+	import paws.stmtreg;
+
 	// Test mutable expressions after `if` body
 	// Make sure expressions after the `if` block aren't resolved before executing the `if` block while looking for a possible if-else statement
 	FILE_SCOPE = getFileScope();
@@ -64,7 +246,7 @@ PawsVoid test_mutable_exprs()
 	{
 		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "b"; }
 	}
-	assert "" * "" == "b";
+	assert("" * "" == "b");
 
 	// Test mutable expressions in loop body
 	// Expressions are NOT reresolved for subsequent loop iterations
@@ -76,15 +258,19 @@ PawsVoid test_mutable_exprs()
 		r = r + "" * "";
 		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "d"; }
 	}
-	assert r == "cc";
+	assert(r == "cc");
 }
 
 measure("test time")
-	for (t = 0; t << 1000; t = t + 1)
+	for (t = 0; t << 2; t = t + 1)
 	{
-		test_basic();
+		test_paws();
+		test_paws_int();
+		test_paws_string();
+		test_paws_array();
+		test_paws_subroutine();
 		test_mutable_exprs();
 	}
 
 // Test file-scope `return $E<PawsInt>` statement
-return 123;
+return 0;

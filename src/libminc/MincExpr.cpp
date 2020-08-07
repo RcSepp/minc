@@ -44,7 +44,15 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
 		}
 		parentBlock->isExprSuspended = false;
 
-		const MincObject *expectedType = resolvedKernel->getType(parentBlock, resolvedParams), *gotType = var.type;
+		const MincObject *expectedType, *gotType = var.type;
+		try //TODO: Make getType() noexcept
+		{
+			expectedType = resolvedKernel->getType(parentBlock, resolvedParams);
+		}
+		catch(...)
+		{
+			throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
+		}
 		if (expectedType != gotType)
 		{
 			if (expectedType == &ERROR_TYPE)
@@ -82,7 +90,14 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 
 MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 {
-	return resolvedKernel ? resolvedKernel->getType(parentBlock, resolvedParams) : nullptr;
+	try //TODO: Make getType() noexcept
+	{
+		return resolvedKernel ? resolvedKernel->getType(parentBlock, resolvedParams) : nullptr;
+	}
+	catch(...)
+	{
+		throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
+	}
 }
 
 void MincExpr::resolve(const MincBlockExpr* block)

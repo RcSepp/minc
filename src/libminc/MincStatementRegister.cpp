@@ -573,8 +573,12 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 
 #ifdef DEBUG_STMTREG
 	std::vector<MincExpr*> _exprs;
-	for (MincExprIter exprIter = beginExpr; exprIter != exprs->cend() && (*exprIter)->exprtype != MincExpr::ExprType::STOP && (*exprIter)->exprtype != MincExpr::ExprType::BLOCK; ++exprIter)
+	for (MincExprIter exprIter = beginExpr; exprIter != exprs->cend() && (*exprIter)->exprtype != MincExpr::ExprType::STOP; ++exprIter)
+	{
 		_exprs.push_back(*exprIter);
+		if ((*exprIter)->exprtype == MincExpr::ExprType::BLOCK)
+			break;
+	}
 	printf("%slookupStmt(%s)\n", indent.c_str(), MincListExpr('\0', _exprs).str().c_str());
 	indent += '\t';
 #endif

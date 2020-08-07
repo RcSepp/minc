@@ -10,10 +10,11 @@ template<> const std::string PawsString::toString() const
 template<> const std::string PawsStringMap::toString() const
 {
 	//TODO: Use stringstream instead
-	std::string str = "{";
+	std::string str = "{ ";
 	for (const std::pair<const std::string, std::string>& pair: val)
-		str += pair.first + '.' + pair.second;
-	str += "}";
+		str += pair.first + ": " + pair.second + ", ";
+	str[str.size() - 2] = ' ';
+	str[str.size() - 1] = '}';
 	return str;
 }
 
@@ -22,6 +23,15 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 	// >>> PawsString expressions
 
 	// Define string concatenation
+	defineExpr2(pkgScope, "$E<PawsString> += $E<PawsString>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			const MincSymbol& a = codegenExpr(params[0], parentBlock);
+			const MincSymbol& b = codegenExpr(params[1], parentBlock);
+			((PawsString*)a.value)->get() += ((PawsString*)b.value)->get();
+			return a;
+		},
+		PawsString::TYPE
+	);
 	defineExpr(pkgScope, "$E<PawsString> + $E<PawsString>",
 		+[](std::string a, std::string b) -> std::string {
 			return a + b;

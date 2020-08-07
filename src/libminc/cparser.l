@@ -31,6 +31,8 @@ GR			>>
 LE			<<
 AND			&&
 OR			\|\|
+CADD		\+=
+CSUB		-=
 AWT			await
 NEW			new
 DM			->
@@ -117,6 +119,8 @@ DEC			--
 {LE}							return token::LE;
 {AND}							return token::AND;
 {OR}							return token::OR;
+{CADD}							return token::CADD;
+{CSUB}							return token::CSUB;
 
 ;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!|:|\?	return yytext[0];
 

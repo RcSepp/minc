@@ -86,6 +86,9 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 	case 'P': score += 6; return expr->exprtype == MincExpr::ExprType::PLCHLD;
 	case 'V': score += 6; return expr->exprtype == MincExpr::ExprType::ELLIPSIS;
 	case 'D':
+		// Don't match types for deferred placeholders
+		score += 1; // Reward vague match
+		return true;
 	case 'E':
 	case 'S':
 		if (expr->exprtype == MincExpr::ExprType::STOP) return false;
@@ -125,7 +128,9 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 
 void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
-	if (p2 != nullptr && p1 != 'L')
+	if (p1 == 'D')
+		expr->forget(); // Forget kernel for deferred parameters
+	else if (p2 != nullptr && p1 != 'L')
 	{
 		MincObject* exprType = expr->getType(block);
 		if (exprType == &ERROR_TYPE)
@@ -143,8 +148,6 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 			return;
 		}
 	}
-	else if (p1 == 'D')
-		expr->forget(); // Forget kernel for deferred parameters
 	storeParam(expr, params, paramIdx++);
 }
 

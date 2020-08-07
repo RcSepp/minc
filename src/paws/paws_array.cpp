@@ -73,13 +73,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			{
 				MincExpr* castExpr = lookupCast(parentBlock, valueExpr, expectedType);
 				if (castExpr == nullptr)
-				{
-					std::string candidateReport = reportExprCandidates(parentBlock, valueExpr);
-					throw CompileError(
-						parentBlock, getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>\n%S",
-						valueExpr, gotType, expectedType, candidateReport
-					);
-				}
+					throw CompileError(parentBlock, getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>", valueExpr, gotType, expectedType);
 				valueExpr = castExpr;
 			}
 

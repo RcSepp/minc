@@ -505,7 +505,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				codegenExpr((MincExpr*)block, parentBlock);
 			}
-			catch(ReturnException) {}
+			catch (ReturnException) {}
 
 			defineDefaultStmt2(block, nullptr);
 			forgetExpr((MincExpr*)getCurrentBlockExprStmt(block));
@@ -575,13 +575,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				{
 					MincExpr* castExpr = lookupCast(parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
-					{
-						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-						throw CompileError(
-							parentBlock, getLocation(argExpr), "invalid frame argument type: %E<%t>, expected: <%t>\n%S",
-							argExpr, gotType, expectedType, candidateReport
-						);
-					}
+						throw CompileError(parentBlock, getLocation(argExpr), "invalid frame argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
 					argExprs[i] = castExpr;
 				}
 			}
@@ -670,13 +664,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				MincExpr* castExpr = lookupCast(parentBlock, argExpr, msgType);
 				if (castExpr == nullptr)
-				{
-					std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-					throw CompileError(
-						parentBlock, getLocation(argExpr), "invalid event type: %E<%t>, expected: <%t>\n%S",
-						argExpr, argType, msgType, candidateReport
-					);
-				}
+					throw CompileError(parentBlock, getLocation(argExpr), "invalid event type: %E<%t>, expected: <%t>", argExpr, argType, msgType);
 				argExpr = castExpr;
 			}
 

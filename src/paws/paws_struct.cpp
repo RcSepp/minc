@@ -155,13 +155,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			{
 				MincExpr* castExpr = lookupCast(parentBlock, valueExpr, memberType);
 				if (castExpr == nullptr)
-				{
-					std::string candidateReport = reportExprCandidates(parentBlock, valueExpr);
-					throw CompileError(
-						parentBlock, getLocation(valueExpr), "cannot assign value of type <%t> to variable of type <%t>\n%S",
-						valueType, memberType, candidateReport
-					);
-				}
+					throw CompileError(parentBlock, getLocation(valueExpr), "cannot assign value of type <%t> to variable of type <%t>", valueType, memberType);
 				valueExpr = castExpr;
 			}
 			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
@@ -206,13 +200,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				{
 					MincExpr* castExpr = lookupCast(parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
-					{
-						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-						throw CompileError(
-							parentBlock, getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>\n%S",
-							argExpr, gotType, expectedType, candidateReport
-						);
-					}
+						throw CompileError(parentBlock, getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
 					argExprs[i] = castExpr;
 				}
 			}

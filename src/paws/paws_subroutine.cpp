@@ -106,13 +106,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 				{
 					MincExpr* castExpr = lookupCast(parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
-					{
-						std::string candidateReport = reportExprCandidates(parentBlock, argExpr);
-						throw CompileError(
-							parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>\n%S",
-							argExpr, gotType, expectedType, candidateReport
-						);
-					}
+						throw CompileError(parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
 					argExprs[i] = castExpr;
 				}
 			}

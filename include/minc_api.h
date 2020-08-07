@@ -72,7 +72,6 @@ extern "C"
 	void defineExpr5(MincBlockExpr* scope, MincExpr* tplt, MincKernel* expr);
 	void defineExpr6(MincBlockExpr* scope, const char* tpltStr, MincKernel* expr);
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates);
-	std::string reportExprCandidates(const MincBlockExpr* scope, const MincExpr* expr);
 	size_t countBlockExprExprs(const MincBlockExpr* expr);
 	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk);
 	void defineDefaultExpr2(MincBlockExpr* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs=nullptr);

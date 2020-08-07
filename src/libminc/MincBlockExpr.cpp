@@ -853,25 +853,6 @@ extern "C"
 		scope->lookupExprCandidates(expr, candidates);
 	}
 
-	std::string reportExprCandidates(const MincBlockExpr* scope, const MincExpr* expr)
-	{
-		std::string report = "";
-		std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>> candidates;
-		std::vector<MincExpr*> resolvedParams;
-		scope->lookupExprCandidates(expr, candidates);
-		for (auto& candidate: candidates)
-		{
-			const MatchScore score = candidate.first;
-			const std::pair<const MincExpr*, MincKernel*>& kernel = candidate.second;
-			size_t paramIdx = 0;
-			resolvedParams.clear();
-			kernel.first->collectParams(scope, const_cast<MincExpr*>(expr), resolvedParams, paramIdx);
-			const std::string& typeName = scope->lookupSymbolName(kernel.second->getType(scope, resolvedParams), "UNKNOWN_TYPE");
-			report += "\tcandidate(score=" + std::to_string(score) + "): " +  kernel.first->str() + "<" + typeName + ">\n";
-		}
-		return report;
-	}
-
 	size_t countBlockExprExprs(const MincBlockExpr* expr)
 	{
 		return expr->countExprs();

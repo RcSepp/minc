@@ -541,13 +541,10 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			{
 				condExpr = lookupCast(parentBlock, condExpr, PawsInt::TYPE);
 				if (condExpr == nullptr)
-				{
-					std::string candidateReport = reportExprCandidates(parentBlock, params[1]);
 					throw CompileError(
-						parentBlock, getLocation(params[1]), "invalid for condition type: %E<%t>, expected: <%t>\n%S",
-						params[1], condType, PawsInt::TYPE, candidateReport
+						parentBlock, getLocation(params[1]), "invalid for condition type: %E<%t>, expected: <%t>",
+						params[1], condType, PawsInt::TYPE
 					);
-				}
 			}
 
 			while (((PawsInt*)codegenExpr(condExpr, forBlock).value)->get()) // Codegen condition expression in loop block scope

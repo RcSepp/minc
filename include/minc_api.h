@@ -180,6 +180,9 @@ extern "C"
 	// >>> MincBinOpExpr
 
 	bool ExprIsBinOp(const MincExpr* expr);
+	const char* getBinOpExprOpStr(const MincBinOpExpr* expr);
+	MincExpr* getBinOpExprOperand1(const MincBinOpExpr* expr);
+	MincExpr* getBinOpExprOperand2(const MincBinOpExpr* expr);
 
 	// >>> MincVarBinOpExpr
 

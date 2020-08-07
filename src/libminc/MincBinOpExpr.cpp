@@ -70,4 +70,19 @@ extern "C"
 	{
 		return expr->exprtype == MincExpr::ExprType::BINOP;
 	}
+
+	const char* getBinOpExprOpStr(const MincBinOpExpr* expr)
+	{
+		return expr->opstr.c_str();
+	}
+
+	MincExpr* getBinOpExprOperand1(const MincBinOpExpr* expr)
+	{
+		return expr->a;
+	}
+
+	MincExpr* getBinOpExprOperand2(const MincBinOpExpr* expr)
+	{
+		return expr->b;
+	}
 }

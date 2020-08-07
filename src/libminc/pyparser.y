@@ -235,9 +235,9 @@ expr
 
 %%
 
-void yy::PyParser::error( const location_type &l, const std::string &err_message )
+void yy::PyParser::error(const location_type &l, const std::string &err_message)
 {
-	std::cerr << "Error: " << err_message << " at " << l << "\n"; //TODO: throw syntax error
+	throw CompileError(err_message, getloc(l, l));
 }
 
 extern "C"

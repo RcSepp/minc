@@ -153,6 +153,13 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 {
 	tplt->resolve(this);
 	stmtreg.defineExpr(tplt, expr);
+
+	// Forget future expressions
+	if (stmtIdx + 1 == resolvedStmts->size()) // If the current statement is the last statement
+											  // This avoids forgetting statements during consecutive iterations of already resolved blocks.
+		// Forget expressions beyond the current statement
+		for (MincExprIter expr = resolvedStmts->back().end; expr != exprs->end() && (*expr)->isResolved(); ++expr)
+			(*expr)->forget();
 }
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
@@ -669,7 +676,7 @@ void MincBlockExpr::clearCache(size_t targetSize)
 
 const MincStmt* MincBlockExpr::getCurrentStmt() const
 {
-	return resolvedStmts->size() ? &resolvedStmts->back() : nullptr;
+	return stmtIdx < resolvedStmts->size() ? &resolvedStmts->at(stmtIdx) : nullptr;
 }
 
 MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)

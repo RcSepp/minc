@@ -194,7 +194,6 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			Struct* strct = (Struct*)var.type;
-			//StructInstance* instance = ((PawsStructInstance*)var.value)->get(); //TODO: Instance will be required when implementing the `this` parameter
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->methods.find(methodName);
@@ -224,7 +223,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			}
 
 			// Call method
-			return method.call(parentBlock, argExprs);
+			return method.call(parentBlock, argExprs, &var);
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprIsCast(params[0]));
 			Struct* strct = (Struct*)(getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock));

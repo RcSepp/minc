@@ -6,13 +6,17 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
-MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs) const
+MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, const MincSymbol* self) const
 {
 	MincBlockExpr* instance = cloneBlockExpr(body);
 
 	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
 		defineSymbol(instance, argNames[i].c_str(), argTypes[i], ((PawsBase*)codegenExpr(argExprs[i], callerScope).value)->copy());
+
+	// Define 'this' in function instance
+	if (self != nullptr)
+		defineSymbol(instance, "this", self->type, self->value);
 
 	try
 	{

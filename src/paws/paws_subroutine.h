@@ -6,7 +6,7 @@ struct PawsFunc
 	PawsType* returnType;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
-	virtual MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const = 0;
+	virtual MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const = 0;
 
 	PawsFunc() = default;
 	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
@@ -17,7 +17,7 @@ typedef PawsValue<PawsFunc*> PawsFunction;
 struct PawsRegularFunc : public PawsFunc
 {
 	MincBlockExpr* body;
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const;
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
 
 	PawsRegularFunc() = default;
 	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
@@ -29,7 +29,7 @@ struct PawsConstFunc : public PawsFunc
 {
 	FuncBlock body;
 	void* funcArgs;
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs) const
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, const MincSymbol* self=nullptr) const
 	{
 		return body(callerScope, argExprs, funcArgs);
 	}
@@ -82,7 +82,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 		});
 	}
 
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args) const
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
 	{
 		if constexpr (std::is_void<R>::value)
 		{

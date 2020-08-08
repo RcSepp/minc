@@ -42,8 +42,7 @@ static struct UnresolvableExprKernel : public MincKernel
 {
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		MincStopExpr expr(MincLocation{"", 0, 0, 0, 0}); //TODO: Pass calling stmt/expr to codegen instead
-		throw UndefinedExprException{&expr};
+		throw UndefinedExprException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
 } UNRESOLVABLE_EXPR_KERNEL;
@@ -51,8 +50,7 @@ static struct UnresolvableStmtKernel : public MincKernel
 {
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		MincStmt stmt; //TODO: Pass calling stmt/expr to codegen instead
-		throw UndefinedStmtException{&stmt};
+		throw UndefinedStmtException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
 } UNRESOLVABLE_STMT_KERNEL;

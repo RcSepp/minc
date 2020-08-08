@@ -53,13 +53,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			// Define member variable definition
 			defineStmt2(block, "$I = $E<PawsBase>",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-					MincExpr* exprAST = params[1];
+					MincExpr *varAST = params[0], *exprAST = params[1];
 					if (ExprIsCast(exprAST))
 						exprAST = getCastExprSource((MincCastExpr*)exprAST);
-
-					MincExpr* varAST = params[0];
-					if (ExprIsCast(varAST))
-						varAST = getCastExprSource((MincCastExpr*)varAST);
 
 					getStruct(parentBlock)->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
 				}
@@ -108,10 +104,12 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			defineDefaultStmt2(block,
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					raiseCompileError("Invalid command in struct context", (MincExpr*)parentBlock);
-				}
+				} // LCOV_EXCL_LINE
 			);
 
 			codegenExpr((MincExpr*)block, parentBlock);
+
+			defineDefaultStmt2(block, nullptr);
 
 			defineStruct(parentBlock, structName, strct);
 		}
@@ -134,6 +132,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	// Define struct member getter
 	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (!ExprIsCast(params[0]))
+				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
 			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			Struct* strct = (Struct*)var.type;
 			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
@@ -145,18 +145,21 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 
 			return MincSymbol(pair->second.type, instance->variables[memberName]);
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			assert(ExprIsCast(params[0]));
+			if (!ExprIsCast(params[0]))
+				return getErrorType();
 			Struct* strct = (Struct*)(getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock));
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->variables.find(memberName);
-			return pair == strct->variables.end() ? nullptr : pair->second.type;
+			return pair == strct->variables.end() ? getErrorType() : pair->second.type;
 		}
 	);
 
 	// Define struct member setter
 	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I = $E<PawsBase>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (!ExprIsCast(params[0]))
+				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
 			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			Struct* strct = (Struct*)var.type;
 			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
@@ -180,7 +183,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 
 			return MincSymbol(pair->second.type, instance->variables[memberName] = value->copy());
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			assert(ExprIsCast(params[0]));
+			if (!ExprIsCast(params[0]))
+				return getErrorType();
 			Struct* strct = (Struct*)(getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock));
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
@@ -192,6 +196,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	// Define method call
 	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (!ExprIsCast(params[0]))
+				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
 			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			Struct* strct = (Struct*)var.type;
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
@@ -225,7 +231,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			// Call method
 			return method.call(parentBlock, argExprs, &var);
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			assert(ExprIsCast(params[0]));
+			if (!ExprIsCast(params[0]))
+				return getErrorType();
 			Struct* strct = (Struct*)(getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock));
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
 
@@ -233,4 +240,13 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			return pair == strct->methods.end() ? nullptr : pair->second.returnType;
 		}
 	);
+
+	for (auto tplt: {"$E.$I", "$E.$I = $E", "$E.$I($E, ...)"})
+		defineExpr3(pkgScope, tplt,
+			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
+			}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
+				return getErrorType();
+			}
+		);
 });

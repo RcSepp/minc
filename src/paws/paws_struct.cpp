@@ -6,6 +6,16 @@
 #include "paws_struct.h"
 #include "minc_pkgmgr.h"
 
+static struct {} STRUCT_ID;
+
+Struct* getStruct(const MincBlockExpr* scope)
+{
+	while (getBlockExprUserType(scope) != &STRUCT_ID)
+		scope = getBlockExprParent(scope);
+	assert(scope);
+	return (Struct*)getBlockExprUser(scope);
+}
+
 void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct)
 {
 	strct->name = name;
@@ -29,8 +39,16 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* structName = getIdExprName((MincIdExpr*)params[0]);
 			MincBlockExpr* block = (MincBlockExpr*)params[1];
+			setBlockExprParent(block, parentBlock); // Overwrite parent, because block parent could be an old, deleted function instance
+			//TODO: Think of a safer way to implement this
+			//		Failure scenario:
+			//		PawsVoid f() { struct s {}; s(); }
+			//		f(); // Struct body is created in this instance
+			//		f(); // Struct body is still old instance
 
 			Struct* strct = new Struct();
+			setBlockExprUser(block, strct);
+			setBlockExprUserType(block, &STRUCT_ID);
 
 			// Define member variable definition
 			defineStmt2(block, "$I = $E<PawsBase>",
@@ -43,8 +61,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					if (ExprIsCast(varAST))
 						varAST = getCastExprSource((MincCastExpr*)varAST);
 
-					((Struct*)stmtArgs)->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
-				}, strct
+					getStruct(parentBlock)->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
+				}
 			);
 
 			// Define method definition
@@ -62,7 +80,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					// Define return statement in function scope
 					definePawsReturnStmt(block, returnType);
 
-					Struct::Method& method = ((Struct*)stmtArgs)->methods.insert(std::make_pair(funcName, Struct::Method()))->second;
+					Struct::Method& method = getStruct(parentBlock)->methods.insert(std::make_pair(funcName, Struct::Method()))->second;
 					method.returnType = returnType;
 					method.argTypes.reserve(argTypeExprs.size());
 					for (MincExpr* argTypeExpr: argTypeExprs)
@@ -83,7 +101,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					}
 					funcFullName += ')';
 					setBlockExprName(block, funcFullName.c_str());
-				}, strct
+				}
 			);
 
 			// Disallow any other statements in struct body

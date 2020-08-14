@@ -170,10 +170,7 @@ extern "C"
 		// Open source file
 		std::ifstream in(filename);
 		if (!in.good())
-		{
-			std::cerr << "\033[31merror:\033[0m " << std::string(filename) << ": No such file or directory\n";
-			return nullptr;
-		}
+			throw CompileError(std::string(filename) + ": No such file or directory");
 
 		// Parse file into rootBlock
 		MincBlockExpr* rootBlock;
@@ -198,11 +195,7 @@ extern "C"
 		MincBlockExpr* tpltBlock;
 		yy::CParser parser(lexer, nullptr, &tpltBlock);
 		if (parser.parse())
-		{
-			std::cerr << "\033[31merror:\033[0merror parsing template " << std::string(tpltStr) << '\n';
-			return {};
-		} //TODO: Throw CompileError instead:
-			//throw CompileError("error parsing template " + std::string(tpltStr));
+			throw CompileError("error parsing template " + std::string(tpltStr));
 
 		// Remove appended STOP expr if last expr is $B
 		assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);

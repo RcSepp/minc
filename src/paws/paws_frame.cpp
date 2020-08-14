@@ -214,15 +214,15 @@ public:
 	AllAwaitableInstance(AwaitableInstance* a, AwaitableInstance* b) : a(a), b(b)
 	{
 		MincSymbol result;
-		if (a->awaitResult(this, &result) && b->awaitResult(this, &result))
+		bool aDone = a->awaitResult(this, &result), bDone = b->awaitResult(this, &result);
+		if (aDone && bDone)
 			wakeup(result);
 	}
 
 protected:
 	bool resume(MincSymbol* result)
 	{
-		*result = MincSymbol(PawsVoid::TYPE, nullptr);
-		return true;
+		return a->awaitResult(this, result) && b->awaitResult(this, result);
 	}
 };
 

@@ -35,10 +35,11 @@ void IEventLoop::aquire()
 	oldEventLoop->post(std::bind(&IEventLoop::close, oldEventLoop), 0.0f);
 }
 
-EventLoop::EventLoop(EventPool* owner) : IEventLoop(owner), lk(cv_m), running(true), ready(false) {}
+EventLoop::EventLoop(EventPool* owner) : IEventLoop(owner), lk(cv_m), running(false), ready(false) {}
 
 void EventLoop::run()
 {
+	running = true;
 	mutex.lock();
 	if (running && eventQueue.empty())
 	{

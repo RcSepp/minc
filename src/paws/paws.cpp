@@ -240,7 +240,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	registerValueSerializer([pkgScope](const MincSymbol& value, std::string* valueStr) -> bool {
 		if (isInstance(pkgScope, value.type, PawsBase::TYPE))
 		{
-			*valueStr = ((PawsBase*)value.value)->toString();
+			*valueStr = value.value == nullptr ? "NULL" : ((PawsBase*)value.value)->toString();
 			return true;
 		}
 		else

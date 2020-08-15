@@ -3,6 +3,7 @@ SRC_DIR = src/
 INC_DIR = include/
 TMP_DIR = tmp/
 BIN_DIR = bin/
+COV_DIR = coverage/
 
 LIBMINC_OBJS = \
 	libminc/cparser.o \
@@ -60,7 +61,7 @@ PAWS_OBJS = \
 	paws/paws_array.o \
 
 YACC = bison
-CPPFLAGS = -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include `pkg-config --cflags python-3.7`
+CPPFLAGS =  --coverage -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include `pkg-config --cflags python-3.7`
 MINC_LIBS = `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
 
 LIBMINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_OBJS})
@@ -82,6 +83,15 @@ ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
 	$(CXX) $(CPPFLAGS) -MM -MT ${TMP_DIR}$*.o $^ > $@;
 
 -include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d) $(PAWS_OBJPATHS:.o=.d)
+
+# Coverage
+
+coverage: ${TMP_DIR}/minc/minc.gcda
+	lcov -c -d ${TMP_DIR} --include "*/src/*" -o ${TMP_DIR}lcov.info
+	genhtml ${TMP_DIR}lcov.info --output-directory ${COV_DIR}
+
+${TMP_DIR}/minc/minc.gcda: ${BIN_DIR}minc
+	${BIN_DIR}minc paws/test.minc
 
 # minc binary
 

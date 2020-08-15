@@ -5,6 +5,9 @@
 # Working documents
 /design
 
+# Coverage
+/coverage
+
 # Visual Studio Code
 **/.vscode/ipch
 **/.vscode/settings.json

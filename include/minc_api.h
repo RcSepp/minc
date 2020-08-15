@@ -101,6 +101,8 @@ extern "C"
 	void resetBlockExpr(MincBlockExpr* expr);
 	void resetBlockExprCache(MincBlockExpr* block, size_t targetState);
 	const MincStmt* getCurrentBlockExprStmt(const MincBlockExpr* expr);
+	const size_t getCurrentBlockExprStmtIndex(const MincBlockExpr* expr);
+	const void setCurrentBlockExprStmtIndex(MincBlockExpr* expr, size_t index);
 	MincBlockExpr* getBlockExprParent(const MincBlockExpr* expr);
 	void setBlockExprParent(MincBlockExpr* expr, MincBlockExpr* parent);
 	const std::vector<MincBlockExpr*>& getBlockExprReferences(const MincBlockExpr* expr);

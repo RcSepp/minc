@@ -1016,6 +1016,16 @@ extern "C"
 		return expr->getCurrentStmt();
 	}
 
+	const size_t getCurrentBlockExprStmtIndex(const MincBlockExpr* expr)
+	{
+		return expr->stmtIdx;
+	}
+
+	const void setCurrentBlockExprStmtIndex(MincBlockExpr* expr, size_t index)
+	{
+		expr->stmtIdx = index;
+	}
+
 	MincBlockExpr* getBlockExprParent(const MincBlockExpr* expr)
 	{
 		return expr->parent;

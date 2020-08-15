@@ -117,8 +117,26 @@ At the moment Minc supports two parsers:
 * C-Parser
 * Python-Parser
 
-The language flavor can only be switched between files. A parser-free interpreter that directly matches statements and expressions from source code is one of the stretch goals of Minc. It will allow switching flavors anywhere in code and can truly compile any language (even textual data file formats, like Markdown or XML).
+The language flavor can only be switched between files. A parser-free resolver that directly matches statements and expressions from source code is one of the stretch goals of Minc. It will allow switching flavors anywhere in code and can truly compile any language (even textual data file formats, like Markdown or XML).
 
 Until that time being restricted by the lean boundaries of the Minc parsers should be seen as more of an advantage than a hindrance. (The more unrestricted your language, the more your users (the programmers) have to scratch their heads before they can efficiently code with it.)
 
 **TODO: Rename parsers "styles" or "flavors"**
+
+## Roadmap
+
+* Free memory
+
+	*All memory leaks will be fixed before the release of Minc 1.0.*
+
+* Add thread-safety
+
+	*At the momemnt Minc is not thread-safe. The release version of Minc will lock individual AST branches during execution.*
+
+* Add continuations
+
+	*The main difficulty in implementing resumable functions is to ensure reentry into suspended statement- and expression kernels does not duplicate state. Continuations may be included in Minc 1.0 or a later release.*
+
+* Develop parser-free resolver
+
+	Static parsers enforce major limitations on to the flexibility of Minc. Replacing it with a parser-free expression resolver is an important step towards unleashing the full potential of Minc. Minc 1.0 will likely still ship with static parsers.

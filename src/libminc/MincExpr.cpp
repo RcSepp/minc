@@ -5,7 +5,7 @@ MincObject ERROR_TYPE;
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), resolvedKernel(nullptr)
+MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr)
 {
 }
 
@@ -40,6 +40,8 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
 		{
 			parentBlock->isExprSuspended = true;
 			raiseStepEvent(this, STEP_SUSPEND);
+			if (isVolatile)
+				forget();
 			throw;
 		}
 		parentBlock->isExprSuspended = false;
@@ -81,6 +83,9 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 
 		raiseStepEvent(this, STEP_OUT);
+
+		if (isVolatile)
+			forget();
 
 		return var;
 	}
@@ -152,6 +157,11 @@ extern "C"
 	void forgetExpr(MincExpr* expr)
 	{
 		expr->forget();
+	}
+
+	void setExprVolatile(MincExpr* expr, bool isVolatile)
+	{
+		expr->isVolatile = isVolatile;;
 	}
 
 	char* ExprToString(const MincExpr* expr)

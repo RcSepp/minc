@@ -564,6 +564,9 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 		isBlockSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
 
+		if (isVolatile)
+			forget();
+
 		isBusy = false;
 		throw;
 	}
@@ -577,6 +580,9 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 		fileBlock = oldFileBlock;
 
 	raiseStepEvent(this, STEP_OUT);
+
+	if (isVolatile)
+		forget();
 
 	isBusy = false;
 	return VOID;

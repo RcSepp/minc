@@ -41,6 +41,8 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock)
 	{
 		parentBlock->isStmtSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
+		if (isVolatile)
+			forget();
 		throw;
 	}
 	parentBlock->isStmtSuspended = false;
@@ -59,6 +61,9 @@ assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypot
 	parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 
 	raiseStepEvent(this, STEP_OUT);
+
+	if (isVolatile)
+		forget();
 
 	return getVoid();
 }

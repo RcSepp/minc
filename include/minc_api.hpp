@@ -33,6 +33,7 @@ public:
 		NUM_EXPR_TYPES
 	};
 	const ExprType exprtype;
+	bool isVolatile;
 
 	// Resolved state
 	MincKernel* resolvedKernel;

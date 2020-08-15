@@ -31,6 +31,7 @@ extern "C"
 	void collectParams(const MincBlockExpr* scope, const MincExpr* tplt, MincExpr* expr, std::vector<MincExpr*>& params);
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope);
 	void forgetExpr(MincExpr* expr);
+	void setExprVolatile(MincExpr* expr, bool isVolatile);
 	char* ExprToString(const MincExpr* expr);
 	char* ExprToShortString(const MincExpr* expr);
 	const MincLocation& getLocation(const MincExpr* expr);

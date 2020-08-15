@@ -373,10 +373,10 @@ std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(co
 		printf("\n");
 #endif
 	}
-	if (antiStmt != nullptr && bestScore == -2147483648)
+	if (defaultStmt != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
-		return std::pair<const MincListExpr*, MincKernel*>(new MincListExpr('\0'), antiStmt);
+		return std::pair<const MincListExpr*, MincKernel*>(new MincListExpr('\0'), defaultStmt);
 	}
 	return bestStmt;
 }
@@ -406,7 +406,7 @@ void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* 
 
 void MincStatementRegister::defineDefaultStmt(MincKernel* stmt)
 {
-	antiStmt = stmt;
+	defaultStmt = stmt;
 }
 
 void MincStatementRegister::defineExpr(const MincExpr* tplt, MincKernel* expr)
@@ -466,10 +466,10 @@ std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const 
 	expr->resolvedParams.pop_back(); // Remove first kernel parameter
 	expr->resolvedKernel = nullptr; // Reset kernel
 
-	if (antiExpr != nullptr && bestScore == -2147483648)
+	if (defaultExpr != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
-		return std::pair<const MincExpr*, MincKernel*>(nullptr, antiExpr);
+		return std::pair<const MincExpr*, MincKernel*>(nullptr, defaultExpr);
 	}
 
 	return bestExpr;
@@ -505,6 +505,11 @@ void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt
 	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
 		for (const std::pair<const MincExpr*, MincKernel*>& iter: exprreg)
 			cbk(iter.first, iter.second);
+}
+
+void MincStatementRegister::defineDefaultExpr(MincKernel* expr)
+{
+	defaultExpr = expr;
 }
 
 bool MincBlockExpr::lookupExpr(MincExpr* expr) const

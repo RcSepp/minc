@@ -149,9 +149,9 @@ class MincStatementRegister
 private:
 	std::map<const MincListExpr*, MincKernel*> stmtreg;
 	std::array<std::map<const MincExpr*, MincKernel*>, MincExpr::NUM_EXPR_TYPES> exprreg;
-	MincKernel *antiStmt, *antiExpr;
+	MincKernel *defaultStmt, *defaultExpr;
 public:
-	MincStatementRegister() : antiStmt(nullptr), antiExpr(nullptr) {}
+	MincStatementRegister() : defaultStmt(nullptr), defaultExpr(nullptr) {}
 	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
@@ -164,7 +164,7 @@ public:
 	void lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
-	void defineDefaultExpr(MincKernel* expr) { antiExpr = expr; }
+	void defineDefaultExpr(MincKernel* expr);
 };
 
 struct InheritanceCast : public MincCast

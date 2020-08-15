@@ -188,7 +188,7 @@ struct ReturnException
 	ReturnException(const MincSymbol& result) : result(result) {}
 };
 
-void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, const char* funcName = nullptr);
+void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, const char* funcName="function");
 
 void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> params, std::vector<MincSymbol>& blockParams);
 

@@ -546,7 +546,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			setBlockExprParent(block, parentBlock);
 
 			// Define return statement in frame scope
-			definePawsReturnStmt(block, returnType);
+			definePawsReturnStmt(block, returnType, "frame");
 
 			frame->name = frameName;
 			defineSymbol(parentBlock, frameName, PawsTpltType::get(parentBlock, Frame::TYPE, frame), frame);

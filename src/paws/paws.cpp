@@ -59,10 +59,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 		defineStmt2(scope, "return $E",
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
-				if (funcName)
-					raiseCompileError(("void function '" + std::string(funcName) + "' should not return a value").c_str(), params[0]);
-				else
-					raiseCompileError("void function should not return a value", params[0]);
+				raiseCompileError(("void " + std::string(funcName) + " should not return a value").c_str(), params[0]);
 			},
 			(void*)funcName
 		);
@@ -97,10 +94,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 		defineStmt2(scope, "return",
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
-				if (funcName)
-					raiseCompileError(("non-void function '" + std::string(funcName) + "' should return a value").c_str(), (MincExpr*)parentBlock);
-				else
-					raiseCompileError("non-void function should return a value", (MincExpr*)parentBlock);
+				raiseCompileError(("non-void " + std::string(funcName) + " should return a value").c_str(), (MincExpr*)parentBlock);
 			},
 			(void*)funcName
 		);

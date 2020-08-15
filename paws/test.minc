@@ -276,6 +276,69 @@ PawsVoid test_paws_struct()
 	assert(z.b()) throws PawsException("cannot access member of non-struct type <PawsString>");
 }
 
+PawsVoid test_paws_frames()
+{
+	import paws.frame;
+
+	// Test return from void frame
+	PawsVoid frame f()
+	{
+		assert { return '1'; } throws PawsException("void frame should not return a value");
+		return;
+		assert(0); // Should never be hit
+	}
+	await f();
+	assert(type(f()) == PawsVoid);
+
+	// Test return from non-void frame
+	PawsInt frame f()
+	{
+		public a = 1;
+		assert { return '1'; } throws PawsException("invalid return type `PawsString`");
+		assert { return; } throws PawsException("non-void frame should return a value");
+		return a;
+	}
+	assert(await f() == 1);
+
+	// Test void frame without return
+	PawsVoid frame f() {}
+	await f();
+
+	// Test non-void frame without return
+	PawsInt frame f() {}
+	assert(await f()) throws PawsException("missing return statement in frame body");
+
+	// Test frame arguments
+	PawsInt frame f(PawsInt a, PawsInt b) { return a - b; }
+	assert(await f(1)) throws PawsException("invalid number of frame arguments");
+	assert(await f(1, 2) == -1);
+	assert(await f(1, 2, 3)) throws PawsException("invalid number of frame arguments");
+	assert(await f(1, '2')) throws PawsException("invalid frame argument type: '2'<PawsString>, expected: <PawsInt>");
+	assert(await f(1.1, 2.9) == -1);
+
+	// Test non-frame call
+	g = 1;
+	assert(await g) throws PawsException("`g` is not awaitable");
+	assert(await h) throws PawsException("`h` was not declared in this scope");
+	assert(await h()) throws PawsException("expression is not awaitable"); //TODO: Should be "`h` was not declared in this scope"
+	assert(await 1) throws PawsException("expression is not awaitable");
+
+	// Test composit await
+	PawsInt frame A()
+	{
+		i = 1;
+		return i;
+	}
+	PawsInt frame B()
+	{
+		a = A();
+		b = A();
+		c = A();
+		return await a + await c + await b;
+	}
+	assert(await B() == 3);
+}
+
 PawsVoid test_paws_time()
 {
 	measure t sleep(0);
@@ -320,6 +383,7 @@ measure("test time")
 		test_paws_array();
 		test_paws_subroutine();
 		test_paws_struct();
+		test_paws_frames();
 		test_paws_time();
 		test_mutable_exprs();
 	}

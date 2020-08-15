@@ -12,7 +12,7 @@
 
 MincBlockExpr* importScope = nullptr; //TODO: This will not work if this package is imported more than once
 
-static struct {} FRAME_INSTANCE_ID;
+static struct {} FRAME_INSTANCE_ID, FRAME_DEF_ID;
 
 struct Awaitable : public PawsType
 {
@@ -70,10 +70,11 @@ struct Frame : public Awaitable
 	std::vector<std::string> argNames;
 	std::map<std::string, MincSymbol> variables;
 	MincBlockExpr* body;
+	size_t beginStmtIndex;
 
 	Frame() = default;
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
-		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body) {}
+		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body), beginStmtIndex(0) {}
 };
 
 struct SingleshotAwaitableInstance;
@@ -345,6 +346,7 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 	setBlockExprParent(instance, frame->body);
 	setBlockExprUser(instance, this);
 	setBlockExprUserType(instance, &FRAME_INSTANCE_ID);
+	setCurrentBlockExprStmtIndex(instance, frame->beginStmtIndex);
 
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
@@ -465,6 +467,9 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[3]);
 			MincBlockExpr* block = (MincBlockExpr*)params[4];
 
+			// Set frame parent to frame definition scope
+			setBlockExprParent(block, parentBlock);
+
 			Frame* frame = new Frame();
 			frame->returnType = returnType;
 			frame->argTypes.reserve(argTypeExprs.size());
@@ -475,12 +480,16 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				frame->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
 			frame->body = block;
 
-			// Define types of arguments in frame body
+			MincBlockExpr* frameVarDefBlock = cloneBlockExpr(block);
+			setBlockExprUser(frameVarDefBlock, frame);
+			setBlockExprUserType(frameVarDefBlock, &FRAME_DEF_ID);
+
+			// Define types of arguments in frame definition block
 			for (size_t i = 0; i < frame->argTypes.size(); ++i)
-				defineSymbol(block, frame->argNames[i].c_str(), frame->argTypes[i], nullptr);
+				defineSymbol(frameVarDefBlock, frame->argNames[i].c_str(), frame->argTypes[i], nullptr);
 
 			// Define frame variable assignment
-			defineStmt2(block, "public $I = $E<PawsBase>",
+			defineStmt2(frameVarDefBlock, "public $I = $E<PawsBase>",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					MincExpr* exprAST = params[1];
 					if (ExprIsCast(exprAST))
@@ -490,12 +499,16 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					if (ExprIsCast(varAST))
 						varAST = getCastExprSource((MincCastExpr*)varAST);
 
-					Frame* frame = (Frame*)stmtArgs;
+					MincBlockExpr* frameVarDefBlock = parentBlock;
+					while (getBlockExprUserType(frameVarDefBlock) != &FRAME_DEF_ID)
+						frameVarDefBlock = getBlockExprParent(frameVarDefBlock);
+					assert(frameVarDefBlock);
+					Frame* frame = (Frame*)getBlockExprUser(frameVarDefBlock);
 					frame->variables[getIdExprName((MincIdExpr*)varAST)] = Frame::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
-				}, frame
+				}
 			);
 
-			defineDefaultStmt2(block,
+			defineDefaultStmt2(frameVarDefBlock,
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					throw ReturnException(MincSymbol(PawsVoid::TYPE, nullptr));
 				}
@@ -503,12 +516,17 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 
 			try
 			{
-				codegenExpr((MincExpr*)block, parentBlock);
+				codegenExpr((MincExpr*)frameVarDefBlock, parentBlock);
 			}
 			catch (ReturnException) {}
 
-			defineDefaultStmt2(block, nullptr);
-			forgetExpr((MincExpr*)getCurrentBlockExprStmt(block));
+			const MincStmt* currentStmt = getCurrentBlockExprStmt(frameVarDefBlock);
+			if (currentStmt != nullptr)
+			{
+				forgetExpr((MincExpr*)currentStmt);
+				setExprVolatile((MincExpr*)currentStmt, true);
+			}
+			frame->beginStmtIndex = getCurrentBlockExprStmtIndex(frameVarDefBlock);
 
 			// Define await statement in frame instance scope
 			defineExpr3(block, "await $E<PawsAwaitableInstance>",
@@ -537,13 +555,10 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				frameFullName += frame->argTypes[0]->name;
 				for (size_t i = 1; i != frame->argTypes.size(); ++i)
-					frameFullName += frame->argTypes[i]->name + ", ";
+					frameFullName += ", " + frame->argTypes[i]->name;
 			}
 			frameFullName += ')';
 			setBlockExprName(block, frameFullName.c_str());
-
-			// Set frame parent to frame definition scope
-			setBlockExprParent(block, parentBlock);
 
 			// Define return statement in frame scope
 			definePawsReturnStmt(block, returnType, "frame");
@@ -649,6 +664,29 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			const Awaitable* event = (Awaitable*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			return event->returnType;
 		}, eventPool
+	);
+	// Define await non-awaitable expression
+	defineExpr2(pkgScope, "await $E",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (getType(params[0], parentBlock) == getErrorType()) // If type is incorrect because expressions has errors
+				codegenExpr(params[0], parentBlock); // Raise expression error instead of invalid return type error
+			raiseCompileError("expression is not awaitable", params[0]);
+			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+		},
+		PawsBase::TYPE
+	);
+	// Define await non-awaitable identifier
+	defineExpr2(pkgScope, "await $I",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			const char* name = getIdExprName((MincIdExpr*)params[0]);
+			if (lookupSymbol(parentBlock, name) == nullptr)
+				raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
+			else
+				raiseCompileError(('`' + std::string(name) + "` is not awaitable").c_str(), params[0]);
+			
+			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+		},
+		PawsBase::TYPE
 	);
 
 	// Define event call

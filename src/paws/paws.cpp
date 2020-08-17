@@ -45,6 +45,21 @@ const std::string PawsBase::toString() const
 
 std::mutex PawsTpltType::mutex;
 std::set<PawsTpltType> PawsTpltType::tpltTypes;
+PawsTpltType* PawsTpltType::get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
+{
+	std::unique_lock<std::mutex> lock(mutex);
+	std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
+	if (iter == tpltTypes.end())
+	{
+		iter = tpltTypes.insert(PawsTpltType(baseType, tpltType)).first;
+		PawsTpltType* t = const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
+		t->name = baseType->name + '<' + tpltType->name + '>';
+		defineSymbol(scope, t->name.c_str(), PawsValue<_Type*>::TYPE, t);
+		defineOpaqueInheritanceCast(scope, t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
+		defineOpaqueInheritanceCast(scope, t, baseType); // Let baseType<tpltType> derive from baseType
+	}
+	return const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
+}
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
 {
 	return lhs.baseType < rhs.baseType
@@ -230,16 +245,19 @@ template<> const std::string PawsValue<const MincExpr*>::toString() const
 	return str;
 }
 
+bool serializePawsValue(const MincBlockExpr* scope, const MincSymbol& value, std::string* valueStr)
+{
+	if (isInstance(scope, value.type, PawsBase::TYPE))
+	{
+		*valueStr = value.value == nullptr ? "NULL" : ((PawsBase*)value.value)->toString();
+		return true;
+	}
+	else
+		return false;
+}
+
 MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
-	registerValueSerializer([pkgScope](const MincSymbol& value, std::string* valueStr) -> bool {
-		if (isInstance(pkgScope, value.type, PawsBase::TYPE))
-		{
-			*valueStr = value.value == nullptr ? "NULL" : ((PawsBase*)value.value)->toString();
-			return true;
-		}
-		else
-			return false;
-	});
+	registerValueSerializer(serializePawsValue);
 	registerType<PawsBase>(pkgScope, "PawsBase");
 	registerType<PawsVoid>(pkgScope, "PawsVoid");
 	registerType<PawsType>(pkgScope, "PawsType");

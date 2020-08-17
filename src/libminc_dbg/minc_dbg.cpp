@@ -47,10 +47,10 @@ void registerValueSerializer(GetValueStrFunc serializer)
 {
 	valueSerializers.push_back(serializer);
 }
-bool getValueStr(const MincSymbol& symbol, std::string* valueStr)
+bool getValueStr(const MincBlockExpr* scope, const MincSymbol& symbol, std::string* valueStr)
 {
 	for (GetValueStrFunc valueSerializer: valueSerializers)
-		if (valueSerializer(symbol, valueStr))
+		if (valueSerializer(scope, symbol, valueStr))
 			return true;
 	return false;
 }
@@ -353,16 +353,16 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const std::string& name, const MincSymbol& symbol) {
-					dap::Variable var;
-					var.name = name;
-					if (!getValueStr(symbol, &var.value))
-						var.value = "UNKNOWN";
-					var.type = "thee ol' mighty " + block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
-					variables.push_back(var);
-				};
 				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
 				{
+					auto cbk = [&](const std::string& name, const MincSymbol& symbol) {
+						dap::Variable var;
+						var.name = name;
+						if (!getValueStr(block, symbol, &var.value))
+							var.value = "UNKNOWN";
+						var.type = "thee ol' mighty " + block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
+						variables.push_back(var);
+					};
 					block->iterateSymbols(cbk);
 					for (const MincBlockExpr* ref: block->references)
 						ref->iterateSymbols(cbk);

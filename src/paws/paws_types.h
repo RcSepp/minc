@@ -73,21 +73,7 @@ private:
 
 public:
 	PawsValue<_Type*> *const baseType, *const tpltType;
-	static PawsTpltType* get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
-	{
-		std::unique_lock<std::mutex> lock(mutex);
-		std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
-		if (iter == tpltTypes.end())
-		{
-			iter = tpltTypes.insert(PawsTpltType(baseType, tpltType)).first;
-			PawsTpltType* t = const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
-			t->name = baseType->name + '<' + tpltType->name + '>';
-			defineSymbol(scope, t->name.c_str(), PawsValue<_Type*>::TYPE, t);
-			defineOpaqueInheritanceCast(scope, t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
-			defineOpaqueInheritanceCast(scope, t, baseType); // Let baseType<tpltType> derive from baseType
-		}
-		return const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
-	}
+	static PawsTpltType* get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType);
 };
 bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs);
 

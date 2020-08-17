@@ -484,10 +484,10 @@ public:
 	struct Thread : public Identifiable
 	{
 		std::vector<StackFrame> callStack;
-		size_t prevStackDepth;
+		size_t currentStackDepth, prevStackDepth;
 		std::string errMsg;
 
-		Thread() : prevStackDepth(0) {}
+		Thread() : currentStackDepth(0), prevStackDepth(0) {}
 	};
 
 private:
@@ -700,25 +700,31 @@ private:
 			switch (type)
 			{
 			case STEP_IN:
-			//case STEP_RESUME:
+				while (callStack.size() > currentThread.currentStackDepth)
+					callStack.pop_back();
 				callStack.push_back(StackFrame((MincBlockExpr*)expr));
+				// Falls through
+			case STEP_RESUME:
+				++currentThread.currentStackDepth;
 				break;
 
 			case STEP_OUT:
-			//case STEP_SUSPEND:
-				callStack.pop_back();
-				break;
-			case STEP_RESUME:
-				break; // Do nothing
+				while (callStack.size() >= currentThread.currentStackDepth)
+					callStack.pop_back();
+				// Falls through
 			case STEP_SUSPEND:
-				break; // Do nothing
+				--currentThread.currentStackDepth;
+				break;
 			}
 		}
 		else if (expr->exprtype == MincExpr::STMT)
 		{
+			if (type == STEP_IN)
+				while (callStack.size() > currentThread.currentStackDepth)
+					callStack.pop_back();
 			assert(!callStack.empty());
 			StackFrame& top = callStack.back();
-			int stackDelta = (int)callStack.size() - (int)currentThread.prevStackDepth;
+			int stackDelta = (int)currentThread.currentStackDepth - (int)currentThread.prevStackDepth;
 			bool paused = true;
 			switch (type)
 			{
@@ -730,7 +736,7 @@ private:
 
 				if (breakpoints[top.source->path.value()].count(top.line))
 					sendStopEvent(StopEventReason::BreakpointHit, "");
-				else if (stepType == StepType::StepIn && stackDelta >= 0)
+				else if (stepType == StepType::StepIn)
 					sendStopEvent(StopEventReason::Stepped, "");
 				else if (stepType == StepType::StepOut && stackDelta < 0)
 					sendStopEvent(StopEventReason::Stepped, "");
@@ -747,7 +753,7 @@ private:
 				// Remember current stack depth
 				// StepOver and StepOut compute currentThread.prevStackDepth relative to the stack depth during the last pause
 				if (paused || (stepType != StepType::StepOver && stepType != StepType::StepOut))
-					currentThread.prevStackDepth = callStack.size();
+					currentThread.prevStackDepth = currentThread.currentStackDepth;
 
 				break;
 

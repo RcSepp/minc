@@ -64,20 +64,64 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	// Define integer addition
+	// Define integer multiplication
 	defineExpr(pkgScope, "$E<PawsInt> * $E<PawsInt>",
 		+[](int a, int b) -> int {
 			return a * b;
 		}
 	);
 
-	// Define integer subtraction
+	// Define integer division
 	defineExpr(pkgScope, "$E<PawsInt> / $E<PawsInt>",
 		+[](int a, int b) -> int {
 			if (b == 0)
 				throw MincException("Divide by zero exception");
 			return a / b;
 		}
+	);
+
+	// Define in-place integer addition
+	defineExpr2(pkgScope, "$I<PawsInt!> += $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			PawsInt* const val = (PawsInt*)var->value;
+			val->set(val->get() + ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			return *var;
+		},
+		PawsInt::TYPE
+	);
+
+	// Define in-place integer subtraction
+	defineExpr2(pkgScope, "$I<PawsInt!> -= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			PawsInt* const val = (PawsInt*)var->value;
+			val->set(val->get() - ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			return *var;
+		},
+		PawsInt::TYPE
+	);
+
+	// Define in-place integer multiplication
+	defineExpr2(pkgScope, "$I<PawsInt!> *= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			PawsInt* const val = (PawsInt*)var->value;
+			val->set(val->get() * ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			return *var;
+		},
+		PawsInt::TYPE
+	);
+
+	// Define in-place integer division
+	defineExpr2(pkgScope, "$I<PawsInt!> /= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			PawsInt* const val = (PawsInt*)var->value;
+			val->set(val->get() / ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			return *var;
+		},
+		PawsInt::TYPE
 	);
 
 	// Define integer minimum

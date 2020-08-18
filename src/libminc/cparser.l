@@ -33,6 +33,8 @@ AND			&&
 OR			\|\|
 CADD		\+=
 CSUB		-=
+CMUL		\*=
+CDIV		\/=
 AWT			await
 NEW			new
 DM			->
@@ -121,6 +123,8 @@ DEC			--
 {OR}							return token::OR;
 {CADD}							return token::CADD;
 {CSUB}							return token::CSUB;
+{CMUL}							return token::CMUL;
+{CDIV}							return token::CDIV;
 
 ;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!|:|\?	return yytext[0];
 

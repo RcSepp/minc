@@ -37,7 +37,7 @@
 %type<MincExpr*> id_or_plchld expr
 
 %start file
-%right CADD CSUB
+%right CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV
 %right '=' '?' ':'
 %left OR
 %left AND
@@ -124,6 +124,8 @@ expr
 	| expr '=' expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'=', "=", $1, $3); }
 	| expr CADD expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CADD, "+=", $1, $3); }
 	| expr CSUB expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CSUB, "-=", $1, $3); }
+	| expr CMUL expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CMUL, "*=", $1, $3); }
+	| expr CDIV expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CDIV, "/=", $1, $3); }
 	| expr '.' id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'.', ".", $1, $3); }
 	| expr '.' ELLIPSIS { $$ = new MincVarBinOpExpr(getloc(@1, @3), (int)'.', ".", $1); }
 	| expr DM id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::DM, "->", $1, $3); }

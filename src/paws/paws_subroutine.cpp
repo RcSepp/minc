@@ -6,6 +6,15 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
+template<> const std::string PawsFunction::toString() const
+{
+	PawsRegularFunc* regularFunc = dynamic_cast<PawsRegularFunc*>(get());
+	if (regularFunc != nullptr)
+		return getBlockExprName(regularFunc->body);
+	else
+		return ""; //TODO
+}
+
 MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, const MincSymbol* self) const
 {
 	MincBlockExpr* instance = cloneBlockExpr(body);
@@ -125,6 +134,8 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	// Define function call on non-function expression
 	defineExpr2(pkgScope, "$E($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			if (getType(params[0], parentBlock) == getErrorType()) // If params[0] has errors
+				codegenExpr(params[0], parentBlock); // Raise expression error instead of non-function expression error
 			raiseCompileError("expression cannot be used as a function", params[0]);
 			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
 		},

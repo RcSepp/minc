@@ -27,6 +27,7 @@
 #include <assert.h>
 #include "minc_api.hpp"
 
+extern MincObject ERROR_TYPE;
 extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
 unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 #ifdef DEBUG_STMTREG
@@ -44,7 +45,7 @@ static struct UnresolvableExprKernel : public MincKernel
 	{
 		throw UndefinedExprException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
 	}
-	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_EXPR_KERNEL;
 static struct UnresolvableStmtKernel : public MincKernel
 {
@@ -52,7 +53,7 @@ static struct UnresolvableStmtKernel : public MincKernel
 	{
 		throw UndefinedStmtException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
 	}
-	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return nullptr; }
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_STMT_KERNEL;
 
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx)

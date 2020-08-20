@@ -39,6 +39,7 @@
 #endif
 
 #define LOG_TO_FILE "/home/sepp/Development/minc/log.txt"
+std::shared_ptr<dap::Writer> dapLog;
 
 #define DEBUG_STEP_EVENTS
 
@@ -491,7 +492,6 @@ public:
 	};
 
 private:
-	std::shared_ptr<dap::Writer> log;
 	std::mutex mutex;
 	int line = 1;
 	std::map<std::string, std::unordered_set<int>> breakpoints;
@@ -531,8 +531,8 @@ private:
 	}
 
 public:
-	Debugger(std::shared_ptr<dap::Writer> log)
-		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false), log(log)
+	Debugger()
+		: session(dap::Session::create()), stepType(StepType::Run), traceAnonymousBlocks(false)
 	{
 		registerStepEventListener([](const MincExpr* loc, StepEventType type, void* eventArgs) { ((Debugger*)eventArgs)->onStep(loc, type); }, this);
 //		registerExceptionHandler([](const MincException& err, void* eventArgs) { return ((Debugger*)eventArgs)->onException(err); }, this);
@@ -555,10 +555,10 @@ public:
 		registerHandler(&Debugger::onDisconnectRequest);
 
 		session->onError([&](const char* msg) {
-			if (log)
+			if (dapLog)
 			{
-				dap::writef(log, "dap::Session error: %s\n", msg);
-				log->close();
+				dap::writef(dapLog, "dap::Session error: %s\n", msg);
+				dapLog->close();
 			}
 			terminate.fire();
 		});
@@ -677,18 +677,18 @@ private:
 #ifdef DEBUG_STEP_EVENTS
 		switch (type)
 		{
-		case STEP_IN: dap::writef(log, "STEP INTO"); break;
-		case STEP_OUT: dap::writef(log, "STEP OUT OF"); break;
-		case STEP_SUSPEND: dap::writef(log, "SUSPEND"); break;
-		case STEP_RESUME: dap::writef(log, "RESUME"); break;
+		case STEP_IN: dap::writef(dapLog, "STEP INTO"); break;
+		case STEP_OUT: dap::writef(dapLog, "STEP OUT OF"); break;
+		case STEP_SUSPEND: dap::writef(dapLog, "SUSPEND"); break;
+		case STEP_RESUME: dap::writef(dapLog, "RESUME"); break;
 		}
 
-		if (expr->exprtype == MincExpr::BLOCK) dap::writef(log, " BLOCK");
-		else if (expr->exprtype == MincExpr::STMT) dap::writef(log, " STMT");
-		else dap::writef(log, " EXPR");
+		if (expr->exprtype == MincExpr::BLOCK) dap::writef(dapLog, " BLOCK");
+		else if (expr->exprtype == MincExpr::STMT) dap::writef(dapLog, " STMT");
+		else dap::writef(dapLog, " EXPR");
 
-		if (expr->loc.begin_line == expr->loc.end_line) dap::writef(log, " %i\n", expr->loc.begin_line);
-		else dap::writef(log, " %i...%i\n", expr->loc.begin_line, expr->loc.end_line);
+		if (expr->loc.begin_line == expr->loc.end_line) dap::writef(dapLog, " %i\n", expr->loc.begin_line);
+		else dap::writef(dapLog, " %i...%i\n", expr->loc.begin_line, expr->loc.end_line);
 #endif
 
 		if (expr->exprtype == MincExpr::BLOCK)
@@ -914,7 +914,7 @@ private:
 		response.breakpoints.resize(breakpoints.size());
 		for (size_t i = 0; i < breakpoints.size(); i++)
 		{
-			dap::writef(log, "addBreakpoint(%i)\n", (int)i);
+			dap::writef(dapLog, "addBreakpoint(%i)\n", (int)i);
 			sourceBreakpoints.emplace(breakpoints[i].line);
 			response.breakpoints[i].verified = true;
 		}
@@ -1051,20 +1051,19 @@ int launchDebugClient(MincBlockExpr* rootBlock)
   _setmode(_fileno(stdout), _O_BINARY);
 #endif  // OS_WINDOWS
 
-	std::shared_ptr<dap::Writer> log;
 #ifdef LOG_TO_FILE
-	log = dap::file(LOG_TO_FILE);
+	dapLog = dap::file(LOG_TO_FILE);
 #endif
 
-	Debugger debugger(log);
+	Debugger debugger;
 	auto session = debugger.session.get();
 
 	DebugOutputBuffer redirectStdout(std::cout, session), redirectStderr(std::cerr, session);
 
 	std::shared_ptr<dap::Reader> in = dap::file(stdin, false);
 	std::shared_ptr<dap::Writer> out = dap::file(stdout, false);
-	if (log)
-		debugger.bind(spy(in, log), spy(out, log));
+	if (dapLog)
+		debugger.bind(spy(in, dapLog), spy(out, dapLog));
 	else
 		debugger.bind(in, out);
 

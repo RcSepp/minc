@@ -362,6 +362,7 @@ PawsVoid test_paws_frames()
 	e(2);
 	assert(await e == 1);
 	assert(await e == 2);
+	assert(type(e) == event<PawsInt>);
 }
 
 PawsVoid test_paws_time()
@@ -370,6 +371,35 @@ PawsVoid test_paws_time()
 	assert(t.milliseconds == 0);
 	measure t sleep(0.0015);
 	assert(t.milliseconds == 1);
+}
+
+PawsVoid test_paws_extend()
+{
+	import paws.extend;
+
+	// Test expression definition
+	if (1)
+	{
+		PawsString expr $E<PawsString> * $E<PawsInt>
+		{
+			assert(type($0) == PawsExpr<PawsString>);
+			assert($0.getType() == PawsString);
+			assert(type($0.codegen()) == PawsString);
+
+			assert(type($1) == PawsExpr<PawsInt>);
+			assert($1.getType() == PawsInt);
+			assert(type($1.codegen()) == PawsInt);
+
+			return $0.codegen().substr($1.codegen());
+		}
+		assert("spam" * 2 == "am");
+	}
+	assert("spam" * 2 == "spamspam");
+
+	// Test statement definition
+	stmt unless($E<PawsInt>) $S { if ($0.codegen() == 0) $1.codegen(); }
+	unless (0) assert(1);
+	unless (1) assert(0);
 }
 
 PawsVoid test_mutable_exprs()
@@ -400,7 +430,7 @@ PawsVoid test_mutable_exprs()
 }
 
 measure("test time")
-	for (t = 0; t << 2; t = t + 1)
+	for (t = 0; t << 2; t = t + 1) // Run all tests twice to test cached behaviour
 	{
 		test_paws();
 		test_paws_int();
@@ -410,6 +440,7 @@ measure("test time")
 		test_paws_struct();
 		test_paws_frames();
 		test_paws_time();
+		test_paws_extend();
 		test_mutable_exprs();
 	}
 

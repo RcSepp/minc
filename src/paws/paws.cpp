@@ -611,8 +611,10 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			PawsString* strValue;
 			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
 				std::cout << strValue->get() << '\n';
-			else
+			else if (value != nullptr)
 				std::cout << value->toString() << '\n';
+			else
+				std::cout << "NULL\n";
 
 			return MincSymbol(PawsVoid::TYPE, nullptr);
 		},
@@ -648,7 +650,10 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			MincExpr* expr = params[0];
 			if (ExprIsCast(expr))
 				expr = getCastExprSource((MincCastExpr*)expr);
-			return MincSymbol(PawsType::TYPE, getType(expr, parentBlock));
+			MincObject* type = getType(expr, parentBlock);
+			if (type == getErrorType())// If type is error-type because expressions has errors
+				codegenExpr(expr, parentBlock); // Raise expression error
+			return MincSymbol(PawsType::TYPE, type);
 		},
 		PawsType::TYPE
 	);
@@ -669,6 +674,21 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			strcpy(fname, filename.c_str());
 			return parsePythonFile(fname);
 		}
+	);
+
+	defineExpr2(pkgScope, "PawsExpr<$E<PawsType>>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsExpr::TYPE, returnType));
+		},
+		PawsType::TYPE
+	);
+	defineExpr2(pkgScope, "PawsConstExpr<$E<PawsType>>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsValue<const MincExpr*>::TYPE, returnType));
+		},
+		PawsType::TYPE
 	);
 
 	defineExpr(pkgScope, "$E<PawsConstExpr>.filename",
@@ -746,7 +766,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
-				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated MincExpr", params[0]);
+				return PawsVoid::TYPE;
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}
@@ -764,7 +784,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
-				return PawsVoid::TYPE;//raiseCompileError("can't infer codegen type from non-templated MincExpr", params[0]);
+				return PawsVoid::TYPE;
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
 			return ((PawsTpltType*)type)->tpltType;
 		}

@@ -459,6 +459,22 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return Event::get(returnType);
 		}, eventPool
 	);
+	defineExpr2(pkgScope, "event<$E<PawsType>>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return MincSymbol(PawsType::TYPE, Event::get(returnType));
+		},
+		PawsType::TYPE
+	);
+	// defineExpr3(pkgScope, "$E<PawsEvent>()", //TODO: Replace "event<$E<PawsType>>()" with this. Right now frames_2.minc fails with this.
+	// 	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	// 		Event* type = (Event*)codegenExpr(params[0], parentBlock).value;
+	// 		return MincSymbol(type, new PawsEventInstance(new EventInstance(type->msgType, (EventPool*)exprArgs)));
+	// 	}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
+	// 		return codegenExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)).value; //TODO: Remove const_cast
+	// 		//TODO	How can returnType be retrieved in a constant context?
+	// 	}, eventPool
+	// );
 
 	// Define frame definition
 	defineStmt2(pkgScope, "$E<PawsType> frame $I($E<PawsType> $I, ...) $B",

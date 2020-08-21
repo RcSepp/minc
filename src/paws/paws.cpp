@@ -11,6 +11,7 @@
 #include "minc_pkgmgr.h"
 
 MincScopeType* FILE_SCOPE_TYPE = new MincScopeType();
+MincBlockExpr* pawsScope = nullptr;
 
 const std::string PawsBase::toString() const
 {
@@ -137,7 +138,7 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 				if (getPlchldExprSublabel(plchldParam) == nullptr)
 					break;
 				if (const MincSymbol* var = importSymbol(scope, getPlchldExprSublabel(plchldParam)))
-					paramType = PawsTpltType::get(scope, PawsExpr::TYPE, (PawsType*)var->value);
+					paramType = PawsTpltType::get(pawsScope, PawsExpr::TYPE, (PawsType*)var->value);
 			}
 		}
 		else if (ExprIsList(param))
@@ -158,9 +159,9 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 					if (getPlchldExprSublabel(plchldParam) == nullptr)
 						break;
 					if (const MincSymbol* var = importSymbol(scope, getPlchldExprSublabel(plchldParam)))
-						paramType = PawsTpltType::get(scope, PawsExpr::TYPE, (PawsType*)var->value);
+						paramType = PawsTpltType::get(pawsScope, PawsExpr::TYPE, (PawsType*)var->value);
 				}
-				paramType = PawsTpltType::get(scope, PawsListExpr::TYPE, paramType);
+				paramType = PawsTpltType::get(pawsScope, PawsListExpr::TYPE, paramType);
 			}
 		}
 		blockParams.push_back(MincSymbol(paramType, nullptr));
@@ -257,6 +258,7 @@ bool serializePawsValue(const MincBlockExpr* scope, const MincSymbol& value, std
 }
 
 MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
+	pawsScope = pkgScope;
 	registerValueSerializer(serializePawsValue);
 	registerType<PawsBase>(pkgScope, "PawsBase");
 	registerType<PawsVoid>(pkgScope, "PawsVoid");

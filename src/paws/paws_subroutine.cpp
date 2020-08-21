@@ -154,9 +154,11 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		PawsBase::TYPE
 	);
 
-/*	defineExpr(pkgScope, "PawsFunction<$E<PawsType>>",
-		+[](PawsType* returnType) -> MincObject* {
-			return PawsTpltType::get(pkgScope, PawsFunction::TYPE, returnType); //TODO
-		}
-	);*/
+	defineExpr2(pkgScope, "PawsFunction<$E<PawsType>>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsFunction::TYPE, returnType));
+		},
+		PawsType::TYPE
+	);
 });

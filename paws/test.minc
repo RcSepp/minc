@@ -201,6 +201,7 @@ PawsVoid test_paws_subroutine()
 	}
 	f();
 	assert(type(f()) == PawsVoid);
+	assert(str(f) == "f()");
 
 	// Test return from non-void function
 	PawsInt f()
@@ -226,12 +227,29 @@ PawsVoid test_paws_subroutine()
 	assert(f(1, 2, 3)) throws PawsException("invalid number of function arguments");
 	assert(f(1, '2')) throws PawsException("invalid function argument type: '2'<PawsString>, expected: <PawsInt>");
 	assert(f(1.1, 2.9) == -1);
+	assert(str(f) == "f(PawsInt, PawsInt)");
 
 	// Test non-function call
 	g = 1;
 	assert(g()) throws PawsException("`g` cannot be used as a function");
 	assert(h()) throws PawsException("`h` was not declared in this scope");
 	assert(1()) throws PawsException("expression cannot be used as a function");
+
+	// Test recursive function
+	PawsInt f(PawsInt i)
+	{
+		if (++i <= 4)
+			i -= 3 * f(i);
+		return i;
+	}
+	assert(f(1) == -106);
+	assert(str(f) == "f(PawsInt)");
+
+	// Test callback function
+	PawsInt f(PawsInt a, PawsInt b) { return a + b; }
+	PawsInt g(PawsFunction<PawsInt> a, PawsInt b) { return a(1, 2) + b; }
+	assert(str(g) == "g(PawsFunction<PawsInt>, PawsInt)");
+	assert(g(f, 3) == 6);
 }
 
 PawsVoid test_paws_struct()

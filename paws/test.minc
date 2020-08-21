@@ -355,6 +355,13 @@ PawsVoid test_paws_frames()
 		return await a + await c + await b;
 	}
 	assert(await B() == 3);
+
+	// Test event
+	e = event<PawsInt>();
+	e(1);
+	e(2);
+	assert(await e == 1);
+	assert(await e == 2);
 }
 
 PawsVoid test_paws_time()

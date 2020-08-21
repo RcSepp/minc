@@ -250,8 +250,10 @@ public:
 		msgQueue.push(Message{value, invokeInstance}); // Queue message
 		if (blockedAwaitable) // If this event is being awaited, ...
 		{
+			SingleshotAwaitableInstance* _blockedAwaitable = blockedAwaitable;
+			blockedAwaitable = nullptr;
 			mutex.unlock();
-			blockedAwaitable->wakeup(blockedAwaitableResult = MincSymbol(type, value)); // Wake up waiting awaitable
+			_blockedAwaitable->wakeup(blockedAwaitableResult = MincSymbol(type, value)); // Wake up waiting awaitable
 		}
 		else
 			mutex.unlock();

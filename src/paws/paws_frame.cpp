@@ -375,7 +375,7 @@ bool FrameInstance::resume(MincSymbol* result)
 
 	try
 	{
-		codegenExpr((MincExpr*)instance, getBlockExprParent(instance));
+		resumeExpr((MincExpr*)instance, getBlockExprParent(instance));
 	}
 	catch (ReturnException err)
 	{

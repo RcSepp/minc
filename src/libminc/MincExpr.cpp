@@ -13,7 +13,7 @@ MincExpr::~MincExpr()
 {
 }
 
-MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
+MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 {
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
@@ -33,7 +33,7 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock)
 		MincSymbol var;
 		try
 		{
-			raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+			raiseStepEvent(this, resume && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 			var = resolvedKernel->codegen(parentBlock, resolvedParams);
 		}
 		catch (...)
@@ -135,7 +135,12 @@ extern "C"
 {
 	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
-		return expr->codegen(scope);
+		return expr->codegen(scope, false);
+	}
+
+	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope)
+	{
+		return expr->codegen(scope, true);
 	}
 
 	MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope)

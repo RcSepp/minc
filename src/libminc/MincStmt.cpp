@@ -17,7 +17,7 @@ MincStmt::~MincStmt()
 {
 }
 
-MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock)
+MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
 {
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
@@ -34,7 +34,7 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock)
 
 	try
 	{
-		raiseStepEvent(this, parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, resume && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
 		resolvedKernel->codegen(parentBlock, resolvedParams);
 	}
 	catch (...)

@@ -7,11 +7,11 @@ MincParamExpr::MincParamExpr(const MincLocation& loc, size_t idx)
 {
 }
 
-MincSymbol MincParamExpr::codegen(MincBlockExpr* parentBlock)
+MincSymbol MincParamExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 {
 	try
 	{
-		raiseStepEvent(this, parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, resume && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 	}
 	catch (...)
 	{

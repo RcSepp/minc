@@ -27,6 +27,7 @@ extern "C"
 	// >>> MincExpr
 
 	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope);
+	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope);
 	MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope);
 	void collectParams(const MincBlockExpr* scope, const MincExpr* tplt, MincExpr* expr, std::vector<MincExpr*>& params);
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope);

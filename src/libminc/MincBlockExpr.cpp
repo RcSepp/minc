@@ -477,7 +477,7 @@ const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 	return nullptr;
 }
 
-MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
+MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
@@ -487,7 +487,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 
 	try
 	{
-		raiseStepEvent(this, isBlockSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, resume && isBlockSuspended ? STEP_RESUME : STEP_IN);
 	}
 	catch (...)
 	{
@@ -496,6 +496,8 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock)
 		isBusy = false;
 		throw;
 	}
+	if (isBlockSuspended && !resume)
+		reset();
 	isBlockSuspended = false;
 
 	parent = parentBlock;

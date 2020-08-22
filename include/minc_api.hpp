@@ -41,7 +41,7 @@ public:
 
 	MincExpr(const MincLocation& loc, ExprType exprtype);
 	virtual ~MincExpr();
-	virtual MincSymbol codegen(MincBlockExpr* parentBlock);
+	virtual MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	virtual MincObject* getType(const MincBlockExpr* parentBlock) const;
 	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const = 0;
@@ -111,7 +111,7 @@ public:
 	std::vector<MincExpr*> exprs;
 	MincListExpr(char separator);
 	MincListExpr(char separator, std::vector<MincExpr*> exprs);
-	MincSymbol codegen(MincBlockExpr* parentBlock);
+	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	bool match(const MincBlockExpr* block, const MincExpr* exprs, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* exprs, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolve(const MincBlockExpr* block);
@@ -208,7 +208,7 @@ public:
 	MincStmt(MincExprIter exprBegin, MincExprIter exprEnd, MincKernel* kernel);
 	MincStmt();
 	~MincStmt();
-	MincSymbol codegen(MincBlockExpr* parentBlock);
+	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolve(const MincBlockExpr* block);
@@ -280,7 +280,7 @@ public:
 	void iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
 	MincSymbol* importSymbol(const std::string& name);
 	const std::vector<MincSymbol>* getBlockParams() const;
-	MincSymbol codegen(MincBlockExpr* parentBlock);
+	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;
@@ -368,7 +368,7 @@ class MincParamExpr : public MincExpr
 public:
 	size_t idx;
 	MincParamExpr(const MincLocation& loc, size_t idx);
-	MincSymbol codegen(MincBlockExpr* parentBlock);
+	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	MincObject* getType(const MincBlockExpr* parentBlock) const;
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;

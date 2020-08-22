@@ -137,9 +137,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			if (getType(params[0], parentBlock) == getErrorType()) // If params[0] has errors
 				codegenExpr(params[0], parentBlock); // Raise expression error instead of non-function expression error
 			raiseCompileError("expression cannot be used as a function", params[0]);
-			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
-		PawsBase::TYPE
+		getErrorType()
 	);
 	// Define function call on non-function identifier
 	defineExpr2(pkgScope, "$I($E, ...)",
@@ -149,9 +149,9 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 				raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
 			else
 				raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
-			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
-		PawsBase::TYPE
+		getErrorType()
 	);
 
 	defineExpr2(pkgScope, "PawsFunction<$E<PawsType>>",

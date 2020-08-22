@@ -689,9 +689,9 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			if (getType(params[0], parentBlock) == getErrorType()) // If type is incorrect because expressions has errors
 				codegenExpr(params[0], parentBlock); // Raise expression error instead of invalid return type error
 			raiseCompileError("expression is not awaitable", params[0]);
-			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
-		PawsBase::TYPE
+		getErrorType()
 	);
 	// Define await non-awaitable identifier
 	defineExpr2(pkgScope, "await $I",
@@ -702,9 +702,9 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			else
 				raiseCompileError(('`' + std::string(name) + "` is not awaitable").c_str(), params[0]);
 			
-			return MincSymbol(PawsBase::TYPE, nullptr); // LCOV_EXCL_LINE
+			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
-		PawsBase::TYPE
+		getErrorType()
 	);
 
 	// Define event call

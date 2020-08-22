@@ -106,7 +106,7 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 		MincObject* exprType = expr->getType(block);
 		if (exprType == &ERROR_TYPE) // Errors match any template type
 		{
-			// Do not reward erroneous match
+			score -= 256; // Penalize erroneous match
 			return true;
 		}
 		MincObject* tpltType = getType(block);

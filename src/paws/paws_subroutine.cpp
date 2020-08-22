@@ -6,6 +6,8 @@
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
 
+MincBlockExpr* pawsSubroutineScope = nullptr;
+
 template<> const std::string PawsFunction::toString() const
 {
 	PawsRegularFunc* regularFunc = dynamic_cast<PawsRegularFunc*>(get());
@@ -44,16 +46,17 @@ MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<M
 void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 {
 	PawsFunc* pawsFunc = new PawsRegularFunc(returnType, argTypes, argNames, body);
-	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
 
 void defineConstantFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs)
 {
 	PawsFunc* pawsFunc = new PawsConstFunc(returnType, argTypes, argNames, body, funcArgs);
-	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	defineSymbol(scope, name, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
 }
 
 MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
+	pawsSubroutineScope = pkgScope;
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
 
 	// Define function definition
@@ -94,7 +97,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			setBlockExprName(block, funcFullName.c_str());
 
 			// Define function symbol in calling scope
-			PawsType* funcType = PawsTpltType::get(parentBlock, PawsFunction::TYPE, returnType);
+			PawsType* funcType = PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType);
 			defineSymbol(parentBlock, funcName, funcType, new PawsFunction(func));
 		}
 	);
@@ -157,7 +160,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	defineExpr2(pkgScope, "PawsFunction<$E<PawsType>>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
-			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsFunction::TYPE, returnType));
+			return MincSymbol(PawsType::TYPE, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType));
 		},
 		PawsType::TYPE
 	);

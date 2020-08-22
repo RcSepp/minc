@@ -338,7 +338,7 @@ PawsVoid test_paws_frames()
 	g = 1;
 	assert(await g) throws PawsException("`g` is not awaitable");
 	assert(await h) throws PawsException("`h` was not declared in this scope");
-	assert(await h()) throws PawsException("expression is not awaitable"); //TODO: Should be "`h` was not declared in this scope"
+	assert(await h()) throws PawsException("`h` was not declared in this scope");
 	assert(await 1) throws PawsException("expression is not awaitable");
 
 	// Test composit await

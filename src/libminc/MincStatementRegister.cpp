@@ -376,6 +376,14 @@ std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(co
 	if (defaultStmt != nullptr && bestScore == -2147483648)
 	{
 		bestScore = 2147483647;
+		
+		// End of statement = beginning of statement + length of unresolved statement
+		bestStmtEnd = stmt;
+		while (!bestStmtEnd.done() && (*bestStmtEnd)->exprtype != MincExpr::ExprType::STOP && (*bestStmtEnd)->exprtype != MincExpr::ExprType::BLOCK)
+			++bestStmtEnd;
+		if (!bestStmtEnd.done())
+			++bestStmtEnd;
+
 		return std::pair<const MincListExpr*, MincKernel*>(new MincListExpr('\0'), defaultStmt);
 	}
 	return bestStmt;

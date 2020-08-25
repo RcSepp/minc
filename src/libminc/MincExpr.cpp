@@ -33,7 +33,7 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		MincSymbol var;
 		try
 		{
-			raiseStepEvent(this, resume && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+			raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 			var = resolvedKernel->codegen(parentBlock, resolvedParams);
 		}
 		catch (...)

@@ -240,7 +240,7 @@ public:
 	std::vector<MincSymbol> blockParams;
 	std::vector<MincSymbol*> resultCache;
 	size_t resultCacheIdx;
-	bool isBlockSuspended, isStmtSuspended, isExprSuspended;
+	bool isBlockSuspended, isStmtSuspended, isExprSuspended, isResuming;
 	bool isBusy;
 
 	// Meta data

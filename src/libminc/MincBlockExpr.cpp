@@ -87,13 +87,13 @@ void raiseStepEvent(const MincExpr* loc, StepEventType type)
 
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts)
 	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(resolvedStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
-	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false), user(nullptr), userType(nullptr)
+	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
 
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
 	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
-	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isBusy(false), user(nullptr), userType(nullptr)
+	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
 
@@ -484,19 +484,21 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 	if (isBusy)
 		throw CompileError("block expression already executing. Use MincBlockExpr::clone() when executing blocks recursively", this->loc);
 	isBusy = true;
+	isResuming = isBlockSuspended && (resume || parentBlock->isResuming);
 
 	try
 	{
-		raiseStepEvent(this, resume && isBlockSuspended ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(this, isResuming ? STEP_RESUME : STEP_IN);
 	}
 	catch (...)
 	{
 		isBlockSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
 		isBusy = false;
+		isResuming = false;
 		throw;
 	}
-	if (isBlockSuspended && !resume)
+	if (isBlockSuspended && !isResuming)
 		reset();
 	isBlockSuspended = false;
 
@@ -570,6 +572,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 			forget();
 
 		isBusy = false;
+		isResuming = false;
 		throw;
 	}
 
@@ -587,6 +590,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		forget();
 
 	isBusy = false;
+	isResuming = false;
 	return VOID;
 }
 

@@ -161,6 +161,132 @@ PawsVoid test_paws_string()
 	assert(s == "apples are red, bananas are yellow, ");
 }
 
+PawsVoid test_paws_exceptions()
+{
+	// Test try/catch PawsException
+	i = 0;
+	try
+	{
+		++i;
+		*1;
+		assert(0);
+	}
+	catch (PawsException err)
+	{
+		assert(err.msg == "undefined expression *1;");
+		assert(++i / 0) throws PawsException("Divide by zero exception");
+	}
+	try 1*; catch i++;
+	assert(i == 3);
+
+	// Test nested try/catch PawsException
+	i = 0;
+	try
+	{
+		try
+		{
+			++i;
+			bad statement();
+			assert(0);
+		}
+		catch (PawsException err)
+		{
+			assert(err.msg == "undefined statement bad statement();");
+			++i / 0;
+			assert(0);
+		}
+	}
+	catch (PawsException err)
+	{
+		++i;
+		assert(err.msg == "Divide by zero exception");
+		assert(1 / 0) throws PawsException("Divide by zero exception");
+	}
+	assert(i == 3);
+
+	// Test try/catch PawsException
+	try
+		throw PawsException();
+	catch (PawsException err)
+	{
+		assert(err.msg == "");
+	}
+	try
+		throw PawsException("foo");
+	catch (PawsException err)
+	{
+		assert(err.msg == "foo");
+	}
+
+	// Test try/catch PawsInt
+	try
+		throw 1;
+	catch (PawsInt err)
+	{
+		assert(err == 1);
+	}
+	i = 0;
+	try throw 1; catch i++;
+	assert(i == 1);
+
+	// Test try/catch wrong type
+	i = 0;
+	try
+	{
+		try
+			throw 0 + ++i; //TODO: throw ++i throws "undefined statement"
+		catch (PawsInt err)
+		{
+			assert(err == i++);
+		}
+	}
+	catch (PawsInt err)
+	{
+		assert(0);
+	}
+	try
+	{
+		try
+			throw PawsException();
+		catch (PawsInt err)
+		{
+			assert(0);
+		}
+	}
+	catch (PawsException err)
+	{
+		++i;
+		assert(err.msg == "");
+	}
+	try
+	{
+		try
+			throw str(++i);
+		catch (PawsInt err)
+		{
+			assert(0);
+		}
+	}
+	catch (PawsString err)
+	{
+		assert(err == str(i++));
+	}
+	assert(i == 5);
+
+	// Test try/catch from within function
+	PawsVoid f() { throw 2; }
+	try
+		f();
+	catch (PawsInt err)
+	{
+		assert(err == 2);
+	}
+
+	// PawsVoid foo() {}
+	// throw foo;//PawsException("test exception");
+	// //throw 123;
+}
+
 PawsVoid test_paws_array()
 {
 	import paws.array;
@@ -219,6 +345,19 @@ PawsVoid test_paws_subroutine()
 	// Test non-void function without return
 	PawsInt f() {}
 	assert(f()) throws PawsException("invalid expression return type: f()<PawsVoid>, expected: <PawsInt>");
+
+	// Test return from try block
+	// Internally `return ...` is handled by raising a ReturnException. Make sure try/catch does not catch the ReturnException
+	PawsInt f()
+	{
+		try
+			return 2;
+		catch
+		{
+			assert(0);
+		}
+	}
+	assert(f() == 2);
 
 	// Test function arguments
 	PawsInt f(PawsInt a, PawsInt b) { return a - b; }
@@ -341,6 +480,31 @@ PawsVoid test_paws_frames()
 	assert(await h()) throws PawsException("`h` was not declared in this scope");
 	assert(await 1) throws PawsException("expression is not awaitable");
 
+	// Test await from try block
+	// Internally `await ...` is handled by raising an AwaitException. Make sure try/catch does not catch the AwaitException
+	//
+	// This also tests nested resuming:
+	// When the frame block is resumed after sleep(0), the nested try block should also be resumed.
+	// Failed nested resuming will result in the following infinite loop:
+	//
+	// start f() {} -> -/-> (re)start try {} -> suspend sleep(0) -> resume f() {} -\
+	//					\__________________________________________________________/
+	i = 0;
+	PawsInt frame f()
+	{
+		try
+		{
+			++i;
+			await sleep(0);
+			return i;
+		}
+		catch
+		{
+			assert(0);
+		}
+	}
+	assert(await f() == 1);
+
 	// Test composit await
 	PawsInt frame A()
 	{
@@ -435,6 +599,7 @@ measure("test time")
 		test_paws();
 		test_paws_int();
 		test_paws_string();
+		test_paws_exceptions();
 		test_paws_array();
 		test_paws_subroutine();
 		test_paws_struct();

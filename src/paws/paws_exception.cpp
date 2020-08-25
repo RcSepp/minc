@@ -16,9 +16,13 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			{
 				codegenExpr(params[1], parentBlock);
 			}
+			catch (const MincSymbol& err)
+			{
+				codegenExpr(params[1], parentBlock);
+			}
 		}
 	);
-	defineStmt2(pkgScope, "try $S catch ($E<PawsType> $I) $B",
+	defineStmt2(pkgScope, "try $S catch ($E $I) $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			try
 			{
@@ -35,6 +39,24 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 				else
 					throw;
 			}
+			catch (const MincSymbol& err)
+			{
+				MincObject* const catchType = codegenExpr(params[1], parentBlock).value;
+				if (isInstance(parentBlock, err.type, catchType))
+				{
+					defineSymbol((MincBlockExpr*)params[3], getIdExprName((MincIdExpr*)params[2]), err.type, err.value);
+					codegenExpr(params[3], parentBlock);
+				}
+				else
+					throw;
+			}
+		}
+	);
+
+	// Define throw statement
+	defineStmt2(pkgScope, "throw $E",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			throw codegenExpr(params[0], parentBlock);
 		}
 	);
 
@@ -52,11 +74,11 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 		PawsException::TYPE
 	);
 
-
 	// Define msg getter
 	defineExpr(pkgScope, "$E<PawsException>.msg",
 		+[](MincException err) -> std::string {
-			return err.what();
+			const char* msg = err.what();
+			return msg != nullptr ? msg : "";
 		}
 	);
 });

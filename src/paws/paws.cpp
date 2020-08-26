@@ -442,13 +442,13 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	// Define is-NULL
 	defineExpr2(pkgScope, "$E == NULL",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) == nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
+			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value == nullptr));
 		},
 		PawsInt::TYPE
 	);
 	defineExpr2(pkgScope, "$E != NULL",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(getType(params[0], parentBlock) != nullptr)); //TODO: Checking if type == nullptr only detectes undefined variables and void
+			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value != nullptr));
 		},
 		PawsInt::TYPE
 	);

@@ -2,6 +2,8 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+MincBlockExpr* pawsArrayScope = nullptr;
+
 typedef PawsValue<std::vector<MincObject*>> PawsArray;
 
 template<> const std::string PawsArray::toString() const
@@ -19,6 +21,7 @@ template<> const std::string PawsArray::toString() const
 }
 
 MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
+	pawsArrayScope = pkgScope;
 	registerType<PawsArray>(pkgScope, "PawsArray");
 
 	// Inline array declaration
@@ -31,7 +34,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			arr->get().reserve(values.size());
 			for (MincExpr* value: values)
 				arr->get().push_back(codegenExpr(value, parentBlock).value);
-			return MincSymbol(PawsTpltType::get(parentBlock, PawsArray::TYPE, (PawsType*)getType(getDerivedExpr(values[0]), parentBlock)), arr);
+			return MincSymbol(PawsTpltType::get(pawsArrayScope, PawsArray::TYPE, (PawsType*)getType(getDerivedExpr(values[0]), parentBlock)), arr);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
@@ -42,7 +45,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			valueTypes.reserve(values.size());
 			for (MincExpr* value: values)
 				valueTypes.push_back((PawsType*)getType(getDerivedExpr(value), parentBlock));
-			return PawsTpltType::get(const_cast<MincBlockExpr*>(parentBlock), PawsArray::TYPE, valueTypes[0]); //TODO: Remove const_cast
+			return PawsTpltType::get(pawsArrayScope, PawsArray::TYPE, valueTypes[0]);
 		}
 	);
 

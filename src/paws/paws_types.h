@@ -68,14 +68,24 @@ struct PawsTpltType : PawsValue<_Type*>
 {
 private:
 	static std::mutex mutex;
-	static std::set<PawsTpltType> tpltTypes;
+	static std::set<PawsTpltType*> tpltTypes;
 	PawsTpltType(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType) : baseType(baseType), tpltType(tpltType) {}
 
 public:
 	PawsValue<_Type*> *const baseType, *const tpltType;
 	static PawsTpltType* get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType);
 };
-bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs);
+namespace std
+{
+	template<> struct less<PawsTpltType*>
+	{
+		bool operator()(PawsTpltType* lhs, PawsTpltType* rhs) const
+		{
+			return lhs->baseType < rhs->baseType
+				|| (lhs->baseType == rhs->baseType && lhs->tpltType < rhs->tpltType);
+		}
+	};
+}
 
 typedef PawsValue<_Type*> PawsType;
 typedef PawsValue<void> PawsVoid;

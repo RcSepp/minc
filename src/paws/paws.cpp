@@ -45,26 +45,22 @@ const std::string PawsBase::toString() const
 }
 
 std::mutex PawsTpltType::mutex;
-std::set<PawsTpltType> PawsTpltType::tpltTypes;
+std::set<PawsTpltType*> PawsTpltType::tpltTypes;
 PawsTpltType* PawsTpltType::get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
 {
 	std::unique_lock<std::mutex> lock(mutex);
-	std::set<PawsTpltType>::iterator iter = tpltTypes.find(PawsTpltType(baseType, tpltType));
+	PawsTpltType f(baseType, tpltType);
+	std::set<PawsTpltType*>::iterator iter = tpltTypes.find(&f);
 	if (iter == tpltTypes.end())
 	{
-		iter = tpltTypes.insert(PawsTpltType(baseType, tpltType)).first;
-		PawsTpltType* t = const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
+		iter = tpltTypes.insert(new PawsTpltType(baseType, tpltType)).first;
+		PawsTpltType* t = *iter;
 		t->name = baseType->name + '<' + tpltType->name + '>';
 		defineSymbol(scope, t->name.c_str(), PawsValue<_Type*>::TYPE, t);
 		defineOpaqueInheritanceCast(scope, t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
 		defineOpaqueInheritanceCast(scope, t, baseType); // Let baseType<tpltType> derive from baseType
 	}
-	return const_cast<PawsTpltType*>(&*iter); //TODO: Find a way to avoid const_cast
-}
-bool operator<(const PawsTpltType& lhs, const PawsTpltType& rhs)
-{
-	return lhs.baseType < rhs.baseType
-		|| (lhs.baseType == rhs.baseType && lhs.tpltType < rhs.tpltType);
+	return *iter;
 }
 
 void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, const char* funcName)

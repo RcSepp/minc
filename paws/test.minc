@@ -311,7 +311,7 @@ PawsVoid test_paws_array()
 
 	// Test builtin functions
 	assert(str(a) == "[0, 3]");
-	assert(type(a) == PawsArray); //TODO: Fix `assert(type(a) == PawsArray<PawsInt>;`
+	assert(isInstance(type(a), PawsArray)); //TODO: Fix `assert(type(a) == PawsArray<PawsInt>;`
 }
 
 PawsVoid test_paws_subroutine()
@@ -445,7 +445,7 @@ PawsVoid test_paws_frames()
 		assert(0); // Should never be hit
 	}
 	await f();
-	assert(type(f()) == PawsVoid);
+	assert(type(await f()) == PawsVoid);
 
 	// Test return from non-void frame
 	PawsInt frame f()

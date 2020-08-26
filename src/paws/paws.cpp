@@ -453,15 +453,18 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		PawsInt::TYPE
 	);
 
-	defineExpr(pkgScope, "$E<PawsType> == $E<PawsType>",
-		+[](PawsType* a, PawsType* b) -> int {
-			return a == b;
-		}
+	// Define type relations
+	defineExpr2(pkgScope, "$E<PawsType> == $E<PawsType>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value == codegenExpr(params[1], parentBlock).value));
+		},
+		PawsInt::TYPE
 	);
-	defineExpr(pkgScope, "$E<PawsType> != $E<PawsType>",
-		+[](PawsType* a, PawsType* b) -> int {
-			return a != b;
-		}
+	defineExpr2(pkgScope, "$E<PawsType> != $E<PawsType>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value != codegenExpr(params[1], parentBlock).value));
+		},
+		PawsInt::TYPE
 	);
 
 	// Define pointer equivalence operators
@@ -652,6 +655,14 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			return MincSymbol(PawsType::TYPE, type);
 		},
 		PawsType::TYPE
+	);
+
+	defineExpr2(pkgScope, "isInstance($E<PawsType>, $E<PawsType>)",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			bool isInst = isInstance(parentBlock, codegenExpr(params[0], parentBlock).value, codegenExpr(params[1], parentBlock).value);
+			return MincSymbol(PawsInt::TYPE, new PawsInt(isInst != 0));
+		},
+		PawsInt::TYPE
 	);
 
 	defineExpr(pkgScope, "parseCFile($E<PawsString>)",

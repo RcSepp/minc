@@ -752,7 +752,14 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	);
 	defineExpr2(pkgScope, "$E<PawsConstExpr>.getType()",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
+			MincExpr* param = params[0];
+			while (ExprIsCast(param))
+				param = getDerivedExpr(param);
+			PawsType* paramType = (PawsType*)getType(param, parentBlock);
+			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
+				return MincSymbol(PawsType::TYPE, PawsVoid::TYPE);
+
+			const MincExpr* expr = ((PawsValue<const MincExpr*>*)codegenExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = getBlockExprParent(parentBlock);
 			return MincSymbol(PawsType::TYPE, getType(expr, scope));
 		},
@@ -764,36 +771,50 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = ((PawsBlockExpr*)codegenExpr(params[1], parentBlock).value)->get();
-			if (!ExprIsCast(params[0]))
-			{
-				codegenExpr(expr, scope);
+			MincSymbol sym = codegenExpr(expr, scope);
+
+			MincExpr* param = params[0];
+			while (ExprIsCast(param))
+				param = getDerivedExpr(param);
+			PawsType* paramType = (PawsType*)getType(param, parentBlock);
+			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 				return MincSymbol(PawsVoid::TYPE, nullptr);
-			}
-			return codegenExpr(expr, scope);
+
+			return sym;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			if (!ExprIsCast(params[0]))
+			MincExpr* param = params[0];
+			while (ExprIsCast(param))
+				param = getDerivedExpr(param);
+			PawsType* paramType = (PawsType*)getType(param, parentBlock);
+			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 				return PawsVoid::TYPE;
-			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
-			return ((PawsTpltType*)type)->tpltType;
+			return ((PawsTpltType*)paramType)->tpltType;
 		}
 	);
 	defineExpr3(pkgScope, "$E<PawsExpr>.codegen()",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = getBlockExprParent(parentBlock);
-			if (!ExprIsCast(params[0]))
-			{
-				codegenExpr(expr, scope);
+			MincSymbol sym = codegenExpr(expr, scope);
+
+			MincExpr* param = params[0];
+			while (ExprIsCast(param))
+				param = getDerivedExpr(param);
+			PawsType* paramType = (PawsType*)getType(param, parentBlock);
+			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 				return MincSymbol(PawsVoid::TYPE, nullptr);
-			}
-			return codegenExpr(expr, scope);
+
+			return sym;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			if (!ExprIsCast(params[0]))
+			MincExpr* param = params[0];
+			while (ExprIsCast(param))
+				param = getDerivedExpr(param);
+			PawsType* paramType = (PawsType*)getType(param, parentBlock);
+			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 				return PawsVoid::TYPE;
-			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
-			return ((PawsTpltType*)type)->tpltType;
+			return ((PawsTpltType*)paramType)->tpltType;
 		}
 	);
 	defineExpr(pkgScope, "$E<PawsBlockExpr>.codegen($E<PawsBlockExpr>)",

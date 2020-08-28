@@ -1,5 +1,7 @@
 #include "minc_api.hpp"
 
+extern MincObject ERROR_TYPE;
+
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
 MincParamExpr::MincParamExpr(const MincLocation& loc, size_t idx)
@@ -36,7 +38,7 @@ MincObject* MincParamExpr::getType(const MincBlockExpr* parentBlock) const
 {
 	const std::vector<MincSymbol>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr || idx >= blockParams->size())
-		return nullptr;
+		return &ERROR_TYPE;
 	return blockParams->at(idx).type;
 }
 

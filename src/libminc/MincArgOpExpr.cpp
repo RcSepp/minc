@@ -63,3 +63,11 @@ MincExpr* MincArgOpExpr::clone() const
 {
 	return new MincArgOpExpr(loc, op, oopstr.c_str(), copstr.c_str(), var->clone(), (MincListExpr*)args->clone());
 }
+
+extern "C"
+{
+	bool ExprIsArgOp(const MincExpr* expr)
+	{
+		return expr->exprtype == MincExpr::ExprType::ARGOP;
+	}
+}

@@ -16,6 +16,7 @@ struct Struct : public PawsType
 	{
 	};
 
+	static PawsType* const TYPE;
 	std::map<std::string, MincSymbol> variables;
 	std::multimap<std::string, Method> methods;
 	std::vector<PawsType*> constructors;

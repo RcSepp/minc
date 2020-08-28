@@ -8,6 +8,8 @@
 
 static struct {} STRUCT_ID;
 
+PawsType* const Struct::TYPE = new PawsType();
+
 Struct* getStruct(const MincBlockExpr* scope)
 {
 	while (getBlockExprUserType(scope) != &STRUCT_ID)

@@ -25,10 +25,12 @@ protected:
 		: returnType(returnType) {}
 
 public:
+	static PawsType* const TYPE;
 	PawsType* returnType;
 	static Awaitable* get(PawsType* returnType);
 	Awaitable() = default;
 };
+PawsType* const Awaitable::TYPE = new PawsType();
 std::mutex Awaitable::mutex;
 std::set<Awaitable> Awaitable::awaitableTypes;
 bool operator<(const Awaitable& lhs, const Awaitable& rhs)
@@ -47,10 +49,12 @@ protected:
 		: msgType(msgType) {}
 
 public:
+	static PawsType* const TYPE;
 	PawsType* msgType;
 	static Event* get(PawsType* msgType);
 	Event() = default;
 };
+PawsType* const Event::TYPE = new PawsType();
 std::mutex Event::mutex;
 std::set<Event> Event::eventTypes;
 bool operator<(const Event& lhs, const Event& rhs)
@@ -66,6 +70,7 @@ struct Frame : public Awaitable
 		MincExpr* initExpr;
 	};
 
+	static PawsType* const TYPE;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
 	std::map<std::string, MincSymbol> variables;
@@ -76,6 +81,7 @@ struct Frame : public Awaitable
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body), beginStmtIndex(0) {}
 };
+PawsType* const Frame::TYPE = new PawsType();
 
 struct SingleshotAwaitableInstance;
 struct AwaitableInstance

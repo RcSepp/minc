@@ -12,13 +12,10 @@ struct Struct : public PawsType
 		PawsType* type;
 		MincExpr* initExpr;
 	};
-	struct Method : public PawsRegularFunc
-	{
-	};
 
 	static PawsType* const TYPE;
 	std::map<std::string, MincSymbol> variables;
-	std::multimap<std::string, Method> methods;
+	std::multimap<std::string, PawsFunc*> methods;
 	std::vector<PawsType*> constructors;
 };
 

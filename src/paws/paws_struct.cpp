@@ -78,24 +78,25 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					// Define return statement in function scope
 					definePawsReturnStmt(block, returnType);
 
-					Struct::Method& method = getStruct(parentBlock)->methods.insert(std::make_pair(funcName, Struct::Method()))->second;
-					method.returnType = returnType;
-					method.argTypes.reserve(argTypeExprs.size());
+					PawsRegularFunc* method = new PawsRegularFunc();
+					getStruct(parentBlock)->methods.insert(std::make_pair(funcName, method))->second;
+					method->returnType = returnType;
+					method->argTypes.reserve(argTypeExprs.size());
 					for (MincExpr* argTypeExpr: argTypeExprs)
-						method.argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
-					method.argNames.reserve(argNameExprs.size());
+						method->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
+					method->argNames.reserve(argNameExprs.size());
 					for (MincExpr* argNameExpr: argNameExprs)
-						method.argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
-					method.body = block;
+						method->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
+					method->body = block;
 
 					// Name function block
 					std::string funcFullName(funcName);
 					funcFullName += '(';
-					if (method.argTypes.size())
+					if (method->argTypes.size())
 					{
-						funcFullName += method.argTypes[0]->name;
-						for (size_t i = 1; i != method.argTypes.size(); ++i)
-							funcFullName += ", " + method.argTypes[i]->name;
+						funcFullName += method->argTypes[0]->name;
+						for (size_t i = 1; i != method->argTypes.size(); ++i)
+							funcFullName += ", " + method->argTypes[i]->name;
 					}
 					funcFullName += ')';
 					setBlockExprName(block, funcFullName.c_str());
@@ -208,18 +209,18 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			if (pair == strct->methods.end())
 				raiseCompileError(("no method named '" + methodName + "' in '" + strct->name + "'").c_str(), params[1]);
 
-			const Struct::Method& method = pair->second;
+			const PawsFunc* method = pair->second;
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[2]);
 
 			// Check number of arguments
-			if (method.argTypes.size() != argExprs.size())
+			if (method->argTypes.size() != argExprs.size())
 				raiseCompileError("invalid number of method arguments", params[0]);
 
 			// Check argument types and perform inherent type casts
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				MincExpr* argExpr = argExprs[i];
-				MincObject *expectedType = method.argTypes[i], *gotType = getType(argExpr, parentBlock);
+				MincObject *expectedType = method->argTypes[i], *gotType = getType(argExpr, parentBlock);
 
 				if (expectedType != gotType)
 				{
@@ -231,7 +232,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			}
 
 			// Call method
-			return method.call(parentBlock, argExprs, &var);
+			return method->call(parentBlock, argExprs, &var);
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
 				return getErrorType();
@@ -239,7 +240,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->methods.find(methodName);
-			return pair == strct->methods.end() ? nullptr : pair->second.returnType;
+			return pair == strct->methods.end() ? nullptr : pair->second->returnType;
 		}
 	);
 

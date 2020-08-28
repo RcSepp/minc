@@ -25,8 +25,11 @@ public:
 	}
 	void run()
 	{
-		running = true;
-		qApp->exec();
+		if (!running)
+		{
+			running = true;
+			qApp->exec();
+		}
 	}
 	void close()
 	{

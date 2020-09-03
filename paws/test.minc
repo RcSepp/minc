@@ -400,8 +400,14 @@ PawsVoid test_paws_struct()
 		PawsInt b(PawsInt a, PawsInt b) { return a - b; }
 		c = "foo";
 		PawsInt d() { {} return this.a; } // `{}` tests non struct specific statements within a method
+		PawsInt e() { return a; }
+		S f(S a) {return a; }
 	};
 	s = S();
+
+	// Test struct equivalence
+	assert(s == s);
+	assert(s != S());
 
 	// Test struct member getter/setter
 	assert(s.a == 1);
@@ -421,6 +427,8 @@ PawsVoid test_paws_struct()
 	assert(s.b(1, '2')) throws PawsException("invalid method argument type: '2'<PawsString>, expected: <PawsInt>");
 	assert(s.b(1.1, 2.9) == -1);
 	assert(s.d() == 3);
+	assert(s.e() == 3);
+	assert(s.f(s) == s);
 	assert(s.x()) throws PawsException("no method named 'x' in 'S'");
 
 	// Test invalid struct definition
@@ -431,6 +439,31 @@ PawsVoid test_paws_struct()
 	assert(z.a) throws PawsException("cannot access member of non-struct type <PawsString>");
 	assert(z.a = 0) throws PawsException("cannot access member of non-struct type <PawsString>");
 	assert(z.b()) throws PawsException("cannot access member of non-struct type <PawsString>");
+
+	// Test struct constructor
+	struct S
+	{
+		a = 0;
+		S() { this.a = 1; }
+	};
+	assert(S().a == 1);
+	assert(S(0)) throws PawsException("no matching constructor for call S(PawsInt)");
+	struct S
+	{
+		a = 0;
+		S(PawsInt a) { this.a = a; }
+		S(PawsString a) { this.a = a.length; }
+		S(PawsInt a, PawsInt b) { this.a = a + b; }
+	};
+	assert(S(2).a == 2);
+	assert(S("foo").a == 3);
+	assert(S(2, 2).a == 4);
+	assert(S()) throws PawsException("no matching constructor for call S()");
+	assert(S('0', S())) throws PawsException("no matching constructor for call S(PawsString, S)");
+	assert(S(spam)) throws PawsException("`spam` was not declared in this scope");
+	assert { struct S { T() {} } } throws PawsException("cannot declare non-constructor method T() without a return type");
+	assert { struct S { T(PawsString a, S b) {} } } throws PawsException("cannot declare non-constructor method T(PawsString, S) without a return type");
+	assert { struct S { T(spam a) {} } } throws PawsException("`spam` was not declared in this scope");
 }
 
 PawsVoid test_paws_frames()

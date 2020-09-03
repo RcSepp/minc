@@ -631,6 +631,12 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			currentThread.errMsg = err.what();
 			sendStopEvent(StopEventReason::Exception, err.what());
 			session->send(dap::TerminatedEvent());
+		} catch (const MincSymbol& err) {
+			Thread& currentThread = getCurrentThread();
+			if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, err, &currentThread.errMsg))
+				currentThread.errMsg = "";
+			sendStopEvent(StopEventReason::Exception, currentThread.errMsg);
+			session->send(dap::TerminatedEvent());
 		}
 
 #ifdef DEBUG_MULTITHREADING

@@ -120,6 +120,9 @@ int main(int argc, char** argv)
 		} catch (const std::exception& err) {
 			std::cerr << err.what() << '\n';
 			result = -1;
+		} catch (const MincSymbol& err) {
+			std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(err.type, "UNKNOWN_TYPE") << ">\n";
+			result = -1;
 		}
 	}
 

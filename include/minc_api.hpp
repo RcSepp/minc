@@ -43,6 +43,7 @@ public:
 	virtual ~MincExpr();
 	virtual MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
 	MincObject* getType(const MincBlockExpr* parentBlock) const;
+	MincObject* getType(MincBlockExpr* parentBlock);
 	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const = 0;
 	inline bool isResolved() { return this->resolvedKernel != nullptr; }

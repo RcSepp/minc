@@ -39,6 +39,7 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		catch (...)
 		{
 			parentBlock->isExprSuspended = true;
+			//TODO: Raise error if getType() != &ERROR_TYPE
 			raiseStepEvent(this, STEP_SUSPEND);
 			if (isVolatile)
 				forget();
@@ -105,6 +106,35 @@ MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 	}
 }
 
+MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
+{
+	if (resolvedKernel == nullptr)
+		return nullptr;
+
+	MincObject* type;
+	try
+	{
+		type = resolvedKernel->getType(parentBlock, resolvedParams);
+	}
+	catch(...)
+	{
+		throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
+	}
+	if (type != &ERROR_TYPE)
+		return type;
+
+	// If type == &ERROR_TYPE, run codegen() to throw underlying exception
+	try
+	{
+		resolvedKernel->codegen(parentBlock, resolvedParams);
+	}
+	catch(...)
+	{
+		throw;
+	}
+	throw CompileError(("no exception raised executing expression returning error type: " + this->str()).c_str(), this->loc);
+}
+
 void MincExpr::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
@@ -143,7 +173,12 @@ extern "C"
 		return expr->codegen(scope, true);
 	}
 
-	MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope)
+	MincObject* getType1(const MincExpr* expr, const MincBlockExpr* scope)
+	{
+		return expr->getType(scope);
+	}
+
+	MincObject* getType2(MincExpr* expr, MincBlockExpr* scope)
 	{
 		return expr->getType(scope);
 	}

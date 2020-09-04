@@ -89,8 +89,6 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 		defineStmt2(scope, "return $E",
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				MincObject* returnType = getType(params[0], parentBlock);
-				if (returnType == getErrorType()) // If type is incorrect because expressions has errors
-					codegenExpr(params[0], parentBlock); // Raise expression error instead of invalid return type error
 				raiseCompileError(("invalid return type `" + lookupSymbolName2(parentBlock, returnType, "UNKNOWN_TYPE") + "`").c_str(), params[0]);
 			}
 		);
@@ -650,8 +648,6 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			if (ExprIsCast(expr))
 				expr = getCastExprSource((MincCastExpr*)expr);
 			MincObject* type = getType(expr, parentBlock);
-			if (type == getErrorType())// If type is error-type because expressions has errors
-				codegenExpr(expr, parentBlock); // Raise expression error
 			return MincSymbol(PawsType::TYPE, type);
 		},
 		PawsType::TYPE

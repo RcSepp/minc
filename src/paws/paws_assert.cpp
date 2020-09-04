@@ -12,8 +12,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 	);
 	defineStmt2(pkgScope, "assert($E)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			if (getType(params[0], parentBlock) == getErrorType()) // If params[0] has errors
-				codegenExpr(params[0], parentBlock); // Raise expression error
+			getType(params[0], parentBlock); // Raise expression errors if any
 			raiseCompileError("Assertion expression is undefined", params[0]);
 		}
 	);

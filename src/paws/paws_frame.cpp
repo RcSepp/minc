@@ -692,8 +692,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 	// Define await non-awaitable expression
 	defineExpr2(pkgScope, "await $E",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			if (getType(params[0], parentBlock) == getErrorType()) // If type is incorrect because expressions has errors
-				codegenExpr(params[0], parentBlock); // Raise expression error instead of invalid return type error
+			getType(params[0], parentBlock); // Raise expression errors if any
 			raiseCompileError("expression is not awaitable", params[0]);
 			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},

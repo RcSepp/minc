@@ -217,17 +217,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				if (numArgs)
 				{
 					std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
-					MincObject* argType = getType(argExprs[0], parentBlock);
-					if (argType == getErrorType()) // If argExprs[0] has errors
-						codegenExpr(argExprs[0], parentBlock); // Raise expression error
-					argTypeStr = lookupSymbolName2(parentBlock, argType, "UNKNOWN_TYPE");
+					argTypeStr = lookupSymbolName2(parentBlock, getType(argExprs[0], parentBlock), "UNKNOWN_TYPE");
 					for (size_t i = 1; i != argExprs.size(); ++i)
-					{
-						argType = getType(argExprs[i], parentBlock);
-						if (argType == getErrorType()) // If argExprs[i] has errors
-							codegenExpr(argExprs[i], parentBlock); // Raise expression error
-						argTypeStr += ", " + lookupSymbolName2(parentBlock, argType, "UNKNOWN_TYPE");
-					}
+						argTypeStr += ", " + lookupSymbolName2(parentBlock, getType(argExprs[i], parentBlock), "UNKNOWN_TYPE");
 				}
 				throw CompileError(parentBlock, getLocation(params[0]), "no matching constructor for call %S(%S)", strct->name, argTypeStr);
 			}

@@ -28,7 +28,8 @@ extern "C"
 
 	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope);
 	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope);
-	MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope);
+	MincObject* getType1(const MincExpr* expr, const MincBlockExpr* scope);
+	MincObject* getType2(MincExpr* expr, MincBlockExpr* scope);
 	void collectParams(const MincBlockExpr* scope, const MincExpr* tplt, MincExpr* expr, std::vector<MincExpr*>& params);
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope);
 	void forgetExpr(MincExpr* expr);
@@ -191,5 +192,12 @@ extern "C"
 
 	bool ExprIsVarBinOp(const MincExpr* expr);
 }
+
+#ifdef __cplusplus
+inline MincObject* getType(const MincExpr* expr, const MincBlockExpr* scope) { return getType1(expr, scope); }
+inline MincObject* getType(MincExpr* expr, MincBlockExpr* scope) { return getType2(expr, scope); }
+#else
+#define getType(expr, scope) _Generic((expr), const MincExpr*: getType1, MincExpr*: getType2)(expr, scope)
+#endif
 
 #endif

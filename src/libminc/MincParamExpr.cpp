@@ -4,42 +4,33 @@ extern MincObject ERROR_TYPE;
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-MincParamExpr::MincParamExpr(const MincLocation& loc, size_t idx)
-	: MincExpr(loc, MincExpr::ExprType::PARAM), idx(idx)
+MincParamExpr::Kernel::Kernel(MincParamExpr* expr)
+	: expr(expr)
 {
 }
 
-MincSymbol MincParamExpr::codegen(MincBlockExpr* parentBlock, bool resume)
+MincSymbol MincParamExpr::Kernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
-	try
-	{
-		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
-	}
-	catch (...)
-	{
-		parentBlock->isExprSuspended = true;
-		raiseStepEvent(this, STEP_SUSPEND);
-		throw;
-	}
-	parentBlock->isExprSuspended = false;
-
 	const std::vector<MincSymbol>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr)
-		throw CompileError("invalid use of parameter expression in parameterless scope", loc);
-	if (idx >= blockParams->size())
-		throw CompileError("parameter index out of bounds", loc);
-
-	raiseStepEvent(this, STEP_OUT);
-
-	return blockParams->at(idx);
+		throw CompileError("invalid use of parameter expression in parameterless scope", expr->loc);
+	if (expr->idx >= blockParams->size())
+		throw CompileError("parameter index out of bounds", expr->loc);
+	return blockParams->at(expr->idx);
 }
 
-MincObject* MincParamExpr::getType(const MincBlockExpr* parentBlock) const
+MincObject* MincParamExpr::Kernel::getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 {
 	const std::vector<MincSymbol>* blockParams = parentBlock->getBlockParams();
-	if (blockParams == nullptr || idx >= blockParams->size())
+	if (blockParams == nullptr || expr->idx >= blockParams->size())
 		return &ERROR_TYPE;
-	return blockParams->at(idx).type;
+	return blockParams->at(expr->idx).type;
+}
+
+MincParamExpr::MincParamExpr(const MincLocation& loc, size_t idx)
+	: MincExpr(loc, MincExpr::ExprType::PARAM), kernel(this), idx(idx)
+{
+	resolvedKernel = &kernel; //TODO: Make customizable
 }
 
 bool MincParamExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const

@@ -42,7 +42,7 @@ public:
 	MincExpr(const MincLocation& loc, ExprType exprtype);
 	virtual ~MincExpr();
 	virtual MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
-	virtual MincObject* getType(const MincBlockExpr* parentBlock) const;
+	MincObject* getType(const MincBlockExpr* parentBlock) const;
 	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
 	virtual void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const = 0;
 	inline bool isResolved() { return this->resolvedKernel != nullptr; }
@@ -365,11 +365,19 @@ public:
 
 class MincParamExpr : public MincExpr
 {
+private:
+	struct Kernel : public MincKernel
+	{
+		MincParamExpr* expr;
+
+		Kernel(MincParamExpr* expr);
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
+	} kernel;
+
 public:
 	size_t idx;
 	MincParamExpr(const MincLocation& loc, size_t idx);
-	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
-	MincObject* getType(const MincBlockExpr* parentBlock) const;
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;

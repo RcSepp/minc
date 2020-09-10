@@ -208,7 +208,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 
 				// Call constructor
 				MincSymbol self(strct, new PawsStructInstance(instance));
-				constructor->call(parentBlock, argExprs, &self);
+				MincSymbol constructorResult = constructor->call(parentBlock, argExprs, &self);
+				if (constructorResult.value != nullptr)
+					self.value = constructorResult.value;
 				return self;
 			}
 			if (numArgs || !strct->constructors.empty())

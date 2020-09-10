@@ -59,6 +59,16 @@ constexpr auto call_with_args(F func, std::index_sequence<Is...>, L&& cbk) noexc
 	return decltype(caller)(caller)( std::integral_constant<std::size_t, Is>{}... );
 }
 
+template<class C, class F, std::size_t...Is, class L>
+constexpr auto call_with_args(C* self, F func, std::index_sequence<Is...>, L&& cbk) noexcept(true)
+{
+	auto caller = [self, &cbk, &func](auto&&...args) {
+		return (self->*func)(cbk(args)...);
+	};
+
+	return decltype(caller)(caller)( std::integral_constant<std::size_t, Is>{}... );
+}
+
 template <typename F>
 struct PawsExternFunc : public PawsFunc
 {
@@ -98,6 +108,49 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 				PawsValue<R>::TYPE,
 				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
+						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+						return p->get();
+					})
+				)
+			);
+	}
+};
+
+template <typename R, typename C, typename... A>
+struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
+{
+	typedef R (C::*F)(A...);
+
+	F func;
+	PawsExternFunc(F func) : func(func)
+	{
+		returnType = PawsValue<R>::TYPE;
+
+		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+			typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
+			argTypes.push_back(PawsValue<P>::TYPE);
+			argNames.push_back("a" + std::to_string(i));
+		});
+	}
+
+	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
+	{
+		PawsValue<C*>* s = (PawsValue<C*>*)self->value;
+		if constexpr (std::is_void<R>::value)
+		{
+			call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
+				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+				return p->get();
+			});
+			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+		}
+		else
+			return MincSymbol(
+				PawsValue<R>::TYPE,
+				new PawsValue<R>(
+					call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
 						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
 						return p->get();

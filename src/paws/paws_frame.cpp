@@ -30,7 +30,7 @@ public:
 	static Awaitable* get(PawsType* returnType);
 	Awaitable() = default;
 };
-PawsType* const Awaitable::TYPE = new PawsType();
+PawsType* const Awaitable::TYPE = new PawsType(sizeof(Awaitable));
 std::mutex Awaitable::mutex;
 std::set<Awaitable> Awaitable::awaitableTypes;
 bool operator<(const Awaitable& lhs, const Awaitable& rhs)
@@ -46,7 +46,7 @@ private:
 
 protected:
 	Event(PawsType* msgType)
-		: msgType(msgType) {}
+		: PawsType(sizeof(Event)), msgType(msgType) {}
 
 public:
 	static PawsType* const TYPE;
@@ -54,7 +54,7 @@ public:
 	static Event* get(PawsType* msgType);
 	Event() = default;
 };
-PawsType* const Event::TYPE = new PawsType();
+PawsType* const Event::TYPE = new PawsType(sizeof(Event));
 std::mutex Event::mutex;
 std::set<Event> Event::eventTypes;
 bool operator<(const Event& lhs, const Event& rhs)
@@ -81,7 +81,7 @@ struct Frame : public Awaitable
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body), beginStmtIndex(0) {}
 };
-PawsType* const Frame::TYPE = new PawsType();
+PawsType* const Frame::TYPE = new PawsType(sizeof(Frame));
 
 struct SingleshotAwaitableInstance;
 struct AwaitableInstance
@@ -528,7 +528,9 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 						frameVarDefBlock = getBlockExprParent(frameVarDefBlock);
 					assert(frameVarDefBlock);
 					Frame* frame = (Frame*)getBlockExprUser(frameVarDefBlock);
-					frame->variables[getIdExprName((MincIdExpr*)varAST)] = Frame::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
+					PawsType* type = (PawsType*)getType(exprAST, parentBlock);
+					frame->variables[getIdExprName((MincIdExpr*)varAST)] = Frame::MincSymbol{type, exprAST};
+					frame->size += type->size;
 				}
 			);
 

@@ -222,11 +222,6 @@ void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-const std::string PawsType::toString() const
-{
-	return name;
-}
-
 template<> const std::string PawsDouble::toString() const
 {
 	return std::to_string(val);
@@ -670,6 +665,17 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			bool isInst = isInstance(parentBlock, codegenExpr(params[0], parentBlock).value, codegenExpr(params[1], parentBlock).value);
 			return MincSymbol(PawsInt::TYPE, new PawsInt(isInst != 0));
+		},
+		PawsInt::TYPE
+	);
+
+	defineExpr2(pkgScope, "sizeof($E<PawsBase>)",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincExpr* expr = params[0];
+			if (ExprIsCast(expr))
+				expr = getCastExprSource((MincCastExpr*)expr);
+			PawsType* type = (PawsType*)getType(expr, parentBlock);
+			return MincSymbol(PawsInt::TYPE, new PawsInt(type->size));
 		},
 		PawsInt::TYPE
 	);

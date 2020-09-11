@@ -63,6 +63,10 @@ PawsVoid test_paws()
 	assert(PawsInt == PawsInt);
 	assert(PawsInt != PawsBase);
 	assert(isInstance(PawsInt, PawsBase));
+
+	// Test builtin functions
+	assert(type(PawsInt) == PawsType);
+	assert(sizeof(PawsType) == 64);
 }
 
 PawsVoid test_paws_int()
@@ -120,6 +124,7 @@ PawsVoid test_paws_int()
 	// Test builtin functions
 	assert(str(-4) == "-4");
 	assert(type(-4) == PawsInt);
+	assert(sizeof(-4) == 4);
 }
 
 PawsVoid test_paws_string()
@@ -317,6 +322,8 @@ PawsVoid test_paws_array()
 	// Test builtin functions
 	assert(str(a) == "[0, 3]");
 	assert(isInstance(type(a), PawsArray)); //TODO: Fix `assert(type(a) == PawsArray<PawsInt>;`
+	assert(sizeof([]) == 24);
+	assert(sizeof([1, 2, 3]) == 24);
 }
 
 PawsVoid test_paws_subroutine()
@@ -333,6 +340,8 @@ PawsVoid test_paws_subroutine()
 	f();
 	assert(type(f()) == PawsVoid);
 	assert(str(f) == "f()");
+	assert(sizeof(f()) == 0);
+	assert(sizeof(f) == 8);
 
 	// Test return from non-void function
 	PawsInt f()
@@ -469,6 +478,17 @@ PawsVoid test_paws_struct()
 	assert { struct S { T() {} } } throws PawsException("cannot declare non-constructor method T() without a return type");
 	assert { struct S { T(PawsString a, S b) {} } } throws PawsException("cannot declare non-constructor method T(PawsString, S) without a return type");
 	assert { struct S { T(spam a) {} } } throws PawsException("`spam` was not declared in this scope");
+
+	// Test struct size
+	struct S
+	{
+		a = 0;
+		b = 0;
+		c = 0;
+		S() {}
+	};
+	assert(sizeof(S) == 184);
+	assert(sizeof(S()) == 12);
 }
 
 PawsVoid test_paws_frames()
@@ -565,6 +585,18 @@ PawsVoid test_paws_frames()
 	assert(await e == 1);
 	assert(await e == 2);
 	assert(type(e) == event<PawsInt>);
+	assert(sizeof(event<PawsInt>) == 64);
+	assert(sizeof(e) == 72);
+
+	// Test frame size
+	PawsVoid frame A()
+	{
+		public a = 0;
+		public b = 0;
+		public c = 0;
+	};
+	assert(sizeof(A) == 184);
+	assert(sizeof(A()) == 12);
 }
 
 PawsVoid test_paws_time()

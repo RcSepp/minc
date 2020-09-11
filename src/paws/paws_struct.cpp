@@ -8,7 +8,7 @@
 
 static struct {} STRUCT_ID;
 
-PawsType* const Struct::TYPE = new PawsType();
+PawsType* const Struct::TYPE = new PawsType(sizeof(Struct));
 
 Struct* getStruct(const MincBlockExpr* scope)
 {
@@ -61,11 +61,14 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			// Define member variable definition
 			defineStmt2(block, "$I = $E<PawsBase>",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+					Struct* strct = getStruct(parentBlock);
 					MincExpr *varAST = params[0], *exprAST = params[1];
 					if (ExprIsCast(exprAST))
 						exprAST = getCastExprSource((MincCastExpr*)exprAST);
 
-					getStruct(parentBlock)->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{(PawsType*)getType(exprAST, parentBlock), exprAST};
+					PawsType* type = (PawsType*)getType(exprAST, parentBlock);
+					strct->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{type, exprAST};
+					strct->size += type->size;
 				}
 			);
 

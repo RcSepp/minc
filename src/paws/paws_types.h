@@ -45,9 +45,10 @@ template<> struct PawsValue<_Type*> : PawsBase
 	static PawsValue<_Type*>* const TYPE;
 	PawsValue<_Type*> *valType, *ptrType;
 	std::string name;
-	PawsValue() : valType(nullptr), ptrType(nullptr), name("UNKNOWN_PAWS_TYPE") {}
+	int size;
+	PawsValue(int size=0) : valType(nullptr), ptrType(nullptr), name("UNKNOWN_PAWS_TYPE"), size(size) {}
 	PawsBase* copy() { return this; /* Pass all types by reference to allow matching of aliased types */ }
-	const std::string toString() const;
+	const std::string toString() const { return name; }
 };
 template<> struct PawsValue<void> : PawsBase
 {
@@ -69,7 +70,7 @@ struct PawsTpltType : PawsValue<_Type*>
 private:
 	static std::mutex mutex;
 	static std::set<PawsTpltType*> tpltTypes;
-	PawsTpltType(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType) : baseType(baseType), tpltType(tpltType) {}
+	PawsTpltType(PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType) : PawsValue<_Type*>(baseType->size), baseType(baseType), tpltType(tpltType) {}
 
 public:
 	PawsValue<_Type*> *const baseType, *const tpltType;
@@ -103,10 +104,10 @@ typedef PawsValue<MincScopeType*> PawsScopeType;
 typedef PawsValue<MincException> PawsException;
 typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;
 
-inline PawsType* const PawsBase::TYPE = new PawsType();
-template <typename T> inline PawsType* const PawsValue<T>::TYPE = new PawsType();
-inline PawsType* const PawsType::TYPE = new PawsType();
-inline PawsType* const PawsVoid::TYPE = new PawsType();
+inline PawsType* const PawsBase::TYPE = new PawsType(0);
+template <typename T> inline PawsType* const PawsValue<T>::TYPE = new PawsType(sizeof(T));
+inline PawsType* const PawsType::TYPE = new PawsType(sizeof(PawsType));
+inline PawsType* const PawsVoid::TYPE = new PawsType(0);
 
 template<typename T> void registerType(MincBlockExpr* scope, const char* name)
 {

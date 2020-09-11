@@ -16,6 +16,12 @@ Struct* getStruct(const MincBlockExpr* scope)
 	return (Struct*)getBlockExprUser(scope);
 }
 
+void Struct::inherit(const Struct* base)
+{
+	methods.insert(base->methods.begin(), base->methods.end());
+	variables.insert(base->variables.begin(), base->variables.end());
+}
+
 void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct)
 {
 	strct->name = name;
@@ -207,10 +213,14 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					continue;
 
 				// Call constructor
-				MincSymbol self(strct, new PawsStructInstance(instance));
-				MincSymbol constructorResult = constructor->call(parentBlock, argExprs, &self);
-				if (constructorResult.value != nullptr)
-					self.value = constructorResult.value;
+				MincSymbol self(strct, nullptr);
+				if (constructor->returnType == PawsVoid::TYPE)
+				{
+					self.value = new PawsStructInstance(instance);
+					constructor->call(parentBlock, argExprs, &self);
+				}
+				else
+					self.value = constructor->call(parentBlock, argExprs).value;
 				return self;
 			}
 			if (numArgs || !strct->constructors.empty())

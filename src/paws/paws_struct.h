@@ -17,6 +17,8 @@ struct Struct : public PawsType
 	std::map<std::string, MincSymbol> variables;
 	std::multimap<std::string, PawsFunc*> methods;
 	std::vector<PawsFunc*> constructors;
+
+	void inherit(const Struct* base);
 };
 
 void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct);

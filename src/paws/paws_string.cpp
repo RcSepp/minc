@@ -85,6 +85,18 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
+	// Define string parser
+	defineExpr(pkgScope, "$E<PawsString>.parseInt()",
+		+[](std::string a) -> int {
+			return std::stoi(a);
+		}
+	);
+	defineExpr(pkgScope, "$E<PawsString>.parseInt($E<PawsInt>)",
+		+[](std::string a, int b) -> int {
+			return std::stoi(a, 0, b);
+		}
+	);
+
 	// Define string relations
 	defineExpr(pkgScope, "$E<PawsString> == $E<PawsString>",
 		+[](std::string a, std::string b) -> int {
@@ -94,6 +106,22 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 	defineExpr(pkgScope, "$E<PawsString> != $E<PawsString>",
 		+[](std::string a, std::string b) -> int {
 			return a != b;
+		}
+	);
+
+	// Define string iterating for statement
+	defineStmt2(pkgScope, "for ($I: $E<PawsString>) $B",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
+			PawsString* str = (PawsString*)codegenExpr(params[1], parentBlock).value;
+			MincBlockExpr* body = (MincBlockExpr*)params[2];
+			PawsString iter;
+			defineSymbol(body, getIdExprName(iterExpr), PawsString::TYPE, &iter);
+			for (char c: str->get())
+			{
+				iter.set(std::string(1, c));
+				codegenExpr((MincExpr*)body, parentBlock);
+			}
 		}
 	);
 

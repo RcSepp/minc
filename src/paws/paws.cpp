@@ -72,7 +72,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
 				raiseCompileError(("void " + std::string(funcName) + " should not return a value").c_str(), params[0]);
-			},
+			}, // LCOV_EXCL_LINE
 			(void*)funcName
 		);
 
@@ -90,7 +90,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				MincObject* returnType = getType(params[0], parentBlock);
 				raiseCompileError(("invalid return type `" + lookupSymbolName2(parentBlock, returnType, "UNKNOWN_TYPE") + "`").c_str(), params[0]);
-			}
+			} // LCOV_EXCL_LINE
 		);
 
 		// Define return statement with correct type in function scope
@@ -105,7 +105,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 				const char* funcName = (const char*)stmtArgs;
 				raiseCompileError(("non-void " + std::string(funcName) + " should return a value").c_str(), (MincExpr*)parentBlock);
-			},
+			}, // LCOV_EXCL_LINE
 			(void*)funcName
 		);
 	}
@@ -586,10 +586,14 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
 			PawsString* strValue;
-			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
+			if (value == getErrorType())
+				return MincSymbol(PawsString::TYPE, new PawsString("ERROR"));
+			else if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
 				return MincSymbol(PawsString::TYPE, new PawsString(strValue->get()));
-			else
+			else if (value != nullptr)
 				return MincSymbol(PawsString::TYPE, new PawsString(value->toString()));
+			else
+				return MincSymbol(PawsString::TYPE, new PawsString("NULL"));
 		},
 		PawsString::TYPE
 	);
@@ -606,7 +610,9 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
 			PawsString* strValue;
-			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
+			if (value == getErrorType())
+				std::cout << "ERROR\n";
+			else if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
 				std::cout << strValue->get() << '\n';
 			else if (value != nullptr)
 				std::cout << value->toString() << '\n';
@@ -614,6 +620,13 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 				std::cout << "NULL\n";
 
 			return MincSymbol(PawsVoid::TYPE, nullptr);
+		},
+		PawsVoid::TYPE
+	);
+	defineExpr2(pkgScope, "print($E)",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			MincObject* type = getType(params[0], parentBlock);
+			throw CompileError(parentBlock, getLocation(params[0]), "print() is undefined for expression of type <%t>", type);
 		},
 		PawsVoid::TYPE
 	);

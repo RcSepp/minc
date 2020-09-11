@@ -58,6 +58,11 @@ PawsVoid test_paws()
 
 	// Test expression `str($E<PawsBase>)`
 	assert(str(123) == "123");
+
+	// Test type equivalence
+	assert(PawsInt == PawsInt);
+	assert(PawsInt != PawsBase);
+	assert(isInstance(PawsInt, PawsBase));
 }
 
 PawsVoid test_paws_int()

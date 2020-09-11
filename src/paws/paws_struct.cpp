@@ -293,7 +293,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->variables.find(memberName);
-			return pair == strct->variables.end() ? nullptr : pair->second.type;
+			return pair == strct->variables.end() ? getErrorType() : pair->second.type;
 		}
 	);
 
@@ -347,7 +347,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->methods.find(methodName);
-			return pair == strct->methods.end() ? nullptr : pair->second->returnType;
+			return pair == strct->methods.end() ? getErrorType() : pair->second->returnType;
 		}
 	);
 

@@ -83,7 +83,7 @@ void MincStmt::resolve(const MincBlockExpr* block)
 {
 	if (!isResolved())
 	{
-		for (MincExprIter expr = begin; ++expr != end;)
+		for (MincExprIter expr = begin; expr != end; ++expr)
 			(*expr)->resolve(block);
 		block->lookupStmt(begin, *this);
 	}
@@ -91,7 +91,7 @@ void MincStmt::resolve(const MincBlockExpr* block)
 
 void MincStmt::forget()
 {
-	for (MincExprIter expr = begin; ++expr != end;)
+	for (MincExprIter expr = begin; expr != end; ++expr)
 		(*expr)->forget();
 	MincExpr::forget();
 }

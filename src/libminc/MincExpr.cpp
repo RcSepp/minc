@@ -201,7 +201,7 @@ extern "C"
 
 	void setExprVolatile(MincExpr* expr, bool isVolatile)
 	{
-		expr->isVolatile = isVolatile;;
+		expr->isVolatile = isVolatile;
 	}
 
 	char* ExprToString(const MincExpr* expr)

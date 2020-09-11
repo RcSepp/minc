@@ -361,7 +361,7 @@ public:
 						var.name = name;
 						if (!getValueStr(block, symbol, &var.value))
 							var.value = "UNKNOWN";
-						var.type = "thee ol' mighty " + block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
+						var.type = block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
 						variables.push_back(var);
 					};
 					block->iterateSymbols(cbk);

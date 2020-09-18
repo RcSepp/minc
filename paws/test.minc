@@ -601,10 +601,37 @@ PawsVoid test_paws_frames()
 
 PawsVoid test_paws_time()
 {
+	import paws.time;
+
 	measure t sleep(0);
 	assert(t.milliseconds == 0);
 	measure t sleep(0.0015);
 	assert(t.milliseconds == 1);
+}
+
+PawsVoid test_paws_fileio()
+{
+	import paws.fileio;
+
+	i = 0;
+	open file("temp.txt", "w") {
+		file.write("spam\n");
+		++i;
+	}
+	open file("temp.txt", "wb") {
+		file.write("foo\n");
+		++i;
+	}
+	open file("temp.txt", "at") {
+		file.write("bar\n");
+		++i;
+	}
+	open file("temp.txt", "rb") {
+		assert(file.read() == "foo\nbar\n");
+		++i;
+	}
+	assert { open file("temp.txt", "~") { i += 100; } } throws PawsException("invalid mode ~");
+	assert(i == 4);
 }
 
 PawsVoid test_paws_extend()
@@ -675,6 +702,7 @@ measure("test time")
 		test_paws_struct();
 		test_paws_frames();
 		test_paws_time();
+		test_paws_fileio();
 		test_paws_extend();
 		test_mutable_exprs();
 	}

@@ -16,7 +16,7 @@
 
 #ifdef USE_PYTHON_PACKAGES
 #define PY_SSIZE_T_CLEAN
-#include <python3.7/Python.h>
+#include <Python.h>
 #endif
 
 #ifdef USE_NODE_PACKAGES

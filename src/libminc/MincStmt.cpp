@@ -22,13 +22,13 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
 	{
-		if (parentBlock->resultCache[parentBlock->resultCacheIdx])
-			return *parentBlock->resultCache[parentBlock->resultCacheIdx++]; // Return cached expression
+		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+			return parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
 	}
 	else
 	{
 		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-		parentBlock->resultCache.push_back(nullptr);
+		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
 	}
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 
@@ -48,17 +48,12 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
 	parentBlock->isStmtSuspended = false;
 
 	// Cache expression result for coroutines
-	parentBlock->resultCache[resultCacheIdx] = new MincSymbol(getVoid());
-
-assert(resultCacheIdx <= parentBlock->resultCache.size()); //TODO: Testing hypothesis
-//TODO: If this hypothesis stays true, then the following delete-loop and erase() can be replaced with a delete if-block and pop_back()!
-	for (std::vector<MincSymbol*>::iterator cachedResult = parentBlock->resultCache.begin() + resultCacheIdx + 1; cachedResult != parentBlock->resultCache.end(); ++cachedResult)
+	parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
+	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
 	{
-		--parentBlock->resultCacheIdx;
-		if (*cachedResult)
-			delete *cachedResult;
+		parentBlock->resultCacheIdx = resultCacheIdx + 1;
+		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 	}
-	parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
 
 	raiseStepEvent(this, STEP_OUT);
 

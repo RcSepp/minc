@@ -528,7 +528,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			{
 				codegenExpr(params[1], parentBlock);
 				resetBlockExprCache(parentBlock, cs); // Reset result cache to the state before the while loop to avoid rerunning
-														 // previous loop iterations when resuming a coroutine within the loop block
+													  // previous loop iterations when resuming a coroutine within the loop block
 			}
 		}
 	);

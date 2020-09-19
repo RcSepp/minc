@@ -527,9 +527,6 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 			// Clear cached expressions
 			// Coroutines exit codegen() without clearing resultCache by throwing an exception
 			// They use the resultCache on reentry to avoid reexecuting expressions
-			for (MincSymbol* cachedResult: resultCache)
-				if (cachedResult)
-					delete cachedResult;
 			resultCache.clear();
 			resultCacheIdx = 0;
 		}
@@ -548,9 +545,6 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 			// Clear cached expressions
 			// Coroutines exit codegen() without clearing resultCache by throwing an exception
 			// They use the resultCache on reentry to avoid reexecuting expressions
-			for (MincSymbol* cachedResult: resultCache)
-				if (cachedResult)
-					delete cachedResult;
 			resultCache.clear();
 			resultCacheIdx = 0;
 		}
@@ -663,9 +657,6 @@ MincExpr* MincBlockExpr::clone() const
 
 void MincBlockExpr::reset()
 {
-	for (MincSymbol* cachedResult: resultCache)
-		if (cachedResult)
-			delete cachedResult;
 	resultCache.clear();
 	resultCacheIdx = 0;
 	stmtIdx = 0;
@@ -680,9 +671,6 @@ void MincBlockExpr::clearCache(size_t targetSize)
 		targetSize = resultCache.size();
 
 	resultCacheIdx = targetSize;
-	for (std::vector<MincSymbol*>::iterator cachedResult = resultCache.begin() + targetSize; cachedResult != resultCache.end(); ++cachedResult)
-		if (*cachedResult)
-			delete *cachedResult;
 	resultCache.erase(resultCache.begin() + targetSize, resultCache.end());
 }
 

@@ -239,7 +239,7 @@ public:
 	size_t stmtIdx;
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
-	std::vector<MincSymbol*> resultCache;
+	std::vector<std::pair<MincSymbol, bool>> resultCache;
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended, isResuming;
 	bool isBusy;

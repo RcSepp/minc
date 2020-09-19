@@ -6,18 +6,53 @@ MincBlockExpr* pawsArrayScope = nullptr;
 
 typedef PawsValue<std::vector<MincObject*>> PawsArray;
 
-template<> const std::string PawsArray::toString() const
+struct PawsArrayType : public PawsType
 {
-	const size_t size = val.size();
-	if (size == 0)
-		return "[]";
-	else
+private:
+	static std::mutex mutex;
+	static std::set<PawsArrayType> awaitableTypes;
+
+	PawsArrayType(PawsType* valueType)
+		: PawsType(sizeof(std::vector<MincObject*>)), valueType(valueType) {}
+
+public:
+	PawsType* const valueType;
+	static PawsArrayType* get(PawsType* valueType)
 	{
-		std::string str = "[" + ((PawsBase*)val[0])->toString(); //TODO: Check if val is instance of PawsBase
-		for (size_t i = 1; i < size; ++i)
-			str += ", " + ((PawsBase*)val[i])->toString(); //TODO: Check if val is instance of PawsBase
-		return str + ']';
+		std::unique_lock<std::mutex> lock(mutex);
+		std::set<PawsArrayType>::iterator iter = awaitableTypes.find(PawsArrayType(valueType));
+		if (iter == awaitableTypes.end())
+		{
+			iter = awaitableTypes.insert(PawsArrayType(valueType)).first;
+			PawsArrayType* t = const_cast<PawsArrayType*>(&*iter); //TODO: Find a way to avoid const_cast
+			t->name = valueType->name + "[]";
+			defineSymbol(pawsArrayScope, t->name.c_str(), PawsType::TYPE, t);
+			defineOpaqueInheritanceCast(pawsArrayScope, t, PawsBase::TYPE);
+			defineOpaqueInheritanceCast(pawsArrayScope, t, PawsArray::TYPE);
+		}
+		return const_cast<PawsArrayType*>(&*iter); //TODO: Find a way to avoid const_cast
 	}
+	MincObject* copy(MincObject* value) { return new PawsArray(*(PawsArray*)value); }
+	std::string toString(MincObject* value) const
+	{
+		const std::vector<MincObject*>& val = ((PawsArray*)value)->get();
+		const size_t size = val.size();
+		if (size == 0)
+			return "[]";
+		else
+		{
+			std::string str = "[" + PawsInt::TYPE->toString(val[0]); //TODO: Check if val is instance of PawsBase
+			for (size_t i = 1; i < size; ++i)
+				str += ", " + PawsInt::TYPE->toString(val[i]); //TODO: Check if val is instance of PawsBase
+			return str + ']';
+		}
+	}
+};
+std::mutex PawsArrayType::mutex;
+std::set<PawsArrayType> PawsArrayType::awaitableTypes;
+bool operator<(const PawsArrayType& lhs, const PawsArrayType& rhs)
+{
+	return lhs.valueType < rhs.valueType;
 }
 
 MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
@@ -28,55 +63,53 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 	defineExpr3(pkgScope, "[$E<PawsBase>, ...]",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[0]);
-			PawsArray* arr = new PawsArray(std::vector<MincObject*>());
+			PawsArray* arr = new PawsArray();
 			if (values.size() == 0)
-				return MincSymbol(PawsArray::TYPE, arr);
+				return MincSymbol(PawsArrayType::get(PawsVoid::TYPE), arr);
 			arr->get().reserve(values.size());
 			for (MincExpr* value: values)
 				arr->get().push_back(codegenExpr(value, parentBlock).value);
-			return MincSymbol(PawsTpltType::get(pawsArrayScope, PawsArray::TYPE, (PawsType*)getType(getDerivedExpr(values[0]), parentBlock)), arr);
+			return MincSymbol(PawsArrayType::get((PawsType*)getType(getDerivedExpr(values[0]), parentBlock)), arr);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			//TODO: Determine common sub-class, instead of enforcing identical classes of all array values
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[0]);
 			std::vector<PawsType*> valueTypes;
 			if (values.size() == 0)
-				return PawsArray::TYPE;
+				return PawsArrayType::get(PawsVoid::TYPE);
 			valueTypes.reserve(values.size());
 			for (MincExpr* value: values)
 				valueTypes.push_back((PawsType*)getType(getDerivedExpr(value), parentBlock));
-			return PawsTpltType::get(pawsArrayScope, PawsArray::TYPE, valueTypes[0]);
+			return PawsArrayType::get(valueTypes[0]);
 		}
 	);
 
 	// Array getter
 	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>]",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			if (!ExprIsCast(params[0]))
-				raiseCompileError("attempting to access array of unspecified type", params[0]);
 			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
-			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
-			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
-			return MincSymbol(valueType, arr->get()[idx->get()]);
+			PawsType* valueType = ((PawsArrayType*)arrVar.type)->valueType;
+			size_t idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
+			if (idx >= arr->get().size())
+				throw CompileError(parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
+			return MincSymbol(valueType, arr->get()[idx]);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			if (!ExprIsCast(params[0]))
-				return getErrorType();
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
-			return ((PawsTpltType*)type)->tpltType;
+			return ((PawsArrayType*)type)->valueType;
 		}
 	);
 
 	// Array setter
 	defineExpr3(pkgScope, "$E<PawsArray>[$E<PawsInt>] = $E<PawsBase>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			if (!ExprIsCast(params[0]))
-				raiseCompileError("attempting to access array of unspecified type", params[0]);
 			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
-			PawsType* valueType = ((PawsTpltType*)arrVar.type)->tpltType;
-			PawsInt* idx = (PawsInt*)codegenExpr(params[1], parentBlock).value;
+			PawsType* valueType = ((PawsArrayType*)arrVar.type)->valueType;
+			size_t idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
+			if (idx >= arr->get().size())
+				throw CompileError(parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
 			MincExpr* valueExpr = getCastExprSource((MincCastExpr*)params[2]);
 
 			MincObject *expectedType = valueType, *gotType = getType(valueExpr, parentBlock);
@@ -88,16 +121,23 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 				valueExpr = castExpr;
 			}
 
-			MincObject* value = ((PawsBase*)codegenExpr(valueExpr, parentBlock).value)->copy();
-			arr->get()[idx->get()] = value;
+			MincSymbol sym = codegenExpr(valueExpr, parentBlock);
+			MincObject* value = ((PawsType*)sym.type)->copy((PawsBase*)sym.value);
+			arr->get()[idx] = value;
 
 			return MincSymbol(valueType, value);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			if (!ExprIsCast(params[0]))
-				return getErrorType();
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
-			return ((PawsTpltType*)type)->tpltType;
+			return ((PawsArrayType*)type)->valueType;
 		}
+	);
+
+	defineExpr2(pkgScope, "PawsArray<$E<PawsType>>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			return MincSymbol(PawsType::TYPE, PawsArrayType::get(returnType));
+		},
+		PawsType::TYPE
 	);
 });

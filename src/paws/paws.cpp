@@ -13,11 +13,11 @@
 MincScopeType* FILE_SCOPE_TYPE = new MincScopeType();
 MincBlockExpr* pawsScope = nullptr;
 
-const std::string PawsBase::toString() const
+std::string PawsType::toString(MincObject* value) const
 {
 	static const char* HEX_DIGITS = "0123456789abcdef";
 	static const size_t POINTER_SIZE = 2 * sizeof(void*);
-	uint64_t ptr = (uint64_t)this;
+	uint64_t ptr = (uint64_t)value;
 	std::string str = "0x";
 
 	uint8_t digit = 0, i = POINTER_SIZE;
@@ -46,7 +46,7 @@ const std::string PawsBase::toString() const
 
 std::mutex PawsTpltType::mutex;
 std::set<PawsTpltType*> PawsTpltType::tpltTypes;
-PawsTpltType* PawsTpltType::get(MincBlockExpr* scope, PawsValue<_Type*>* baseType, PawsValue<_Type*>* tpltType)
+PawsTpltType* PawsTpltType::get(MincBlockExpr* scope, PawsType* baseType, PawsType* tpltType)
 {
 	std::unique_lock<std::mutex> lock(mutex);
 	PawsTpltType f(baseType, tpltType);
@@ -56,7 +56,7 @@ PawsTpltType* PawsTpltType::get(MincBlockExpr* scope, PawsValue<_Type*>* baseTyp
 		iter = tpltTypes.insert(new PawsTpltType(baseType, tpltType)).first;
 		PawsTpltType* t = *iter;
 		t->name = baseType->name + '<' + tpltType->name + '>';
-		defineSymbol(scope, t->name.c_str(), PawsValue<_Type*>::TYPE, t);
+		defineSymbol(scope, t->name.c_str(), PawsType::TYPE, t);
 		defineOpaqueInheritanceCast(scope, t, PawsBase::TYPE); // Let baseType<tpltType> derive from PawsBase
 		defineOpaqueInheritanceCast(scope, t, baseType); // Let baseType<tpltType> derive from baseType
 	}
@@ -222,14 +222,14 @@ void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-template<> const std::string PawsDouble::toString() const
+template<> std::string PawsDouble::Type::toString(MincObject* value) const
 {
-	return std::to_string(val);
+	return std::to_string(((PawsDouble*)value)->get());
 }
 
-template<> const std::string PawsValue<const MincExpr*>::toString() const
+template<> std::string PawsValue<const MincExpr*>::Type::toString(MincObject* value) const
 {
-	char* cstr = ExprToString(val);
+	char* cstr = ExprToString(((PawsValue<const MincExpr*>*)value)->get());
 	std::string str(cstr);
 	delete[] cstr;
 	return str;
@@ -239,7 +239,7 @@ bool serializePawsValue(const MincBlockExpr* scope, const MincSymbol& value, std
 {
 	if (isInstance(scope, value.type, PawsBase::TYPE))
 	{
-		*valueStr = value.value == nullptr ? "NULL" : ((PawsBase*)value.value)->toString();
+		*valueStr = value.value == nullptr ? "NULL" : ((PawsType*)value.type)->toString((PawsBase*)value.value);
 		return true;
 	}
 	else
@@ -398,10 +398,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 				varExpr = getCastExprSource((MincCastExpr*)varExpr);
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr));
 			if (var == nullptr)
-				defineSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr), value.type, ((PawsBase*)value.value)->copy());
+				defineSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr), value.type, ((PawsType*)value.type)->copy((PawsBase*)value.value));
 			else
 			{
-				var->value = ((PawsBase*)value.value)->copy();
+				var->value = ((PawsType*)value.type)->copy((PawsBase*)value.value);
 				var->type = value.type;
 			}
 			return value;
@@ -421,7 +421,7 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 				expr = getCastExprSource((MincCastExpr*)expr);
 			MincSymbol value = codegenExpr(expr, parentBlock);
 
-			defineSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]), value.type, ((PawsBase*)value.value)->copy());
+			defineSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]), value.type, ((PawsType*)value.type)->copy((PawsBase*)value.value));
 			return value;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
@@ -577,16 +577,15 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			MincExpr* valueExpr = params[0];
 			if (ExprIsCast(valueExpr))
 				valueExpr = getCastExprSource((MincCastExpr*)valueExpr);
-			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
+			MincSymbol symbol = codegenExpr(valueExpr, parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			PawsString* strValue;
-			if (value == getErrorType())
+			if (symbol.value == getErrorType())
 				return MincSymbol(PawsString::TYPE, new PawsString("ERROR"));
-			else if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
-				return MincSymbol(PawsString::TYPE, new PawsString(strValue->get()));
-			else if (value != nullptr)
-				return MincSymbol(PawsString::TYPE, new PawsString(value->toString()));
+			else if (symbol.type == PawsString::TYPE)
+				return MincSymbol(PawsString::TYPE, new PawsString(((PawsString*)symbol.value)->get()));
+			else if (symbol.value != nullptr)
+				return MincSymbol(PawsString::TYPE, new PawsString(((PawsType*)symbol.type)->toString((PawsBase*)symbol.value)));
 			else
 				return MincSymbol(PawsString::TYPE, new PawsString("NULL"));
 		},
@@ -601,16 +600,17 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	defineExpr2(pkgScope, "print($E<PawsBase>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincExpr* valueExpr = params[0];
-			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
+			if (ExprIsCast(valueExpr))
+				valueExpr = getCastExprSource((MincCastExpr*)valueExpr);
+			MincSymbol symbol = codegenExpr(valueExpr, parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			PawsString* strValue;
-			if (value == getErrorType())
+			if (symbol.value == getErrorType())
 				std::cout << "ERROR\n";
-			else if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
-				std::cout << strValue->get() << '\n';
-			else if (value != nullptr)
-				std::cout << value->toString() << '\n';
+			else if (symbol.type == PawsString::TYPE)
+				std::cout << ((PawsString*)symbol.value)->get() << '\n';
+			else if (symbol.value != nullptr)
+				std::cout << ((PawsType*)symbol.type)->toString((PawsBase*)symbol.value) << '\n';
 			else
 				std::cout << "NULL\n";
 
@@ -636,14 +636,13 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 			MincExpr* valueExpr = params[0];
 			if (ExprIsCast(valueExpr))
 				valueExpr = getCastExprSource((MincCastExpr*)valueExpr);
-			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
+			MincSymbol symbol = codegenExpr(valueExpr, parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			PawsString* strValue;
-			if ((strValue = dynamic_cast<PawsString*>(value)) != nullptr)
-				std::cerr << strValue->get() << '\n';
+			if (symbol.type == PawsString::TYPE)
+				std::cerr << ((PawsString*)symbol.value)->get() << '\n';
 			else
-				std::cerr << value->toString() << '\n';
+				std::cerr << ((PawsType*)symbol.type)->toString((PawsBase*)symbol.value) << '\n';
 
 			return MincSymbol(PawsVoid::TYPE, nullptr);
 		},

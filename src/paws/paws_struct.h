@@ -7,17 +7,20 @@
 
 struct Struct : public PawsType
 {
+	typedef PawsType CType;
 	struct MincSymbol
 	{
 		PawsType* type;
 		MincExpr* initExpr;
 	};
 
-	static PawsType* const TYPE;
+	static PawsMetaType* const TYPE;
 	std::map<std::string, MincSymbol> variables;
 	std::multimap<std::string, PawsFunc*> methods;
 	std::vector<PawsFunc*> constructors;
 
+	MincObject* copy(MincObject* value);
+	std::string toString(MincObject* value) const;
 	void inherit(const Struct* base);
 };
 

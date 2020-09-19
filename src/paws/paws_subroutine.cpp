@@ -8,9 +8,9 @@
 
 MincBlockExpr* pawsSubroutineScope = nullptr;
 
-template<> const std::string PawsFunction::toString() const
+template<> std::string PawsFunction::Type::toString(MincObject* value) const
 {
-	PawsRegularFunc* regularFunc = dynamic_cast<PawsRegularFunc*>(get());
+	PawsRegularFunc* regularFunc = dynamic_cast<PawsRegularFunc*>(((PawsFunction*)value)->get());
 	if (regularFunc != nullptr)
 		return getBlockExprName(regularFunc->body);
 	else
@@ -23,7 +23,10 @@ MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<M
 
 	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
-		defineSymbol(instance, argNames[i].c_str(), argTypes[i], ((PawsBase*)codegenExpr(argExprs[i], callerScope).value)->copy());
+	{
+		MincSymbol argSym = codegenExpr(argExprs[i], callerScope);
+		defineSymbol(instance, argNames[i].c_str(), argTypes[i], ((PawsType*)argSym.type)->copy((PawsBase*)argSym.value));
+	}
 
 	// Define 'this' in function instance
 	if (self != nullptr)

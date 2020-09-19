@@ -9,9 +9,9 @@
 typedef std::chrono::duration<double> duration;
 typedef PawsValue<duration> PawsDuration;
 
-template<> const std::string PawsDuration::toString() const
+template<> std::string PawsDuration::Type::toString(MincObject* value) const
 {
-	duration input_seconds = val;
+	duration input_seconds = ((PawsDuration*)value)->get();
 
 	auto h = std::chrono::duration_cast<std::chrono::hours>(input_seconds);
 	input_seconds -= h;

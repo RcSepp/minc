@@ -3,9 +3,9 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
-template<> const std::string PawsInt::toString() const
+template<> std::string PawsInt::Type::toString(MincObject* value) const
 {
-	return std::to_string(val);
+	return std::to_string(((PawsInt*)value)->get());
 }
 
 MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {

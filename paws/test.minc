@@ -103,7 +103,7 @@ PawsVoid test_paws_int()
 
 	// Test unary operators
 	a = -1;
-	assert(++a == 0); //TODO: Fix matching `assert(++a == 1`
+	assert(++a == 0);
 	assert(a++ == 0);
 	assert(a == 1);
 	assert(--a == 0);
@@ -309,7 +309,7 @@ PawsVoid test_paws_array()
 
 	// Test array getter
 	assert(a[1] == 1);
-	assert(b[0]) throws PawsException("attempting to access array of unspecified type");
+	assert(b[0]) throws PawsException("index 0 out of bounds for array of length 0");
 
 	// Test array setter
 	a[1] = 2;
@@ -317,11 +317,12 @@ PawsVoid test_paws_array()
 	a[1] = 3.9;
 	assert(a[1] == 3);
 	assert(a[1] = '4') throws PawsException("invalid conversion of '4' from <PawsString> to <PawsInt>");
-	assert(b[0] = 5) throws PawsException("attempting to access array of unspecified type");
+	assert(b[0] = 5) throws PawsException("index 0 out of bounds for array of length 0");
 
 	// Test builtin functions
 	assert(str(a) == "[0, 3]");
-	assert(isInstance(type(a), PawsArray)); //TODO: Fix `assert(type(a) == PawsArray<PawsInt>;`
+	assert(isInstance(type(a), PawsArray));
+	assert(isInstance(type(a), PawsArray<PawsInt>));
 	assert(sizeof([]) == 24);
 	assert(sizeof([1, 2, 3]) == 24);
 }

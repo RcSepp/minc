@@ -8,12 +8,22 @@
 
 static struct {} STRUCT_ID;
 
-PawsType* const Struct::TYPE = new PawsType(sizeof(Struct));
+PawsMetaType* const Struct::TYPE = new PawsMetaType(sizeof(Struct));
 
 Struct* getStruct(const MincBlockExpr* scope)
 {
 	assert(getBlockExprUserType(scope) == &STRUCT_ID);
 	return (Struct*)getBlockExprUser(scope);
+}
+
+MincObject* Struct::copy(MincObject* value)
+{
+	return value; //TODO: This passes structs by reference. Think of how to handle struct assignment (by value, by reference, via reference counting, ...)
+}
+
+std::string Struct::toString(MincObject* value) const
+{
+	return PawsType::toString(value); //TODO: This uses default toString() behaviour. Consider a more verbose format.
 }
 
 void Struct::inherit(const Struct* base)
@@ -296,9 +306,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					throw CompileError(parentBlock, getLocation(valueExpr), "cannot assign value of type <%t> to variable of type <%t>", valueType, memberType);
 				valueExpr = castExpr;
 			}
-			PawsBase* value = (PawsBase*)codegenExpr(valueExpr, parentBlock).value;
+			MincSymbol sym = codegenExpr(valueExpr, parentBlock);
 
-			return MincSymbol(pair->second.type, instance->variables[memberName] = value->copy());
+			return MincSymbol(pair->second.type, instance->variables[memberName] = ((PawsType*)sym.type)->copy((PawsBase*)sym.value));
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
 				return getErrorType();

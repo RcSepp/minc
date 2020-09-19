@@ -2,16 +2,16 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
-template<> const std::string PawsString::toString() const
+template<> std::string PawsString::Type::toString(MincObject* value) const
 {
-	return '"' + val + '"';
+	return '"' + ((PawsString*)value)->get() + '"';
 }
 
-template<> const std::string PawsStringMap::toString() const
+template<> std::string PawsStringMap::Type::toString(MincObject* value) const
 {
 	//TODO: Use stringstream instead
 	std::string str = "{ ";
-	for (const std::pair<const std::string, std::string>& pair: val)
+	for (const std::pair<const std::string, std::string>& pair: ((PawsStringMap*)value)->get())
 		str += pair.first + ": " + pair.second + ", ";
 	str[str.size() - 2] = ' ';
 	str[str.size() - 1] = '}';

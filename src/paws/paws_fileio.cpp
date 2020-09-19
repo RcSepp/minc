@@ -1,10 +1,11 @@
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include "minc_api.h"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
-typedef PawsValue<std::fstream&> PawsFile;
+typedef PawsValue<std::shared_ptr<std::fstream>> PawsFile;
 
 MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
@@ -28,8 +29,8 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 				default: raiseCompileError(("invalid mode " + mode).c_str(), params[2]); break;
 				}
 
-			std::fstream file;
-			file.open(filename, openmode);
+			std::shared_ptr<std::fstream> file = std::make_shared<std::fstream>();
+			file->open(filename, openmode);
 			defineSymbol(block, varname, PawsFile::TYPE, new PawsFile(file));
 
 			try
@@ -38,24 +39,24 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 			}
 			catch (...)
 			{
-				file.close();
+				file->close();
 				throw;
 			}
-			file.close();
+			file->close();
 		}
 	);
 
 	defineExpr(pkgScope, "$E<PawsFile>.read()",
-		+[](std::fstream& file) -> std::string {
+		+[](std::shared_ptr<std::fstream> file) -> std::string {
 			std::stringstream sstr;
-			sstr << file.rdbuf();
+			sstr << file->rdbuf();
 			return sstr.str();
 		}
 	);
 
 	defineExpr(pkgScope, "$E<PawsFile>.write($E<PawsString>)",
-		+[](std::fstream& file, std::string str) -> void {
-			file << str;
+		+[](std::shared_ptr<std::fstream> file, std::string str) -> void {
+			*file << str;
 		}
 	);
 });

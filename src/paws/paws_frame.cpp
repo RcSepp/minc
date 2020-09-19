@@ -16,6 +16,7 @@ static struct {} FRAME_INSTANCE_ID, FRAME_DEF_ID;
 
 struct Awaitable : public PawsType
 {
+	typedef PawsType CType;
 private:
 	static std::mutex mutex;
 	static std::set<Awaitable> awaitableTypes;
@@ -25,12 +26,14 @@ protected:
 		: returnType(returnType) {}
 
 public:
-	static PawsType* const TYPE;
+	static PawsMetaType* const TYPE;
 	PawsType* returnType;
 	static Awaitable* get(PawsType* returnType);
 	Awaitable() = default;
+	MincObject* copy(MincObject* value);
+	std::string toString(MincObject* value) const;
 };
-PawsType* const Awaitable::TYPE = new PawsType(sizeof(Awaitable));
+PawsMetaType* const Awaitable::TYPE = new PawsMetaType(sizeof(Awaitable));
 std::mutex Awaitable::mutex;
 std::set<Awaitable> Awaitable::awaitableTypes;
 bool operator<(const Awaitable& lhs, const Awaitable& rhs)
@@ -40,6 +43,7 @@ bool operator<(const Awaitable& lhs, const Awaitable& rhs)
 
 struct Event : public PawsType
 {
+	typedef PawsType CType;
 private:
 	static std::mutex mutex;
 	static std::set<Event> eventTypes;
@@ -49,12 +53,14 @@ protected:
 		: PawsType(sizeof(Event)), msgType(msgType) {}
 
 public:
-	static PawsType* const TYPE;
+	static PawsMetaType* const TYPE;
 	PawsType* msgType;
 	static Event* get(PawsType* msgType);
 	Event() = default;
+	MincObject* copy(MincObject* value);
+	std::string toString(MincObject* value) const;
 };
-PawsType* const Event::TYPE = new PawsType(sizeof(Event));
+PawsMetaType* const Event::TYPE = new PawsMetaType(sizeof(Event));
 std::mutex Event::mutex;
 std::set<Event> Event::eventTypes;
 bool operator<(const Event& lhs, const Event& rhs)
@@ -70,7 +76,7 @@ struct Frame : public Awaitable
 		MincExpr* initExpr;
 	};
 
-	static PawsType* const TYPE;
+	static PawsMetaType* const TYPE;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
 	std::map<std::string, MincSymbol> variables;
@@ -81,7 +87,7 @@ struct Frame : public Awaitable
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body), beginStmtIndex(0) {}
 };
-PawsType* const Frame::TYPE = new PawsType(sizeof(Frame));
+PawsMetaType* const Frame::TYPE = new PawsMetaType(sizeof(Frame));
 
 struct SingleshotAwaitableInstance;
 struct AwaitableInstance
@@ -331,6 +337,16 @@ Awaitable* Awaitable::get(PawsType* returnType)
 	return const_cast<Awaitable*>(&*iter); //TODO: Find a way to avoid const_cast
 }
 
+MincObject* Awaitable::copy(MincObject* value)
+{
+	return value; //TODO: This passes awaitables by reference. Think of how to handle struct assignment (by value, by reference, via reference counting, ...)
+}
+
+std::string Awaitable::toString(MincObject* value) const
+{
+	return PawsType::toString(value); //TODO: This uses default toString() behaviour. Consider a more verbose format.
+}
+
 Event* Event::get(PawsType* msgType)
 {
 	std::unique_lock<std::mutex> lock(mutex);
@@ -348,6 +364,16 @@ defineOpaqueInheritanceCast(importScope, PawsEventInstance::TYPE, PawsAwaitableI
 	return const_cast<Event*>(&*iter); //TODO: Find a way to avoid const_cast
 }
 
+MincObject* Event::copy(MincObject* value)
+{
+	return value; //TODO: This passes events by reference. Think of how to handle struct assignment (by value, by reference, via reference counting, ...)
+}
+
+std::string Event::toString(MincObject* value) const
+{
+	return PawsType::toString(value); //TODO: This uses default toString() behaviour. Consider a more verbose format.
+}
+
 FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool)
 	: frame(frame), instance(cloneBlockExpr(frame->body)), eventPool(eventPool)
 {
@@ -358,7 +384,10 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
-		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], ((PawsBase*)codegenExpr(argExprs[i], callerScope).value)->copy());
+	{
+		MincSymbol argSym = codegenExpr(argExprs[i], callerScope);
+		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], ((PawsType*)argSym.type)->copy((PawsBase*)argSym.value));
+	}
 
 	// Initialize and define frame variables in frame instance
 	for (const std::pair<const std::string, Frame::MincSymbol>& pair: frame->variables)

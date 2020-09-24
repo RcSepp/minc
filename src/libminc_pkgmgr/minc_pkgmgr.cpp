@@ -1,6 +1,6 @@
 #include <cstring>
 #include <sstream>
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "minc_pkgmgr.h"
 
 const std::string	PKG_PATH_ENV = "MINC_PATH";
@@ -9,11 +9,11 @@ const char			MincPackage::PKG_PATH_SEPARATOR = '.';
 
 void defaultDefineFunc(MincBlockExpr* pkgScope)
 {
-	codegenExpr((MincExpr*)pkgScope, getBlockExprParent(pkgScope));
+	pkgScope->codegen(pkgScope->parent);
 }
 
 MincPackage::MincPackage(const char* name, MincPkgFunc defineFunc, MincBlockExpr* defineBlock)
-	: defineFunc(defineFunc != nullptr ? defineFunc : defaultDefineFunc), defineBlock(defineBlock != nullptr ? defineBlock : createEmptyBlockExpr())
+	: defineFunc(defineFunc != nullptr ? defineFunc : defaultDefineFunc), defineBlock(defineBlock != nullptr ? defineBlock : new MincBlockExpr({0}, {}))
 {
 	// Initialize pkgScope to nullptr
 	// Note: If a binary is loaded multiple times, it is possible that a package is constructed multiple times at the same memory location.
@@ -23,7 +23,7 @@ MincPackage::MincPackage(const char* name, MincPkgFunc defineFunc, MincBlockExpr
 
 	if (name) // Avoid registering MincPackageManager during class construction
 	{
-		setBlockExprName(this->defineBlock, name);
+		this->defineBlock->name = name;
 		const char* perentNameEnd = strrchr(name, PKG_PATH_SEPARATOR);
 		if (perentNameEnd)
 			parentName = std::string(name, perentNameEnd - name);
@@ -34,7 +34,7 @@ MincPackage::~MincPackage()
 {
 	if (defineBlock != nullptr)
 	{
-	 	removeBlockExpr(defineBlock);
+	 	delete defineBlock;
 		defineBlock = nullptr;
 	}
 }
@@ -53,9 +53,9 @@ MincBlockExpr* MincPackage::load(MincBlockExpr* importer)
 		{
 			MincBlockExpr* parentPkg = MINC_PACKAGE_MANAGER().loadPackage(parentName, importer);
 			if (parentPkg != nullptr)
-				importBlock(pkgScope, parentPkg);
+				pkgScope->import(parentPkg);
 			else
-				raiseCompileError(("unknown package " + parentName).c_str(), (MincExpr*)importer);
+				throw CompileError("unknown package " + parentName, importer->loc);
 		}
 		this->definePackage(pkgScope);
 	}
@@ -64,7 +64,7 @@ MincBlockExpr* MincPackage::load(MincBlockExpr* importer)
 
 void MincPackage::import(MincBlockExpr* scope)
 {
-	importBlock(scope, load(scope));
+	scope->import(load(scope));
 }
 
 MincPackageManager& MINC_PACKAGE_MANAGER()
@@ -81,7 +81,7 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 	// Read package search paths from PKG_PATH_ENV
 	const char* packagePathList = std::getenv(PKG_PATH_ENV.c_str());
 	if (packagePathList == nullptr)
-		raiseCompileError(("environment variable " + PKG_PATH_ENV + " not set").c_str());
+		throw CompileError("environment variable " + PKG_PATH_ENV + " not set");
 	std::stringstream packagePathsStream(packagePathList);
 	std::string searchPath;
 	while (std::getline(packagePathsStream, searchPath, PKG_PATH_ENV_SEPARATOR)) // Traverse package paths
@@ -105,80 +105,78 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 
 void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 {
-	setBlockExprName(pkgScope, "pkgmgr"); // Manually set MincPackageManager name
+	pkgScope->name = "pkgmgr"; // Manually set MincPackageManager name
 
 	// Define import statement
-	defineStmt2(pkgScope, "import $I. ...",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
-			std::vector<MincExpr*>& pkgPath = getListExprExprs((MincListExpr*)params[0]);
-			std::string pkgName = getIdExprName((MincIdExpr*)pkgPath[0]);
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("import $I. ..."),
+		[this](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			std::vector<MincExpr*>& pkgPath = ((MincListExpr*)params[0])->exprs;
+			std::string pkgName = ((MincIdExpr*)pkgPath[0])->name;
 			for (size_t i = 1; i < pkgPath.size(); ++i)
-				pkgName = pkgName + PKG_PATH_SEPARATOR + getIdExprName((MincIdExpr*)pkgPath[i]);
+				pkgName = pkgName + PKG_PATH_SEPARATOR + ((MincIdExpr*)pkgPath[i])->name;
 
 			// Import package
-			if (!pkgMgr->tryImportPackage(parentBlock, pkgName))
-				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
-		}, this
+			if (!this->tryImportPackage(parentBlock, pkgName))
+				throw CompileError("unknown package " + pkgName, params[0]->loc);
+		}
 	);
 
 	// Define import statement
-	defineStmt2(pkgScope, "import $L",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			MincPackageManager* pkgMgr = (MincPackageManager*)stmtArgs;
-			std::string pkgName = getLiteralExprValue((MincLiteralExpr*)params[0]);
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("import $L"),
+		[this](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			std::string pkgName = ((MincLiteralExpr*)params[0])->value;
 
 			// Trim '"'
 			if (pkgName.back() == '"' || pkgName.back() == '\'')
 				pkgName = pkgName.substr(1, pkgName.size() - 2);
 
 			// Import package
-			if (!pkgMgr->tryImportPackage(parentBlock, pkgName))
-				raiseCompileError(("unknown package " + pkgName).c_str(), params[0]);
-		}, this
+			if (!this->tryImportPackage(parentBlock, pkgName))
+				throw CompileError("unknown package " + pkgName, params[0]->loc);
+		}
 	);
 
 	// Define export statement
-	defineStmt2(pkgScope, "export $I. ... $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			std::vector<MincExpr*>& pkgPath = getListExprExprs((MincListExpr*)params[0]);
-			std::string pkgName = getIdExprName((MincIdExpr*)pkgPath[0]);
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $I. ... $B"),
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			std::vector<MincExpr*>& pkgPath = ((MincListExpr*)params[0])->exprs;
+			std::string pkgName = ((MincIdExpr*)pkgPath[0])->name;
 			for (size_t i = 1; i < pkgPath.size(); ++i)
-				pkgName = pkgName + PKG_PATH_SEPARATOR + getIdExprName((MincIdExpr*)pkgPath[i]);
+				pkgName = pkgName + PKG_PATH_SEPARATOR + ((MincIdExpr*)pkgPath[i])->name;
 			MincBlockExpr* exportBlock = (MincBlockExpr*)params[1];
 
-			setBlockExprParent(exportBlock, parentBlock);
+			exportBlock->parent = parentBlock;
 
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
 		}
 	);
-	defineStmt2(pkgScope, "export $I. ...",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			std::vector<MincExpr*>& pkgPath = getListExprExprs((MincListExpr*)params[0]);
-			raiseCompileError("Missing export block", pkgPath.empty() ? nullptr : pkgPath.front());
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $I. ..."),
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			std::vector<MincExpr*>& pkgPath = ((MincListExpr*)params[0])->exprs;
+			throw CompileError("Missing export block", pkgPath.empty() ? MincLocation{nullptr, 0, 0, 0, 0} : pkgPath.front()->loc);
 		}
 	);
 
 	// Define export statement
-	defineStmt2(pkgScope, "export $L $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			std::string pkgName = getLiteralExprValue((MincLiteralExpr*)params[0]);
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $L $B"),
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			std::string pkgName = ((MincLiteralExpr*)params[0])->value;
 			MincBlockExpr* exportBlock = (MincBlockExpr*)params[1];
 
 			// Trim '"'
 			if (pkgName.back() == '"' || pkgName.back() == '\'')
 				pkgName = pkgName.substr(1, pkgName.size() - 2);
 
-			setBlockExprParent(exportBlock, parentBlock);
+			exportBlock->parent = parentBlock;
 
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
 		}
 	);
-	defineStmt2(pkgScope, "export $L",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			raiseCompileError("Missing export block", params[0]);
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $L"),
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			throw CompileError("Missing export block", params[0]->loc);
 		}
 	);
 }
@@ -200,7 +198,7 @@ void MincPackageManager::importPackage(MincBlockExpr* scope, std::string pkgName
 	if (pkg != nullptr)
 		pkg->import(scope);
 	else
-		raiseCompileError(("unknown package " + pkgName).c_str(), (MincExpr*)scope);
+		throw CompileError("unknown package " + pkgName, scope->loc);
 }
 bool MincPackageManager::tryImportPackage(MincBlockExpr* scope, std::string pkgName) const
 {

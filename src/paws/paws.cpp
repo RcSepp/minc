@@ -10,6 +10,8 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+static struct {} KERNEL_INSTANCE_ID;
+
 MincScopeType* FILE_SCOPE_TYPE = new MincScopeType();
 MincBlockExpr* pawsScope = nullptr;
 
@@ -168,6 +170,9 @@ PawsKernel::PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<
 MincSymbol PawsKernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
 	MincBlockExpr* instance = cloneBlockExpr(expr);
+
+	setBlockExprUser(instance, parentBlock); // Store caller scope in instance user data
+	setBlockExprUserType(instance, &KERNEL_INSTANCE_ID);
 
 	// Set block parameters
 	for (size_t i = 0; i < params.size(); ++i)
@@ -805,7 +810,11 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 	defineExpr3(pkgScope, "$E<PawsExpr>.codegen()",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
-			MincBlockExpr* scope = getBlockExprParent(parentBlock);
+			MincBlockExpr* scope = parentBlock;
+			while (getBlockExprUserType(scope) != &KERNEL_INSTANCE_ID)
+				scope = getBlockExprParent(scope);
+			assert(scope != nullptr);
+			scope = (MincBlockExpr*)getBlockExprUser(scope);
 			MincSymbol sym = codegenExpr(expr, scope);
 
 			MincExpr* param = params[0];

@@ -354,7 +354,7 @@ std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(co
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 	{
 #ifdef DEBUG_STMTREG
-		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+		printf("%scandidate `%s`", indent.c_str(), iter.first->shortStr().c_str());
 #endif
 		currentScore = 0;
 		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), stmt, currentScore, &currentStmtEnd))
@@ -429,7 +429,7 @@ std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const 
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
-		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+		printf("%scandidate `%s`", indent.c_str(), iter.first->shortStr().c_str());
 #endif
 		currentScore = 0;
 		if (iter.first->match(block, expr, currentScore))
@@ -452,7 +452,7 @@ std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const 
 	for (auto& iter: exprreg[MincExpr::PLCHLD])
 	{
 #ifdef DEBUG_STMTREG
-		printf("%scandidate `%s`", indent.c_str(), iter.first->str().c_str());
+		printf("%scandidate `%s`", indent.c_str(), iter.first->shortStr().c_str());
 #endif
 		currentScore = 0;
 		expr->resolvedKernel = iter.second; // Set kernel to enable type-aware matching
@@ -525,7 +525,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 	++EXPR_RESOLVE_COUNTER;
 
 #ifdef DEBUG_STMTREG
-	printf("%slookupExpr(%s)\n", indent.c_str(), expr->str().c_str());
+	printf("%slookupExpr(%s)\n", indent.c_str(), expr->shortStr().c_str());
 	indent += '\t';
 #endif
 	expr->resolvedParams.clear();
@@ -603,7 +603,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 		if ((*exprIter)->exprtype == MincExpr::ExprType::BLOCK)
 			break;
 	}
-	printf("%slookupStmt(%s)\n", indent.c_str(), MincListExpr('\0', _exprs).str().c_str());
+	printf("%slookupStmt(%s)\n", indent.c_str(), MincListExpr('\0', _exprs).shortStr().c_str());
 	indent += '\t';
 #endif
 

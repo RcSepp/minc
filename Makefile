@@ -46,6 +46,7 @@ MINC_OBJS = \
 PAWS_OBJS = \
 	paws/paws.o \
 	paws/paws_int.o \
+	paws/paws_double.o \
 	paws/paws_string.o \
 	paws/paws_assert.o \
 	paws/paws_exception.o \

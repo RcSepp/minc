@@ -222,11 +222,6 @@ void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc
 	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-template<> std::string PawsDouble::Type::toString(MincObject* value) const
-{
-	return std::to_string(((PawsDouble*)value)->get());
-}
-
 template<> std::string PawsValue<const MincExpr*>::Type::toString(MincObject* value) const
 {
 	char* cstr = ExprToString(((PawsValue<const MincExpr*>*)value)->get());
@@ -267,6 +262,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 	// Import builtin paws packages
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.int");
+	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.double");
 	MINC_PACKAGE_MANAGER().importPackage(pkgScope, "paws.string");
 
 	// Define inherent type casts

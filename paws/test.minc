@@ -488,7 +488,7 @@ PawsVoid test_paws_struct()
 		c = 0;
 		S() {}
 	};
-	assert(sizeof(S) == 184);
+	assert(sizeof(S) == 192);
 	assert(sizeof(S()) == 12);
 }
 

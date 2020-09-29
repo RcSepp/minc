@@ -8,8 +8,6 @@
 
 static struct {} STRUCT_ID;
 
-PawsMetaType* const Struct::TYPE = new PawsMetaType(sizeof(Struct));
-
 Struct* getStruct(const MincBlockExpr* scope)
 {
 	assert(getBlockExprUserType(scope) == &STRUCT_ID);
@@ -23,7 +21,13 @@ MincObject* Struct::copy(MincObject* value)
 
 std::string Struct::toString(MincObject* value) const
 {
-	return PawsType::toString(value); //TODO: This uses default toString() behaviour. Consider a more verbose format.
+	StructInstance* instance = ((PawsStructInstance*)value)->get();
+	std::string str = name + " { ";
+	for (const std::pair<std::string, MincSymbol>& var: variables)
+		str += var.first + '=' + var.second.type->toString(instance->variables[var.first]) + ", ";
+	str[str.size() - 2] = ' ';
+	str[str.size() - 1] = '}';
+	return str;
 }
 
 void Struct::inherit(const Struct* base)
@@ -54,8 +58,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	defineStmt2(pkgScope, "struct $I $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* structName = getIdExprName((MincIdExpr*)params[0]);
-			MincBlockExpr* block = (MincBlockExpr*)params[1];
+			MincBlockExpr* block = cloneBlockExpr((MincBlockExpr*)params[1]);
 			setBlockExprParent(block, parentBlock); // Overwrite parent, because block parent could be an old, deleted function instance
+			setBlockExprParent((MincBlockExpr*)params[1], parentBlock);
 			//TODO: Think of a safer way to implement this
 			//		Failure scenario:
 			//		PawsVoid f() { struct s {}; s(); }
@@ -67,6 +72,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			defineStruct(parentBlock, structName, strct);
 			setBlockExprUser(block, strct);
 			setBlockExprUserType(block, &STRUCT_ID);
+			strct->body = (MincBlockExpr*)params[1];
 
 			// Define member variable definition
 			defineStmt2(block, "$I = $E<PawsBase>",
@@ -93,7 +99,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					MincBlockExpr* block = (MincBlockExpr*)params[4];
 
 					// Set function parent to function definition scope
-					setBlockExprParent(block, parentBlock);
+					setBlockExprParent(block, strct->body);
 
 					// Define return statement in function scope
 					definePawsReturnStmt(block, returnType);
@@ -144,7 +150,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					MincBlockExpr* block = (MincBlockExpr*)params[3];
 
 					// Set function parent to function definition scope
-					setBlockExprParent(block, parentBlock);
+					setBlockExprParent(block, strct->body);
 
 					// Define return statement in constructor scope
 					definePawsReturnStmt(block, PawsVoid::TYPE);

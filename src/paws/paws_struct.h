@@ -18,11 +18,13 @@ struct Struct : public PawsType
 	std::map<std::string, MincSymbol> variables;
 	std::multimap<std::string, PawsFunc*> methods;
 	std::vector<PawsFunc*> constructors;
+	MincBlockExpr* body;
 
 	MincObject* copy(MincObject* value);
 	std::string toString(MincObject* value) const;
 	void inherit(const Struct* base);
 };
+inline PawsMetaType* const Struct::TYPE = new PawsMetaType(sizeof(Struct));
 
 void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct);
 

@@ -215,6 +215,11 @@ extern "C"
 		return cstr;
 	}
 
+	MincExpr* cloneExpr(const MincExpr* expr)
+	{
+		return expr->clone();
+	}
+
 	const MincLocation& getLocation(const MincExpr* expr)
 	{
 		return expr->loc;

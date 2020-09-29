@@ -36,6 +36,7 @@ extern "C"
 	void setExprVolatile(MincExpr* expr, bool isVolatile);
 	char* ExprToString(const MincExpr* expr);
 	char* ExprToShortString(const MincExpr* expr);
+	MincExpr* cloneExpr(const MincExpr* expr);
 	const MincLocation& getLocation(const MincExpr* expr);
 	const char* getExprFilename(const MincExpr* expr);
 	unsigned getExprLine(const MincExpr* expr);

@@ -33,7 +33,7 @@
 %token<char> PLCHLD1
 %token<int> PARAM
 %type<std::vector<MincExpr*>*> block stmt_string
-%type<MincListExpr*> expr_string optional_expr_string expr_list expr_lists optional_expr_lists
+%type<MincListExpr*> expr_string expr_list expr_lists optional_expr_lists stmt stmt_expr_list
 %type<MincExpr*> id_or_plchld expr
 
 %start file
@@ -63,19 +63,42 @@ block
 
 stmt_string
 	: %empty { $$ = new std::vector<MincExpr*>(); }
-	| stmt_string optional_expr_string ';' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new MincStopExpr(getloc(@3, @3))); }
-	| stmt_string expr_string '{' block '}' { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); $$->push_back(new MincBlockExpr(getloc(@3, @5), $4)); }
+	| stmt_string stmt { ($$ = $1)->insert($1->end(), $2->cbegin(), $2->cend()); }
+;
+
+stmt
+	: ';' { $$ = new MincListExpr('\0', { new MincStopExpr(getloc(@1, @1)) }); }
+	| '{' block '}' { $$ = new MincListExpr('\0', { new MincBlockExpr(getloc(@1, @3), $2) }); }
+	| stmt_expr_list ';' { ($$ = $1)->push_back(new MincStopExpr(getloc(@2, @2))); }
+	| stmt_expr_list '{' block '}' { ($$ = $1)->push_back(new MincBlockExpr(getloc(@2, @4), $3)); }
+;
+
+stmt_expr_list
+	: expr { $$ = new MincListExpr('\0', { $1 }); }
+
+	| stmt_expr_list expr { ($$ = $1)->exprs.push_back($2); }
+	| stmt_expr_list ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@2, @2), $1->exprs.back()); }
+
+	| stmt_expr_list ',' expr		{
+									MincListExpr* back = (MincListExpr*)($$ = $1)->exprs.back();
+									if (back->exprtype == MincExpr::ExprType::LIST && back->separator == ',')
+										back->push_back($3);
+									else
+										$1->exprs.back() = new MincListExpr(',', { back, $3 });
+								}
+	| stmt_expr_list ',' ELLIPSIS	{
+									MincListExpr* back = (MincListExpr*)($$ = $1)->exprs.back();
+									if (back->exprtype == MincExpr::ExprType::LIST && back->separator == ',')
+										back->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), back->exprs.back());
+									else
+										$1->exprs.back() = new MincListExpr(',', { new MincEllipsisExpr(getloc(@3, @3), back) });
+								}
 ;
 
 expr_string
 	: expr { $$ = new MincListExpr('\0'); $$->exprs.push_back($1); }
 	| expr_string expr { ($$ = $1)->exprs.push_back($2); }
 	| expr_string ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@2, @2), $1->exprs.back()); }
-;
-
-optional_expr_string
-	: %empty { $$ = new MincListExpr('\0'); }
-	| expr_string { $$ = $1; }
 ;
 
 expr_list

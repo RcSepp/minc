@@ -1,10 +1,15 @@
 #include <cstring>
+#include <dlfcn.h>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include "minc_api.hpp"
 #include "minc_pkgmgr.h"
+#include "json.h"
 
 const std::string	PKG_PATH_ENV = "MINC_PATH";
-const char			PKG_PATH_ENV_SEPARATOR = ':';
+const std::string	EXT_PATH_ENV = "MINC_EXT";
+const char			PATH_ENV_SEPARATOR = ':';
 const char			MincPackage::PKG_PATH_SEPARATOR = '.';
 
 void defaultDefineFunc(MincBlockExpr* pkgScope)
@@ -58,6 +63,8 @@ MincBlockExpr* MincPackage::load(MincBlockExpr* importer)
 				throw CompileError("unknown package " + parentName, importer->loc);
 		}
 		this->definePackage(pkgScope);
+		for (MincPackageManager::PostDefineHook hook: MINC_PACKAGE_MANAGER().postDefineHooks)
+			hook(pkgScope);
 	}
 	return pkgScope;
 }
@@ -84,7 +91,7 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 		throw CompileError("environment variable " + PKG_PATH_ENV + " not set");
 	std::stringstream packagePathsStream(packagePathList);
 	std::string searchPath;
-	while (std::getline(packagePathsStream, searchPath, PKG_PATH_ENV_SEPARATOR)) // Traverse package paths
+	while (std::getline(packagePathsStream, searchPath, PATH_ENV_SEPARATOR)) // Traverse package paths
 	{
 		// Skip empty package paths
 		if (searchPath.empty())
@@ -100,6 +107,29 @@ MincPackageManager::MincPackageManager() : MincPackage(nullptr)
 
 		// Add search path
 		pkgSearchPaths.push_back(searchPath);
+	}
+
+	// Read extension search paths from EXT_PATH_ENV
+	const char* extensionPathList = std::getenv(EXT_PATH_ENV.c_str());
+	if (extensionPathList == nullptr)
+		throw CompileError("environment variable " + EXT_PATH_ENV + " not set");
+	std::stringstream extensionPathsStream(extensionPathList);
+	while (std::getline(extensionPathsStream, searchPath, PATH_ENV_SEPARATOR)) // Traverse extension paths
+	{
+		// Skip empty extension paths
+		if (searchPath.empty())
+			continue;
+
+		// Append trailing path separator
+		if (searchPath.back() != '/' && searchPath.back() != '\\')
+#ifdef _WIN32
+			searchPath.push_back('\\');
+#else
+			searchPath.push_back('/');
+#endif
+
+		// Add search path
+		extSearchPaths.push_back(searchPath);
 	}
 }
 
@@ -179,6 +209,54 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			throw CompileError("Missing export block", params[0]->loc);
 		}
 	);
+
+	// Load extensions
+	for (std::string extSearchPath: extSearchPaths)
+		for (const auto& entry: std::filesystem::directory_iterator(extSearchPath))
+			if (entry.is_directory())
+			{
+				// Load extension configuration (minc_ext.json)
+				const std::string& extJsonPath = (entry.path() / "minc_ext.json").string();
+				if (!std::filesystem::exists(extJsonPath))
+					throw CompileError(("extension " + entry.path().string() + " is missing minc_ext.json").c_str());
+				Json::Value extJson;
+				std::ifstream extJsonFile(extJsonPath.c_str());
+				if (!extJsonFile)
+					throw CompileError(("unable to load extension configuration " + extJsonPath).c_str());
+				bool success = Json::parse(extJsonFile, &extJson);
+				extJsonFile.close();
+				if (!success)
+					throw CompileError(("error parsing extension configuration " + extJsonPath).c_str());
+
+				auto type = extJson.lst.find("type");
+				if (type == extJson.lst.end())
+					throw CompileError((extJsonPath + ": missing required parameter `type`").c_str());
+
+				if (type->second.str == "importHook")
+				{
+					const std::string& extBinaryPath = (entry.path() / "minc_ext.so").string();
+					char* error;
+					auto pkgHandle = dlopen(extBinaryPath.c_str(), RTLD_LAZY);
+					if (pkgHandle == nullptr)
+					{
+						error = dlerror();
+						if (error != nullptr)
+							throw CompileError(("error loading library " + extBinaryPath + ": " + error).c_str());
+						else
+							throw CompileError(("unable to load library " + extBinaryPath).c_str());
+					}
+
+					postDefineHooks.push_back((PostDefineHook)dlsym(pkgHandle, "postDefineHook"));
+					error = dlerror();
+					if (error != nullptr)
+					{
+						dlclose(pkgHandle);
+						throw CompileError(("error loading postDefineHook from " + extBinaryPath + ": " + error).c_str());
+					}
+				}
+				else
+					throw CompileError((extJsonPath + ": invalid value for parameter `type`: " + type->second.str).c_str());
+			}
 }
 
 bool MincPackageManager::registerPackage(std::string pkgName, MincPackage* package)

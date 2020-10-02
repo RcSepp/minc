@@ -2,6 +2,7 @@
 #define __MINC_PKGMGR_H
 
 #include <string>
+#include <list>
 #include <map>
 #include <mutex>
 #include <vector>
@@ -31,13 +32,18 @@ public:
 
 class MincPackageManager : public MincPackage
 {
+public:
+	typedef void (*PostDefineHook)(MincBlockExpr* pkgScope);
+
 private:
 	std::map<std::string, MincPackage*> packages;
-	std::vector<std::string> pkgSearchPaths;
+	std::vector<std::string> pkgSearchPaths, extSearchPaths;
 	void definePackage(MincBlockExpr* pkgScope);
 	MincPackage* discoverPackage(std::string pkgName) const;
 
 public:
+	std::list<PostDefineHook> postDefineHooks;
+
 	MincPackageManager();
 	bool registerPackage(std::string pkgName, MincPackage* package);
 	MincBlockExpr* loadPackage(std::string pkgName, MincBlockExpr* importer) const;

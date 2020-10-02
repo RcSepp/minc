@@ -28,16 +28,18 @@
 
 %token ELLIPSIS // ...
 %token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR IDIV CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV // Operators
-%token AWT NEW // Keywords
+%token AWT NEW PAND POR IF ELSE FOR WHL NOT IN NIN IS // Keywords
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
 %token<int> PARAM
 %type<std::vector<MincExpr*>*> block stmt_string
-%type<MincListExpr*> expr_string expr_list expr_lists optional_expr_lists stmt stmt_expr_list
+%type<MincListExpr*> expr_string expr_list single_expr_list expr_lists optional_expr_lists stmt stmt_expr_list
 %type<MincExpr*> id_or_plchld expr
 
 %start file
 %right CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV
+%right IF ELSE FOR WHL
+%left IN IS
 %right '=' '?' ':'
 %left OR
 %left AND
@@ -107,6 +109,12 @@ expr_list
 	| expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
 ;
 
+single_expr_list
+	: expr { $$ = new MincListExpr(','); $$->exprs.push_back($1); }
+	| single_expr_list ',' expr { ($$ = $1)->exprs.push_back($3); }
+	| single_expr_list ',' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
+;
+
 expr_lists
 	: expr_list { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
 	| expr_lists ';' expr_list { ($$ = $1)->exprs.push_back($3); }
@@ -122,6 +130,7 @@ id_or_plchld
 	: ID { $$ = new MincIdExpr(getloc(@1, @1), $1); }
 	| PLCHLD1 { $$ = new MincPlchldExpr(getloc(@1, @1), $1); }
 	| PLCHLD2 { $$ = new MincPlchldExpr(getloc(@1, @1), $1); }
+	| ELSE { $$ = new MincIdExpr(getloc(@1, @1), "else"); }
 ;
 
 expr
@@ -166,6 +175,8 @@ expr
 	| expr LE expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::LE, "<<", $1, $3); }
 	| expr AND expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::AND, "&&", $1, $3); }
 	| expr OR expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::OR, "||", $1, $3); }
+	| FOR single_expr_list IN expr { $$ = new MincBinOpExpr(getloc(@1, @4), (int)token::FOR, "forin", $2, $4); } //TODO: Create new expression type: `op1 $E op2 $E`
+	| FOR single_expr_list ',' IN expr { $$ = new MincBinOpExpr(getloc(@1, @5), (int)token::FOR, "forin", $2, $5); }
 
 	// Unary operators
 	| '*' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'*', "*", $2); }
@@ -175,6 +186,10 @@ expr
 	| expr ':' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)':', ":", $1); }
 	| AWT expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::AWT, "await", $2); }
 	| NEW expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NEW, "new", $2); }
+	| IF expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::IF, "if", $2); }
+	| FOR expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::FOR, "for", $2); }
+	| WHL expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::WHL, "while", $2); }
+	| NOT expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NOT, "not", $2); }
 	| INC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::INC, "++", $2); }
 	| DEC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::DEC, "--", $2); }
 	| id_or_plchld INC %prec POSTINC { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::INC, "++", $1); }

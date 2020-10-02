@@ -37,6 +37,15 @@ CMUL		\*=
 CDIV		\/=
 AWT			await
 NEW			new
+PAND		and
+POR			or
+IF			if
+ELSE		else
+FOR			for
+WHL			while
+NOT			not
+IN			in
+IS			is
 DM			->
 SR			::
 INC			\+\+
@@ -46,6 +55,15 @@ DEC			--
 
 {AWT}							return token::AWT;
 {NEW}							return token::NEW;
+{PAND}							return token::PAND;
+{POR}							return token::POR;
+{IF}							return token::IF;
+{ELSE}							return token::ELSE;
+{FOR}							return token::FOR;
+{WHL}							return token::WHL;
+{NOT}							return token::NOT;
+{IN}							return token::IN;
+{IS}							return token::IS;
 {DM}							return token::DM;
 {SR}							return token::SR;
 {INC}							return token::INC;

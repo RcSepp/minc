@@ -35,7 +35,7 @@
 %token<int> PARAM
 %type<MincBlockExpr*> block
 %type<std::vector<MincExpr*>*> stmt_string
-%type<MincListExpr*> stmt optional_expr kvexpr_list optional_kvexpr_list expr_idx
+%type<MincListExpr*> stmt optional_expr optional_expr_lists kvexpr_list optional_kvexpr_list expr_idx expr_idx_lists
 %type<MincExpr*> id_or_plchld expr kvexpr
 
 %start file
@@ -101,11 +101,23 @@ optional_expr
 	| expr { $$ = new MincListExpr(',', { $1 }); }
 ;
 
+optional_expr_lists
+	: optional_expr { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
+	| optional_expr_lists ';' optional_expr { ($$ = $1)->exprs.push_back($3); }
+	| optional_expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
+;
+
 expr_idx
 	: %empty { $$ = new MincListExpr(':', { new MincListExpr('\0') }); }
 	| expr_idx ':' { ($$ = $1)->exprs.push_back(new MincListExpr('\0')); }
 	| expr_idx ':' ELLIPSIS { ($$ = $1)->exprs.push_back(new MincEllipsisExpr(getloc(@3, @3), new MincListExpr('\0'))); }
 	| expr_idx expr { ((MincListExpr*)($$ = $1)->exprs.back())->exprs.push_back($2); }
+;
+
+expr_idx_lists
+	: expr_idx { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
+	| expr_idx_lists ';' expr_idx { ($$ = $1)->exprs.push_back($3); }
+	| expr_idx_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
 ;
 
 id_or_plchld
@@ -138,13 +150,13 @@ expr
 	| id_or_plchld { $$ = $1; }
 
 	// Enclosed expressions
-	| '(' optional_expr ')' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'(', "(", ")", $2); }
-	| '[' expr_idx ']' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'[', "[", "]", $2); }
+	| '(' optional_expr_lists ')' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'(', "(", ")", $2); }
+	| '[' expr_idx_lists ']' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'[', "[", "]", $2); }
 	| '{' optional_kvexpr_list '}' %prec ENC { $$ = new MincEncOpExpr(getloc(@1, @3), (int)'{', "{", "}", $2); }
 
 	// Parameterized expressions
-	| expr '(' optional_expr ')' %prec CALL { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
-	| expr '[' expr_idx ']' %prec SUBSCRIPT { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
+	| expr '(' optional_expr_lists ')' %prec CALL { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'(', "(", ")", $1, $3); }
+	| expr '[' expr_idx_lists ']' %prec SUBSCRIPT { $$ = new MincArgOpExpr(getloc(@1, @4), (int)'[', "[", "]", $1, $3); }
 
 	// Tertiary operators
 	| expr FOR expr IN expr { $$ = new MincTerOpExpr(getloc(@1, @5), (int)token::FOR, (int)token::IN, "for", "in", $1, $3, $5); }

@@ -330,8 +330,13 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 	{
 		// Match ellipsis expression against itself
 		// This will append all trailing template placeholders to params
-		MincExpr* ellipsisExpr = ((MincEllipsisExpr*)(tplt[0]->exprtype == MincExpr::ExprType::ELLIPSIS ? tplt[0] : ((MincListExpr*)tplt[0])->exprs[0]))->expr;
-		ellipsisExpr->collectParams(block, ellipsisExpr, params, paramIdx);
+		MincEllipsisExpr* ellipsis = (MincEllipsisExpr*)tplt[0];
+		while (ellipsis->exprtype != MincExpr::ExprType::ELLIPSIS)
+		{
+			assert(ellipsis->exprtype == MincExpr::ExprType::LIST);
+			ellipsis = (MincEllipsisExpr*)((MincListExpr*)ellipsis)->exprs[0];
+		}
+		ellipsis->expr->collectParams(block, ellipsis->expr, params, paramIdx);
 		++tplt;
 	}
 	// Replace trailing placeholders with empty lists

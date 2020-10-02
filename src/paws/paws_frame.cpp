@@ -14,7 +14,7 @@ MincBlockExpr* importScope = nullptr; //TODO: This will not work if this package
 
 static struct {} FRAME_INSTANCE_ID, FRAME_DEF_ID;
 
-struct Awaitable : public PawsType
+struct __attribute__((visibility("hidden"))) Awaitable : public PawsType
 {
 	typedef PawsType CType;
 private:
@@ -33,7 +33,7 @@ public:
 	MincObject* copy(MincObject* value);
 	std::string toString(MincObject* value) const;
 };
-PawsMetaType* const Awaitable::TYPE = new PawsMetaType(sizeof(Awaitable));
+inline PawsMetaType* const Awaitable::TYPE = new PawsMetaType(sizeof(Awaitable));
 std::mutex Awaitable::mutex;
 std::set<Awaitable> Awaitable::awaitableTypes;
 bool operator<(const Awaitable& lhs, const Awaitable& rhs)
@@ -41,7 +41,7 @@ bool operator<(const Awaitable& lhs, const Awaitable& rhs)
 	return lhs.returnType < rhs.returnType;
 }
 
-struct Event : public PawsType
+struct __attribute__((visibility("hidden"))) Event : public PawsType
 {
 	typedef PawsType CType;
 private:
@@ -60,7 +60,7 @@ public:
 	MincObject* copy(MincObject* value);
 	std::string toString(MincObject* value) const;
 };
-PawsMetaType* const Event::TYPE = new PawsMetaType(sizeof(Event));
+inline PawsMetaType* const Event::TYPE = new PawsMetaType(sizeof(Event));
 std::mutex Event::mutex;
 std::set<Event> Event::eventTypes;
 bool operator<(const Event& lhs, const Event& rhs)
@@ -68,7 +68,7 @@ bool operator<(const Event& lhs, const Event& rhs)
 	return lhs.msgType < rhs.msgType;
 }
 
-struct Frame : public Awaitable
+struct __attribute__((visibility("hidden"))) Frame : public Awaitable
 {
 	struct MincSymbol
 	{
@@ -87,7 +87,7 @@ struct Frame : public Awaitable
 	Frame(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: Awaitable(returnType), argTypes(argTypes), argNames(argNames), body(body), beginStmtIndex(0) {}
 };
-PawsMetaType* const Frame::TYPE = new PawsMetaType(sizeof(Frame));
+inline PawsMetaType* const Frame::TYPE = new PawsMetaType(sizeof(Frame));
 
 struct SingleshotAwaitableInstance;
 struct AwaitableInstance
@@ -179,7 +179,7 @@ protected:
 	}
 };
 
-struct FrameInstance : public SingleshotAwaitableInstance
+struct __attribute__((visibility("hidden"))) FrameInstance : public SingleshotAwaitableInstance
 {
 private:
 	const Frame* frame;

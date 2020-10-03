@@ -179,6 +179,8 @@ expr
 	| FOR single_expr_list ',' IN expr { $$ = new MincBinOpExpr(getloc(@1, @5), (int)token::FOR, "forin", $2, $5); }
 
 	// Unary operators
+	| '+' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
+	| '-' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
 	| '*' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'*', "*", $2); }
 	| expr '*' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)'*', "*", $1); }
 	| '!' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'!', "!", $2); }

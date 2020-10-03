@@ -273,6 +273,19 @@ extern "C"
 		return rootBlock;
 	}
 
+	MincBlockExpr* parsePythonCode(const char* code)
+	{
+		std::stringstream ss(code);
+
+		// Parse file into rootBlock
+		MincBlockExpr* rootBlock;
+		PyLexer lexer(ss, std::cout);
+		yy::PyParser parser(lexer, nullptr, &rootBlock);
+		parser.parse();
+
+		return rootBlock;
+	}
+
 	const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr)
 	{
 		// Parse tpltStr into tpltBlock

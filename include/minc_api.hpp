@@ -293,9 +293,11 @@ public:
 	const MincStmt* getCurrentStmt() const;
 
 	static MincBlockExpr* parseCFile(const char* filename);
+	static MincBlockExpr* parseCCode(const char* code);
 	static const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
 
 	static MincBlockExpr* parsePythonFile(const char* filename);
+	static MincBlockExpr* parsePythonCode(const char* code);
 	static const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
 };
 

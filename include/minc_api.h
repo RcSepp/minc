@@ -13,11 +13,13 @@ extern "C"
 	// >>> C Parser
 
 	MincBlockExpr* parseCFile(const char* filename);
+	MincBlockExpr* parseCCode(const char* code);
 	const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
 
 	// >>> Python Parser
 
 	MincBlockExpr* parsePythonFile(const char* filename);
+	MincBlockExpr* parsePythonCode(const char* code);
 	const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
 
 	// >>> MincException

@@ -224,6 +224,19 @@ extern "C"
 		return rootBlock;
 	}
 
+	MincBlockExpr* parseCCode(const char* code)
+	{
+		std::stringstream ss(code);
+
+		// Parse file into rootBlock
+		MincBlockExpr* rootBlock;
+		CLexer lexer(ss, std::cout);
+		yy::CParser parser(lexer, nullptr, &rootBlock);
+		parser.parse();
+
+		return rootBlock;
+	}
+
 	const std::vector<MincExpr*> parseCTplt(const char* tpltStr)
 	{
 		// Append STOP expr to make tpltStr a valid statement

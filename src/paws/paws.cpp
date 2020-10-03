@@ -689,12 +689,24 @@ defineSymbol(pkgScope, "_NULL", nullptr, nullptr); //TODO: Use one `NULL` for bo
 		}
 	);
 
+	defineExpr(pkgScope, "parseCCode($E<PawsString>)",
+		+[](std::string code) -> MincBlockExpr* {
+			return parseCCode(code.c_str());
+		}
+	);
+
 	defineExpr(pkgScope, "parsePythonFile($E<PawsString>)",
 		+[](std::string filename) -> MincBlockExpr* {
 			// Unbind parseCFile filename parameter lifetime from local filename parameter
 			char* fname = new char[filename.size() + 1];
 			strcpy(fname, filename.c_str());
 			return parsePythonFile(fname);
+		}
+	);
+
+	defineExpr(pkgScope, "parsePythonCode($E<PawsString>)",
+		+[](std::string code) -> MincBlockExpr* {
+			return parsePythonCode(code.c_str());
 		}
 	);
 

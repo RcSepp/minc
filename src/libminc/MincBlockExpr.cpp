@@ -684,6 +684,11 @@ MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)
 	return ::parseCFile(filename);
 }
 
+MincBlockExpr* MincBlockExpr::parseCCode(const char* code)
+{
+	return ::parseCCode(code);
+}
+
 const std::vector<MincExpr*> MincBlockExpr::parseCTplt(const char* tpltStr)
 {
 	return ::parseCTplt(tpltStr);
@@ -692,6 +697,11 @@ const std::vector<MincExpr*> MincBlockExpr::parseCTplt(const char* tpltStr)
 MincBlockExpr* MincBlockExpr::parsePythonFile(const char* filename)
 {
 	return ::parsePythonFile(filename);
+}
+
+MincBlockExpr* MincBlockExpr::parsePythonCode(const char* code)
+{
+	return ::parsePythonCode(code);
 }
 
 const std::vector<MincExpr*> MincBlockExpr::parsePythonTplt(const char* tpltStr)

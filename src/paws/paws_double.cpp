@@ -13,7 +13,14 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
 	// >>> PawsDouble expressions
 
-	// Define integer prefix increment
+	// Define double negation
+	defineExpr(pkgScope, "-$E<PawsDouble>",
+		+[](double f) -> double {
+			return -f;
+		}
+	);
+
+	// Define double prefix increment
 	defineExpr2(pkgScope, "++$I<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -23,7 +30,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define integer prefix decrement
+	// Define double prefix decrement
 	defineExpr2(pkgScope, "--$I<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -33,7 +40,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define integer postfix increment
+	// Define double postfix increment
 	defineExpr2(pkgScope, "$I<PawsDouble>++",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -42,7 +49,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define integer postfix decrement
+	// Define double postfix decrement
 	defineExpr2(pkgScope, "$I<PawsDouble>--",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -51,28 +58,28 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define integer addition
+	// Define double addition
 	defineExpr(pkgScope, "$E<PawsDouble> + $E<PawsDouble>",
 		+[](double a, double b) -> double {
 			return a + b;
 		}
 	);
 
-	// Define integer subtraction
+	// Define double subtraction
 	defineExpr(pkgScope, "$E<PawsDouble> - $E<PawsDouble>",
 		+[](double a, double b) -> double {
 			return a - b;
 		}
 	);
 
-	// Define integer multiplication
+	// Define double multiplication
 	defineExpr(pkgScope, "$E<PawsDouble> * $E<PawsDouble>",
 		+[](double a, double b) -> double {
 			return a * b;
 		}
 	);
 
-	// Define integer division
+	// Define double division
 	defineExpr(pkgScope, "$E<PawsDouble> / $E<PawsDouble>",
 		+[](double a, double b) -> double {
 			if (b == 0)
@@ -81,7 +88,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	// Define in-place integer addition
+	// Define in-place double addition
 	defineExpr2(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -92,7 +99,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define in-place integer subtraction
+	// Define in-place double subtraction
 	defineExpr2(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -103,7 +110,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define in-place integer multiplication
+	// Define in-place double multiplication
 	defineExpr2(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -114,7 +121,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define in-place integer division
+	// Define in-place double division
 	defineExpr2(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
@@ -125,28 +132,27 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		PawsDouble::TYPE
 	);
 
-	// Define integer minimum
+	// Define double minimum
 	defineExpr(pkgScope, "min($E<PawsDouble>, $E<PawsDouble>)",
 		+[](double a, double b) -> double {
 			return a < b ? a : b;
 		}
 	);
 
-	// Define integer maximum
+	// Define double maximum
 	defineExpr(pkgScope, "max($E<PawsDouble>, $E<PawsDouble>)",
 		+[](double a, double b) -> double {
 			return a > b ? a : b;
 		}
 	);
 
-	// Define double sqrt
-	defineExpr(pkgScope, "sqrt($E<PawsDouble>)",
-		+[](double f) -> double {
-			return sqrt(f);
-		}
-	);
+	// Define double math functions
+	defineExpr(pkgScope, "sqrt($E<PawsDouble>)", +[](double f) -> double { return sqrt(f); } );
+	defineExpr(pkgScope, "sin($E<PawsDouble>)", +[](double f) -> double { return sin(f); } );
+	defineExpr(pkgScope, "cos($E<PawsDouble>)", +[](double f) -> double { return cos(f); } );
+	defineExpr(pkgScope, "tan($E<PawsDouble>)", +[](double f) -> double { return tan(f); } );
 
-	// Define integer relations
+	// Define double relations
 	defineExpr(pkgScope, "$E<PawsDouble> == $E<PawsDouble>",
 		+[](double a, double b) -> double {
 			return a == b;

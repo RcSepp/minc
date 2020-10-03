@@ -41,7 +41,7 @@ struct IndirectCast : public MincCast, public MincKernel
 	MincCast* derive() const
 	{
 		MincCast* derivedSecond = second->derive();
-		return derivedSecond == nullptr ? first : new IndirectCast(first, derivedSecond);
+		return derivedSecond == nullptr ? first->derive() : new IndirectCast(first, derivedSecond);
 	}
 
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)

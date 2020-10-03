@@ -11,7 +11,7 @@
             //"preLaunchTask": "make",
             "program": "${workspaceFolder}/bin/minc",
             "args": [
-                "../paws/test.minc"
+                "${workspaceFolder}/builtin-packages/paws/test/test.minc"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
@@ -35,7 +35,7 @@
             "name": "./minc debug",
             "type": "minc",
             "request": "launch",
-            "program": "${workspaceFolder}/paws/test.minc",
+            "program": "${workspaceFolder}/builtin-packages/paws/test/test.minc",
             "args": [
                 "debug"
             ],

@@ -1,12 +1,13 @@
 # Compiled object files
-/tmp
-/bin
+**/tmp
+**/bin
+*.so
 
 # Working documents
 /design
 
 # Coverage
-/coverage
+**/coverage
 
 # Visual Studio Code
 **/.vscode/ipch

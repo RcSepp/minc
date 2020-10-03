@@ -1,7 +1,6 @@
 #include <sstream>
 #include "minc_api.h"
 #include "minc_api.hpp"
-#include "cparser.h"
 
 #define DETECT_UNDEFINED_TYPE_CASTS
 
@@ -743,27 +742,7 @@ extern "C"
 
 	void defineStmt2(MincBlockExpr* scope, const char* tpltStr, StmtBlock codeBlock, void* stmtArgs)
 	{
-		// Append STOP expr to make tpltStr a valid statement
-		std::stringstream ss(tpltStr);
-		ss << tpltStr << ';';
-
-		// Parse tpltStr into tpltBlock
-		CLexer lexer(ss, std::cout);
-		MincBlockExpr* tpltBlock;
-		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
-			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-
-		// Remove appended STOP expr if last expr is $B
-		assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);
-		if (tpltBlock->exprs->size() >= 2)
-		{
-			const MincPlchldExpr* lastExpr = (const MincPlchldExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-			if (lastExpr->exprtype == MincExpr::ExprType::PLCHLD && lastExpr->p1 == 'B')
-				tpltBlock->exprs->pop_back();
-		}
-	
-		scope->defineStmt(*tpltBlock->exprs, new StaticStmtKernel(codeBlock, stmtArgs));
+		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel(codeBlock, stmtArgs));
 	}
 
 	void defineStmt3(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, MincKernel* stmt)
@@ -782,27 +761,7 @@ extern "C"
 
 	void defineStmt4(MincBlockExpr* scope, const char* tpltStr, MincKernel* stmt)
 	{
-		// Append STOP expr to make tpltStr a valid statement
-		std::stringstream ss(tpltStr);
-		ss << tpltStr << ';';
-
-		// Parse tpltStr into tpltBlock
-		CLexer lexer(ss, std::cout);
-		MincBlockExpr* tpltBlock;
-		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
-			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-
-		// Remove appended STOP expr if last expr is $B
-		assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);
-		if (tpltBlock->exprs->size() >= 2)
-		{
-			const MincPlchldExpr* lastExpr = (const MincPlchldExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-			if (lastExpr->exprtype == MincExpr::ExprType::PLCHLD && lastExpr->p1 == 'B')
-				tpltBlock->exprs->pop_back();
-		}
-	
-		scope->defineStmt(*tpltBlock->exprs, stmt);
+		scope->defineStmt(parseCTplt(tpltStr), stmt);
 	}
 
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates)
@@ -833,28 +792,12 @@ extern "C"
 
 	void defineExpr2(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs)
 	{
-		std::stringstream ss(tpltStr);
-		ss << tpltStr << ';';
-		CLexer lexer(ss, std::cout);
-		MincBlockExpr* tpltBlock;
-		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
-			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		MincExpr* tplt = tpltBlock->exprs->at(0);
-		scope->defineExpr(tplt, new StaticExprKernel(codeBlock, type, exprArgs));
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel(codeBlock, type, exprArgs));
 	}
 
 	void defineExpr3(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs)
 	{
-		std::stringstream ss(tpltStr);
-		ss << tpltStr << ';';
-		CLexer lexer(ss, std::cout);
-		MincBlockExpr* tpltBlock;
-		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
-			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		MincExpr* tplt = tpltBlock->exprs->at(0);
-		scope->defineExpr(tplt, new StaticExprKernel2(codeBlock, typeBlock, exprArgs));
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel2(codeBlock, typeBlock, exprArgs));
 	}
 
 	void defineExpr5(MincBlockExpr* scope, MincExpr* tplt, MincKernel* expr)
@@ -864,15 +807,7 @@ extern "C"
 
 	void defineExpr6(MincBlockExpr* scope, const char* tpltStr, MincKernel* expr)
 	{
-		std::stringstream ss(tpltStr);
-		ss << tpltStr << ';';
-		CLexer lexer(ss, std::cout);
-		MincBlockExpr* tpltBlock;
-		yy::CParser parser(lexer, nullptr, &tpltBlock);
-		if (parser.parse())
-			throw CompileError("error parsing template " + std::string(tpltStr), scope->loc);
-		MincExpr* tplt = tpltBlock->exprs->at(0);
-		scope->defineExpr(tplt, expr);
+		scope->defineExpr(parseCTplt(tpltStr)[0], expr);
 	}
 
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates)

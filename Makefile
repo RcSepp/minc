@@ -4,6 +4,7 @@ INC_DIR = include/
 TMP_DIR = tmp/
 BIN_DIR = bin/
 COV_DIR = coverage/
+PKG_DIR = builtin-packages/
 
 LIBMINC_OBJS = \
 	libminc/cparser.o \
@@ -43,24 +44,6 @@ LIBMINC_DBG_OBJS = \
 MINC_OBJS = \
 	minc/minc.o \
 
-PAWS_OBJS = \
-	paws/paws.o \
-	paws/paws_int.o \
-	paws/paws_double.o \
-	paws/paws_string.o \
-	paws/paws_assert.o \
-	paws/paws_exception.o \
-	paws/paws_extend.o \
-	paws/paws_fileio.o \
-	paws/paws_time.o \
-	paws/paws_castreg.o \
-	paws/paws_stmtreg.o \
-	paws/paws_struct.o \
-	paws/paws_subroutine.o \
-	paws/paws_frame.o \
-	paws/paws_frame_eventloop.o \
-	paws/paws_array.o \
-
 YACC = bison
 CPPFLAGS =  --coverage -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include `pkg-config --cflags python-3.7`
 MINC_LIBS = `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode
@@ -69,21 +52,21 @@ LIBMINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_PKGMGR_OBJS})
 LIBMINC_DBG_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_DBG_OBJS})
 MINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${MINC_OBJS})
-PAWS_OBJPATHS = $(addprefix ${TMP_DIR}, ${PAWS_OBJS})
 
-all: ${BIN_DIR}minc
+all: builtin ${BIN_DIR}minc
 
 clean:
 	-rm -r ${TMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}minc
+	$(MAKE) -C ${PKG_DIR}*/ clean
 
 # Dependency management
 
-depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d) $(PAWS_OBJPATHS:.o=.d)
+depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
 	$(CXX) $(CPPFLAGS) -MM -MT ${TMP_DIR}$*.o $^ > $@;
 
--include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d) $(PAWS_OBJPATHS:.o=.d)
+-include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 # Coverage
 
@@ -92,13 +75,18 @@ coverage: ${TMP_DIR}/minc/minc.gcda
 	genhtml ${TMP_DIR}lcov.info --output-directory ${COV_DIR}
 
 ${TMP_DIR}/minc/minc.gcda: ${BIN_DIR}minc
-	${BIN_DIR}minc paws/test.minc
+	${BIN_DIR}minc ${PKG_DIR}paws/test/test.minc #TODO: Create separate coverage test for minc
+
+# Builtin packages
+
+builtin:
+	$(MAKE) -C ${PKG_DIR}*/
 
 # minc binary
 
-${BIN_DIR}minc: ${MINC_OBJPATHS} ${PAWS_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} ${PAWS_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg ${MINC_LIBS}
+	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg ${MINC_LIBS}
 
 # libminc.so library
 

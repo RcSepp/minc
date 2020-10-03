@@ -46,6 +46,8 @@ extern "C"
 	unsigned getExprEndLine(const MincExpr* expr);
 	unsigned getExprEndColumn(const MincExpr* expr);
 	MincObject* getErrorType();
+	MincSymbol evalCExpr(const char* code, MincBlockExpr* scope);
+	MincSymbol evalPythonExpr(const char* code, MincBlockExpr* scope);
 
 	// >>> MincListExpr
 
@@ -58,6 +60,8 @@ extern "C"
 
 	bool ExprIsStmt(const MincExpr* expr);
 	void codegenStmt(MincStmt* stmt, MincBlockExpr* scope);
+	void evalCStmt(const char* code, MincBlockExpr* scope);
+	void evalPythonStmt(const char* code, MincBlockExpr* scope);
 
 	// >>> MincBlockExpr
 
@@ -129,6 +133,8 @@ extern "C"
 	void defineImportRule(MincScopeType* fromScope, MincScopeType* toScope, MincObject* symbolType, ImptBlock imptBlock);
 	void registerStepEventListener(StepEvent listener, void* eventArgs=nullptr);
 	void deregisterStepEventListener(StepEvent listener);
+	void evalCBlock(const char* code, MincBlockExpr* scope);
+	void evalPythonBlock(const char* code, MincBlockExpr* scope);
 
 	// >>> MincStopExpr
 

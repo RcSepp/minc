@@ -401,7 +401,7 @@ void MincStatementRegister::lookupStmtCandidates(const MincBlockExpr* block, con
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 	{
 		score = 0;
-		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), ResolvingMincExprIter(block, &stmt->exprs), score, &stmtEnd) && stmtEnd.done())
+		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), ResolvingMincExprIter(block, stmt->exprs), score, &stmtEnd) && stmtEnd.done())
 			candidates.insert({ score, iter });
 	}
 }
@@ -589,7 +589,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 	}
 }
 
-bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
+bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const
 {
 	++STMT_RESOLVE_COUNTER;
 
@@ -598,11 +598,11 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	stmt.begin = beginExpr;
 
 	// Setup streaming expression iterator
-	ResolvingMincExprIter stmtBegin(this, exprs, beginExpr);
+	ResolvingMincExprIter stmtBegin(this, beginExpr, endExpr);
 
 #ifdef DEBUG_STMTREG
 	std::vector<MincExpr*> _exprs;
-	for (MincExprIter exprIter = beginExpr; exprIter != exprs->cend() && (*exprIter)->exprtype != MincExpr::ExprType::STOP; ++exprIter)
+	for (MincExprIter exprIter = beginExpr; exprIter != endExpr && (*exprIter)->exprtype != MincExpr::ExprType::STOP; ++exprIter)
 	{
 		_exprs.push_back(*exprIter);
 		if ((*exprIter)->exprtype == MincExpr::ExprType::BLOCK)
@@ -627,16 +627,16 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const
 	{
 		// End of statement = beginning of statement + length of resolved statement + length of trailing STOP expression
 		stmt.end = stmt.begin + (stmtEnd - stmtBegin);
-		if (stmt.end != exprs->end() && (*stmt.end)->exprtype == MincExpr::ExprType::STOP)
+		if (stmt.end != endExpr && (*stmt.end)->exprtype == MincExpr::ExprType::STOP)
 			++stmt.end;
 	}
 	else // If the statement couldn't be resolved
 	{
 		// End of statement = beginning of statement + length of unresolved statement
 		stmt.end = stmt.begin;
-		while (stmt.end != exprs->end() && (*stmt.end)->exprtype != MincExpr::ExprType::STOP && (*stmt.end)->exprtype != MincExpr::ExprType::BLOCK)
+		while (stmt.end != endExpr && (*stmt.end)->exprtype != MincExpr::ExprType::STOP && (*stmt.end)->exprtype != MincExpr::ExprType::BLOCK)
 			++stmt.end;
-		if (stmt.end != exprs->end())
+		if (stmt.end != endExpr)
 			++stmt.end;
 	}
 

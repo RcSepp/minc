@@ -53,6 +53,10 @@ public:
 	virtual std::string shortStr() const;
 	virtual int comp(const MincExpr* other) const;
 	virtual MincExpr* clone() const = 0;
+
+	static MincSymbol evalCCode(const char* code, MincBlockExpr* scope);
+
+	static MincSymbol evalPythonCode(const char* code, MincBlockExpr* scope);
 };
 bool operator<(const MincExpr& left, const MincExpr& right);
 
@@ -67,25 +71,23 @@ namespace std
 class ResolvingMincExprIter
 {
 	const MincBlockExpr* resolveScope;
-	const std::vector<MincExpr*>* exprs;
-	MincExprIter current;
+	MincExprIter current, end;
 
 public:
-	ResolvingMincExprIter() : resolveScope(nullptr), exprs(nullptr) {}
-	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs)
-		: resolveScope(resolveScope), exprs(exprs)
+	ResolvingMincExprIter() : resolveScope(nullptr) {}
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>& exprs)
+		: resolveScope(resolveScope), current(exprs.begin()), end(exprs.end())
 	{
-		assert(resolveScope != nullptr && exprs != nullptr);
-		current = exprs->begin();
+		assert(resolveScope != nullptr);
 	}
-	ResolvingMincExprIter(const MincBlockExpr* resolveScope, const std::vector<MincExpr*>* exprs, MincExprIter current)
-		: resolveScope(resolveScope), exprs(exprs), current(current)
+	ResolvingMincExprIter(const MincBlockExpr* resolveScope, MincExprIter current, const MincExprIter end)
+		: resolveScope(resolveScope), current(current), end(end)
 	{
-		assert(resolveScope != nullptr && exprs != nullptr);
+		assert(resolveScope != nullptr);
 	}
 	ResolvingMincExprIter(const ResolvingMincExprIter& other) = default;
 	ResolvingMincExprIter& operator=(const ResolvingMincExprIter& other) = default;
-	inline bool done() { return current == exprs->end(); }
+	inline bool done() { return current == end; }
 	inline MincExpr* operator*()
 	{
 		MincExpr* const expr = *current;
@@ -98,9 +100,9 @@ public:
 		expr->resolve(resolveScope);
 		return expr;
 	}
-	inline size_t operator-(const ResolvingMincExprIter& other) const { return exprs == nullptr || other.exprs == nullptr ? 0 : current - other.current; }
-	inline ResolvingMincExprIter operator+(int n) const { return ResolvingMincExprIter(resolveScope, exprs, current + n); }
-	inline ResolvingMincExprIter operator++(int) { return ResolvingMincExprIter(resolveScope, exprs, current++); }
+	inline size_t operator-(const ResolvingMincExprIter& other) const { return resolveScope == nullptr || other.resolveScope == nullptr ? 0 : current - other.current; }
+	inline ResolvingMincExprIter operator+(int n) const { return ResolvingMincExprIter(resolveScope, current + n, end); }
+	inline ResolvingMincExprIter operator++(int) { return ResolvingMincExprIter(resolveScope, current++, end); }
 	inline ResolvingMincExprIter& operator++() { ++current; return *this; }
 	inline MincExprIter iter() const { return current; }
 };
@@ -218,6 +220,10 @@ public:
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
 	MincExpr* clone() const;
+
+	static void evalCCode(const char* code, MincBlockExpr* scope);
+
+	static void evalPythonCode(const char* code, MincBlockExpr* scope);
 };
 
 class MincBlockExpr : public MincExpr
@@ -252,7 +258,7 @@ public:
 	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
-	bool lookupStmt(MincExprIter beginExpr, MincStmt& stmt) const;
+	bool lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const;
 	size_t countStmts() const;
@@ -295,10 +301,12 @@ public:
 	static MincBlockExpr* parseCFile(const char* filename);
 	static MincBlockExpr* parseCCode(const char* code);
 	static const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
+	static void evalCCode(const char* code, MincBlockExpr* scope);
 
 	static MincBlockExpr* parsePythonFile(const char* filename);
 	static MincBlockExpr* parsePythonCode(const char* code);
 	static const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
+	static void evalPythonCode(const char* code, MincBlockExpr* scope);
 };
 
 class MincStopExpr : public MincExpr

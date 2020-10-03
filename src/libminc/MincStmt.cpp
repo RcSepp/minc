@@ -1,3 +1,4 @@
+#include "minc_api.h"
 #include "minc_api.hpp"
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
@@ -80,7 +81,7 @@ void MincStmt::resolve(const MincBlockExpr* block)
 	{
 		for (MincExprIter expr = begin; expr != end; ++expr)
 			(*expr)->resolve(block);
-		block->lookupStmt(begin, *this);
+		block->lookupStmt(begin, block->exprs->end(), *this);
 	}
 }
 
@@ -131,6 +132,16 @@ MincExpr* MincStmt::clone() const
 	return new MincStmt(begin, end, resolvedKernel);
 }
 
+void MincStmt::evalCCode(const char* code, MincBlockExpr* scope)
+{
+	::evalCStmt(code, scope);
+}
+
+void MincStmt::evalPythonCode(const char* code, MincBlockExpr* scope)
+{
+	::evalPythonStmt(code, scope);
+}
+
 extern "C"
 {
 	bool ExprIsStmt(const MincExpr* expr)
@@ -141,5 +152,20 @@ extern "C"
 	void codegenStmt(MincStmt* stmt, MincBlockExpr* scope)
 	{
 		stmt->codegen(scope);
+	}
+
+	void evalCStmt(const char* code, MincBlockExpr* scope)
+	{
+		std::vector<MincExpr*> exprs = ::parseCTplt(code);
+		MincStmt currentStmt;
+		if (!scope->lookupStmt(exprs.begin(), exprs.end(), currentStmt))
+			throw UndefinedStmtException(&currentStmt);
+		currentStmt.codegen(scope);
+	}
+
+	void evalPythonStmt(const char* code, MincBlockExpr* scope)
+	{
+		std::vector<MincExpr*> exprs = ::parsePythonTplt(code);
+		MincBlockExpr(MincLocation{"", 0, 0, 0, 0}, &exprs).codegen(scope);
 	}
 }

@@ -1,4 +1,5 @@
 #include <cstring>
+#include "minc_api.h"
 #include "minc_api.hpp"
 
 MincObject ERROR_TYPE;
@@ -151,6 +152,16 @@ int MincExpr::comp(const MincExpr* other) const
 	return this->exprtype - other->exprtype;
 }
 
+MincSymbol MincExpr::evalCCode(const char* code, MincBlockExpr* scope)
+{
+	return ::evalCExpr(code, scope);
+}
+
+MincSymbol MincExpr::evalPythonCode(const char* code, MincBlockExpr* scope)
+{
+	return ::evalPythonExpr(code, scope);
+}
+
 bool operator<(const MincExpr& left, const MincExpr& right)
 {
 	return left.comp(&right) < 0;
@@ -253,5 +264,19 @@ extern "C"
 	MincObject* getErrorType()
 	{
 		return &ERROR_TYPE;
+	}
+
+	MincSymbol evalCExpr(const char* code, MincBlockExpr* scope)
+	{
+		MincExpr* expr = MincBlockExpr::parseCTplt(code)[0];
+		expr->resolve(scope);
+		return expr->codegen(scope);
+	}
+
+	MincSymbol evalPythonExpr(const char* code, MincBlockExpr* scope)
+	{
+		MincExpr* expr = MincBlockExpr::parsePythonTplt(code)[0];
+		expr->resolve(scope);
+		return expr->codegen(scope);
 	}
 }

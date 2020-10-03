@@ -520,7 +520,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		for (; stmtIdx < resolvedStmts->size(); ++stmtIdx)
 		{
 			MincStmt& currentStmt = resolvedStmts->at(stmtIdx);
-			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, currentStmt))
+			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, exprs->end(), currentStmt))
 				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
 
@@ -535,7 +535,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		{
 			resolvedStmts->push_back(MincStmt());
 			MincStmt& currentStmt = resolvedStmts->back();
-			if (!lookupStmt(stmtBeginExpr, currentStmt))
+			if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
 				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
 
@@ -694,6 +694,11 @@ const std::vector<MincExpr*> MincBlockExpr::parseCTplt(const char* tpltStr)
 	return ::parseCTplt(tpltStr);
 }
 
+void MincBlockExpr::evalCCode(const char* code, MincBlockExpr* scope)
+{
+	::evalCBlock(code, scope);
+}
+
 MincBlockExpr* MincBlockExpr::parsePythonFile(const char* filename)
 {
 	return ::parsePythonFile(filename);
@@ -707,6 +712,11 @@ MincBlockExpr* MincBlockExpr::parsePythonCode(const char* code)
 const std::vector<MincExpr*> MincBlockExpr::parsePythonTplt(const char* tpltStr)
 {
 	return ::parsePythonTplt(tpltStr);
+}
+
+void MincBlockExpr::evalPythonCode(const char* code, MincBlockExpr* scope)
+{
+	::evalPythonBlock(code, scope);
 }
 
 extern "C"
@@ -1140,5 +1150,19 @@ extern "C"
 	void deregisterStepEventListener(StepEvent listener)
 	{
 		stepEventListeners.erase(listener);
+	}
+
+	void evalCBlock(const char* code, MincBlockExpr* scope)
+	{
+		MincBlockExpr* block = ::parseCCode(code);
+		block->codegen(scope);
+		delete block;
+	}
+
+	void evalPythonBlock(const char* code, MincBlockExpr* scope)
+	{
+		MincBlockExpr* block = ::parsePythonCode(code);
+		block->codegen(scope);
+		delete block;
 	}
 }

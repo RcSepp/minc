@@ -22,7 +22,7 @@ MincSymbol MincListExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 bool MincListExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const
 {
 	ResolvingMincExprIter listExprEnd;
-	if (expr->exprtype == MincExpr::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, &((MincListExpr*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
+	if (expr->exprtype == MincExpr::ExprType::LIST && matchStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, ((MincListExpr*)expr)->exprs), score, &listExprEnd) && listExprEnd.done())
 		return true;
 	if (expr->exprtype != MincExpr::ExprType::LIST && this->exprs.size() == 1)
 		return this->exprs[0]->match(block, expr, score);
@@ -32,9 +32,9 @@ bool MincListExpr::match(const MincBlockExpr* block, const MincExpr* expr, Match
 void MincListExpr::collectParams(const MincBlockExpr* block, MincExpr* exprs, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
 	if (exprs->exprtype == MincExpr::ExprType::LIST)
-		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, &((MincListExpr*)exprs)->exprs), params, paramIdx);
+		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, ((MincListExpr*)exprs)->exprs), params, paramIdx);
 	else if (exprs->exprtype == MincExpr::ExprType::STMT)
-		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, block->exprs, ((MincStmt*)exprs)->begin), params, paramIdx);
+		collectStmt(block, this->exprs.cbegin(), this->exprs.cend(), ResolvingMincExprIter(block, ((MincStmt*)exprs)->begin, ((MincStmt*)exprs)->end), params, paramIdx);
 	else
 		this->exprs[0]->collectParams(block, exprs, params, paramIdx);
 }

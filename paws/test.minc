@@ -322,7 +322,7 @@ PawsVoid test_paws_array()
 	// Test builtin functions
 	assert(str(a) == "[0, 3]");
 	assert(isInstance(type(a), PawsArray));
-	assert(isInstance(type(a), PawsArray<PawsInt>));
+	assert(isInstance(type(a), PawsInt[]));
 	assert(sizeof([]) == 24);
 	assert(sizeof([1, 2, 3]) == 24);
 }

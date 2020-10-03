@@ -133,7 +133,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineExpr2(pkgScope, "PawsArray<$E<PawsType>>",
+	defineExpr2(pkgScope, "$E<PawsType>[]",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
 			return MincSymbol(PawsType::TYPE, PawsArrayType::get(returnType));

@@ -255,7 +255,7 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 
 					// Load package library
 					// Packages will be registed with the package manager during library initialization
-					auto pkgHandle = dlopen(pkgPath.c_str(), RTLD_NOW);
+					auto pkgHandle = dlopen(pkgPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
 					if (pkgHandle == nullptr)
 					{
 						char *error = dlerror();

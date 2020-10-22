@@ -252,12 +252,13 @@ extern "C"
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr));
 
-		// Remove appended STOP expr if last expr is $B
+		// Remove appended STOP expr if last expr is `$B` or `expr ':'`
 		assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);
 		if (tpltBlock->exprs->size() >= 2)
 		{
-			const MincPlchldExpr* lastExpr = (const MincPlchldExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
-			if (lastExpr->exprtype == MincExpr::ExprType::PLCHLD && lastExpr->p1 == 'B')
+			const MincExpr* lastExpr = (const MincExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if ((lastExpr->exprtype == MincExpr::ExprType::PLCHLD && ((const MincPlchldExpr*)lastExpr)->p1 == 'B') ||
+				(lastExpr->exprtype == MincExpr::ExprType::POSTOP && ((const MincPostfixExpr*)lastExpr)->opstr == ":"))
 				tpltBlock->exprs->pop_back();
 		}
 

@@ -591,7 +591,8 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 	for (MincExprIter exprIter = beginExpr; exprIter != endExpr && (*exprIter)->exprtype != MincExpr::ExprType::STOP; ++exprIter)
 	{
 		_exprs.push_back(*exprIter);
-		if ((*exprIter)->exprtype == MincExpr::ExprType::BLOCK)
+		if ((*exprIter)->exprtype == MincExpr::ExprType::BLOCK ||
+			((*exprIter)->exprtype == MincExpr::ExprType::POSTOP && ((MincPostfixExpr*)*exprIter)->opstr == ":"))
 			break;
 	}
 	printf("%slookupStmt(%s)\n", indent.c_str(), MincListExpr('\0', _exprs).shortStr().c_str());
@@ -621,7 +622,10 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 	{
 		// End of statement = beginning of statement + length of unresolved statement
 		stmt.end = stmt.begin;
-		while (stmt.end != endExpr && (*stmt.end)->exprtype != MincExpr::ExprType::STOP && (*stmt.end)->exprtype != MincExpr::ExprType::BLOCK)
+		while (stmt.end != endExpr &&
+			   (*stmt.end)->exprtype != MincExpr::ExprType::STOP &&
+			   (*stmt.end)->exprtype != MincExpr::ExprType::BLOCK &&
+			   ((*stmt.end)->exprtype != MincExpr::ExprType::POSTOP || ((MincPostfixExpr*)*stmt.end)->opstr != ":"))
 			++stmt.end;
 		if (stmt.end != endExpr)
 			++stmt.end;

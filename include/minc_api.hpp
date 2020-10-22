@@ -105,6 +105,7 @@ public:
 	inline ResolvingMincExprIter operator++(int) { return ResolvingMincExprIter(resolveScope, current++, end); }
 	inline ResolvingMincExprIter& operator++() { ++current; return *this; }
 	inline MincExprIter iter() const { return current; }
+	inline MincExprIter iterEnd() const { return end; }
 };
 
 class MincListExpr : public MincExpr
@@ -152,22 +153,18 @@ class MincStatementRegister
 private:
 	std::map<const MincListExpr*, MincKernel*> stmtreg;
 	std::array<std::map<const MincExpr*, MincKernel*>, MincExpr::NUM_EXPR_TYPES> exprreg;
-	MincKernel *defaultStmt, *defaultExpr;
 public:
-	MincStatementRegister() : defaultStmt(nullptr), defaultExpr(nullptr) {}
 	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
-	void defineDefaultStmt(MincKernel* stmt);
 
 	void defineExpr(const MincExpr* tplt, MincKernel* expr);
 	std::pair<const MincExpr*, MincKernel*> lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
-	void defineDefaultExpr(MincKernel* expr);
 };
 
 struct InheritanceCast : public MincCast
@@ -230,6 +227,7 @@ class MincBlockExpr : public MincExpr
 {
 private:
 	MincStatementRegister stmtreg;
+	MincKernel *defaultStmtKernel, *defaultExprKernel;
 	std::map<std::string, MincSymbol> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	MincCastRegister castreg;
@@ -260,7 +258,7 @@ public:
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
 	bool lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
-	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const;
+	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
 	void defineDefaultStmt(MincKernel* stmt);

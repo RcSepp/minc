@@ -108,7 +108,8 @@ bool matchStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIter
 
 			ResolvingMincExprIter subStmtEnd;
 			MatchScore subStmtScore;
-			if (block->lookupStmt(expr, expr, subStmtScore).first == nullptr)
+			MincKernel* defaultStmtKernel;
+			if (block->lookupStmt(expr, expr, subStmtScore, &defaultStmtKernel).first == nullptr && defaultStmtKernel == nullptr)
 				return false;
 
 			if (tplt[0]->exprtype == MincExpr::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -254,13 +255,9 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 		{
 			++tplt; // Eat $S
 
-			ResolvingMincExprIter subStmtBegin = expr;
-			MatchScore subStmtScore;
-			const std::pair<const MincListExpr*, MincKernel*> stmtKernel = block->lookupStmt(subStmtBegin, expr, subStmtScore);
-			assert(stmtKernel.first != nullptr);
-			MincStmt* subStmt = new MincStmt(subStmtBegin.iter(), expr.iter(), stmtKernel.second);
-			size_t subStmtParamIdx = 0;
-			collectStmt(block, stmtKernel.first->cbegin(), stmtKernel.first->cend(), subStmtBegin, subStmt->resolvedParams, subStmtParamIdx);
+			MincStmt* subStmt = new MincStmt();
+			block->lookupStmt(expr.iter(), expr.iterEnd(), *subStmt);
+			expr = expr + (subStmt->end - subStmt->begin);
 			storeParam(subStmt, params, paramIdx++);
 
 			if (tplt[0]->exprtype == MincExpr::ExprType::STOP) ++tplt; // Eat STOP as part of $S
@@ -378,19 +375,6 @@ std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(co
 		printf("\n");
 #endif
 	}
-	if (defaultStmt != nullptr && bestScore == -2147483648)
-	{
-		bestScore = 2147483647;
-		
-		// End of statement = beginning of statement + length of unresolved statement
-		bestStmtEnd = stmt;
-		while (!bestStmtEnd.done() && (*bestStmtEnd)->exprtype != MincExpr::ExprType::STOP && (*bestStmtEnd)->exprtype != MincExpr::ExprType::BLOCK)
-			++bestStmtEnd;
-		if (!bestStmtEnd.done())
-			++bestStmtEnd;
-
-		return std::pair<const MincListExpr*, MincKernel*>(new MincListExpr('\0'), defaultStmt);
-	}
 	return bestStmt;
 }
 
@@ -415,11 +399,6 @@ void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* 
 {
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 		cbk(iter.first, iter.second);
-}
-
-void MincStatementRegister::defineDefaultStmt(MincKernel* stmt)
-{
-	defaultStmt = stmt;
 }
 
 void MincStatementRegister::defineExpr(const MincExpr* tplt, MincKernel* expr)
@@ -479,12 +458,6 @@ std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const 
 	expr->resolvedParams.pop_back(); // Remove first kernel parameter
 	expr->resolvedKernel = nullptr; // Reset kernel
 
-	if (defaultExpr != nullptr && bestScore == -2147483648)
-	{
-		bestScore = 2147483647;
-		return std::pair<const MincExpr*, MincKernel*>(nullptr, defaultExpr);
-	}
-
 	return bestExpr;
 }
 
@@ -520,11 +493,6 @@ void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt
 			cbk(iter.first, iter.second);
 }
 
-void MincStatementRegister::defineDefaultExpr(MincKernel* expr)
-{
-	defaultExpr = expr;
-}
-
 bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 {
 	++EXPR_RESOLVE_COUNTER;
@@ -534,6 +502,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 	indent += '\t';
 #endif
 	expr->resolvedParams.clear();
+	MincKernel* defaultExprKernel = nullptr;
 	MatchScore currentScore, score = -2147483648;
 	std::pair<const MincExpr*, MincKernel*> currentKernel, kernel = {nullptr, nullptr};
 	for (const MincBlockExpr* block = this; block; block = block->parent)
@@ -545,6 +514,8 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 			kernel = currentKernel;
 			score = currentScore;
 		}
+		else if (currentScore == -2147483648 && defaultExprKernel == nullptr)
+			defaultExprKernel = block->defaultExprKernel;
 		for (const MincBlockExpr* ref: block->references)
 		{
 			currentScore = score;
@@ -554,6 +525,8 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 				kernel = currentKernel;
 				score = currentScore;
 			}
+			else if (currentScore == -2147483648 && defaultExprKernel == nullptr)
+				defaultExprKernel = ref->defaultExprKernel;
 		}
 	}
 #ifdef DEBUG_STMTREG
@@ -587,6 +560,19 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 		expr->resolvedKernel = &UNRESOLVABLE_EXPR_KERNEL;
 		return false;
 	}
+
+	if (defaultExprKernel != nullptr)// If a default kernel was encountered before any other kernel matched, ...
+	{
+		//TODO: Untested
+		// Store the regular kernel (or UNRESOLVABLE_EXPR_KERNEL) as a parameter to the default kernel
+		MincExpr* regularExpr = expr->clone();
+		regularExpr->resolvedParams.insert(regularExpr->resolvedParams.end(), expr->resolvedParams.begin(), expr->resolvedParams.end());
+		expr->resolvedParams.clear();
+		expr->resolvedParams.push_back(regularExpr);
+		expr->resolvedKernel = defaultExprKernel;
+	}
+
+	return expr->resolvedKernel != &UNRESOLVABLE_EXPR_KERNEL;
 }
 
 bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const
@@ -616,7 +602,8 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 	// Get kernel of best match
 	ResolvingMincExprIter stmtEnd;
 	MatchScore score;
-	std::pair<const MincListExpr*, MincKernel*> kernel = lookupStmt(stmtBegin, stmtEnd, score);
+	MincKernel* defaultStmtKernel;
+	std::pair<const MincListExpr*, MincKernel*> kernel = lookupStmt(stmtBegin, stmtEnd, score, &defaultStmtKernel);
 
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
@@ -653,19 +640,30 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 		size_t paramIdx = 0;
 		collectStmt(this, kernel.first->cbegin(), kernel.first->cend(), stmtBegin, stmt.resolvedParams, paramIdx);
 		stmt.resolvedKernel = kernel.second;
-		return true;
 	}
 	else // If no matching kernel was found, ...
 	{
 		// Mark stmt as unresolvable
 		stmt.resolvedKernel = &UNRESOLVABLE_STMT_KERNEL;
-		return false;
 	}
+
+	if (defaultStmtKernel != nullptr)// If a default kernel was encountered before any other kernel matched, ...
+	{
+		// Store the regular kernel (or UNRESOLVABLE_STMT_KERNEL) as a parameter to the default kernel
+		MincStmt* regularStmt = new MincStmt(stmt.begin, stmt.end, stmt.resolvedKernel);
+		regularStmt->resolvedParams.insert(regularStmt->resolvedParams.end(), stmt.resolvedParams.begin(), stmt.resolvedParams.end());
+		stmt.resolvedParams.clear();
+		stmt.resolvedParams.push_back(regularStmt);
+		stmt.resolvedKernel = defaultStmtKernel;
+	}
+
+	return stmt.resolvedKernel != &UNRESOLVABLE_STMT_KERNEL;
 }
 
-std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const
 {
 	bestScore = -2147483648;
+	*defaultStmtKernel = nullptr;
 	MatchScore currentScore;
 	ResolvingMincExprIter currentStmtEnd;
 	std::pair<const MincListExpr*, MincKernel*> currentKernel, bestKernel = {nullptr, nullptr};
@@ -679,6 +677,8 @@ std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingM
 			bestScore = currentScore;
 			bestStmtEnd = currentStmtEnd;
 		}
+		else if (currentScore == -2147483648 && *defaultStmtKernel == nullptr)
+			*defaultStmtKernel = block->defaultStmtKernel;
 		for (const MincBlockExpr* ref: block->references)
 		{
 			currentScore = bestScore;
@@ -689,6 +689,8 @@ std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingM
 				bestScore = currentScore;
 				bestStmtEnd = currentStmtEnd;
 			}
+			else if (currentScore == -2147483648 && *defaultStmtKernel == nullptr)
+				*defaultStmtKernel = ref->defaultStmtKernel;
 		}
 	}
 	return bestKernel;

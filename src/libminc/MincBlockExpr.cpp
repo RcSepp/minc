@@ -85,13 +85,13 @@ void raiseStepEvent(const MincExpr* loc, StepEventType type)
 }
 
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(resolvedStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), resolvedStmts(resolvedStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
 	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
 
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), castreg(this), resolvedStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), resolvedStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
 	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
@@ -145,7 +145,7 @@ void MincBlockExpr::iterateStmts(std::function<void(const MincListExpr* tplt, co
 
 void MincBlockExpr::defineDefaultStmt(MincKernel* stmt)
 {
-	stmtreg.defineDefaultStmt(stmt);
+	defaultStmtKernel = stmt;
 }
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
@@ -213,7 +213,7 @@ void MincBlockExpr::iterateExprs(std::function<void(const MincExpr* tplt, const 
 
 void MincBlockExpr::defineDefaultExpr(MincKernel* expr)
 {
-	stmtreg.defineDefaultExpr(expr);
+	defaultExprKernel = expr;
 }
 
 void MincBlockExpr::defineCast(MincCast* cast)

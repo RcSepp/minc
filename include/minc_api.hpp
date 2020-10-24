@@ -389,6 +389,7 @@ public:
 	MincParamExpr(const MincLocation& loc, size_t idx);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
+	void forget();
 	std::string str() const;
 	int comp(const MincExpr* other) const;
 	MincExpr* clone() const;

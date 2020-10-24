@@ -42,6 +42,11 @@ void MincParamExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, st
 {
 }
 
+void MincParamExpr::forget()
+{
+	resolvedKernel = &kernel; // Reset to default parameter expression kernel
+}
+
 std::string MincParamExpr::str() const
 {
 	return '$' + std::to_string(idx);

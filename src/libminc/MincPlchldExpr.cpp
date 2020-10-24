@@ -104,15 +104,15 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 	else
 	{
 		MincObject* exprType = expr->getType(block);
-		if (exprType == &ERROR_TYPE) // Errors match any template type
-		{
-			score -= 256; // Penalize erroneous match
-			return true;
-		}
 		MincObject* tpltType = getType(block);
 		if (exprType == tpltType)
 		{
 			score += 5; // Reward exact match
+			return true;
+		}
+		if (exprType == &ERROR_TYPE) // Errors match any template type
+		{
+			score -= 256; // Penalize erroneous match
 			return true;
 		}
 		const MincCast* cast = allowCast ? block->lookupCast(exprType, tpltType) : nullptr;

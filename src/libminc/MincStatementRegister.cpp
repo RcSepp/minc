@@ -697,6 +697,12 @@ std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingM
 				*defaultStmtKernel = ref->defaultStmtKernel;
 		}
 	}
+
+	// Forget future expressions
+	for (MincExprIter exprIter = bestStmtEnd.iter(); exprIter != bestStmtEnd.iterEnd() && (*exprIter)->isResolved() && !(*exprIter)->isBuilt(); ++exprIter)
+		(*exprIter)->forget();
+	//TODO: It may be faster to only forget expressions when new stmts/exprs/casts/symbols have been defined (see MincBlockExpr::defineExpr())
+
 	return bestKernel;
 }
 

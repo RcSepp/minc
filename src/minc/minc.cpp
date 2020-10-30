@@ -111,6 +111,7 @@ int main(int argc, char** argv)
 	{
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
+			rootBlock->build(nullptr);
 			rootBlock->codegen(nullptr);
 		} catch (ExitException err) {
 			result = err.code;

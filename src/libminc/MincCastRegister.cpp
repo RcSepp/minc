@@ -44,14 +44,19 @@ struct IndirectCast : public MincCast, public MincKernel
 		return derivedSecond == nullptr ? first->derive() : new IndirectCast(first, derivedSecond);
 	}
 
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		params[0] = new MincCastExpr(first, params[0]);
+		return second->kernel->build(parentBlock, params);
+	}
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		std::vector<MincExpr*> _params(1, new MincCastExpr(first, params[0])); //TODO: make params const and implement this inline (`codegen(parentBlock, { new MincCastExpr(first, params[0]) });`)
-		return second->kernel->codegen(parentBlock, _params);
+		assert(0);
+		return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
-		return second->kernel->getType(parentBlock, { new MincCastExpr(first, params[0]) });
+		return toType;
 	}
 };
 

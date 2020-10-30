@@ -33,10 +33,13 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
 	}
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 
+	if (builtKernel == nullptr)
+		throw CompileError(parentBlock, loc, "expression not built: %e", this);
+
 	try
 	{
 		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
-		resolvedKernel->codegen(parentBlock, resolvedParams);
+		builtKernel->codegen(parentBlock, resolvedParams);
 	}
 	catch (...)
 	{

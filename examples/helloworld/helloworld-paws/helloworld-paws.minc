@@ -1,10 +1,6 @@
 import paws.extend;
 import paws.struct;
 
-_1 = 1;
-_2 = 2;
-_from_paws = " from Paws!";
-
 export "helloworld-paws"
 {
 	struct string
@@ -12,15 +8,18 @@ export "helloworld-paws"
 		s = "";
 	}
 
+	stmt print($E<string>)
+	{
+	build:
+		$0.build();
+	run:
+		print($0.codegen().s + " from Paws!");
+	}
+
 	string expr $L
 	{
 		str = string();
-		str.s = $0.value.substr(_1, $0.value.length - _2);
+		str.s = $0.value.substr(1, $0.value.length - 2);
 		return str;
-	}
-
-	stmt print($E<string>)
-	{
-		print($0.codegen().s + _from_paws);
 	}
 }

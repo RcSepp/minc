@@ -7,7 +7,7 @@ import paws.time;
 PawsVoid test_paws()
 {
 	// Test expression `getFileScope()` and expression `test($E<PawsBase>)`
-	assert(type(getFileScope()) == PawsBlockExpr);
+	assert(type(getFileScope()) == PawsStaticBlockExpr);
 
 	// Test symbol `FILE_SCOPE_TYPE`
 	assert(type(FILE_SCOPE_TYPE) == PawsScopeType);
@@ -54,6 +54,9 @@ PawsVoid test_paws()
 	k = 0;
 	for (j = 0; j != 3; j = j + 1) { k = k + j + 1; }
 	assert(k == 6);
+	k = 0;
+	for (j = 0.1; 3.5 - j; j = j + 1.0) { k = k + j + 1; } // Test inherent for condition type cast to PawsInt
+	assert(k == 6);
 	assert { for (j = 0; '0'; j = j + 1) {} } throws PawsException("invalid for condition type: '0'<PawsString>, expected: <PawsInt>");
 
 	// Test expression `str($E<PawsBase>)`
@@ -63,6 +66,12 @@ PawsVoid test_paws()
 	assert(PawsInt == PawsInt);
 	assert(PawsInt != PawsBase);
 	assert(isInstance(PawsInt, PawsBase));
+
+	// Test type assignment
+	l = PawsExpr;
+	// assert(PawsExpr == l); //TODO: Assertion failes
+	l = PawsBlockExpr;
+	assert(PawsBlockExpr == l);
 
 	// Test builtin functions
 	assert(type(PawsInt) == PawsType);
@@ -113,7 +122,7 @@ PawsVoid test_paws_int()
 	// Test binary operators
 	a = 7;
 	b = -3;
-	assert(a + b == 4);
+	assert(-a + -b == -4);
 	assert(a - b == 10);
 	assert(a * b == -21);
 	assert(a / b == -2);
@@ -121,10 +130,82 @@ PawsVoid test_paws_int()
 	assert(min(a, b) == -3);
 	assert(max(a, b) == 7);
 
+	// Test in-place operators
+	a = 1;
+	assert((a += 6) == 7);
+	assert((a -= 5) == 2);
+	assert((a *= 4) == 8);
+	assert((a /= 3) == 2);
+
 	// Test builtin functions
 	assert(str(-4) == "-4");
 	assert(type(-4) == PawsInt);
 	assert(sizeof(-4) == 4);
+}
+
+PawsVoid test_paws_double()
+{
+	import paws.double;
+
+	// Test equivalence
+	assert(1.0 == 1.0);
+	assert(!(1.0 == 2.0));
+	assert(1.0 != 2.0);
+	assert(!(1.0 == 2.0));
+	assert(2.0 >> 1.0);
+	assert(!(1.0 >> 2.0));
+	assert(1.0 << 2.0);
+	assert(!(2.0 << 1.0));
+	assert(1.0 >= 1.0);
+	assert(2.0 >= 1.0);
+	assert(!(1.0 >= 2.0));
+	assert(1.0 <= 1.0);
+	assert(1.0 <= 2.0);
+	assert(!(2.0 <= 1.0));
+
+	// Test logical operators
+	assert(0 == !1.0);
+	assert(1.0 == !!1.0);
+	assert(!(0 && 0.0));
+	assert(!(0 && 1.0));
+	assert(!(1.0 && 0.0));
+	assert(  1.0 && 1.0);
+	assert(!(0 || 0.0));
+	assert(  0.0 || 1.0);
+	assert(  1.0 || 0.0);
+	assert(  1.0 || 1.0);
+
+	// Test unary operators
+	a = -1.0;
+	assert(++a == 0.0);
+	assert(a++ == 0.0);
+	assert(a == 1.0);
+	assert(--a == 0.0);
+	assert(a-- == 0.0);
+	assert(a == -1.0);
+
+	// Test binary operators
+	a = 7.0;
+	b = -3.0;
+	assert(-a + -b == -4.0);
+	assert(a - b == 10.0);
+	assert(a * b == -21.0);
+	assert(a / b << -2.3 && a / b >> -2.4);
+	assert(a / 0.0) throws PawsException("Divide by zero exception");
+	assert(min(a, b) == -3.0);
+	assert(max(a, b) == 7.0);
+
+	// Test in-place operators
+	a = 1.0;
+	assert((a += 6.0) == 7.0);
+	assert((a -= 5.0) == 2.0);
+	assert((a *= 4.0) == 8.0);
+	assert((a /= 2.0) == 4.0);
+
+	// Test builtin functions
+	assert(str(-4.0) == "-4.000000");
+	assert(type(-4.0) == PawsDouble);
+	assert(sizeof(-4.0) == 8);
 }
 
 PawsVoid test_paws_string()
@@ -195,13 +276,12 @@ PawsVoid test_paws_exceptions()
 	{
 		try
 		{
-			++i;
-			bad statement();
+			++i / 0;
 			assert(0);
 		}
 		catch (PawsException err)
 		{
-			assert(err.msg == "undefined statement bad statement();");
+			assert(err.msg == "Divide by zero exception");
 			++i / 0;
 			assert(0);
 		}
@@ -291,10 +371,6 @@ PawsVoid test_paws_exceptions()
 	{
 		assert(err == 2);
 	}
-
-	// PawsVoid foo() {}
-	// throw foo;//PawsException("test exception");
-	// //throw 123;
 }
 
 PawsVoid test_paws_array()
@@ -317,7 +393,7 @@ PawsVoid test_paws_array()
 	a[1] = 3.9;
 	assert(a[1] == 3);
 	assert(a[1] = '4') throws PawsException("invalid conversion of '4' from <PawsString> to <PawsInt>");
-	assert(b[0] = 5) throws PawsException("index 0 out of bounds for array of length 0");
+	assert(b[0] = 5) throws PawsException("cannot assign to empty array");
 
 	// Test builtin functions
 	assert(str(a) == "[0, 3]");
@@ -359,7 +435,7 @@ PawsVoid test_paws_subroutine()
 
 	// Test non-void function without return
 	PawsInt f() {}
-	assert(f()) throws PawsException("invalid expression return type: f()<PawsVoid>, expected: <PawsInt>");
+	assert(f()) throws PawsException("non-void function should return a value");
 
 	// Test return from try block
 	// Internally `return ...` is handled by raising a ReturnException. Make sure try/catch does not catch the ReturnException
@@ -409,6 +485,8 @@ PawsVoid test_paws_subroutine()
 PawsVoid test_paws_struct()
 {
 	import paws.struct;
+
+	x = 5;
 	struct S
 	{
 		a = 1;
@@ -417,6 +495,8 @@ PawsVoid test_paws_struct()
 		PawsInt d() { {} return this.a; } // `{}` tests non struct specific statements within a method
 		PawsInt e() { return a; }
 		S f(S a) {return a; }
+		g = x + a;
+		PawsInt h() { return e() + this.d(); }
 	};
 	s = S();
 
@@ -434,6 +514,7 @@ PawsVoid test_paws_struct()
 	assert(s.a = '4') throws PawsException("cannot assign value of type <PawsString> to variable of type <PawsInt>");
 	assert(s.x = 5) throws PawsException("no member named 'x' in 'S'");
 	assert(s.x) throws PawsException("no member named 'x' in 'S'");
+	assert(s.g == 6);
 
 	// Test struct method call
 	assert(s.b(1)) throws PawsException("invalid number of method arguments");
@@ -444,7 +525,13 @@ PawsVoid test_paws_struct()
 	assert(s.d() == 3);
 	assert(s.e() == 3);
 	assert(s.f(s) == s);
+	assert(s.h() == 6);
 	assert(s.x()) throws PawsException("no method named 'x' in 'S'");
+
+	// Test struct cast to string
+	assert(str(s) == 'S { a=3, c="foo", g=6 }');
+	struct S {}
+	assert(str(S()) == "S {}");
 
 	// Test invalid struct definition
 	assert { struct S { print("illegal print statement"); }; } throws PawsException("Invalid command in struct context");
@@ -473,6 +560,7 @@ PawsVoid test_paws_struct()
 	assert(S(2).a == 2);
 	assert(S("foo").a == 3);
 	assert(S(2, 2).a == 4);
+	assert(S(5.5).a == 5);
 	assert(S()) throws PawsException("no matching constructor for call S()");
 	assert(S('0', S())) throws PawsException("no matching constructor for call S(PawsString, S)");
 	assert(S(spam)) throws PawsException("`spam` was not declared in this scope");
@@ -514,7 +602,10 @@ PawsVoid test_paws_frames()
 		assert { return; } throws PawsException("non-void frame should return a value");
 		return a;
 	}
-	assert(await f() == 1);
+	fi = f();
+	assert(fi.a == 1);
+	assert(fi.b) throws PawsException("no member named 'b' in 'f'");
+	assert(await fi == 1);
 
 	// Test void frame without return
 	PawsVoid frame f() {}
@@ -582,7 +673,7 @@ PawsVoid test_paws_frames()
 	// Test event
 	e = event<PawsInt>();
 	e(1);
-	e(2);
+	e(2.5);
 	assert(await e == 1);
 	assert(await e == 2);
 	assert(type(e) == event<PawsInt>);
@@ -644,6 +735,10 @@ PawsVoid test_paws_extend()
 	{
 		PawsString expr $E<PawsString> * $E<PawsInt>
 		{
+		build:
+			$0.build();
+			$1.build();
+		run:
 			assert(type($0) == PawsExpr<PawsString>);
 			assert($0.getType() == PawsString);
 			assert(type($0.codegen()) == PawsString);
@@ -659,7 +754,15 @@ PawsVoid test_paws_extend()
 	assert("spam" * 2 == "spamspam");
 
 	// Test statement definition
-	stmt unless($E<PawsInt>) $S { if ($0.codegen() == 0) $1.codegen(); }
+	stmt unless($E<PawsInt>) $S
+	{
+	build:
+		$0.build();
+		$1.build();
+	run:
+		if ($0.codegen() == 0)
+			$1.codegen();
+	}
 	unless (0) assert(1);
 	unless (1) assert(0);
 }
@@ -689,6 +792,7 @@ PawsVoid test_mutable_exprs()
 		FILE_SCOPE.exprs[$E<PawsString> * $E<PawsString>] = <PawsString> { return "d"; }
 	}
 	assert(r == "cc");
+	assert("" * "" == "d");
 }
 
 measure("test time")
@@ -696,6 +800,7 @@ measure("test time")
 	{
 		test_paws();
 		test_paws_int();
+		test_paws_double();
 		test_paws_string();
 		test_paws_exceptions();
 		test_paws_array();

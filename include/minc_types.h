@@ -41,9 +41,20 @@ struct MincSymbol
 	MincSymbol(MincObject* type, MincObject* value) : type(type), value(value) {}
 };
 
+struct MincSymbolId
+{
+	uint32_t i;
+	uint16_t p, r;
+	static const MincSymbolId NONE;
+};
+bool operator==(const MincSymbolId& left, const MincSymbolId& right);
+bool operator!=(const MincSymbolId& left, const MincSymbolId& right);
+
 struct MincKernel
 {
 	virtual ~MincKernel() {}
+	virtual MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return this; }
+	virtual void dispose(MincKernel* kernel) {}
 	virtual MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) = 0;
 	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };

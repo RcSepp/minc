@@ -39,6 +39,9 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("print($E<string>)"),
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+			params[0]->build(parentBlock);
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 			String* const message = (String*)params[0]->codegen(parentBlock).value;
 			std::cout << *message << " from C++!\n";
 		}

@@ -10,44 +10,58 @@ template<> std::string PawsInt::Type::toString(MincObject* value) const
 
 MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
+	struct OperatorKernel : public MincKernel
+	{
+		int (*cbk)(int& value);
+		MincSymbolId varId;
+		OperatorKernel(int (*cbk)(int& value), MincSymbolId varId=MincSymbolId::NONE) : cbk(cbk), varId(varId) {}
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			return new OperatorKernel(cbk, lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)params[0])));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete this;
+		}
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(parentBlock, varId);
+			return MincSymbol(PawsInt::TYPE, new PawsInt(cbk(((PawsInt*)var->value)->get())));
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsInt::TYPE;
+		}
+	};
+
 	// >>> PawsInt expressions
 
 	// Define integer prefix increment
-	defineExpr2(pkgScope, "++$I<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			++((PawsInt*)var->value)->get();
-			return *var;
-		},
-		PawsInt::TYPE
+	defineExpr6(pkgScope, "++$I<PawsInt>",
+		new OperatorKernel([](int& value) -> int {
+			return ++value;
+		})
 	);
 
 	// Define integer prefix decrement
-	defineExpr2(pkgScope, "--$I<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			--((PawsInt*)var->value)->get();
-			return *var;
-		},
-		PawsInt::TYPE
+	defineExpr6(pkgScope, "--$I<PawsInt>",
+		new OperatorKernel([](int& value) -> int {
+			return --value;
+		})
 	);
 
 	// Define integer postfix increment
-	defineExpr2(pkgScope, "$I<PawsInt>++",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return MincSymbol(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()++));
-		},
-		PawsInt::TYPE
+	defineExpr6(pkgScope, "$I<PawsInt>++",
+		new OperatorKernel([](int& value) -> int {
+			return value++;
+		})
 	);
 
 	// Define integer postfix decrement
-	defineExpr2(pkgScope, "$I<PawsInt>--",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return MincSymbol(PawsInt::TYPE, new PawsInt(((PawsInt*)var->value)->get()--));
-		},
-		PawsInt::TYPE
+	defineExpr6(pkgScope, "$I<PawsInt>--",
+		new OperatorKernel([](int& value) -> int {
+			return value--;
+		})
 	);
 
 	// Define integer addition
@@ -81,8 +95,12 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer addition
-	defineExpr2(pkgScope, "$I<PawsInt!> += $E<PawsInt>",
+	defineExpr9(pkgScope, "$I<PawsInt!> += $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
 			val->set(val->get() + ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
@@ -92,8 +110,12 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer subtraction
-	defineExpr2(pkgScope, "$I<PawsInt!> -= $E<PawsInt>",
+	defineExpr9(pkgScope, "$I<PawsInt!> -= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
 			val->set(val->get() - ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
@@ -103,8 +125,12 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer multiplication
-	defineExpr2(pkgScope, "$I<PawsInt!> *= $E<PawsInt>",
+	defineExpr9(pkgScope, "$I<PawsInt!> *= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
 			val->set(val->get() * ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
@@ -114,8 +140,12 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer division
-	defineExpr2(pkgScope, "$I<PawsInt!> /= $E<PawsInt>",
+	defineExpr9(pkgScope, "$I<PawsInt!> /= $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
 			val->set(val->get() / ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
@@ -171,7 +201,11 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define logical operators
-	defineExpr2(pkgScope, "$E<PawsInt> && $E<PawsInt>",
+	defineExpr9(pkgScope, "$E<PawsInt> && $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() &&
@@ -180,7 +214,11 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		},
 		PawsInt::TYPE
 	);
-	defineExpr2(pkgScope, "$E<PawsInt> || $E<PawsInt>",
+	defineExpr9(pkgScope, "$E<PawsInt> || $E<PawsInt>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ||

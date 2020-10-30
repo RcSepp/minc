@@ -108,7 +108,11 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to print measured runtime
-	defineStmt2(pkgScope, "measure($E<PawsString>) $S",
+	defineStmt6(pkgScope, "measure($E<PawsString>) $S",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const std::string& taskName = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
 			MincExpr* stmt = params[1];
@@ -125,7 +129,12 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to measure runtime
-	defineStmt2(pkgScope, "measure $I $S",
+	defineStmt6(pkgScope, "measure $I $S",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			const char* varName = getIdExprName((MincIdExpr*)params[0]);
+			buildExpr(params[1], parentBlock);
+			defineSymbol(parentBlock, varName, PawsDuration::TYPE, nullptr);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
 			MincExpr* stmt = params[1];

@@ -2,11 +2,13 @@
 #include "minc_api.h"
 #include "minc_api.hpp"
 
+//#define CHECK_CODEGEN_TYPES
+
 MincObject ERROR_TYPE;
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr)
+MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr), builtKernel(nullptr)
 {
 }
 
@@ -29,65 +31,68 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 	}
 	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
 
-	if (resolvedKernel)
+	if (!isResolved())
+		throw UndefinedExprException{this};
+
+	if (builtKernel == nullptr)
+		throw CompileError(parentBlock, loc, "expression not built: %e", this);
+
+	MincSymbol var;
+	try
 	{
-		MincSymbol var;
-		try
-		{
-			raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
-			var = resolvedKernel->codegen(parentBlock, resolvedParams);
-		}
-		catch (...)
-		{
-			parentBlock->isExprSuspended = true;
-			//TODO: Raise error if getType() != &ERROR_TYPE
-			raiseStepEvent(this, STEP_SUSPEND);
-			if (isVolatile)
-				forget();
-			throw;
-		}
-		parentBlock->isExprSuspended = false;
-
-		const MincObject *expectedType, *gotType = var.type;
-		try //TODO: Make getType() noexcept
-		{
-			expectedType = resolvedKernel->getType(parentBlock, resolvedParams);
-		}
-		catch(...)
-		{
-			throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
-		}
-		if (expectedType != gotType)
-		{
-			if (expectedType == &ERROR_TYPE)
-				throw CompileError(
-					("no exception raised in expression returning error type: " + this->str()).c_str(),
-					this->loc
-				);
-
-			throw CompileError(
-				("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
-				this->loc
-			);
-		}
-
-		// Cache expression result for coroutines
-		parentBlock->resultCache[resultCacheIdx] = std::make_pair(var, true);
-		if (resultCacheIdx + 1 != parentBlock->resultCache.size())
-		{
-			parentBlock->resultCacheIdx = resultCacheIdx + 1;
-			parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
-		}
-
-		raiseStepEvent(this, STEP_OUT);
-
+		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+		var = builtKernel->codegen(parentBlock, resolvedParams);
+	}
+	catch (...)
+	{
+		parentBlock->isExprSuspended = true;
+		//TODO: Raise error if getType() != &ERROR_TYPE
+		raiseStepEvent(this, STEP_SUSPEND);
 		if (isVolatile)
 			forget();
-
-		return var;
+		throw;
 	}
-	else
-		throw UndefinedExprException{this};
+	parentBlock->isExprSuspended = false;
+
+#ifdef CHECK_CODEGEN_TYPES
+	const MincObject *expectedType, *gotType = var.type;
+	try //TODO: Make getType() noexcept
+	{
+		expectedType = resolvedKernel->getType(parentBlock, resolvedParams);
+	}
+	catch(...)
+	{
+		throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
+	}
+	if (expectedType != gotType)
+	{
+		if (expectedType == &ERROR_TYPE)
+			throw CompileError(
+				("no exception raised in expression returning error type: " + this->str()).c_str(),
+				this->loc
+			);
+
+		throw CompileError(
+			("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
+			this->loc
+		);
+	}
+#endif
+
+	// Cache expression result for coroutines
+	parentBlock->resultCache[resultCacheIdx] = std::make_pair(var, true);
+	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+	{
+		parentBlock->resultCacheIdx = resultCacheIdx + 1;
+		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+	}
+
+	raiseStepEvent(this, STEP_OUT);
+
+	if (isVolatile)
+		forget();
+
+	return var;
 }
 
 MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
@@ -120,9 +125,11 @@ MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
 		return type;
 
 	// If type == &ERROR_TYPE, run codegen() to throw underlying exception
+	if (builtKernel == nullptr)
+		builtKernel = resolvedKernel->build(parentBlock, resolvedParams);
 	try
 	{
-		resolvedKernel->codegen(parentBlock, resolvedParams);
+		builtKernel->codegen(parentBlock, resolvedParams);
 	}
 	catch(...)
 	{
@@ -140,6 +147,16 @@ void MincExpr::resolve(const MincBlockExpr* block)
 void MincExpr::forget()
 {
 	resolvedKernel = nullptr;
+}
+
+MincKernel* MincExpr::build(MincBlockExpr* parentBlock)
+{
+	if (!isResolved())
+		throw UndefinedExprException{this};
+
+	if (!isBuilt())
+		builtKernel = resolvedKernel->build(parentBlock, resolvedParams);
+	return builtKernel;
 }
 
 std::string MincExpr::shortStr() const
@@ -203,6 +220,11 @@ extern "C"
 	void forgetExpr(MincExpr* expr)
 	{
 		expr->forget();
+	}
+
+	MincKernel* buildExpr(MincExpr* expr, MincBlockExpr* scope)
+	{
+		return expr->build(scope);
 	}
 
 	void setExprVolatile(MincExpr* expr, bool isVolatile)

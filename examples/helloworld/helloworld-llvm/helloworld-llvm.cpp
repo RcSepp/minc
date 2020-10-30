@@ -209,6 +209,9 @@ public:
 		);
 
 		pkgScope->defineStmt(MincBlockExpr::parseCTplt("print($E<string>)"),
+			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+				params[0]->build(parentBlock);
+			},
 			[&](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 				Object* const message = (Object*)params[0]->codegen(parentBlock).value;
 				builder->CreateCall(printfFunction, { fromLlvmString, message->value });

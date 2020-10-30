@@ -14,6 +14,7 @@ const char			MincPackage::PKG_PATH_SEPARATOR = '.';
 
 void defaultDefineFunc(MincBlockExpr* pkgScope)
 {
+	pkgScope->build(pkgScope->parent);
 	pkgScope->codegen(pkgScope->parent);
 }
 
@@ -148,7 +149,8 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			// Import package
 			if (!this->tryImportPackage(parentBlock, pkgName))
 				throw CompileError("unknown package " + pkgName, params[0]->loc);
-		}
+		},
+		nullptr
 	);
 
 	// Define import statement
@@ -163,7 +165,8 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			// Import package
 			if (!this->tryImportPackage(parentBlock, pkgName))
 				throw CompileError("unknown package " + pkgName, params[0]->loc);
-		}
+		},
+		nullptr
 	);
 
 	// Define export statement
@@ -179,13 +182,15 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
-		}
+		},
+		nullptr
 	);
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $I. ..."),
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 			std::vector<MincExpr*>& pkgPath = ((MincListExpr*)params[0])->exprs;
 			throw CompileError("Missing export block", pkgPath.empty() ? MincLocation{nullptr, 0, 0, 0, 0} : pkgPath.front()->loc);
-		}
+		},
+		nullptr
 	);
 
 	// Define export statement
@@ -202,12 +207,14 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
-		}
+		},
+		nullptr
 	);
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $L"),
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 			throw CompileError("Missing export block", params[0]->loc);
-		}
+		},
+		nullptr
 	);
 
 	// Load extensions

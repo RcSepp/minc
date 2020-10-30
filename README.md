@@ -48,6 +48,9 @@ pkgScope->defineExpr("$L",
 // Create statement kernel for interpreting the `print(...)` statement
 pkgScope->defineStmt("print($E<string>)",
 	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
+		params[0]->build(parentBlock);
+	},
+	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 		String* const message = (String*)params[0]->codegen(parentBlock).value;
 		std::cout << *message << '\n';
 	}

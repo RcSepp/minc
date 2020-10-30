@@ -24,7 +24,14 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt2(pkgScope, "for ($I: $E<PawsCastMap>) $B",
+	defineStmt6(pkgScope, "for ($I: $E<PawsCastMap>) $B",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			MincIdExpr* castExpr = (MincIdExpr*)params[0];
+			buildExpr(params[1], parentBlock);
+			MincBlockExpr* body = (MincBlockExpr*)params[2];
+			defineSymbol(body, getIdExprName(castExpr), PawsCast::TYPE, nullptr);
+			buildExpr((MincExpr*)body, parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
 			PawsCastMap* casts = (PawsCastMap*)codegenExpr(params[1], parentBlock).value;
@@ -38,7 +45,12 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt2(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
+	defineStmt6(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+			buildExpr(params[2], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			CastMap const casts = ((PawsCastMap*)codegenExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* const scope = casts;

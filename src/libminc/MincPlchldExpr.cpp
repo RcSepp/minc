@@ -130,7 +130,7 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 {
 	if (p1 == 'D')
 		expr->forget(); // Forget kernel for deferred parameters
-	else if (p2 != nullptr && p1 != 'L')
+	else if (p2 != nullptr && p1 != 'L' && p1 != 'I')
 	{
 		MincObject* exprType = expr->getType(block);
 		if (exprType == &ERROR_TYPE)

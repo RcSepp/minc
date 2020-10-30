@@ -3,7 +3,7 @@
 #include "minc_pkgmgr.h"
 
 MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
-	defineStmt2(pkgScope, "stmt $E ... $B",
+	defineStmt6(pkgScope, "stmt $E ... $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const std::vector<MincExpr*>& stmtParamsAST = getListExprExprs((MincListExpr*)params[0]);
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[1];
@@ -17,15 +17,22 @@ MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
 			std::vector<MincSymbol> blockParams;
 			getBlockParameterTypes(parentBlock, stmtParams, blockParams);
 
+			setBlockExprParams(blockAST, blockParams);
 			setBlockExprParent(blockAST, parentBlock);
 			definePawsReturnStmt(blockAST, PawsVoid::TYPE);
 
 			defineStmt3(parentBlock, stmtParamsAST, new PawsKernel(blockAST, getVoid().type, blockParams));
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			// Set stmt block parent (the parent may have changed during function cloning)
+			MincBlockExpr* blockAST = (MincBlockExpr*)params[1];
+			setBlockExprParent(blockAST, parentBlock);
 		}
 	);
 
-	defineStmt2(pkgScope, "$E expr $E $B",
+	defineStmt6(pkgScope, "$E expr $E $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
 			MincObject* exprType = codegenExpr(params[0], parentBlock).value;
 			MincExpr* exprParamAST = params[1];
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
@@ -38,10 +45,16 @@ MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
 			std::vector<MincSymbol> blockParams;
 			getBlockParameterTypes(parentBlock, exprParams, blockParams);
 
+			setBlockExprParams(blockAST, blockParams);
 			setBlockExprParent(blockAST, parentBlock);
 			definePawsReturnStmt(blockAST, exprType);
 
 			defineExpr5(parentBlock, exprParamAST, new PawsKernel(blockAST, exprType, blockParams));
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			// Set stmt block parent (the parent may have changed during function cloning)
+			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
+			setBlockExprParent(blockAST, parentBlock);
 		}
 	);
 });

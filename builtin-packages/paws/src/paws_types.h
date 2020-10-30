@@ -20,6 +20,18 @@ struct PawsBase : MincObject
 	static PawsType* const TYPE;
 };
 
+struct PawsStatic : public PawsBase
+{
+public:
+	static PawsType* const TYPE;
+};
+
+struct PawsDynamic : public PawsBase
+{
+public:
+	static PawsType* const TYPE;
+};
+
 struct PawsType : public PawsBase
 {
 	static PawsMetaType* const TYPE;
@@ -124,11 +136,13 @@ typedef PawsValue<MincException> PawsException;
 typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;
 
 inline PawsType* const PawsBase::TYPE = new PawsValue<PawsBase>::Type();
+inline PawsType* const PawsStatic::TYPE = new PawsValue<PawsStatic>::Type();
+inline PawsType* const PawsDynamic::TYPE = new PawsValue<PawsDynamic>::Type();
 inline PawsMetaType* const PawsType::TYPE = new PawsMetaType(sizeof(PawsMetaType));
 template <typename T> inline PawsType* const PawsValue<T>::TYPE = new PawsValue<T>::Type();
 inline typename PawsVoid::Type* const PawsVoid::TYPE = new PawsVoid::Type();
 
-template<typename T> void registerType(MincBlockExpr* scope, const char* name)
+template<typename T> void registerType(MincBlockExpr* scope, const char* name, bool isStatic=false)
 {
 	const size_t nameLen = strlen(name);
 
@@ -136,10 +150,21 @@ template<typename T> void registerType(MincBlockExpr* scope, const char* name)
 	T::TYPE->name = name;
 	defineSymbol(scope, name, PawsType::TYPE, T::TYPE);
 
-	if (T::TYPE != PawsBase::TYPE)
+	if (T::TYPE == PawsStatic::TYPE || T::TYPE == PawsDynamic::TYPE)
 	{
 		// Let type derive from PawsBase
 		defineOpaqueInheritanceCast(scope, T::TYPE, PawsBase::TYPE);
+	}
+	else if (T::TYPE != PawsBase::TYPE)
+	{
+		if (!isInstance(scope, T::TYPE, PawsBase::TYPE)) // Do not overwrite static-ness when registering derived types
+		{
+			// Let type derive from PawsStatic or PawsDynamic
+			defineOpaqueInheritanceCast(scope, T::TYPE, isStatic ? PawsStatic::TYPE : PawsDynamic::TYPE);
+		}
+
+		if (isStatic)
+			return; // Pointer and MincExpr type hierarchy not supported for static types
 
 		// Register pointer-relationship
 		typedef PawsValue<typename std::add_pointer<typename T::CType>::type> ptrT;
@@ -215,7 +240,12 @@ protected:
 	MincObject* const type;
 	std::vector<MincSymbol> blockParams;
 public:
+	enum Phase { INIT, BUILD, RUN } phase, activePhase;
+	MincBlockExpr *body, *instance, *callerScope;
+
 	PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<MincSymbol>& blockParams);
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
+	void dispose(MincKernel* kernel);
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 };
@@ -226,38 +256,50 @@ void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)());
 template<class P0> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0))
 {
 	using StmtFunc = void (*)(P0);
-	StmtBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs){
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+	};
+	StmtBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		(*(StmtFunc*)stmtArgs)(p0->get());
 	};
-	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
+	defineStmt6(scope, tpltStr, buildBlock, codegenBlock, new StmtFunc(stmtFunc));
 }
 template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1))
 {
 	using StmtFunc = void (*)(P0, P1);
-	StmtBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs){
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		if (params.size() != 2)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+	};
+	StmtBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get());
 	};
-	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
+	defineStmt6(scope, tpltStr, buildBlock, codegenBlock, new StmtFunc(stmtFunc));
 }
 template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1, P2))
 {
 	using StmtFunc = void (*)(P0, P1, P2);
-	StmtBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs){
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		if (params.size() != 3)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+	};
+	StmtBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
 		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get(), p2->get());
 	};
-	defineStmt2(scope, tpltStr, codeBlock, new StmtFunc(stmtFunc));
+	defineStmt6(scope, tpltStr, buildBlock, codegenBlock, new StmtFunc(stmtFunc));
 }
 
 // Templated version of defineExpr2():
@@ -265,9 +307,11 @@ template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, con
 template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)())
 {
 	using ExprFunc = R (*)();
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 		if (params.size() != 0)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)();
@@ -276,14 +320,17 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)()));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0))
 {
 	using ExprFunc = R (*)(P0);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
@@ -293,14 +340,18 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1))
 {
 	using ExprFunc = R (*)(P0, P1);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 2)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
@@ -311,14 +362,19 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2))
 {
 	using ExprFunc = R (*)(P0, P1, P2);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 3)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -330,14 +386,20 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 4)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -350,14 +412,21 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 5)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -371,14 +440,22 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 6)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -393,14 +470,23 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 7)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -416,14 +502,24 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 8)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -440,14 +536,25 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 9)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -465,14 +572,26 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 10)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -491,14 +610,27 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 11)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -518,14 +650,28 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 12)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+		buildExpr(params[11], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -546,14 +692,29 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 13)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+		buildExpr(params[11], parentBlock);
+		buildExpr(params[12], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -575,14 +736,30 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 14)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+		buildExpr(params[11], parentBlock);
+		buildExpr(params[12], parentBlock);
+		buildExpr(params[13], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -605,14 +782,31 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 15)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+		buildExpr(params[11], parentBlock);
+		buildExpr(params[12], parentBlock);
+		buildExpr(params[13], parentBlock);
+		buildExpr(params[14], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -636,14 +830,32 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14, class P15> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15))
 {
 	using ExprFunc = R (*)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 16)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+		buildExpr(params[3], parentBlock);
+		buildExpr(params[4], parentBlock);
+		buildExpr(params[5], parentBlock);
+		buildExpr(params[6], parentBlock);
+		buildExpr(params[7], parentBlock);
+		buildExpr(params[8], parentBlock);
+		buildExpr(params[9], parentBlock);
+		buildExpr(params[10], parentBlock);
+		buildExpr(params[11], parentBlock);
+		buildExpr(params[12], parentBlock);
+		buildExpr(params[13], parentBlock);
+		buildExpr(params[14], parentBlock);
+		buildExpr(params[15], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -668,7 +880,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get())));
 	};
-	defineExpr2(scope, tpltStr, codeBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9(scope, tpltStr, buildBlock, codegenBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 
 // Templated version of defineExpr3():
@@ -678,9 +890,12 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 {
 	using ExprFunc = MincSymbol (*)(P0);
 	using ExprTypeFunc = PawsType* (*)(PawsType*);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
 	};
@@ -688,15 +903,19 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 		PawsType* p0 = getType(params[0], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0);
 	};
-	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10(scope, tpltStr, buildBlock, codegenBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1), PawsType* (*exprTypeFunc)(PawsType*, PawsType*))
 {
 	using ExprFunc = MincSymbol (*)(P0, P1);
 	using ExprTypeFunc = PawsType* (*)(PawsType*, PawsType*);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 2)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
@@ -706,15 +925,20 @@ template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* t
 		PawsType* p1 = getType(params[1], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1);
 	};
-	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10(scope, tpltStr, buildBlock, codegenBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1, P2), PawsType* (*exprTypeFunc)(PawsType*, PawsType*, PawsType*))
 {
 	using ExprFunc = MincSymbol (*)(P0, P1, P2);
 	using ExprTypeFunc = PawsType* (*)(PawsType*, PawsType*, PawsType*);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 		if (params.size() != 3)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+		buildExpr(params[1], parentBlock);
+		buildExpr(params[2], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
  		PawsValue<P1>* p1 = (PawsValue<P1>*)codegenExpr(params[1], parentBlock).value;
  		PawsValue<P2>* p2 = (PawsValue<P2>*)codegenExpr(params[2], parentBlock).value;
@@ -726,7 +950,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		PawsType* p2 = getType(params[2], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1, p2);
 	};
-	defineExpr3(scope, tpltStr, codeBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10(scope, tpltStr, buildBlock, codegenBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
 // Templated version of defineTypeCast2():
@@ -734,9 +958,12 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*exprFunc)(P0))
 {
 	using CastFunc = R (*)(P0);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
@@ -746,7 +973,7 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*exprFu
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
 	};
-	defineTypeCast2(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, codeBlock, new CastFunc(exprFunc));
+	defineTypeCast9(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, codegenBlock, new CastFunc(exprFunc));
 }
 
 // Templated version of defineInheritanceCast2():
@@ -754,9 +981,12 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*exprFu
 template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (*exprFunc)(P0))
 {
 	using CastFunc = R (*)(P0);
-	ExprBlock codeBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
+	StmtBlock buildBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) {
 		if (params.size() != 1)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
+		buildExpr(params[0], parentBlock);
+	};
+	ExprBlock codegenBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
 		PawsValue<P0>* p0 = (PawsValue<P0>*)codegenExpr(params[0], parentBlock).value;
 		if constexpr (std::is_void<R>::value)
 		{
@@ -766,7 +996,7 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 		else
 			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
 	};
-	defineInheritanceCast2(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, codeBlock, new CastFunc(exprFunc));
+	defineInheritanceCast9(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, codegenBlock, new CastFunc(exprFunc));
 }
 
 #endif

@@ -53,7 +53,10 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt2(pkgScope, "print($E<string>)",
+	defineStmt6(pkgScope, "print($E<string>)",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			String* const message = (String*)codegenExpr(params[0], parentBlock).value;
 			std::cout << message->val << " from C!\n";

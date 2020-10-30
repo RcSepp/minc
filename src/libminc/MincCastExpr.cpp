@@ -32,7 +32,11 @@ MincExpr* MincCastExpr::getSourceExpr() const
 MincExpr* MincCastExpr::getDerivedExpr() const
 {
 	MincCast* derivedCast = cast->derive();
-	return derivedCast ? new MincCastExpr(derivedCast, resolvedParams[0]) : resolvedParams[0];
+	MincExpr* expr = resolvedParams[0];
+	return derivedCast ?
+		new MincCastExpr(derivedCast, expr) :
+		(expr->exprtype == MincExpr::ExprType::CAST ? ((MincCastExpr*)expr)->getDerivedExpr() : expr)
+	;
 }
 
 MincExpr* MincCastExpr::clone() const

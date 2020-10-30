@@ -11,6 +11,18 @@ MincBlockExpr* topLevelBlock = nullptr;
 std::map<std::pair<MincScopeType*, MincScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
 std::map<StepEvent, void*> stepEventListeners;
 
+const MincSymbolId MincSymbolId::NONE = { 0, 0, 0 };
+
+bool operator==(const MincSymbolId& left, const MincSymbolId& right)
+{
+	return left.i == right.i && left.p == right.p && left.r == right.r;
+}
+
+bool operator!=(const MincSymbolId& left, const MincSymbolId& right)
+{
+	return left.i != right.i || left.p != right.p || left.r != right.r;
+}
+
 struct StaticStmtKernel : public MincKernel
 {
 private:
@@ -21,6 +33,50 @@ public:
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		cbk(parentBlock, params, stmtArgs);
+		return getVoid();
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return getVoid().type;
+	}
+};
+struct StaticStmtKernel2 : public MincKernel
+{
+private:
+	StmtBlock cbk;
+	void* stmtArgs;
+public:
+	StaticStmtKernel2(StmtBlock cbk, void* stmtArgs = nullptr) : cbk(cbk), stmtArgs(stmtArgs) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		cbk(parentBlock, params, stmtArgs);
+		return this;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		return getVoid();
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return getVoid().type;
+	}
+};
+struct StaticStmtKernel3 : public MincKernel
+{
+private:
+	StmtBlock buildCbk;
+	StmtBlock codegenCbk;
+	void* stmtArgs;
+public:
+	StaticStmtKernel3(StmtBlock buildCbk, StmtBlock codegenCbk, void* stmtArgs = nullptr) : buildCbk(buildCbk), codegenCbk(codegenCbk), stmtArgs(stmtArgs) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		buildCbk(parentBlock, params, stmtArgs);
+		return this;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		codegenCbk(parentBlock, params, stmtArgs);
 		return getVoid();
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -62,12 +118,114 @@ public:
 		return typecbk(parentBlock, params, exprArgs);
 	}
 };
+struct StaticExprKernel3 : public MincKernel
+{
+private:
+	ExprBlock cbk;
+	MincObject* const type;
+	MincObject* value;
+	void* exprArgs;
+public:
+	StaticExprKernel3(ExprBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), value(nullptr), exprArgs(exprArgs) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		value = cbk(parentBlock, params, exprArgs).value;
+		return this;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		return MincSymbol(type, value);
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return type;
+	}
+};
+struct StaticExprKernel4 : public MincKernel
+{
+private:
+	ExprBlock cbk;
+	ExprTypeBlock typecbk;
+	void* exprArgs;
+	MincSymbol symbol;
+public:
+	StaticExprKernel4(ExprBlock cbk, ExprTypeBlock typecbk, void* exprArgs) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
+	StaticExprKernel4(ExprBlock cbk, ExprTypeBlock typecbk, void* exprArgs, MincSymbol symbol) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs), symbol(symbol) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		MincSymbol symbol = cbk(parentBlock, params, exprArgs);
+		return new StaticExprKernel4(cbk, typecbk, exprArgs, symbol);
+	}
+	void dispose(MincKernel* kernel)
+	{
+		delete kernel;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		return symbol;
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return typecbk(parentBlock, params, exprArgs);
+	}
+};
+struct StaticExprKernel5 : public MincKernel
+{
+private:
+	StmtBlock buildCbk;
+	ExprBlock codegenCbk;
+	MincObject* const type;
+	void* exprArgs;
+public:
+	StaticExprKernel5(StmtBlock buildCbk, ExprBlock codegenCbk, MincObject* type, void* exprArgs = nullptr) : buildCbk(buildCbk), codegenCbk(codegenCbk), type(type), exprArgs(exprArgs) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		buildCbk(parentBlock, params, exprArgs);
+		return this;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		return codegenCbk(parentBlock, params, exprArgs);
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return type;
+	}
+};
+struct StaticExprKernel6 : public MincKernel
+{
+private:
+	StmtBlock buildCbk;
+	ExprBlock codegenCbk;
+	ExprTypeBlock typecbk;
+	void* exprArgs;
+public:
+	StaticExprKernel6(StmtBlock buildCbk, ExprBlock codegenCbk, ExprTypeBlock typecbk, void* exprArgs) : buildCbk(buildCbk), codegenCbk(codegenCbk), typecbk(typecbk), exprArgs(exprArgs) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		buildCbk(parentBlock, params, exprArgs);
+		return this;
+	}
+	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		return codegenCbk(parentBlock, params, exprArgs);
+	}
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+	{
+		return typecbk(parentBlock, params, exprArgs);
+	}
+};
 struct OpaqueExprKernel : public MincKernel
 {
 private:
 	MincObject* const type;
 public:
 	OpaqueExprKernel(MincObject* type) : type(type) {}
+	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	{
+		params[0]->build(parentBlock);
+		return this;
+	}
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return MincSymbol(type, params[0]->codegen(parentBlock).value);
@@ -84,14 +242,14 @@ void raiseStepEvent(const MincExpr* loc, StepEventType type)
 		listener.first(loc, type, listener.second);
 }
 
-MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), resolvedStmts(resolvedStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
+MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* builtStmts)
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), builtStmts(builtStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
 	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
 
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), resolvedStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), builtStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
 	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
 }
@@ -99,11 +257,14 @@ MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* ex
 MincBlockExpr::~MincBlockExpr()
 {
 	if (ownesResolvedStmts)
-		delete resolvedStmts;
+		delete builtStmts;
 }
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
 {
+	if (isBuilt())
+		throw CompileError("defining statement after block has been built", loc);
+
 	for (MincExpr* tpltExpr: tplt)
 		tpltExpr->resolve(this);
 	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
@@ -111,6 +272,9 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* s
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
 {
+	if (isBuilt())
+		throw CompileError("defining statement after block has been built", loc);
+
 	struct StmtKernel : public MincKernel
 	{
 		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCtx;
@@ -121,6 +285,28 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
 	defineStmt(tplt, new StmtKernel(codegen));
+}
+
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
+							   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build,
+							   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
+{
+	if (isBuilt())
+		throw CompileError("defining statement after block has been built", loc);
+
+	struct StmtKernel : public MincKernel
+	{
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> buildCtx;
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCtx;
+		StmtKernel(std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build,
+				   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
+			: buildCtx(build), codegenCtx(codegen) {}
+		virtual ~StmtKernel() {}
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (buildCtx != nullptr) buildCtx(parentBlock, params); return this; }
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (codegenCtx != nullptr) codegenCtx(parentBlock, params); return VOID; }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
+	};
+	defineStmt(tplt, new StmtKernel(build, codegen));
 }
 
 void MincBlockExpr::lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
@@ -145,24 +331,39 @@ void MincBlockExpr::iterateStmts(std::function<void(const MincListExpr* tplt, co
 
 void MincBlockExpr::defineDefaultStmt(MincKernel* stmt)
 {
+	if (isBuilt())
+		throw CompileError("defining statement after block has been built", loc);
+
 	defaultStmtKernel = stmt;
 }
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 {
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
 	tplt->resolve(this);
 	stmtreg.defineExpr(tplt, expr);
 
-	// Forget future expressions
-	if (stmtIdx + 1 == resolvedStmts->size()) // If the current statement is the last statement
-											  // This avoids forgetting statements during consecutive iterations of already resolved blocks.
-		// Forget expressions beyond the current statement
-		for (MincExprIter expr = resolvedStmts->back().end; expr != exprs->end() && (*expr)->isResolved(); ++expr)
-			(*expr)->forget();
+	// // Forget future expressions
+	// if (stmtIdx + 1 == builtStmts->size()) // If the current statement is the last statement
+	// 									   // This avoids forgetting statements during consecutive iterations of already resolved blocks.
+	// 	// Forget expressions beyond the current statement
+	// 	for (MincExprIter expr = builtStmts->back().end; expr != exprs->end() && (*expr)->isResolved(); ++expr)
+	// 		(*expr)->forget();
+	//TODO: This doesn't forget future expressions for child blocks of the define target
+	// For example test_mutable_exprs() will fail, because an expression is defined in file scope, while an already resolved expression in
+	// test_mutable_exprs-scope is affected by the redefine.
+	// A possible solution would be to remember the last define in the target block and check if parent blocks had recently been updated
+	// during build.
+	// Until such a solution has been implemented, MincBlockExpr::lookupStmt() forgets future expressions after every resolved statement.
 }
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
 {
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
 	struct ExprKernel : public MincKernel
 	{
 		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
@@ -178,6 +379,9 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBloc
 
 void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 {
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
 	struct ExprKernel : public MincKernel
 	{
 		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
@@ -213,11 +417,17 @@ void MincBlockExpr::iterateExprs(std::function<void(const MincExpr* tplt, const 
 
 void MincBlockExpr::defineDefaultExpr(MincKernel* expr)
 {
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
 	defaultExprKernel = expr;
 }
 
 void MincBlockExpr::defineCast(MincCast* cast)
 {
+	if (isBuilt())
+		throw CompileError("defining cast after block has been built", loc);
+
 	// Skip if one of the following is true
 	// 1. fromType == toType
 	// 2. A cast exists from fromType to toType with a lower or equal cost
@@ -314,59 +524,111 @@ void MincBlockExpr::import(MincBlockExpr* importBlock)
 
 void MincBlockExpr::defineSymbol(std::string name, MincObject* type, MincObject* value)
 {
-	symbolMap[name] = MincSymbol(type, value); // Insert or replace forward mapping
+	if (isBuilt())
+		throw CompileError("defining symbol after block has been built", loc);
+
+	auto inserted = symbolMap.insert(std::make_pair(name, symbols.size())); // Insert forward mapping if not already present
+	if (inserted.second) // If name was already present
+		symbols.push_back(new MincSymbol(type, value)); // Insert symbol
+	else
+	{
+		MincSymbol* symbol = symbols[inserted.first->second];
+		symbol->type = type; // Update symbol type
+		symbol->value = value; // Update symbol value
+	}
 	symbolNameMap[value] = name; // Insert or replace backward mapping
 }
 
 const MincSymbol* MincBlockExpr::lookupSymbol(const std::string& name) const
 {
-	std::map<std::string, MincSymbol>::const_iterator symbolIter;
-	if ((symbolIter = symbolMap.find(name)) != symbolMap.cend())
-		return &symbolIter->second; // Symbol found in local scope
+	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
+	{
+		std::map<std::string, size_t>::const_iterator symbolIter;
+		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
+			return block->symbols[symbolIter->second]; // Symbol found in local scope
 
-	for (const MincBlockExpr* ref: references)
-		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
-			return &symbolIter->second; // Symbol found in ref scope
-
-	const MincSymbol* symbol;
-	if (parent != nullptr && (symbol = parent->lookupSymbol(name)))
-		return symbol; // Symbol found in parent scope
-
+		for (const MincBlockExpr* ref: block->references)
+			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
+				return ref->symbols[symbolIter->second]; // Symbol found in ref scope
+	}
 	return nullptr; // Symbol not found
 }
 
 const std::string* MincBlockExpr::lookupSymbolName(const MincObject* value) const
 {
-	std::map<const MincObject*, std::string>::const_iterator symbolIter;
-	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
-		return &symbolIter->second; // Symbol found in local scope
+	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
+	{
+		std::map<const MincObject*, std::string>::const_iterator symbolIter;
+		if ((symbolIter = block->symbolNameMap.find(value)) != block->symbolNameMap.cend())
+			return &symbolIter->second; // Symbol found in local scope
 
-	for (const MincBlockExpr* ref: references)
-		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
-			return &symbolIter->second; // Symbol found in ref scope
-
-	const std::string* name;
-	if (parent != nullptr && (name = parent->lookupSymbolName(value)))
-		return name; // Symbol found in parent scope
-
+		for (const MincBlockExpr* ref: block->references)
+			if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
+				return &symbolIter->second; // Symbol found in ref scope
+	}
 	return nullptr; // Symbol not found
 }
 
 const std::string& MincBlockExpr::lookupSymbolName(const MincObject* value, const std::string& defaultName) const
 {
-	std::map<const MincObject*, std::string>::const_iterator symbolIter;
-	if ((symbolIter = symbolNameMap.find(value)) != symbolNameMap.cend())
-		return symbolIter->second; // Symbol found in local scope
+	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
+	{
+		std::map<const MincObject*, std::string>::const_iterator symbolIter;
+		if ((symbolIter = block->symbolNameMap.find(value)) != block->symbolNameMap.cend())
+			return symbolIter->second; // Symbol found in local scope
 
-	for (const MincBlockExpr* ref: references)
-		if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
-			return symbolIter->second; // Symbol found in ref scope
-
-	const std::string* name;
-	if (parent != nullptr && (name = parent->lookupSymbolName(value)))
-		return name != nullptr ? *name : defaultName; // Symbol found in parent scope
-
+		for (const MincBlockExpr* ref: block->references)
+			if ((symbolIter = ref->symbolNameMap.find(value)) != ref->symbolNameMap.cend())
+				return symbolIter->second; // Symbol found in ref scope
+	}
 	return defaultName; // Symbol not found
+}
+
+MincSymbolId MincBlockExpr::lookupSymbolId(const std::string& name) const
+{
+	MincSymbolId symbolId = { 0, 0, 0 };
+	const MincBlockExpr* block = this;
+
+	do
+	{
+		std::map<std::string, size_t>::const_iterator symbolIter;
+		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
+		{
+			symbolId.i = symbolIter->second + 1;
+			return symbolId; // Symbol found in local scope
+		}
+
+		for (const MincBlockExpr* ref: block->references)
+		{
+			++symbolId.r;
+			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
+			{
+				symbolId.i = symbolIter->second + 1;
+				return symbolId; // Symbol found in ref scope
+			}
+		}
+		symbolId.r = 0;
+
+		++symbolId.p;
+		block = block->parent;
+	} while (block != nullptr);
+
+	return MincSymbolId::NONE; // Symbol not found
+}
+MincSymbol* MincBlockExpr::getSymbol(MincSymbolId id) const
+{
+	if (id.i == 0)
+		return nullptr;
+
+	const MincBlockExpr* block = this;
+
+	while (id.p-- != 0)
+		block = block->parent;
+
+	if (id.r != 0)
+		block = block->references[id.r - 1];
+
+	return block->symbols[id.i - 1];
 }
 
 size_t MincBlockExpr::countSymbols() const
@@ -376,21 +638,21 @@ size_t MincBlockExpr::countSymbols() const
 
 void MincBlockExpr::iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const
 {
-	for (const std::pair<std::string, MincSymbol>& iter: symbolMap)
-		cbk(iter.first, iter.second);
+	for (const std::pair<std::string, size_t>& iter: symbolMap)
+		cbk(iter.first, *symbols[iter.second]);
 }
 
 MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 {
-	std::map<std::string, MincSymbol>::iterator symbolIter;
+	std::map<std::string, size_t>::iterator symbolIter;
 	if ((symbolIter = symbolMap.find(name)) != symbolMap.end())
-		return &symbolIter->second; // Symbol found in local scope
+		return symbols[symbolIter->second]; // Symbol found in local scope
 
 	MincSymbol* symbol;
 	for (MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.end())
 		{
-			symbol = &symbolIter->second; // Symbol found in ref scope
+			symbol = ref->symbols[symbolIter->second]; // Symbol found in ref scope
 
 			if (ref->scopeType == nullptr || scopeType == nullptr)
 				return symbol; // Scope type undefined for either ref scope or local scope
@@ -405,7 +667,7 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 			if (rule != rules->second.end())
 			{
 				rule->second(*symbol, ref->scopeType, scopeType); // Execute import rule
-				symbolMap[name] = *symbol; // Import symbol into local scope
+				defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 				return symbol; // Symbol and import rule found in ref scope
 			}
 
@@ -415,7 +677,7 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 				{
 					//TODO: Should we cast symbol to rule.first?
 					rule.second(*symbol, ref->scopeType, scopeType); // Execute import rule
-					symbolMap[name] = *symbol; // Import symbol into local scope
+					defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 					return symbol; // Symbol and import rule found in ref scope
 				}
 
@@ -433,7 +695,7 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 		const auto rules = importRules.find(key);
 		if (rules == importRules.end())
 		{
-			symbolMap[name] = *symbol; // Import symbol into local scope
+			defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 			return symbol; // No import rules defined from parent scope to local scope
 		}
 
@@ -442,7 +704,7 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 		if (rule != rules->second.end())
 		{
 			rule->second(*symbol, parent->scopeType, scopeType); // Execute import rule
-			symbolMap[name] = *symbol; // Import symbol into local scope
+			defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 			return symbol; // Symbol and import rule found in parent scope
 		}
 
@@ -452,11 +714,11 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 			{
 				//TODO: Should we cast symbol to rule.first?
 				rule.second(*symbol, parent->scopeType, scopeType); // Execute import rule
-				symbolMap[name] = *symbol; // Import symbol into local scope
+				defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 				return symbol; // Symbol and import rule found in parent scope
 			}
 
-		symbolMap[name] = *symbol; // Import symbol into local scope
+		defineSymbol(name, symbol->type, symbol->value); // Import symbol into local scope
 		return symbol; // No import rules on symbol type defined from parent scope to local scope
 	}
 
@@ -516,9 +778,9 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 
 	try
 	{
-		for (; stmtIdx < resolvedStmts->size(); ++stmtIdx)
+		for (; stmtIdx < builtStmts->size(); ++stmtIdx)
 		{
-			MincStmt& currentStmt = resolvedStmts->at(stmtIdx);
+			MincStmt& currentStmt = builtStmts->at(stmtIdx);
 			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, exprs->end(), currentStmt))
 				throw UndefinedStmtException(&currentStmt);
 			currentStmt.codegen(this);
@@ -529,24 +791,7 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 			resultCache.clear();
 			resultCacheIdx = 0;
 		}
-		stmtIdx = resolvedStmts->size(); // Handle case `stmtIdx > resolvedStmts->size()`
-		for (MincExprIter stmtBeginExpr = resolvedStmts->size() ? resolvedStmts->back().end : exprs->cbegin(); stmtBeginExpr != exprs->cend(); ++stmtIdx)
-		{
-			resolvedStmts->push_back(MincStmt());
-			MincStmt& currentStmt = resolvedStmts->back();
-			if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
-				throw UndefinedStmtException(&currentStmt);
-			currentStmt.codegen(this);
-
-			// Advance beginning of next statement to end of current statement
-			stmtBeginExpr = currentStmt.end;
-
-			// Clear cached expressions
-			// Coroutines exit codegen() without clearing resultCache by throwing an exception
-			// They use the resultCache on reentry to avoid reexecuting expressions
-			resultCache.clear();
-			resultCacheIdx = 0;
-		}
+		stmtIdx = builtStmts->size(); // Handle case `stmtIdx > builtStmts->size()`
 	}
 	catch (...)
 	{
@@ -585,6 +830,47 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 	isBusy = false;
 	isResuming = false;
 	return VOID;
+}
+
+MincKernel* MincBlockExpr::build(MincBlockExpr* parentBlock)
+{
+	//TODO: rename builtStmts to builtStmts
+	if (builtStmts->size() != 0)
+		return builtKernel; // Already built
+
+	parent = parentBlock;
+
+	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
+	if (parentBlock == nullptr)
+	{
+		parent = rootBlock;
+		topLevelBlock = this;
+	}
+
+	MincBlockExpr* oldFileBlock = fileBlock;
+	if (fileBlock == nullptr)
+		fileBlock = this;
+
+	// Resolve and build statements from expressions
+	for (MincExprIter stmtBeginExpr = exprs->cbegin(); stmtBeginExpr != exprs->cend();)
+	{
+		builtStmts->push_back(MincStmt());
+		MincStmt& currentStmt = builtStmts->back();
+		if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
+			throw UndefinedStmtException(&currentStmt);
+		currentStmt.build(this);
+
+		// Advance beginning of next statement to end of current statement
+		stmtBeginExpr = currentStmt.end;
+	}
+
+	if (topLevelBlock == this)
+		topLevelBlock = oldTopLevelBlock;
+
+	if (fileBlock == this)
+		fileBlock = oldFileBlock;
+
+	return builtKernel;
 }
 
 bool MincBlockExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const
@@ -645,12 +931,18 @@ int MincBlockExpr::comp(const MincExpr* other) const
 
 MincExpr* MincBlockExpr::clone() const
 {
-	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs, this->resolvedStmts);
+	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs, this->builtStmts);
 	clone->parent = this->parent;
 	clone->references = this->references;
 	clone->name = this->name;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
+	clone->symbols.reserve(this->symbols.size());
+	for (MincSymbol* symbol: this->symbols)
+		clone->symbols.push_back(new MincSymbol(symbol->type, symbol->value)); // Note: Cloning symbol->value is necessary to copy static
+																			   //		symbols into instance blocks
+	clone->symbolMap.insert(this->symbolMap.begin(), this->symbolMap.end());
+	clone->symbolNameMap.insert(this->symbolNameMap.begin(), this->symbolNameMap.end());
 	return clone;
 }
 
@@ -675,7 +967,7 @@ void MincBlockExpr::clearCache(size_t targetSize)
 
 const MincStmt* MincBlockExpr::getCurrentStmt() const
 {
-	return stmtIdx < resolvedStmts->size() ? &resolvedStmts->at(stmtIdx) : nullptr;
+	return stmtIdx < builtStmts->size() ? &builtStmts->at(stmtIdx) : nullptr;
 }
 
 MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)
@@ -764,6 +1056,16 @@ extern "C"
 		scope->defineStmt(parseCTplt(tpltStr), stmt);
 	}
 
+	void defineStmt5(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, void* stmtArgs)
+	{
+		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel2(buildBlock, stmtArgs));
+	}
+
+	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs)
+	{
+		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel3(buildBlock, codegenBlock, stmtArgs));
+	}
+
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates)
 	{
 		MincListExpr stmtExprs('\0', std::vector<MincExpr*>(stmt->begin, stmt->end));
@@ -790,6 +1092,16 @@ extern "C"
 		scope->defineDefaultStmt(stmt);
 	}
 
+	void defineDefaultStmt5(MincBlockExpr* scope, StmtBlock buildBlock, void* stmtArgs)
+	{
+		scope->defineDefaultStmt(buildBlock == nullptr ? nullptr : new StaticStmtKernel2(buildBlock, stmtArgs));
+	}
+
+	void defineDefaultStmt6(MincBlockExpr* scope, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs)
+	{
+		scope->defineDefaultStmt(buildBlock == nullptr ? nullptr : new StaticStmtKernel3(buildBlock, codegenBlock, stmtArgs));
+	}
+
 	void defineExpr2(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs)
 	{
 		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel(codeBlock, type, exprArgs));
@@ -808,6 +1120,26 @@ extern "C"
 	void defineExpr6(MincBlockExpr* scope, const char* tpltStr, MincKernel* expr)
 	{
 		scope->defineExpr(parseCTplt(tpltStr)[0], expr);
+	}
+
+	void defineExpr7(MincBlockExpr* scope, const char* tpltStr, ExprBlock buildBlock, MincObject* type, void* exprArgs)
+	{
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel3(buildBlock, type, exprArgs));
+	}
+
+	void defineExpr8(MincBlockExpr* scope, const char* tpltStr, ExprBlock buildBlock, ExprTypeBlock typeBlock, void* exprArgs)
+	{
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel4(buildBlock, typeBlock, exprArgs));
+	}
+
+	void defineExpr9(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, MincObject* type, void* exprArgs)
+	{
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel5(buildBlock, codegenBlock, type, exprArgs));
+	}
+
+	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, ExprTypeBlock typeBlock, void* exprArgs)
+	{
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel6(buildBlock, codegenBlock, typeBlock, exprArgs));
 	}
 
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates)
@@ -845,9 +1177,19 @@ extern "C"
 		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
 	}
 
+	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs)
+	{
+		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel5(buildBlock, codegenBlock, toType, castArgs)));
+	}
+
 	void defineInheritanceCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs)
 	{
 		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
+	}
+
+	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel5(buildBlock, codegenBlock, toType, castArgs)));
 	}
 
 	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast)
@@ -928,6 +1270,16 @@ extern "C"
 	const std::string& lookupSymbolName2(const MincBlockExpr* scope, const MincObject* value, const std::string& defaultName)
 	{
 		return scope->lookupSymbolName(value, defaultName);
+	}
+
+	MincSymbolId lookupSymbolId(const MincBlockExpr* scope, const char* name)
+	{
+		return scope->lookupSymbolId(name);
+	}
+
+	MincSymbol* getSymbol(const MincBlockExpr* scope, MincSymbolId id)
+	{
+		return scope->getSymbol(id);
 	}
 
 	size_t countBlockExprSymbols(const MincBlockExpr* expr)

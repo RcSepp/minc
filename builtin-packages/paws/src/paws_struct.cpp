@@ -22,12 +22,18 @@ MincObject* Struct::copy(MincObject* value)
 std::string Struct::toString(MincObject* value) const
 {
 	StructInstance* instance = ((PawsStructInstance*)value)->get();
-	std::string str = name + " { ";
-	for (const std::pair<std::string, MincSymbol>& var: variables)
-		str += var.first + '=' + var.second.type->toString(instance->variables[var.first]) + ", ";
-	str[str.size() - 2] = ' ';
-	str[str.size() - 1] = '}';
-	return str;
+	
+	if (variables.empty())
+		return name + " {}";
+	else
+	{
+		std::string str = name + " { ";
+		for (const std::pair<std::string, MincSymbol>& var: variables)
+			str += var.first + '=' + var.second.type->toString(lookupSymbol(instance->body, var.first.c_str())->value) + ", ";
+		str[str.size() - 2] = ' ';
+		str[str.size() - 1] = '}';
+		return str;
+	}
 }
 
 void Struct::inherit(const Struct* base)
@@ -55,10 +61,19 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	registerType<PawsStructInstance>(pkgScope, "PawsStructInstance");
 
 	// Define struct
-	defineStmt2(pkgScope, "struct $I $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class StructDefinitionKernel : public MincKernel
+	{
+		const MincSymbolId varId;
+		Struct* const strct;
+		PawsType* const structType;
+	public:
+		StructDefinitionKernel() : varId(MincSymbolId::NONE), strct(nullptr), structType(nullptr) {}
+		StructDefinitionKernel(MincSymbolId varId, PawsType* structType, Struct* strct) : varId(varId), strct(strct), structType(structType) {}
+
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
 			const char* structName = getIdExprName((MincIdExpr*)params[0]);
-			MincBlockExpr* block = cloneBlockExpr((MincBlockExpr*)params[1]);
+			MincBlockExpr* block = (MincBlockExpr*)params[1];
 			setBlockExprParent(block, parentBlock); // Overwrite parent, because block parent could be an old, deleted function instance
 			setBlockExprParent((MincBlockExpr*)params[1], parentBlock);
 			//TODO: Think of a safer way to implement this
@@ -68,83 +83,108 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			//		f(); // Struct body is still old instance
 
 			Struct* strct = new Struct();
-			strct->name = structName;
 			defineStruct(parentBlock, structName, strct);
 			setBlockExprUser(block, strct);
 			setBlockExprUserType(block, &STRUCT_ID);
 			strct->body = (MincBlockExpr*)params[1];
 
+			// Define "this" variable in struct scope
+			defineSymbol(strct->body, "this", strct, nullptr); //TODO: Store self id
+
 			// Define member variable definition
-			defineStmt2(block, "$I = $E<PawsBase>",
+			defineStmt5(block, "$I = $E<PawsBase>",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
 					MincExpr *varAST = params[0], *exprAST = params[1];
 					if (ExprIsCast(exprAST))
 						exprAST = getCastExprSource((MincCastExpr*)exprAST);
 
-					PawsType* type = (PawsType*)getType(exprAST, parentBlock);
+					PawsType* type = (PawsType*)::getType(exprAST, parentBlock);
 					strct->variables[getIdExprName((MincIdExpr*)varAST)] = Struct::MincSymbol{type, exprAST};
 					strct->size += type->size;
+
+					// Define member variable in struct scope
+					defineSymbol(strct->body, getIdExprName((MincIdExpr*)varAST), type, nullptr);
 				}
 			);
 
 			// Define method definition
-			defineStmt2(block, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
+			defineStmt5(block, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
+					buildExpr(params[0], parentBlock);
 					PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
-					const char* funcName = getIdExprName((MincIdExpr*)params[1]);
+					const char* name = getIdExprName((MincIdExpr*)params[1]);
 					const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[2]);
 					const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[3]);
 					MincBlockExpr* block = (MincBlockExpr*)params[4];
 
-					// Set function parent to function definition scope
+					// Set method parent to method definition scope
 					setBlockExprParent(block, strct->body);
 
-					// Define return statement in function scope
+					// Define return statement in method scope
 					definePawsReturnStmt(block, returnType);
 
 					PawsRegularFunc* method = new PawsRegularFunc();
-					strct->methods.insert(std::make_pair(funcName, method));
+					strct->methods.insert(std::make_pair(name, method));
 					method->returnType = returnType;
 					method->argTypes.reserve(argTypeExprs.size());
 					for (MincExpr* argTypeExpr: argTypeExprs)
+					{
+						buildExpr(argTypeExpr, parentBlock);
 						method->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
+					}
 					method->argNames.reserve(argNameExprs.size());
 					for (MincExpr* argNameExpr: argNameExprs)
 						method->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
 					method->body = block;
 
-					// Name function block
-					std::string funcFullName(funcName);
-					funcFullName += '(';
+					// Define arguments in method scope
+					method->args.reserve(method->argTypes.size());
+					for (size_t i = 0; i < method->argTypes.size(); ++i)
+					{
+						defineSymbol(block, method->argNames[i].c_str(), method->argTypes[i], nullptr);
+						method->args.push_back(lookupSymbolId(block, method->argNames[i].c_str()));
+					}
+
+					// Name method block
+					std::string signature(name);
+					signature += '(';
 					if (method->argTypes.size())
 					{
-						funcFullName += method->argTypes[0]->name;
+						signature += method->argTypes[0]->name;
 						for (size_t i = 1; i != method->argTypes.size(); ++i)
-							funcFullName += ", " + method->argTypes[i]->name;
+							signature += ", " + method->argTypes[i]->name;
 					}
-					funcFullName += ')';
-					setBlockExprName(block, funcFullName.c_str());
+					signature += ')';
+					setBlockExprName(block, signature.c_str());
+
+					// Define method in struct scope
+					PawsType* methodType = PawsTpltType::get(strct->body, PawsFunction::TYPE, returnType);
+					defineSymbol(strct->body, name, methodType, new PawsFunction(method));
 				}
 			);
 
 			// Define constructor definition
-			defineStmt2(block, "$I($E<PawsType> $I, ...) $B",
+			defineStmt5(block, "$I($E<PawsType> $I, ...) $B",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
-					const char* funcName = getIdExprName((MincIdExpr*)params[0]);
+					const char* name = getIdExprName((MincIdExpr*)params[0]);
 					const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[1]);
-					if (funcName != strct->name)
+					if (name != strct->name)
 					{
 						std::string argTypeStr;
 						if (argTypeExprs.size())
 						{
+							buildExpr(argTypeExprs[0], parentBlock);
 							argTypeStr = lookupSymbolName2(parentBlock, codegenExpr(argTypeExprs[0], parentBlock).value, "UNKNOWN_TYPE");
 							for (size_t i = 1; i != argTypeExprs.size(); ++i)
+							{
+								buildExpr(argTypeExprs[i], parentBlock);
 								argTypeStr += ", " + lookupSymbolName2(parentBlock, codegenExpr(argTypeExprs[i], parentBlock).value, "UNKNOWN_TYPE");
+							}
 						}
-						throw CompileError(parentBlock, getLocation(params[0]), "cannot declare non-constructor method %s(%S) without a return type", funcName, argTypeStr);
+						throw CompileError(parentBlock, getLocation(params[0]), "cannot declare non-constructor method %s(%S) without a return type", name, argTypeStr);
 					}
 					const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[2]);
 					MincBlockExpr* block = (MincBlockExpr*)params[3];
@@ -155,51 +195,99 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					// Define return statement in constructor scope
 					definePawsReturnStmt(block, PawsVoid::TYPE);
 
-					PawsRegularFunc* method = new PawsRegularFunc();
-					strct->constructors.push_back(method);
-					method->returnType = PawsVoid::TYPE;
-					method->argTypes.reserve(argTypeExprs.size());
+					PawsRegularFunc* constructor = new PawsRegularFunc();
+					strct->constructors.push_back(constructor);
+					constructor->returnType = PawsVoid::TYPE;
+					constructor->argTypes.reserve(argTypeExprs.size());
 					for (MincExpr* argTypeExpr: argTypeExprs)
-						method->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
-					method->argNames.reserve(argNameExprs.size());
-					for (MincExpr* argNameExpr: argNameExprs)
-						method->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
-					method->body = block;
-
-					// Name function block
-					std::string funcFullName(funcName);
-					funcFullName += '(';
-					if (method->argTypes.size())
 					{
-						funcFullName += method->argTypes[0]->name;
-						for (size_t i = 1; i != method->argTypes.size(); ++i)
-							funcFullName += ", " + method->argTypes[i]->name;
+						buildExpr(argTypeExpr, parentBlock);
+						constructor->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
 					}
-					funcFullName += ')';
-					setBlockExprName(block, funcFullName.c_str());
+					constructor->argNames.reserve(argNameExprs.size());
+					for (MincExpr* argNameExpr: argNameExprs)
+						constructor->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
+					constructor->body = block;
+
+					// Define arguments in constructor scope
+					constructor->args.reserve(constructor->argTypes.size());
+					for (size_t i = 0; i < constructor->argTypes.size(); ++i)
+					{
+						defineSymbol(block, constructor->argNames[i].c_str(), constructor->argTypes[i], nullptr);
+						constructor->args.push_back(lookupSymbolId(block, constructor->argNames[i].c_str()));
+					}
+
+					// Name constructor block
+					std::string signature(name);
+					signature += '(';
+					if (constructor->argTypes.size())
+					{
+						signature += constructor->argTypes[0]->name;
+						for (size_t i = 1; i != constructor->argTypes.size(); ++i)
+							signature += ", " + constructor->argTypes[i]->name;
+					}
+					signature += ')';
+					setBlockExprName(block, signature.c_str());
 				}
 			);
 
 			// Disallow any other statements in struct body
-			defineDefaultStmt2(block,
+			defineDefaultStmt5(block,
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					raiseCompileError("Invalid command in struct context", (MincExpr*)parentBlock);
 				} // LCOV_EXCL_LINE
 			);
 
-			codegenExpr((MincExpr*)block, parentBlock);
+			// Define struct members (variables, methods and constructors)
+			buildExpr((MincExpr*)block, parentBlock);
 
-			defineDefaultStmt2(block, nullptr);
+			defineDefaultStmt5(block, nullptr);
+
+			// Build constructors
+			for (PawsFunc* constructor: strct->constructors)
+				buildExpr((MincExpr*)((PawsRegularFunc*)constructor)->body, strct->body);
+
+			// Build methods
+			for (const std::pair<std::string, PawsFunc*>& method: strct->methods)
+				buildExpr((MincExpr*)((PawsRegularFunc*)method.second)->body, strct->body);
+
+			return new StructDefinitionKernel(lookupSymbolId(parentBlock, structName), PawsTpltType::get(parentBlock, Struct::TYPE, strct), strct);
 		}
-	);
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			// Set struct parent to struct definition scope (the parent may have changed during function cloning)
+			MincBlockExpr* block = (MincBlockExpr*)params[1];
+			setBlockExprParent(block, parentBlock);
+
+			MincSymbol* varFromId = getSymbol(parentBlock, varId);
+			varFromId->value = strct;
+			varFromId->type = structType;
+			return getVoid();
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	defineStmt4(pkgScope, "struct $I $B", new StructDefinitionKernel());
 
 	// Define struct constructor
-	defineExpr3(pkgScope, "$E<PawsStruct>($E, ...)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			Struct* strct = (Struct*)((PawsTpltType*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
-			StructInstance* instance = new StructInstance();
+	class StructConstructorKernel : public MincKernel
+	{
+		PawsFunc* constructor;
+	public:
+		StructConstructorKernel(PawsFunc* constructor=nullptr) : constructor(constructor) {}
+
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			Struct* strct = (Struct*)((PawsTpltType*)::getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
 			for (const std::pair<const std::string, Struct::MincSymbol>& pair: strct->variables)
-				instance->variables[pair.first] = codegenExpr(pair.second.initExpr, parentBlock).value; //TODO: Replace parentBlock with strct->body->parent
+				buildExpr(pair.second.initExpr, strct->body);
 
 			size_t numArgs = getListExprExprs((MincListExpr*)params[1]).size();
 			for (PawsFunc* constructor: strct->constructors)
@@ -215,7 +303,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				for (size_t i = 0; i < numArgs; ++i)
 				{
 					MincExpr* argExpr = argExprs[i];
-					MincObject *expectedType = constructor->argTypes[i], *gotType = getType(argExpr, parentBlock);
+					MincObject *expectedType = constructor->argTypes[i], *gotType = ::getType(argExpr, parentBlock);
 
 					if (expectedType != gotType)
 					{
@@ -225,22 +313,17 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 							valid = false;
 							break;
 						}
+						buildExpr(castExpr, parentBlock);
 						argExprs[i] = castExpr;
 					}
 				}
-				if (!valid)
-					continue;
-
-				// Call constructor
-				MincSymbol self(strct, nullptr);
-				if (constructor->returnType == PawsVoid::TYPE)
+				if (valid)
 				{
-					self.value = new PawsStructInstance(instance);
-					constructor->call(parentBlock, argExprs, &self);
+					std::vector<MincExpr*>& actualArgExprs = getListExprExprs((MincListExpr*)params[1]);
+					for (size_t i = 0; i < numArgs; ++i)
+						buildExpr(actualArgExprs[i] = argExprs[i], parentBlock);
+					return new StructConstructorKernel(constructor);
 				}
-				else
-					self.value = constructor->call(parentBlock, argExprs).value;
-				return self;
 			}
 			if (numArgs || !strct->constructors.empty())
 			{
@@ -248,35 +331,105 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				if (numArgs)
 				{
 					std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
-					argTypeStr = lookupSymbolName2(parentBlock, getType(argExprs[0], parentBlock), "UNKNOWN_TYPE");
+					argTypeStr = lookupSymbolName2(parentBlock, ::getType(argExprs[0], parentBlock), "UNKNOWN_TYPE");
 					for (size_t i = 1; i != argExprs.size(); ++i)
-						argTypeStr += ", " + lookupSymbolName2(parentBlock, getType(argExprs[i], parentBlock), "UNKNOWN_TYPE");
+						argTypeStr += ", " + lookupSymbolName2(parentBlock, ::getType(argExprs[i], parentBlock), "UNKNOWN_TYPE");
 				}
 				throw CompileError(parentBlock, getLocation(params[0]), "no matching constructor for call %S(%S)", strct->name, argTypeStr);
 			}
 
-			return MincSymbol(strct, new PawsStructInstance(instance));
-		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			assert(ExprIsCast(params[0]));
-			return ((PawsTpltType*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
+			return new StructConstructorKernel(nullptr);
 		}
-	);
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			Struct* strct = (Struct*)((PawsTpltType*)::getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
+			MincSymbol self(strct, nullptr);
+			StructInstance* instance = new StructInstance();
+			if (strct->body != nullptr)
+			{
+				instance->body = cloneBlockExpr(strct->body);
+				for (const std::pair<const std::string, Struct::MincSymbol>& pair: strct->variables)
+				{
+					MincSymbol sym = codegenExpr(pair.second.initExpr, instance->body);
+					assert(sym.type == pair.second.type);
+					defineSymbol(instance->body, pair.first.c_str(), pair.second.type, sym.value);
+				}
+				for (const std::pair<std::string, PawsFunc*>& pair: strct->methods)
+				{
+					// Set method parent to struct instance
+					//TODO: Temporary solution. This overwrites method parents of previous struct instances!
+					const PawsRegularFunc* pawsMethod = dynamic_cast<const PawsRegularFunc*>(pair.second);
+					if (pawsMethod != nullptr)
+						setBlockExprParent(pawsMethod->body, instance->body);
+				}
+			}
+			else
+				instance->body = nullptr;
+
+			if (constructor != nullptr)
+			{
+				// Set constructor parent to struct instance
+				const PawsRegularFunc* pawsConstructor = dynamic_cast<const PawsRegularFunc*>(constructor);
+				if (pawsConstructor != nullptr)
+					setBlockExprParent(pawsConstructor->body, instance->body);
+
+				// Call constructor
+				std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
+				if (constructor->returnType == PawsVoid::TYPE)
+				{
+					self.value = new PawsStructInstance(instance);
+					if (instance->body != nullptr)
+						defineSymbol(instance->body, "this", strct, self.value);
+					constructor->call(parentBlock, argExprs, &self);
+				}
+				else
+				{
+					self.value = constructor->call(parentBlock, argExprs, nullptr).value;
+					if (instance->body != nullptr)
+						defineSymbol(instance->body, "this", strct, self.value);
+				}
+			}
+			else // constructor == nullptr
+			{
+				self.value = new PawsStructInstance(instance);
+				if (instance->body != nullptr)
+					defineSymbol(instance->body, "this", strct, self.value);
+			}
+
+			return self;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			assert(ExprIsCast(params[0]));
+			return ((PawsTpltType*)::getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
+		}
+	};
+	defineExpr6(pkgScope, "$E<PawsStruct>($E, ...)", new StructConstructorKernel());
 
 	// Define struct member getter
-	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	defineExpr10(pkgScope, "$E<PawsStructInstance>.$I",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			if (!ExprIsCast(params[0]))
 				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
-			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
-			Struct* strct = (Struct*)var.type;
-			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
+			buildExpr(params[0], parentBlock);
+			Struct* strct = (Struct*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->variables.find(memberName);
 			if (pair == strct->variables.end())
 				raiseCompileError(("no member named '" + memberName + "' in '" + strct->name + "'").c_str(), params[1]);
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
+			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
+			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
-			return MincSymbol(pair->second.type, instance->variables[memberName]);
+			return *lookupSymbol(instance->body, memberName.c_str());
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
 				return getErrorType();
@@ -289,13 +442,12 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define struct member setter
-	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I = $E<PawsBase>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	defineExpr10(pkgScope, "$E<PawsStructInstance>.$I = $E<PawsBase>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			if (!ExprIsCast(params[0]))
 				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
-			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
-			Struct* strct = (Struct*)var.type;
-			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
+			buildExpr(params[0], parentBlock);
+			Struct* strct = (Struct*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->variables.find(memberName);
@@ -310,11 +462,23 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				MincExpr* castExpr = lookupCast(parentBlock, valueExpr, memberType);
 				if (castExpr == nullptr)
 					throw CompileError(parentBlock, getLocation(valueExpr), "cannot assign value of type <%t> to variable of type <%t>", valueType, memberType);
+				buildExpr(castExpr, parentBlock);
 				valueExpr = castExpr;
 			}
-			MincSymbol sym = codegenExpr(valueExpr, parentBlock);
+			buildExpr(params[2] = valueExpr, parentBlock);
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			const MincSymbol& var = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
+			//Struct* strct = (Struct*)var.type;
+			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
+			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
-			return MincSymbol(pair->second.type, instance->variables[memberName] = ((PawsType*)sym.type)->copy((PawsBase*)sym.value));
+			//auto pair = strct->variables.find(memberName); //TODO: Store variable id during build()
+			MincSymbol val = codegenExpr(params[2], parentBlock);
+			MincSymbol* sym = importSymbol(instance->body, memberName.c_str());
+			assert(val.type == sym->type);
+			sym->value = ((PawsType*)val.type)->copy((PawsBase*)val.value);
+			return *sym;
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
 				return getErrorType();
@@ -327,13 +491,12 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define method call
-	defineExpr3(pkgScope, "$E<PawsStructInstance>.$I($E, ...)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	defineExpr10(pkgScope, "$E<PawsStructInstance>.$I($E, ...)",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			if (!ExprIsCast(params[0]))
 				throw CompileError(parentBlock, getLocation(params[0]), "cannot access member of non-struct type <%T>", params[0]);
-			const MincSymbol& self = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
-			Struct* strct = (Struct*)self.type;
-			StructInstance* instance = ((PawsStructInstance*)self.value)->get();
+			buildExpr(params[0], parentBlock);
+			Struct* strct = (Struct*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
 
 			auto pair = strct->methods.find(methodName);
@@ -358,14 +521,27 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					MincExpr* castExpr = lookupCast(parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
 						throw CompileError(parentBlock, getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
+					buildExpr(castExpr, parentBlock);
 					argExprs[i] = castExpr;
 				}
-			}
 
+				buildExpr(argExprs[i], parentBlock);
+			}
+		},
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			const MincSymbol& self = codegenExpr(getCastExprSource((MincCastExpr*)params[0]), parentBlock);
+			Struct* strct = (Struct*)self.type;
+			StructInstance* instance = ((PawsStructInstance*)self.value)->get();
+			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
+
+			auto pair = strct->methods.find(methodName);
+			const PawsFunc* method = pair->second;
+			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[2]);
+
+			// Set method parent to struct instance
 			const PawsRegularFunc* pawsMethod = dynamic_cast<const PawsRegularFunc*>(method);
 			if (pawsMethod != nullptr)
-				for (const std::pair<const std::string, Struct::MincSymbol>& pair: strct->variables)
-					defineSymbol(pawsMethod->body, pair.first.c_str(), pair.second.type, instance->variables[pair.first]);
+				setBlockExprParent(pawsMethod->body, instance->body);
 
 			// Call method
 			return method->call(parentBlock, argExprs, &self);
@@ -390,7 +566,11 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		);
 
 	// Define integer relations
-	defineExpr2(pkgScope, "$E<PawsStructInstance> == $E<PawsStructInstance>",
+	defineExpr9(pkgScope, "$E<PawsStructInstance> == $E<PawsStructInstance>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsStructInstance*)codegenExpr(params[0], parentBlock).value)->get() ==
@@ -399,7 +579,11 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		},
 		PawsInt::TYPE
 	);
-	defineExpr2(pkgScope, "$E<PawsStructInstance> != $E<PawsStructInstance>",
+	defineExpr9(pkgScope, "$E<PawsStructInstance> != $E<PawsStructInstance>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
 					((PawsStructInstance*)codegenExpr(params[0], parentBlock).value)->get() !=

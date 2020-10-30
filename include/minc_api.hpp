@@ -39,6 +39,9 @@ public:
 	MincKernel* resolvedKernel;
 	std::vector<MincExpr*> resolvedParams;
 
+	// Built state
+	MincKernel* builtKernel;
+
 	MincExpr(const MincLocation& loc, ExprType exprtype);
 	virtual ~MincExpr();
 	virtual MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
@@ -49,6 +52,8 @@ public:
 	inline bool isResolved() { return this->resolvedKernel != nullptr; }
 	virtual void resolve(const MincBlockExpr* block);
 	virtual void forget();
+	inline bool isBuilt() { return this->builtKernel != nullptr; }
+	virtual MincKernel* build(MincBlockExpr* parentBlock);
 	virtual std::string str() const = 0;
 	virtual std::string shortStr() const;
 	virtual int comp(const MincExpr* other) const;
@@ -228,13 +233,14 @@ class MincBlockExpr : public MincExpr
 private:
 	MincStatementRegister stmtreg;
 	MincKernel *defaultStmtKernel, *defaultExprKernel;
-	std::map<std::string, MincSymbol> symbolMap;
+	std::vector<MincSymbol*> symbols;
+	std::map<std::string, size_t> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	MincCastRegister castreg;
-	std::vector<MincStmt>* resolvedStmts;
+	std::vector<MincStmt>* builtStmts;
 	bool ownesResolvedStmts;
 
-	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* resolvedStmts);
+	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* builtStmts);
 
 public:
 	MincBlockExpr* parent;
@@ -256,6 +262,7 @@ public:
 	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen);
 	bool lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
@@ -281,11 +288,14 @@ public:
 	const MincSymbol* lookupSymbol(const std::string& name) const;
 	const std::string* lookupSymbolName(const MincObject* value) const;
 	const std::string& lookupSymbolName(const MincObject* value, const std::string& defaultName) const;
+	MincSymbolId lookupSymbolId(const std::string& name) const;
+	MincSymbol* getSymbol(MincSymbolId id) const;
 	size_t countSymbols() const;
 	void iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
 	MincSymbol* importSymbol(const std::string& name);
 	const std::vector<MincSymbol>* getBlockParams() const;
 	MincSymbol codegen(MincBlockExpr* parentBlock, bool resume=false);
+	MincKernel* build(MincBlockExpr* parentBlock);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	std::string str() const;

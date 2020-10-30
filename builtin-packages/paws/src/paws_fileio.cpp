@@ -10,7 +10,14 @@ typedef PawsValue<std::shared_ptr<std::fstream>> PawsFile;
 MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
 
-	defineStmt2(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
+	defineStmt6(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			const char* varname = getIdExprName((MincIdExpr*)params[0]);
+			buildExpr(params[1], parentBlock);
+			buildExpr(params[2], parentBlock);
+			defineSymbol((MincBlockExpr*)params[3], varname, PawsFile::TYPE, nullptr);
+			buildExpr(params[3], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varname = getIdExprName((MincIdExpr*)params[0]);
 			const std::string& filename = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();

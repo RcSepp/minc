@@ -30,7 +30,7 @@ void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct);
 
 struct StructInstance
 {
-	std::map<std::string, MincObject*> variables;
+	MincBlockExpr* body;
 };
 typedef PawsValue<StructInstance*> PawsStructInstance;
 

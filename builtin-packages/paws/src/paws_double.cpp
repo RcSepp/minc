@@ -11,6 +11,30 @@ template<> std::string PawsDouble::Type::toString(MincObject* value) const
 
 MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
+	struct OperatorKernel : public MincKernel
+	{
+		double (*cbk)(double& value);
+		MincSymbolId varId;
+		OperatorKernel(double (*cbk)(double& value), MincSymbolId varId=MincSymbolId::NONE) : cbk(cbk), varId(varId) {}
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			return new OperatorKernel(cbk, lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)params[0])));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete this;
+		}
+		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(parentBlock, varId);
+			return MincSymbol(PawsDouble::TYPE, new PawsDouble(cbk(((PawsDouble*)var->value)->get())));
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsDouble::TYPE;
+		}
+	};
+
 	// >>> PawsDouble expressions
 
 	// Define double negation
@@ -21,41 +45,31 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define double prefix increment
-	defineExpr2(pkgScope, "++$I<PawsDouble>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			++((PawsDouble*)var->value)->get();
-			return *var;
-		},
-		PawsDouble::TYPE
+	defineExpr6(pkgScope, "++$I<PawsDouble>",
+		new OperatorKernel([](double& value) -> double {
+			return ++value;
+		})
 	);
 
 	// Define double prefix decrement
-	defineExpr2(pkgScope, "--$I<PawsDouble>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			--((PawsDouble*)var->value)->get();
-			return *var;
-		},
-		PawsDouble::TYPE
+	defineExpr6(pkgScope, "--$I<PawsDouble>",
+		new OperatorKernel([](double& value) -> double {
+			return --value;
+		})
 	);
 
 	// Define double postfix increment
-	defineExpr2(pkgScope, "$I<PawsDouble>++",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return MincSymbol(PawsDouble::TYPE, new PawsDouble(((PawsDouble*)var->value)->get()++));
-		},
-		PawsDouble::TYPE
+	defineExpr6(pkgScope, "$I<PawsDouble>++",
+		new OperatorKernel([](double& value) -> double {
+			return value++;
+		})
 	);
 
 	// Define double postfix decrement
-	defineExpr2(pkgScope, "$I<PawsDouble>--",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return MincSymbol(PawsDouble::TYPE, new PawsDouble(((PawsDouble*)var->value)->get()--));
-		},
-		PawsDouble::TYPE
+	defineExpr6(pkgScope, "$I<PawsDouble>--",
+		new OperatorKernel([](double& value) -> double {
+			return value--;
+		})
 	);
 
 	// Define double addition
@@ -82,15 +96,19 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	// Define double division
 	defineExpr(pkgScope, "$E<PawsDouble> / $E<PawsDouble>",
 		+[](double a, double b) -> double {
-			if (b == 0)
+			if (b == 0.0)
 				throw MincException("Divide by zero exception");
 			return a / b;
 		}
 	);
 
 	// Define in-place double addition
-	defineExpr2(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
+	defineExpr9(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
 			val->set(val->get() + ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
@@ -100,8 +118,12 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place double subtraction
-	defineExpr2(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
+	defineExpr9(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
 			val->set(val->get() - ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
@@ -111,8 +133,12 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place double multiplication
-	defineExpr2(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
+	defineExpr9(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
 			val->set(val->get() * ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
@@ -122,8 +148,12 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place double division
-	defineExpr2(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
+	defineExpr9(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
 			val->set(val->get() / ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
@@ -147,10 +177,26 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define double math functions
-	defineExpr(pkgScope, "sqrt($E<PawsDouble>)", +[](double f) -> double { return sqrt(f); } );
-	defineExpr(pkgScope, "sin($E<PawsDouble>)", +[](double f) -> double { return sin(f); } );
-	defineExpr(pkgScope, "cos($E<PawsDouble>)", +[](double f) -> double { return cos(f); } );
-	defineExpr(pkgScope, "tan($E<PawsDouble>)", +[](double f) -> double { return tan(f); } );
+	defineExpr(pkgScope, "sqrt($E<PawsDouble>)",
+		+[](double f) -> double {
+			return sqrt(f);
+		}
+	);
+	defineExpr(pkgScope, "sin($E<PawsDouble>)",
+		+[](double f) -> double {
+			return sin(f);
+		}
+	);
+	defineExpr(pkgScope, "cos($E<PawsDouble>)",
+		+[](double f) -> double {
+			return cos(f);
+		}
+	);
+	defineExpr(pkgScope, "tan($E<PawsDouble>)",
+		+[](double f) -> double {
+			return tan(f);
+		}
+	);
 
 	// Define double relations
 	defineExpr(pkgScope, "$E<PawsDouble> == $E<PawsDouble>",
@@ -185,7 +231,11 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define logical operators
-	defineExpr2(pkgScope, "$E<PawsDouble> && $E<PawsDouble>",
+	defineExpr9(pkgScope, "$E<PawsDouble> && $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
 					((PawsDouble*)codegenExpr(params[0], parentBlock).value)->get() &&
@@ -194,7 +244,11 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		},
 		PawsDouble::TYPE
 	);
-	defineExpr2(pkgScope, "$E<PawsDouble> || $E<PawsDouble>",
+	defineExpr9(pkgScope, "$E<PawsDouble> || $E<PawsDouble>",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
+			buildExpr(params[0], parentBlock);
+			buildExpr(params[1], parentBlock);
+		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
 					((PawsDouble*)codegenExpr(params[0], parentBlock).value)->get() ||

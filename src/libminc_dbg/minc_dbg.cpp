@@ -613,6 +613,7 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 		int result = 0;
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
+			rootBlock->build(nullptr);
 			rootBlock->codegen(nullptr);
 			session->send(dap::TerminatedEvent());
 		} catch (ExitException err) {

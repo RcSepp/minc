@@ -17,6 +17,7 @@ typedef PawsValue<PawsFunc*> PawsFunction;
 struct PawsRegularFunc : public PawsFunc
 {
 	MincBlockExpr* body;
+	mutable std::vector<MincSymbolId> args;
 	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
 
 	PawsRegularFunc() = default;

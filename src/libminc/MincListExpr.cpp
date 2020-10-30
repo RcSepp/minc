@@ -41,9 +41,8 @@ void MincListExpr::collectParams(const MincBlockExpr* block, MincExpr* exprs, st
 
 void MincListExpr::resolve(const MincBlockExpr* block)
 {
-	if (!isResolved())
-		for (auto expr: exprs)
-			expr->resolve(block);
+	for (auto expr: exprs)
+		expr->resolve(block);
 }
 
 void MincListExpr::forget()

@@ -228,6 +228,7 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 				{
 					MincBlockExpr* pkgBlock = parseCFile(pkgPath.c_str());
 					MINC_PACKAGE_MANAGER().import(pkgBlock);
+					buildExpr((MincExpr*)pkgBlock, nullptr);
 					codegenExpr((MincExpr*)pkgBlock, nullptr);
 				} else
 #endif

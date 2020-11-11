@@ -48,8 +48,8 @@
 %left GEQ LEQ GR LE
 %left '+' '-'
 %left '*' '/' '%'
-%right AWT NEW REF PREINC
-%left '.' CALL SUBSCRIPT TPLT DM POSTINC
+%right PREFIX
+%left '.' CALL SUBSCRIPT TPLT DM POSTFIX
 %left SR
 %left ENC
 
@@ -179,23 +179,23 @@ expr
 	| FOR single_expr_list ',' IN expr { $$ = new MincBinOpExpr(getloc(@1, @5), (int)token::FOR, "forin", $2, $5); }
 
 	// Unary operators
-	| '+' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
-	| '-' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
-	| '*' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'*', "*", $2); }
-	| expr '*' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)'*', "*", $1); }
-	| '!' expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'!', "!", $2); }
-	| '&' expr %prec REF { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'&', "&", $2); }
-	| expr ':' { $$ = new MincPostfixExpr(getloc(@1, @2), (int)':', ":", $1); }
-	| AWT expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::AWT, "await", $2); }
-	| NEW expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NEW, "new", $2); }
+	| '+' expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'+', "+", $2); } //TODO: Precedence
+	| '-' expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'-', "-", $2); } //TODO: Precedence
+	| '*' expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'*', "*", $2); }
+	| expr '*' %prec POSTFIX { $$ = new MincPostfixExpr(getloc(@1, @2), (int)'*', "*", $1); }
+	| '!' expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'!', "!", $2); }
+	| '&' expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)'&', "&", $2); }
+	| expr ':' %prec POSTFIX { $$ = new MincPostfixExpr(getloc(@1, @2), (int)':', ":", $1); }
+	| AWT expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::AWT, "await", $2); }
+	| NEW expr %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NEW, "new", $2); }
 	| IF expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::IF, "if", $2); }
 	| FOR expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::FOR, "for", $2); }
 	| WHL expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::WHL, "while", $2); }
 	| NOT expr { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::NOT, "not", $2); }
-	| INC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::INC, "++", $2); }
-	| DEC id_or_plchld %prec PREINC { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::DEC, "--", $2); }
-	| id_or_plchld INC %prec POSTINC { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::INC, "++", $1); }
-	| id_or_plchld DEC %prec POSTINC { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::DEC, "--", $1); }
+	| INC id_or_plchld %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::INC, "++", $2); }
+	| DEC id_or_plchld %prec PREFIX { $$ = new MincPrefixExpr(getloc(@1, @2), (int)token::DEC, "--", $2); }
+	| id_or_plchld INC %prec POSTFIX { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::INC, "++", $1); }
+	| id_or_plchld DEC %prec POSTFIX { $$ = new MincPostfixExpr(getloc(@1, @2), (int)token::DEC, "--", $1); }
 ;
 
 %%

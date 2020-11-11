@@ -1,4 +1,5 @@
 // STD
+#include <chrono>
 #include <cstring>
 #include <string>
 #include <iostream>
@@ -111,7 +112,11 @@ int main(int argc, char** argv)
 	{
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
+			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
 			rootBlock->build(nullptr);
+			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
+			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+			std::cout << "build took " << diff.count() << "ms" << std::endl;
 			rootBlock->codegen(nullptr);
 		} catch (ExitException err) {
 			result = err.code;

@@ -563,11 +563,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	// Define variable (re)assignment
 	class VariableAssignmentKernel : public MincKernel
 	{
-		MincSymbol* const var;
 		const MincSymbolId varId;
 	public:
-		VariableAssignmentKernel() : var(nullptr), varId(MincSymbolId::NONE) {}
-		VariableAssignmentKernel(MincSymbol* var, MincSymbolId varId) : var(var), varId(varId) {}
+		VariableAssignmentKernel() : varId(MincSymbolId::NONE) {}
+		VariableAssignmentKernel(MincSymbolId varId) : varId(varId) {}
 
 		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
@@ -579,14 +578,12 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (ExprIsCast(varExpr))
 				varExpr = getCastExprSource((MincCastExpr*)varExpr);
 			MincSymbolId varId = lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)varExpr));
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr));
-			if (var == nullptr)
+			if (varId == MincSymbolId::NONE)
 			{
 				defineSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr), valType, nullptr);
 				varId = lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)varExpr));
-				var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)varExpr));
 			}
-			return new VariableAssignmentKernel(var, varId);
+			return new VariableAssignmentKernel(varId);
 		}
 		void dispose(MincKernel* kernel)
 		{

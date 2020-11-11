@@ -190,17 +190,20 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		}
 	);
 	// Define function call on non-function expression
-	defineExpr2(pkgScope, "$E($E, ...)",
+	defineExpr7(pkgScope, "$E($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			if (getType(params[0], parentBlock) == getErrorType()) // If params[0] has errors
+			if (getType1(params[0], parentBlock) == getErrorType()) // If params[0] has errors
+			{
+				buildExpr(params[0], parentBlock);
 				codegenExpr(params[0], parentBlock); // Raise expression error instead of non-function expression error
+			}
 			raiseCompileError("expression cannot be used as a function", params[0]);
 			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
 		getErrorType()
 	);
 	// Define function call on non-function identifier
-	defineExpr2(pkgScope, "$I($E, ...)",
+	defineExpr7(pkgScope, "$I($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			const char* name = getIdExprName((MincIdExpr*)params[0]);
 			if (lookupSymbol(parentBlock, name) == nullptr)

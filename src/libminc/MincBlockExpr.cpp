@@ -1041,7 +1041,8 @@ extern "C"
 
 	void defineStmt3(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, MincKernel* stmt)
 	{
-		if (!tplt.empty() && ((tplt.back()->exprtype == MincExpr::ExprType::PLCHLD && ((MincPlchldExpr*)tplt.back())->p1 == 'B')
+		if (!tplt.empty() && (tplt.back()->exprtype == MincExpr::ExprType::STOP
+						   || (tplt.back()->exprtype == MincExpr::ExprType::PLCHLD && ((MincPlchldExpr*)tplt.back())->p1 == 'B')
 						   || (tplt.back()->exprtype == MincExpr::ExprType::LIST && ((MincListExpr*)tplt.back())->size() == 1
 							   && ((MincListExpr*)tplt.back())->at(0)->exprtype == MincExpr::ExprType::PLCHLD && ((MincPlchldExpr*)((MincListExpr*)tplt.back())->at(0))->p1 == 'B')))
 			scope->defineStmt(tplt, stmt);

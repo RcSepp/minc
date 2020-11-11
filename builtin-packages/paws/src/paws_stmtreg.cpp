@@ -60,7 +60,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			PawsValue<const MincListExpr*> key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsValue<const MincListExpr*>::TYPE, &key);
 			defineSymbol(body, getIdExprName(valueExpr), PawsValue<const MincListExpr*>::TYPE, &value);
-			iterateBlockExprStmts(stmts->get(), [&](const MincListExpr* tplt, const MincKernel* stmt) {
+			iterateBlockExprStmts(stmts->get(), [&](const MincListExpr* tplt, MincKernel* stmt) {
 				key.set(tplt);
 				codegenExpr((MincExpr*)body, parentBlock);
 			});
@@ -119,7 +119,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			PawsValue<const MincExpr*> key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsValue<const MincExpr*>::TYPE, &key);
 			defineSymbol(body, getIdExprName(valueExpr), PawsValue<const MincExpr*>::TYPE, &value);
-			iterateBlockExprExprs(exprs->get(), [&](const MincExpr* tplt, const MincKernel* expr) {
+			iterateBlockExprExprs(exprs->get(), [&](const MincExpr* tplt, MincKernel* expr) {
 				key.set(tplt);
 				codegenExpr((MincExpr*)body, parentBlock);
 			});

@@ -395,7 +395,7 @@ size_t MincStatementRegister::countStmts() const
 	return stmtreg.size();
 }
 
-void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const
+void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const
 {
 	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
 		cbk(iter.first, iter.second);
@@ -486,7 +486,7 @@ size_t MincStatementRegister::countExprs() const
 	return numExprs;
 }
 
-void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const
+void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const
 {
 	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
 		for (const std::pair<const MincExpr*, MincKernel*>& iter: exprreg)

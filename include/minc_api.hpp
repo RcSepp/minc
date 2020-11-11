@@ -163,13 +163,13 @@ public:
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	size_t countStmts() const;
-	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
+	void iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const;
 
 	void defineExpr(const MincExpr* tplt, MincKernel* expr);
 	std::pair<const MincExpr*, MincKernel*> lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
-	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
+	void iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const;
 };
 
 struct InheritanceCast : public MincCast
@@ -267,7 +267,7 @@ public:
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
 	size_t countStmts() const;
-	void iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const;
+	void iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const;
 	void defineDefaultStmt(MincKernel* stmt);
 	void defineExpr(MincExpr* tplt, MincKernel* expr);
 	void defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> code, MincObject* type);
@@ -275,7 +275,7 @@ public:
 	bool lookupExpr(MincExpr* expr) const;
 	void lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
-	void iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const;
+	void iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const;
 	void defineDefaultExpr(MincKernel* expr);
 	void defineCast(MincCast* cast);
 	const MincCast* lookupCast(MincObject* fromType, MincObject* toType) const;

@@ -387,7 +387,7 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const MincListExpr* tplt, const MincKernel* stmt) {
+				auto cbk = [&](const MincListExpr* tplt, MincKernel* stmt) {
 					dap::Variable var;
 					var.name = tplt->shortStr();
 					variables.push_back(var);
@@ -417,7 +417,7 @@ public:
 			dap::array<dap::Variable> variables()
 			{
 				dap::array<dap::Variable> variables;
-				auto cbk = [&](const MincExpr* tplt, const MincKernel* expr) {
+				auto cbk = [&](const MincExpr* tplt, MincKernel* expr) {
 					dap::Variable var;
 					var.name = tplt->shortStr();
 					variables.push_back(var);

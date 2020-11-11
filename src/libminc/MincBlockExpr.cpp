@@ -324,7 +324,7 @@ size_t MincBlockExpr::countStmts() const
 	return stmtreg.countStmts();
 }
 
-void MincBlockExpr::iterateStmts(std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk) const
+void MincBlockExpr::iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const
 {
 	stmtreg.iterateStmts(cbk);
 }
@@ -410,7 +410,7 @@ size_t MincBlockExpr::countExprs() const
 	return stmtreg.countExprs();
 }
 
-void MincBlockExpr::iterateExprs(std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk) const
+void MincBlockExpr::iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const
 {
 	stmtreg.iterateExprs(cbk);
 }
@@ -1080,7 +1080,7 @@ extern "C"
 		return expr->countStmts();
 	}
 
-	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk)
+	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk)
 	{
 		return expr->iterateStmts(cbk);
 	}
@@ -1155,7 +1155,7 @@ extern "C"
 		return expr->countExprs();
 	}
 
-	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk)
+	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk)
 	{
 		return expr->iterateExprs(cbk);
 	}

@@ -77,7 +77,7 @@ extern "C"
 	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs=nullptr);
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates);
 	size_t countBlockExprStmts(const MincBlockExpr* expr);
-	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, const MincKernel* stmt)> cbk);
+	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk);
 	void defineDefaultStmt2(MincBlockExpr* scope, StmtBlock codeBlock, void* stmtArgs=nullptr);
 	void defineDefaultStmt3(MincBlockExpr* scope, MincKernel* stmt);
 	void defineDefaultStmt5(MincBlockExpr* scope, StmtBlock buildBlock, void* stmtArgs=nullptr);
@@ -92,7 +92,7 @@ extern "C"
 	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates);
 	size_t countBlockExprExprs(const MincBlockExpr* expr);
-	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, const MincKernel* expr)> cbk);
+	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk);
 	void defineDefaultExpr2(MincBlockExpr* scope, ExprBlock codeBlock, MincObject* type, void* exprArgs=nullptr);
 	void defineDefaultExpr3(MincBlockExpr* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void defineDefaultExpr5(MincBlockExpr* scope, MincKernel* expr);

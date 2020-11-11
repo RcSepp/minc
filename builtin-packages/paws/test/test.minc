@@ -773,6 +773,122 @@ PawsVoid test_paws_extend()
 	}
 	unless (0) assert(1);
 	unless (1) assert(0);
+
+	// Test return from build phase
+	PawsString expr !X
+	{
+	build:
+		return "X";
+	}
+	assert(!X == "X");
+
+	// Tests $L<...> expression
+	PawsInt expr $L<thousand> { return 1000 * $0.value.parseInt(); }
+	assert(6thousand == 6000);
+	PawsString expr $L<reverse>
+	{
+		str = "";
+		for (s: $0.value.substr("reverse".length + 1, $0.value.length - "reverse".length - 2))
+		{
+			str = s + str;
+		}
+		return str;
+	}
+	assert(reverse"spam" == "maps");
+
+
+	// Test identifier expression
+	i = 0;
+	stmt test identifier $I
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsIdExpr);
+		assert($0.name == "id");
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen()) throws PawsException("`id` was not declared in this scope");
+		++i;
+	}
+	test identifier id;
+	stmt test identifier $I
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsIdExpr);
+		assert($0.name == "id");
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen() == NULL);
+		++i;
+	}
+	id = 1;
+	test identifier id;
+	assert(i == 2);
+
+	// Test literal expression
+	i = 0;
+	stmt test literal $L
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsLiteralExpr);
+		assert($0.value == '"foo"');
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen() == NULL);
+		++i;
+	}
+	test literal "foo";
+	stmt test literal $L
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsLiteralExpr);
+		assert($0.value == '1');
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen() == NULL);
+		++i;
+	}
+	test literal 1;
+	assert(i == 2);
+
+	// Test block expression
+	i = 0;
+	stmt test block $B
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsBlockExpr);
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen() == NULL);
+		++i;
+	}
+	test block { ++i; };
+	assert(i == 2);
+
+	// Test statement expression
+	i = 0;
+	stmt test block $S
+	{
+	build:
+		$0.build();
+	run:
+		assert(type($0) == PawsExpr);
+		assert($0.getType() == PawsVoid);
+		assert(type($0.codegen()) == PawsVoid);
+		assert($0.codegen() == NULL);
+		++i;
+	}
+	test block i++;
+	assert(i == 2);
 }
 
 PawsVoid test_mutable_exprs()

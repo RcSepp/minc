@@ -235,15 +235,22 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 
 struct PawsKernel : public MincKernel
 {
+private:
+	PawsKernel(MincBlockExpr* body, MincObject* type);
 protected:
-	MincBlockExpr* const expr;
+	MincBlockExpr* const body;
 	MincObject* const type;
 	std::vector<MincSymbol> blockParams;
 public:
 	enum Phase { INIT, BUILD, RUN } phase, activePhase;
-	MincBlockExpr *body, *instance, *callerScope;
+	MincBlockExpr *instance, *callerScope;
 
-	PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<MincSymbol>& blockParams);
+private:
+	bool hasBuildResult;
+	MincSymbol buildResult;
+
+public:
+	PawsKernel(MincBlockExpr* body, MincObject* type, const std::vector<MincSymbol>& blockParams);
 	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
 	void dispose(MincKernel* kernel);
 	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);

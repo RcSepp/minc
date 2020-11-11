@@ -10,7 +10,7 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
-static struct {} KERNEL_INSTANCE_ID;
+static struct {} PAWS_KERNEL_ID;
 
 MincScopeType* FILE_SCOPE_TYPE = new MincScopeType();
 MincBlockExpr* pawsScope = nullptr;
@@ -26,7 +26,7 @@ inline PawsType* const PawsStaticBlockExpr::TYPE = new PawsBlockExpr::Type();
 
 PawsKernel* getKernelFromUserData(const MincBlockExpr* scope)
 {
-	while (getBlockExprUserType(scope) != &KERNEL_INSTANCE_ID)
+	while (getBlockExprUserType(scope) != &PAWS_KERNEL_ID)
 		scope = getBlockExprParent(scope);
 	assert(scope != nullptr);
 	return (PawsKernel*)getBlockExprUser(scope);
@@ -184,10 +184,22 @@ void getBlockParameterTypes(MincBlockExpr* scope, const std::vector<MincExpr*> p
 	}
 }
 
-PawsKernel::PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<MincSymbol>& blockParams)
-	: expr(expr), type(type), blockParams(blockParams), phase(Phase::INIT), activePhase(Phase::INIT), instance(nullptr), callerScope(nullptr)
+PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type)
+	: body(body), type(type), phase(Phase::INIT), activePhase(Phase::INIT)
 {
-	defineStmt6(expr, "build:",
+}
+
+PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type, const std::vector<MincSymbol>& blockParams)
+	: body(cloneBlockExpr(body)), type(type), blockParams(blockParams), phase(Phase::INIT), activePhase(Phase::INIT), instance(nullptr), callerScope(nullptr)
+{
+	// Create kernel definition scope
+	// All statements within the kernel body are conditionally executed in run or build phase
+	MincBlockExpr* kernelDefScope = this->body;
+	setBlockExprUser(kernelDefScope, this); // Store kernel in kernel definition block user data
+	setBlockExprUserType(kernelDefScope, &PAWS_KERNEL_ID);
+
+	// Define build phase selector statement
+	defineStmt6(kernelDefScope, "build:",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			PawsKernel* kernel = getKernelFromUserData(parentBlock);
 			if (kernel->phase != PawsKernel::Phase::INIT)
@@ -199,7 +211,9 @@ PawsKernel::PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<
 			kernel->phase = PawsKernel::Phase::BUILD;
 		}
 	);
-	defineStmt6(expr, "run:",
+
+	// Define run phase selector statement
+	defineStmt6(kernelDefScope, "run:",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			PawsKernel* kernel = getKernelFromUserData(parentBlock);
 			if (kernel->phase == PawsKernel::Phase::RUN)
@@ -212,7 +226,8 @@ PawsKernel::PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<
 		}
 	);
 
-	defineDefaultStmt6(expr,
+	// Conditionally execute other statements
+	defineDefaultStmt6(kernelDefScope,
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			PawsKernel* kernel = getKernelFromUserData(parentBlock);
 			if (kernel->phase == PawsKernel::Phase::INIT) // If no phase was defined at beginning of Paws kernel, ...
@@ -230,24 +245,20 @@ PawsKernel::PawsKernel(MincBlockExpr* expr, MincObject* type, const std::vector<
 		}
 	);
 
-	setBlockExprUser(expr, this); // Store kernel in block instance user data
-	setBlockExprUserType(expr, &KERNEL_INSTANCE_ID);
-
-	buildExpr((MincExpr*)expr, getBlockExprParent(expr));
+	buildExpr((MincExpr*)kernelDefScope, body);
 }
 
 MincKernel* PawsKernel::build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
-	MincBlockExpr* instance = cloneBlockExpr(expr);
+	MincBlockExpr* instance = cloneBlockExpr(body);
 
-	PawsKernel* instanceKernel = new PawsKernel(expr, type, blockParams);
+	PawsKernel* instanceKernel = new PawsKernel(body, type);
 	instanceKernel->activePhase = Phase::BUILD; // Execute build phase statements when running instance
-	instanceKernel->body = expr;
 	instanceKernel->instance = instance;
 	instanceKernel->callerScope = parentBlock;
 
 	setBlockExprUser(instance, instanceKernel); // Store kernel instance in block instance user data
-	setBlockExprUserType(instance, &KERNEL_INSTANCE_ID);
+	setBlockExprUserType(instance, &PAWS_KERNEL_ID);
 
 	// Set block parameters
 	for (size_t i = 0; i < params.size(); ++i)
@@ -259,12 +270,15 @@ MincKernel* PawsKernel::build(MincBlockExpr* parentBlock, std::vector<MincExpr*>
 	// Execute expression code block
 	try
 	{
-		codegenExpr((MincExpr*)instance, getBlockExprParent(expr));
+		codegenExpr((MincExpr*)instance, getBlockExprParent(body));
 	}
 	catch (ReturnException err)
 	{
-		//TODO: Handle return from build sub-block
+		instanceKernel->buildResult = err.result;
+		instanceKernel->hasBuildResult = true;
+		return instanceKernel;
 	}
+	instanceKernel->hasBuildResult = false;
 
 	return instanceKernel;
 }
@@ -276,7 +290,10 @@ void PawsKernel::dispose(MincKernel* kernel)
 
 MincSymbol PawsKernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
-	activePhase = Phase::RUN; // Execute build phase statements when running instance
+	if (hasBuildResult)
+		return buildResult;
+
+	activePhase = Phase::RUN; // Execute run phase statements when running instance
 	callerScope = parentBlock;
 
 	// Execute expression code block

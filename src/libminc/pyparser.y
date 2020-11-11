@@ -296,9 +296,18 @@ extern "C"
 		if (parser.parse())
 			throw CompileError("error parsing template " + std::string(tpltStr));
 
-		// Remove trailing STOP expr
-		if (tpltBlock->exprs->size())
-			tpltBlock->exprs->pop_back();
+		// Append trailing STOP expr to empty template
+		if (tpltBlock->exprs->empty())
+			tpltBlock->exprs->push_back(new MincStopExpr(MincLocation{nullptr, 1, 1, 1, 1}));
+
+		// Remove appended STOP expr if last expr is `$B`
+		else if (tpltBlock->exprs->size() >= 2)
+		{
+			assert(tpltBlock->exprs->back()->exprtype == MincExpr::ExprType::STOP);
+			const MincPlchldExpr* lastExpr = (const MincPlchldExpr*)tpltBlock->exprs->at(tpltBlock->exprs->size() - 2);
+			if (lastExpr->exprtype == MincExpr::ExprType::PLCHLD && lastExpr->p1 == 'B')
+				tpltBlock->exprs->pop_back();
+		}
 
 		return *tpltBlock->exprs;
 	}

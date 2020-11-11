@@ -72,27 +72,29 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 
 		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
+			// Create struct
 			const char* structName = getIdExprName((MincIdExpr*)params[0]);
-			MincBlockExpr* block = (MincBlockExpr*)params[1];
-			setBlockExprParent(block, parentBlock); // Overwrite parent, because block parent could be an old, deleted function instance
+			Struct* strct = new Struct();
+			defineStruct(parentBlock, structName, strct);
+			strct->body = (MincBlockExpr*)params[1];
 			setBlockExprParent((MincBlockExpr*)params[1], parentBlock);
+
+			// Create struct definition scope
+			MincBlockExpr* structDefScope = cloneBlockExpr((MincBlockExpr*)params[1]);
+			setBlockExprParent(structDefScope, parentBlock);
 			//TODO: Think of a safer way to implement this
 			//		Failure scenario:
 			//		PawsVoid f() { struct s {}; s(); }
 			//		f(); // Struct body is created in this instance
 			//		f(); // Struct body is still old instance
-
-			Struct* strct = new Struct();
-			defineStruct(parentBlock, structName, strct);
-			setBlockExprUser(block, strct);
-			setBlockExprUserType(block, &STRUCT_ID);
-			strct->body = (MincBlockExpr*)params[1];
+			setBlockExprUser(structDefScope, strct);
+			setBlockExprUserType(structDefScope, &STRUCT_ID);
 
 			// Define "this" variable in struct scope
 			defineSymbol(strct->body, "this", strct, nullptr); //TODO: Store self id
 
 			// Define member variable definition
-			defineStmt5(block, "$I = $E<PawsBase>",
+			defineStmt5(structDefScope, "$I = $E<PawsBase>",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
 					MincExpr *varAST = params[0], *exprAST = params[1];
@@ -109,7 +111,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			);
 
 			// Define method definition
-			defineStmt5(block, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
+			defineStmt5(structDefScope, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
 					buildExpr(params[0], parentBlock);
@@ -166,7 +168,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			);
 
 			// Define constructor definition
-			defineStmt5(block, "$I($E<PawsType> $I, ...) $B",
+			defineStmt5(structDefScope, "$I($E<PawsType> $I, ...) $B",
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					Struct* strct = getStruct(parentBlock);
 					const char* name = getIdExprName((MincIdExpr*)params[0]);
@@ -232,16 +234,14 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			);
 
 			// Disallow any other statements in struct body
-			defineDefaultStmt5(block,
+			defineDefaultStmt5(structDefScope,
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					raiseCompileError("Invalid command in struct context", (MincExpr*)parentBlock);
 				} // LCOV_EXCL_LINE
 			);
 
 			// Define struct members (variables, methods and constructors)
-			buildExpr((MincExpr*)block, parentBlock);
-
-			defineDefaultStmt5(block, nullptr);
+			buildExpr((MincExpr*)structDefScope, parentBlock);
 
 			// Build constructors
 			for (PawsFunc* constructor: strct->constructors)

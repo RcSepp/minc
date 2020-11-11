@@ -492,8 +492,16 @@ PawsVoid test_paws_struct()
 		a = 1;
 		PawsInt b(PawsInt a, PawsInt b) { return a - b; }
 		c = "foo";
-		PawsInt d() { {} return this.a; } // `{}` tests non struct specific statements within a method
-		PawsInt e() { return a; }
+		PawsInt d()
+		{
+			{} // Test non struct specific statements within a method
+			return this.a;
+		}
+		PawsInt e()
+		{
+			x = 3; // Make sure struct definition statements aren't inherited into method scope
+			return a;
+		}
 		S f(S a) {return a; }
 		g = x + a;
 		PawsInt h() { return e() + this.d(); }

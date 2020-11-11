@@ -744,6 +744,8 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 		throw CompileError("block expression can't be it's own parent", this->loc);
 	if (isBusy)
 		throw CompileError("block expression already executing. Use MincBlockExpr::clone() when executing blocks recursively", this->loc);
+	if (builtStmts->size() == 0 && exprs->size() != 0)
+		throw CompileError(parentBlock, loc, "expression not built: %e", this);
 	isBusy = true;
 	isResuming = isBlockSuspended && (resume || parentBlock->isResuming);
 

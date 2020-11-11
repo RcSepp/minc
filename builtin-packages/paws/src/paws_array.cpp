@@ -72,7 +72,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 				return MincSymbol(PawsArrayType::get(PawsVoid::TYPE), arr);
 			arr->get().reserve(values.size());
 			for (MincExpr* value: values)
-				arr->get().push_back(codegenExpr(value, parentBlock).value);
+				arr->get().push_back(runExpr(value, parentBlock).value);
 			return MincSymbol(PawsArrayType::get((PawsType*)getType(getDerivedExpr(values[0]), parentBlock)), arr);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
@@ -95,10 +95,10 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
+			MincSymbol arrVar = runExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsArrayType*)arrVar.type)->valueType;
-			size_t idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
+			size_t idx = ((PawsInt*)runExpr(params[1], parentBlock).value)->get();
 			if (idx >= arr->get().size())
 				throw CompileError(parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
 			return MincSymbol(valueType, arr->get()[idx]);
@@ -133,14 +133,14 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[2] = valueExpr, parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol arrVar = codegenExpr(getDerivedExpr(params[0]), parentBlock);
+			MincSymbol arrVar = runExpr(getDerivedExpr(params[0]), parentBlock);
 			PawsArray* arr = (PawsArray*)arrVar.value;
 			PawsType* valueType = ((PawsArrayType*)arrVar.type)->valueType;
-			size_t idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
+			size_t idx = ((PawsInt*)runExpr(params[1], parentBlock).value)->get();
 			if (idx >= arr->get().size())
 				throw CompileError(parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
 
-			MincSymbol sym = codegenExpr(params[2], parentBlock);
+			MincSymbol sym = runExpr(params[2], parentBlock);
 			MincObject* value = ((PawsType*)sym.type)->copy((PawsBase*)sym.value);
 			arr->get()[idx] = value;
 
@@ -157,7 +157,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			return MincSymbol(PawsType::TYPE, PawsArrayType::get(returnType));
 		},
 		PawsType::TYPE

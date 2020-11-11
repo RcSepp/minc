@@ -595,7 +595,7 @@ if (parser.parse())
 MINC_PACKAGE_MANAGER().import(rootBlock2); // Import package manager
 auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 	try {
-		codegenExpr((MincExpr*)rootBlock2, nullptr);
+		runExpr((MincExpr*)rootBlock2, nullptr);
 		debugger->session->send(dap::TerminatedEvent());
 	} catch (ExitException err) {
 		debugger->session->send(dap::TerminatedEvent());
@@ -614,7 +614,7 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			rootBlock->build(nullptr);
-			rootBlock->codegen(nullptr);
+			rootBlock->run(nullptr);
 			session->send(dap::TerminatedEvent());
 		} catch (ExitException err) {
 			result = err.code;

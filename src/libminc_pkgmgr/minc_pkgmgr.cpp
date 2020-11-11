@@ -15,7 +15,7 @@ const char			MincPackage::PKG_PATH_SEPARATOR = '.';
 void defaultDefineFunc(MincBlockExpr* pkgScope)
 {
 	pkgScope->build(pkgScope->parent);
-	pkgScope->codegen(pkgScope->parent);
+	pkgScope->run(pkgScope->parent);
 }
 
 MincPackage::MincPackage(const char* name, MincPkgFunc defineFunc, MincBlockExpr* defineBlock)

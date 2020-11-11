@@ -8,7 +8,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			int test = ((PawsInt*)codegenExpr(params[0], parentBlock).value)->get();
+			int test = ((PawsInt*)runExpr(params[0], parentBlock).value)->get();
 			if (!test)
 				throw CompileError(parentBlock, getLocation(params[0]), "Assertion failed: %e", params[0]);
 		}
@@ -30,7 +30,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 			MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 			{
 				buildExpr(params[1], parentBlock);
-				const MincException& expected = ((PawsException*)codegenExpr(params[1], parentBlock).value)->get();
+				const MincException& expected = ((PawsException*)runExpr(params[1], parentBlock).value)->get();
 				const std::string expectedStr = expected.what() == nullptr ? std::string() : '"' + std::string(expected.what()) + '"';
 				try
 				{
@@ -55,16 +55,16 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 				delete kernel;
 			}
 
-			MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+			MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 			{
 				if (thrownDuringBuild)
 					return getVoid();
 
-				const MincException& expected = ((PawsException*)codegenExpr(params[1], parentBlock).value)->get();
+				const MincException& expected = ((PawsException*)runExpr(params[1], parentBlock).value)->get();
 				const std::string expectedStr = expected.what() == nullptr ? std::string() : '"' + std::string(expected.what()) + '"';
 				try
 				{
-					codegenExpr(params[0], parentBlock);
+					runExpr(params[0], parentBlock);
 				}
 				catch (const MincException& got)
 				{

@@ -33,7 +33,7 @@ MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
 	defineStmt6(pkgScope, "$E expr $E $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
-			MincObject* exprType = codegenExpr(params[0], parentBlock).value;
+			MincObject* exprType = runExpr(params[0], parentBlock).value;
 			MincExpr* exprParamAST = params[1];
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
 

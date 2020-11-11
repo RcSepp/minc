@@ -18,7 +18,7 @@ MincStmt::~MincStmt()
 {
 }
 
-MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
+MincSymbol MincStmt::run(MincBlockExpr* parentBlock, bool resume)
 {
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
@@ -39,7 +39,7 @@ MincSymbol MincStmt::codegen(MincBlockExpr* parentBlock, bool resume)
 	try
 	{
 		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
-		builtKernel->codegen(parentBlock, resolvedParams);
+		builtKernel->run(parentBlock, resolvedParams);
 	}
 	catch (...)
 	{
@@ -152,9 +152,9 @@ extern "C"
 		return expr->exprtype == MincExpr::ExprType::STMT;
 	}
 
-	void codegenStmt(MincStmt* stmt, MincBlockExpr* scope)
+	void runStmt(MincStmt* stmt, MincBlockExpr* scope)
 	{
-		stmt->codegen(scope);
+		stmt->run(scope);
 	}
 
 	void evalCStmt(const char* code, MincBlockExpr* scope)
@@ -163,12 +163,12 @@ extern "C"
 		MincStmt currentStmt;
 		if (!scope->lookupStmt(exprs.begin(), exprs.end(), currentStmt))
 			throw UndefinedStmtException(&currentStmt);
-		currentStmt.codegen(scope);
+		currentStmt.run(scope);
 	}
 
 	void evalPythonStmt(const char* code, MincBlockExpr* scope)
 	{
 		std::vector<MincExpr*> exprs = ::parsePythonTplt(code);
-		MincBlockExpr(MincLocation{"", 0, 0, 0, 0}, &exprs).codegen(scope);
+		MincBlockExpr(MincLocation{"", 0, 0, 0, 0}, &exprs).run(scope);
 	}
 }

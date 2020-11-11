@@ -13,7 +13,7 @@ export "helloworld-paws"
 	build:
 		$0.build();
 	run:
-		print($0.codegen().s + " from Paws!");
+		print($0.run().s + " from Paws!");
 	}
 
 	string expr $L

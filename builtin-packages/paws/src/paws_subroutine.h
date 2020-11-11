@@ -99,7 +99,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 		{
 			call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+				PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
 				return p->get();
 			});
 			return MincSymbol(PawsValue<R>::TYPE, nullptr);
@@ -110,7 +110,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+						PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
 						return p->get();
 					})
 				)
@@ -142,7 +142,7 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 		{
 			call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+				PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
 				return p->get();
 			});
 			return MincSymbol(PawsValue<R>::TYPE, nullptr);
@@ -153,7 +153,7 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 				new PawsValue<R>(
 					call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsValue<P>* p = (PawsValue<P>*)codegenExpr(args[i], callerScope).value;
+						PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
 						return p->get();
 					})
 				)

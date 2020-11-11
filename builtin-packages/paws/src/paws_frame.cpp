@@ -385,14 +385,14 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 	// Define arguments in frame instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
 	{
-		MincSymbol argSym = codegenExpr(argExprs[i], callerScope);
+		MincSymbol argSym = runExpr(argExprs[i], callerScope);
 		defineSymbol(instance, frame->argNames[i].c_str(), frame->argTypes[i], ((PawsType*)argSym.type)->copy((PawsBase*)argSym.value));
 	}
 
 	// Initialize and define frame variables in frame instance
 	for (const std::pair<const std::string, Frame::MincSymbol>& pair: frame->variables)
 	{
-		MincObject* const value = codegenExpr(pair.second.initExpr, frame->body).value;
+		MincObject* const value = runExpr(pair.second.initExpr, frame->body).value;
 		defineSymbol(instance, pair.first.c_str(), pair.second.type, value);
 		variables[pair.first] = value;
 	}
@@ -476,7 +476,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 	defineConstantFunction(pkgScope, "sleep", Awaitable::get(PawsVoid::TYPE), { PawsDouble::TYPE }, { "duration" },
 		[](MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, void* funcArgs) -> MincSymbol
 		{
-			double duration = ((PawsDouble*)codegenExpr(args[0], callerScope).value)->get();
+			double duration = ((PawsDouble*)runExpr(args[0], callerScope).value)->get();
 			SingleshotAwaitableInstance* sleepInstance = new SingleshotAwaitableInstance();
 			((EventPool*)funcArgs)->post(std::bind(&SingleshotAwaitableInstance::wakeup, sleepInstance, MincSymbol(PawsVoid::TYPE, nullptr)), duration);
 			return MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(sleepInstance));
@@ -486,11 +486,11 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 	// Define event definition
 	defineExpr3(pkgScope, "event<$E<PawsType>>()",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			return MincSymbol(Event::get(returnType), new PawsEventInstance(new EventInstance(returnType, (EventPool*)exprArgs)));
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			buildExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)); //TODO: Remove const_cast
-			PawsType* returnType = (PawsType*)codegenExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)).value; //TODO: Remove const_cast
+			PawsType* returnType = (PawsType*)runExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)).value; //TODO: Remove const_cast
 			//TODO	How can returnType be retrieved in a constant context?
 			return Event::get(returnType);
 		}, eventPool
@@ -500,17 +500,17 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			return MincSymbol(PawsType::TYPE, Event::get(returnType));
 		},
 		PawsType::TYPE
 	);
 	// defineExpr3(pkgScope, "$E<PawsEvent>()", //TODO: Replace "event<$E<PawsType>>()" with this. Right now frames_2.minc fails with this.
 	// 	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-	// 		Event* type = (Event*)codegenExpr(params[0], parentBlock).value;
+	// 		Event* type = (Event*)runExpr(params[0], parentBlock).value;
 	// 		return MincSymbol(type, new PawsEventInstance(new EventInstance(type->msgType, (EventPool*)exprArgs)));
 	// 	}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-	// 		return codegenExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)).value; //TODO: Remove const_cast
+	// 		return runExpr(const_cast<MincExpr*>(params[0]), const_cast<MincBlockExpr*>(parentBlock)).value; //TODO: Remove const_cast
 	// 		//TODO	How can returnType be retrieved in a constant context?
 	// 	}, eventPool
 	// );
@@ -528,7 +528,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[0], parentBlock);
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			const char* frameName = getIdExprName((MincIdExpr*)params[1]);
 			const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[2]);
 			const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[3]);
@@ -543,7 +543,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			for (MincExpr* argTypeExpr: argTypeExprs)
 			{
 				buildExpr(argTypeExpr, parentBlock);
-				frame->argTypes.push_back((PawsType*)codegenExpr(argTypeExpr, parentBlock).value);
+				frame->argTypes.push_back((PawsType*)runExpr(argTypeExpr, parentBlock).value);
 			}
 			frame->argNames.reserve(argNameExprs.size());
 			for (MincExpr* argNameExpr: argNameExprs)
@@ -606,7 +606,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				},
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 					// Run current statement
-					codegenExpr(params[0], parentBlock);
+					runExpr(params[0], parentBlock);
 				}
 			);
 
@@ -616,7 +616,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					buildExpr(params[0] = getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 				},
 				[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-					AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(params[0], parentBlock).value)->get();
+					AwaitableInstance* blocker = ((PawsAwaitableInstance*)runExpr(params[0], parentBlock).value)->get();
 					MincSymbol blockerResult;
 					MincBlockExpr* instance = parentBlock;
 					while (getBlockExprUserType(instance) != &FRAME_INSTANCE_ID)
@@ -662,7 +662,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			delete kernel;
 		}
 
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			// Set frame parent to frame definition scope (the parent may have changed during frame cloning)
 			MincBlockExpr* block = (MincBlockExpr*)params[4];
@@ -684,7 +684,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 	defineExpr10(pkgScope, "$E<PawsFrame>($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
-			Frame* frame = (Frame*)codegenExpr(params[0], parentBlock).value;
+			Frame* frame = (Frame*)runExpr(params[0], parentBlock).value;
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
 
 			// Check number of arguments
@@ -708,7 +708,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			}
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			Frame* frame = (Frame*)codegenExpr(params[0], parentBlock).value;
+			Frame* frame = (Frame*)runExpr(params[0], parentBlock).value;
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
 
 			// Call frame
@@ -736,7 +736,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				raiseCompileError(("no member named '" + memberName + "' in '" + strct->name + "'").c_str(), params[1]);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const MincSymbol& var = codegenExpr(params[0], parentBlock);
+			const MincSymbol& var = runExpr(params[0], parentBlock);
 			Frame* strct = (Frame*)var.type;
 			FrameInstance* instance = ((PawsFrameInstance*)var.value)->get();
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
@@ -762,8 +762,8 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			buildExpr(params[1] = getCastExprSource((MincCastExpr*)params[1]), parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			AwaitableInstance* a = ((PawsAwaitableInstance*)codegenExpr(params[0], parentBlock).value)->get();
-			AwaitableInstance* b = ((PawsAwaitableInstance*)codegenExpr(params[1], parentBlock).value)->get();
+			AwaitableInstance* a = ((PawsAwaitableInstance*)runExpr(params[0], parentBlock).value)->get();
+			AwaitableInstance* b = ((PawsAwaitableInstance*)runExpr(params[1], parentBlock).value)->get();
 			return MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new AnyAwaitableInstance(a, b)));
 		}, Awaitable::get(PawsVoid::TYPE)
 	);
@@ -773,8 +773,8 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			buildExpr(params[1] = getCastExprSource((MincCastExpr*)params[1]), parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			AwaitableInstance* a = ((PawsAwaitableInstance*)codegenExpr(params[0], parentBlock).value)->get();
-			AwaitableInstance* b = ((PawsAwaitableInstance*)codegenExpr(params[1], parentBlock).value)->get();
+			AwaitableInstance* a = ((PawsAwaitableInstance*)runExpr(params[0], parentBlock).value)->get();
+			AwaitableInstance* b = ((PawsAwaitableInstance*)runExpr(params[1], parentBlock).value)->get();
 			return MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new AllAwaitableInstance(a, b)));
 		}, Awaitable::get(PawsVoid::TYPE)
 	);
@@ -785,7 +785,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			buildExpr(params[0] = getCastExprSource((MincCastExpr*)params[0]), parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			AwaitableInstance* blocker = ((PawsAwaitableInstance*)codegenExpr(params[0], parentBlock).value)->get();
+			AwaitableInstance* blocker = ((PawsAwaitableInstance*)runExpr(params[0], parentBlock).value)->get();
 			EventPool* eventPool = (EventPool*)exprArgs;
 			MincSymbol result = MincSymbol(PawsVoid::TYPE, nullptr);
 
@@ -841,13 +841,13 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			buildExpr(params[1] = argExpr, parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol eventVar = codegenExpr(params[0], parentBlock);
+			MincSymbol eventVar = runExpr(params[0], parentBlock);
 			EventInstance* const event = ((PawsEventInstance*)eventVar.value)->get();
 			MincExpr* argExpr = params[1];
 
 			// Invoke event
 			SingleshotAwaitableInstance* invokeInstance = new SingleshotAwaitableInstance();
-			((EventPool*)exprArgs)->post(std::bind(&EventInstance::invoke, event, invokeInstance, codegenExpr(argExpr, parentBlock).value), 0.0f);
+			((EventPool*)exprArgs)->post(std::bind(&EventInstance::invoke, event, invokeInstance, runExpr(argExpr, parentBlock).value), 0.0f);
 
 			return MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(invokeInstance));
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {

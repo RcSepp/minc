@@ -118,7 +118,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				buildExpr(params[0], parentBlock);
 			},
 			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-				throw ReturnException(codegenExpr(params[0], parentBlock));
+				throw ReturnException(runExpr(params[0], parentBlock));
 			}
 		);
 
@@ -241,7 +241,7 @@ PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type, const std::vector<
 				kernel->phase = PawsKernel::Phase::RUN;
 
 			if (kernel->phase == kernel->activePhase)
-				codegenExpr(params[0], parentBlock);
+				runExpr(params[0], parentBlock);
 		}
 	);
 
@@ -270,7 +270,7 @@ MincKernel* PawsKernel::build(MincBlockExpr* parentBlock, std::vector<MincExpr*>
 	// Execute expression code block
 	try
 	{
-		codegenExpr((MincExpr*)instance, getBlockExprParent(body));
+		runExpr((MincExpr*)instance, getBlockExprParent(body));
 	}
 	catch (ReturnException err)
 	{
@@ -288,7 +288,7 @@ void PawsKernel::dispose(MincKernel* kernel)
 	delete kernel;
 }
 
-MincSymbol PawsKernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+MincSymbol PawsKernel::run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
 	if (hasBuildResult)
 		return buildResult;
@@ -299,7 +299,7 @@ MincSymbol PawsKernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*
 	// Execute expression code block
 	try
 	{
-		codegenExpr((MincExpr*)instance, getBlockExprParent(body));
+		runExpr((MincExpr*)instance, getBlockExprParent(body));
 	}
 	catch (ReturnException err)
 	{
@@ -419,7 +419,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			codegenExpr(params[0], parentBlock);
+			runExpr(params[0], parentBlock);
 		}
 	);
 
@@ -429,7 +429,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			codegenExpr(params[0], parentBlock);
+			runExpr(params[0], parentBlock);
 		}
 	);
 
@@ -439,7 +439,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return codegenExpr(params[0], parentBlock);
+			return runExpr(params[0], parentBlock);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			return getType(params[0], parentBlock);
@@ -474,7 +474,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			MincSymbol* varFromId = getSymbol(parentBlock, varId);
 			if (varFromId == nullptr)
@@ -540,7 +540,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			return var;
 		}
@@ -587,9 +587,9 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
-			MincSymbol value = codegenExpr(params[1], parentBlock);
+			MincSymbol value = runExpr(params[1], parentBlock);
 			MincSymbol* varFromId = getSymbol(parentBlock, varId);
 			varFromId->value = ((PawsType*)value.type)->copy((PawsBase*)value.value);
 			varFromId->type = value.type;
@@ -608,7 +608,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			params[1] = getDerivedExpr(params[1]);
 			buildExpr(params[1], parentBlock);
-			MincSymbol value = codegenExpr(params[1], parentBlock);
+			MincSymbol value = runExpr(params[1], parentBlock);
 
 			MincExpr* varExpr = params[0];
 			if (ExprIsCast(varExpr))
@@ -632,7 +632,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	defineExpr8(pkgScope, "$I<PawsErrorType> = $E<PawsStatic>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			buildExpr(params[1], parentBlock);
-			MincSymbol value = codegenExpr(getDerivedExpr(params[1]), parentBlock);
+			MincSymbol value = runExpr(getDerivedExpr(params[1]), parentBlock);
 
 			defineSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]), value.type, ((PawsType*)value.type)->copy((PawsBase*)value.value));
 			return value;
@@ -648,7 +648,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value == nullptr));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value == nullptr));
 		},
 		PawsInt::TYPE
 	);
@@ -657,7 +657,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value != nullptr));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value != nullptr));
 		},
 		PawsInt::TYPE
 	);
@@ -669,7 +669,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value == codegenExpr(params[1], parentBlock).value));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value == runExpr(params[1], parentBlock).value));
 		},
 		PawsInt::TYPE
 	);
@@ -679,7 +679,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(codegenExpr(params[0], parentBlock).value != codegenExpr(params[1], parentBlock).value));
+			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value != runExpr(params[1], parentBlock).value));
 		},
 		PawsInt::TYPE
 	);
@@ -714,9 +714,9 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
+			PawsInt* condition = (PawsInt*)runExpr(params[0], parentBlock).value;
 			if (condition->get())
-				codegenExpr(params[1], parentBlock);
+				runExpr(params[1], parentBlock);
 		}
 	);
 
@@ -728,11 +728,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[2], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			PawsInt* condition = (PawsInt*)codegenExpr(params[0], parentBlock).value;
+			PawsInt* condition = (PawsInt*)runExpr(params[0], parentBlock).value;
 			if (condition->get())
-				codegenExpr(params[1], parentBlock);
+				runExpr(params[1], parentBlock);
 			else
-				codegenExpr(params[2], parentBlock);
+				runExpr(params[2], parentBlock);
 		}
 	);
 
@@ -749,7 +749,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (ta != tb)
 				throw CompileError(parentBlock, getLocation(params[0]), "operands to ?: have different types <%T> and <%T>", params[1], params[2]);
 
-			return codegenExpr(params[((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
+			return runExpr(params[((PawsInt*)runExpr(params[0], parentBlock).value)->get() ? 1 : 2], parentBlock);
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			MincObject* ta = getType(params[1], parentBlock);
@@ -766,9 +766,9 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			size_t cs = getBlockExprCacheState(parentBlock);
-			while (((PawsInt*)codegenExpr(params[0], parentBlock).value)->get())
+			while (((PawsInt*)runExpr(params[0], parentBlock).value)->get())
 			{
-				codegenExpr(params[1], parentBlock);
+				runExpr(params[1], parentBlock);
 				resetBlockExprCache(parentBlock, cs); // Reset result cache to the state before the while loop to avoid rerunning
 													  // previous loop iterations when resuming a coroutine within the loop block
 			}
@@ -814,16 +814,16 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			// Inherent global scope into loop block scope
 			setBlockExprParent(forBlock, parentBlock);
 
-			// Codegen init expression in loop block scope
-			codegenExpr(params[0], forBlock);
+			// Run init expression in loop block scope
+			runExpr(params[0], forBlock);
 
-			while (((PawsInt*)codegenExpr(params[1], forBlock).value)->get()) // Codegen condition expression in loop block scope
+			while (((PawsInt*)runExpr(params[1], forBlock).value)->get()) // Run condition expression in loop block scope
 			{
-				// Codegen loop block in parent scope
-				codegenExpr((MincExpr*)forBlock, parentBlock);
+				// Run loop block in parent scope
+				runExpr((MincExpr*)forBlock, parentBlock);
 
-				// Codegen update expression in loop block scope
-				codegenExpr(params[2], forBlock);
+				// Run update expression in loop block scope
+				runExpr(params[2], forBlock);
 			}
 		}
 	);
@@ -833,7 +833,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol symbol = codegenExpr(getDerivedExpr(params[0]), parentBlock);
+			MincSymbol symbol = runExpr(getDerivedExpr(params[0]), parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
 			if (symbol.value == getErrorType())
@@ -858,7 +858,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0] = getDerivedExpr(params[0]), parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol symbol = codegenExpr(params[0], parentBlock);
+			MincSymbol symbol = runExpr(params[0], parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
 			if (symbol.value == getErrorType())
@@ -889,7 +889,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	);
 	defineExpr2(pkgScope, "printerr($E<PawsType>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol symbol = codegenExpr(getDerivedExpr(params[0]), parentBlock);
+			MincSymbol symbol = runExpr(getDerivedExpr(params[0]), parentBlock);
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
 			if (symbol.type == PawsString::TYPE)
@@ -916,7 +916,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			bool isInst = isInstance(parentBlock, codegenExpr(params[0], parentBlock).value, codegenExpr(params[1], parentBlock).value);
+			bool isInst = isInstance(parentBlock, runExpr(params[0], parentBlock).value, runExpr(params[1], parentBlock).value);
 			return MincSymbol(PawsInt::TYPE, new PawsInt(isInst != 0));
 		},
 		PawsInt::TYPE
@@ -965,7 +965,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsExpr::TYPE, returnType));
 		},
 		PawsType::TYPE
@@ -975,7 +975,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)codegenExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
 			return MincSymbol(PawsType::TYPE, PawsTpltType::get(parentBlock, PawsValue<const MincExpr*>::TYPE, returnType));
 		},
 		PawsType::TYPE
@@ -1031,8 +1031,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
-			MincBlockExpr* scope = ((PawsBlockExpr*)codegenExpr(params[1], parentBlock).value)->get();
+			MincExpr* expr = ((PawsExpr*)runExpr(params[0], parentBlock).value)->get();
+			MincBlockExpr* scope = ((PawsBlockExpr*)runExpr(params[1], parentBlock).value)->get();
 			return MincSymbol(PawsType::TYPE, getType(expr, scope));
 		},
 		PawsType::TYPE
@@ -1049,7 +1049,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 				return MincSymbol(PawsType::TYPE, PawsVoid::TYPE);
 
-			const MincExpr* expr = ((PawsValue<const MincExpr*>*)codegenExpr(params[0], parentBlock).value)->get();
+			const MincExpr* expr = ((PawsValue<const MincExpr*>*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = getBlockExprParent(parentBlock);
 			return MincSymbol(PawsType::TYPE, getType(expr, scope));
 		},
@@ -1062,7 +1062,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
+			MincExpr* expr = ((PawsExpr*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = getKernelFromUserData(parentBlock)->callerScope;
 			buildExpr(expr, scope);
 			return MincSymbol(PawsVoid::TYPE, nullptr);
@@ -1070,16 +1070,16 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		PawsVoid::TYPE
 	);
 
-	// Define codegen()
-	defineExpr10(pkgScope, "$E<PawsExpr>.codegen($E<PawsBlockExpr>)",
+	// Define run()
+	defineExpr10(pkgScope, "$E<PawsExpr>.run($E<PawsBlockExpr>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
-			MincBlockExpr* scope = ((PawsBlockExpr*)codegenExpr(params[1], parentBlock).value)->get();
-			MincSymbol sym = codegenExpr(expr, scope);
+			MincExpr* expr = ((PawsExpr*)runExpr(params[0], parentBlock).value)->get();
+			MincBlockExpr* scope = ((PawsBlockExpr*)runExpr(params[1], parentBlock).value)->get();
+			MincSymbol sym = runExpr(expr, scope);
 
 			MincExpr* param = params[0];
 			while (ExprIsCast(param))
@@ -1100,14 +1100,14 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			return ((PawsTpltType*)paramType)->tpltType;
 		}
 	);
-	defineExpr10(pkgScope, "$E<PawsExpr>.codegen()",
+	defineExpr10(pkgScope, "$E<PawsExpr>.run()",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincExpr* expr = ((PawsExpr*)codegenExpr(params[0], parentBlock).value)->get();
+			MincExpr* expr = ((PawsExpr*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* scope = getKernelFromUserData(parentBlock)->callerScope;
-			MincSymbol sym = codegenExpr(expr, scope);
+			MincSymbol sym = runExpr(expr, scope);
 
 			MincExpr* param = params[0];
 			while (ExprIsCast(param))
@@ -1128,14 +1128,14 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			return ((PawsTpltType*)paramType)->tpltType;
 		}
 	);
-	defineExpr(pkgScope, "$E<PawsBlockExpr>.codegen($E<PawsBlockExpr>)",
+	defineExpr(pkgScope, "$E<PawsBlockExpr>.run($E<PawsBlockExpr>)",
 		+[](MincExpr* expr, MincBlockExpr* scope) -> void {
-			codegenExpr(expr, scope);
+			runExpr(expr, scope);
 		}
 	);
-	defineExpr(pkgScope, "$E<PawsBlockExpr>.codegen(NULL)",
+	defineExpr(pkgScope, "$E<PawsBlockExpr>.run(NULL)",
 		+[](MincBlockExpr* pkgScope) -> void {
-			codegenExpr((MincExpr*)pkgScope, nullptr);
+			runExpr((MincExpr*)pkgScope, nullptr);
 		}
 	);
 
@@ -1179,7 +1179,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
-			MincSymbol exprsVar = codegenExpr(params[1], parentBlock);
+			MincSymbol exprsVar = runExpr(params[1], parentBlock);
 			const std::vector<MincBlockExpr*>& exprs = ((PawsConstBlockExprList*)exprsVar.value)->get();
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsBlockExpr iter;
@@ -1187,7 +1187,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			for (MincBlockExpr* expr: exprs)
 			{
 				iter.set(expr);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			}
 		}
 	);
@@ -1210,9 +1210,9 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol exprsVar = codegenExpr(params[0], parentBlock);
+			MincSymbol exprsVar = runExpr(params[0], parentBlock);
 			MincListExpr* exprs = ((PawsListExpr*)exprsVar.value)->get();
-			int idx = ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get();
+			int idx = ((PawsInt*)runExpr(params[1], parentBlock).value)->get();
 			return MincSymbol(((PawsTpltType*)exprsVar.type)->tpltType, new PawsExpr(getListExprExprs(exprs)[idx]));
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
@@ -1232,7 +1232,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			assert(ExprIsCast(params[1]));
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
-			MincSymbol exprsVar = codegenExpr(params[1], parentBlock);
+			MincSymbol exprsVar = runExpr(params[1], parentBlock);
 			MincListExpr* exprs = ((PawsListExpr*)exprsVar.value)->get();
 			PawsType* exprType = ((PawsTpltType*)exprsVar.type)->tpltType;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
@@ -1241,7 +1241,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			for (MincExpr* expr: getListExprExprs(exprs))
 			{
 				iter.set(expr);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			}
 		}
 	);
@@ -1257,7 +1257,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const std::string& path = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
+			const std::string& path = ((PawsString*)runExpr(params[0], parentBlock).value)->get();
 			char* realPath = realpath(path.c_str(), nullptr);
 			if (realPath == nullptr)
 				raiseCompileError((path + ": No such file or directory").c_str(), params[0]);
@@ -1273,7 +1273,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincBlockExpr* block = ((PawsBlockExpr*)codegenExpr(params[0], parentBlock).value)->get();
+			MincBlockExpr* block = ((PawsBlockExpr*)runExpr(params[0], parentBlock).value)->get();
 			MincPackageManager* pkgMgr = (MincPackageManager*)exprArgs;
 			std::vector<MincExpr*>& pkgPath = getListExprExprs((MincListExpr*)params[1]);
 			std::string pkgName = getIdExprName((MincIdExpr*)pkgPath[0]);
@@ -1293,7 +1293,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[0] = getDerivedExpr(params[0]), parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			MincSymbol value = codegenExpr(params[0], parentBlock);
+			MincSymbol value = runExpr(params[0], parentBlock);
 			MincObject* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)value.value)->get());
 			return MincSymbol(((PawsType*)value.type)->ptrType, ptr);
 		},

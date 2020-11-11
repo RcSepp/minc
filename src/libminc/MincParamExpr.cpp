@@ -9,7 +9,7 @@ MincParamExpr::Kernel::Kernel(MincParamExpr* expr)
 {
 }
 
-MincSymbol MincParamExpr::Kernel::codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+MincSymbol MincParamExpr::Kernel::run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 {
 	const std::vector<MincSymbol>* blockParams = parentBlock->getBlockParams();
 	if (blockParams == nullptr)

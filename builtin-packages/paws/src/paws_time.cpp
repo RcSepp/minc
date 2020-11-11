@@ -114,12 +114,12 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			const std::string& taskName = ((PawsString*)codegenExpr(params[0], parentBlock).value)->get();
+			const std::string& taskName = ((PawsString*)runExpr(params[0], parentBlock).value)->get();
 			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			codegenExpr(stmt, parentBlock);
+			runExpr(stmt, parentBlock);
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Print measured runtime
@@ -141,7 +141,7 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			codegenExpr(stmt, parentBlock);
+			runExpr(stmt, parentBlock);
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Store measured runtime as `varName`

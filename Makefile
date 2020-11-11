@@ -127,7 +127,3 @@ ${TMP_DIR}%.o: ${TMP_DIR}%.cc
 ${TMP_DIR}%.o: ${SRC_DIR}%.cpp
 	-mkdir -p `dirname $@`
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
-
-${TMP_DIR}libminc/codegen.o: ${SRC_DIR}libminc/codegen.cpp ${TMP_DIR}libminc/cparser.cc ${TMP_DIR}libminc/pyparser.cc
-	-mkdir -p `dirname $@`
-	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<

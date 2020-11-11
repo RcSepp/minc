@@ -49,7 +49,7 @@ struct IndirectCast : public MincCast, public MincKernel
 		params[0] = new MincCastExpr(first, params[0]);
 		return second->kernel->build(parentBlock, params);
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		assert(0);
 		return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE

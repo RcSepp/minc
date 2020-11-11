@@ -28,7 +28,7 @@ extern "C"
 
 	// >>> MincExpr
 
-	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope);
+	MincSymbol runExpr(MincExpr* expr, MincBlockExpr* scope);
 	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope);
 	MincObject* getType1(const MincExpr* expr, const MincBlockExpr* scope);
 	MincObject* getType2(MincExpr* expr, MincBlockExpr* scope);
@@ -60,7 +60,7 @@ extern "C"
 	// >>> MincStmt
 
 	bool ExprIsStmt(const MincExpr* expr);
-	void codegenStmt(MincStmt* stmt, MincBlockExpr* scope);
+	void runStmt(MincStmt* stmt, MincBlockExpr* scope);
 	void evalCStmt(const char* code, MincBlockExpr* scope);
 	void evalPythonStmt(const char* code, MincBlockExpr* scope);
 
@@ -74,22 +74,22 @@ extern "C"
 	void defineStmt3(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, MincKernel* stmt);
 	void defineStmt4(MincBlockExpr* scope, const char* tpltStr, MincKernel* stmt);
 	void defineStmt5(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, void* stmtArgs=nullptr);
-	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs=nullptr);
+	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock runBlock, void* stmtArgs=nullptr);
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates);
 	size_t countBlockExprStmts(const MincBlockExpr* expr);
 	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk);
 	void defineDefaultStmt2(MincBlockExpr* scope, StmtBlock codeBlock, void* stmtArgs=nullptr);
 	void defineDefaultStmt3(MincBlockExpr* scope, MincKernel* stmt);
 	void defineDefaultStmt5(MincBlockExpr* scope, StmtBlock buildBlock, void* stmtArgs=nullptr);
-	void defineDefaultStmt6(MincBlockExpr* scope, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs=nullptr);
+	void defineDefaultStmt6(MincBlockExpr* scope, StmtBlock buildBlock, StmtBlock runBlock, void* stmtArgs=nullptr);
 	void defineExpr2(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs=nullptr);
 	void defineExpr3(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void defineExpr5(MincBlockExpr* scope, MincExpr* tplt, MincKernel* expr);
 	void defineExpr6(MincBlockExpr* scope, const char* tpltStr, MincKernel* expr);
 	void defineExpr7(MincBlockExpr* scope, const char* tpltStr, ExprBlock buildBlock, MincObject* type, void* exprArgs=nullptr);
 	void defineExpr8(MincBlockExpr* scope, const char* tpltStr, ExprBlock buildBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
-	void defineExpr9(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, MincObject* type, void* exprArgs=nullptr);
-	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
+	void defineExpr9(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock runBlock, MincObject* type, void* exprArgs=nullptr);
+	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock runBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates);
 	size_t countBlockExprExprs(const MincBlockExpr* expr);
 	void iterateBlockExprExprs(const MincBlockExpr* expr, std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk);
@@ -97,9 +97,9 @@ extern "C"
 	void defineDefaultExpr3(MincBlockExpr* scope, ExprBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void defineDefaultExpr5(MincBlockExpr* scope, MincKernel* expr);
 	void defineTypeCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs=nullptr);
-	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs=nullptr);
+	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock runBlock, void* castArgs=nullptr);
 	void defineInheritanceCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs=nullptr);
-	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs=nullptr);
+	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock runBlock, void* castArgs=nullptr);
 	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast);
 	void defineInheritanceCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast);
 	void defineOpaqueTypeCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType);

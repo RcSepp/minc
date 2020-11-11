@@ -2,7 +2,7 @@
 #include "minc_api.h"
 #include "minc_api.hpp"
 
-//#define CHECK_CODEGEN_TYPES
+//#define CHECK_RUN_RESULT_TYPES
 
 MincObject ERROR_TYPE;
 
@@ -16,7 +16,7 @@ MincExpr::~MincExpr()
 {
 }
 
-MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
+MincSymbol MincExpr::run(MincBlockExpr* parentBlock, bool resume)
 {
 	// Handle expression caching for coroutines
 	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
@@ -41,7 +41,7 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 	try
 	{
 		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
-		var = builtKernel->codegen(parentBlock, resolvedParams);
+		var = builtKernel->run(parentBlock, resolvedParams);
 	}
 	catch (...)
 	{
@@ -54,7 +54,7 @@ MincSymbol MincExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 	}
 	parentBlock->isExprSuspended = false;
 
-#ifdef CHECK_CODEGEN_TYPES
+#ifdef CHECK_RUN_RESULT_TYPES
 	const MincObject *expectedType, *gotType = var.type;
 	try //TODO: Make getType() noexcept
 	{
@@ -124,12 +124,12 @@ MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
 	if (type != &ERROR_TYPE)
 		return type;
 
-	// If type == &ERROR_TYPE, run codegen() to throw underlying exception
+	// If type == &ERROR_TYPE, call run() to throw underlying exception
 	if (builtKernel == nullptr)
 		builtKernel = resolvedKernel->build(parentBlock, resolvedParams);
 	try
 	{
-		builtKernel->codegen(parentBlock, resolvedParams);
+		builtKernel->run(parentBlock, resolvedParams);
 	}
 	catch(...)
 	{
@@ -186,14 +186,14 @@ bool operator<(const MincExpr& left, const MincExpr& right)
 
 extern "C"
 {
-	MincSymbol codegenExpr(MincExpr* expr, MincBlockExpr* scope)
+	MincSymbol runExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
-		return expr->codegen(scope, false);
+		return expr->run(scope, false);
 	}
 
 	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
-		return expr->codegen(scope, true);
+		return expr->run(scope, true);
 	}
 
 	MincObject* getType1(const MincExpr* expr, const MincBlockExpr* scope)
@@ -292,13 +292,13 @@ extern "C"
 	{
 		MincExpr* expr = MincBlockExpr::parseCTplt(code)[0];
 		expr->resolve(scope);
-		return expr->codegen(scope);
+		return expr->run(scope);
 	}
 
 	MincSymbol evalPythonExpr(const char* code, MincBlockExpr* scope)
 	{
 		MincExpr* expr = MincBlockExpr::parsePythonTplt(code)[0];
 		expr->resolve(scope);
-		return expr->codegen(scope);
+		return expr->run(scope);
 	}
 }

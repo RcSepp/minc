@@ -55,14 +55,14 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
-			PawsStmtMap* stmts = (PawsStmtMap*)codegenExpr(params[2], parentBlock).value;
+			PawsStmtMap* stmts = (PawsStmtMap*)runExpr(params[2], parentBlock).value;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsValue<const MincListExpr*> key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsValue<const MincListExpr*>::TYPE, &key);
 			defineSymbol(body, getIdExprName(valueExpr), PawsValue<const MincListExpr*>::TYPE, &value);
 			iterateBlockExprStmts(stmts->get(), [&](const MincListExpr* tplt, MincKernel* stmt) {
 				key.set(tplt);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			});
 		}
 	);
@@ -70,7 +70,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 	defineStmt6(pkgScope, "$E<PawsStmtMap>[$E ...] = $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
-			StmtMap const stmts = ((PawsStmtMap*)codegenExpr(params[0], parentBlock).value)->get();
+			StmtMap const stmts = ((PawsStmtMap*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* const scope = stmts;
 			const std::vector<MincExpr*>& stmtParamsAST = getListExprExprs((MincListExpr*)params[1]);
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
@@ -114,25 +114,25 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
-			PawsExprMap* exprs = (PawsExprMap*)codegenExpr(params[2], parentBlock).value;
+			PawsExprMap* exprs = (PawsExprMap*)runExpr(params[2], parentBlock).value;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsValue<const MincExpr*> key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsValue<const MincExpr*>::TYPE, &key);
 			defineSymbol(body, getIdExprName(valueExpr), PawsValue<const MincExpr*>::TYPE, &value);
 			iterateBlockExprExprs(exprs->get(), [&](const MincExpr* tplt, MincKernel* expr) {
 				key.set(tplt);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			});
 		}
 	);
 	defineStmt6(pkgScope, "$E<PawsExprMap>[$E] = <$I> $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
-			ExprMap const exprs = ((PawsExprMap*)codegenExpr(params[0], parentBlock).value)->get();
+			ExprMap const exprs = ((PawsExprMap*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* const scope = exprs;
 			MincExpr* exprParamAST = params[1];
 			buildExpr(params[2], parentBlock);
-			MincObject* exprType = (MincObject*)codegenExpr(params[2], parentBlock).value;
+			MincObject* exprType = (MincObject*)runExpr(params[2], parentBlock).value;
 			//TODO: Check for errors
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[3];
 
@@ -174,7 +174,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
-			PawsSymbolMap* symbols = (PawsSymbolMap*)codegenExpr(params[2], parentBlock).value;
+			PawsSymbolMap* symbols = (PawsSymbolMap*)runExpr(params[2], parentBlock).value;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString key;
 			PawsSym value;
@@ -183,7 +183,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			iterateBlockExprSymbols(symbols->get(), [&](const std::string& name, const MincSymbol& symbol) {
 				key.set(name);
 				value.set(symbol);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			});
 		}
 	);
@@ -193,10 +193,10 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[2], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			SymbolMap const symbols = ((PawsSymbolMap*)codegenExpr(params[0], parentBlock).value)->get();
+			SymbolMap const symbols = ((PawsSymbolMap*)runExpr(params[0], parentBlock).value)->get();
 			MincBlockExpr* const scope = symbols;
 			MincIdExpr* symbolNameAST = (MincIdExpr*)params[1];
-			const MincSymbol& symbol = codegenExpr(params[2], parentBlock);
+			const MincSymbol& symbol = runExpr(params[2], parentBlock);
 
 			defineSymbol(scope, getIdExprName(symbolNameAST), symbol.type, symbol.value);
 		}

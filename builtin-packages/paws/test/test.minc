@@ -749,13 +749,13 @@ PawsVoid test_paws_extend()
 		run:
 			assert(type($0) == PawsExpr<PawsString>);
 			assert($0.getType() == PawsString);
-			assert(type($0.codegen()) == PawsString);
+			assert(type($0.run()) == PawsString);
 
 			assert(type($1) == PawsExpr<PawsInt>);
 			assert($1.getType() == PawsInt);
-			assert(type($1.codegen()) == PawsInt);
+			assert(type($1.run()) == PawsInt);
 
-			return $0.codegen().substr($1.codegen());
+			return $0.run().substr($1.run());
 		}
 		assert("spam" * 2 == "am");
 	}
@@ -768,8 +768,8 @@ PawsVoid test_paws_extend()
 		$0.build();
 		$1.build();
 	run:
-		if ($0.codegen() == 0)
-			$1.codegen();
+		if ($0.run() == 0)
+			$1.run();
 	}
 	unless (0) assert(1);
 	unless (1) assert(0);
@@ -807,8 +807,8 @@ PawsVoid test_paws_extend()
 		assert(type($0) == PawsIdExpr);
 		assert($0.name == "id");
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen()) throws PawsException("`id` was not declared in this scope");
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run()) throws PawsException("`id` was not declared in this scope");
 		++i;
 	}
 	test identifier id;
@@ -820,8 +820,8 @@ PawsVoid test_paws_extend()
 		assert(type($0) == PawsIdExpr);
 		assert($0.name == "id");
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen() == NULL);
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run() == NULL);
 		++i;
 	}
 	id = 1;
@@ -838,8 +838,8 @@ PawsVoid test_paws_extend()
 		assert(type($0) == PawsLiteralExpr);
 		assert($0.value == '"foo"');
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen() == NULL);
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run() == NULL);
 		++i;
 	}
 	test literal "foo";
@@ -851,8 +851,8 @@ PawsVoid test_paws_extend()
 		assert(type($0) == PawsLiteralExpr);
 		assert($0.value == '1');
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen() == NULL);
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run() == NULL);
 		++i;
 	}
 	test literal 1;
@@ -867,8 +867,8 @@ PawsVoid test_paws_extend()
 	run:
 		assert(type($0) == PawsBlockExpr);
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen() == NULL);
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run() == NULL);
 		++i;
 	}
 	test block { ++i; };
@@ -883,8 +883,8 @@ PawsVoid test_paws_extend()
 	run:
 		assert(type($0) == PawsExpr);
 		assert($0.getType() == PawsVoid);
-		assert(type($0.codegen()) == PawsVoid);
-		assert($0.codegen() == NULL);
+		assert(type($0.run()) == PawsVoid);
+		assert($0.run() == NULL);
 		++i;
 	}
 	test block i++;

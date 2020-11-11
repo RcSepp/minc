@@ -23,7 +23,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		{
 			delete this;
 		}
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			MincSymbol* var = getSymbol(parentBlock, varId);
 			return MincSymbol(PawsInt::TYPE, new PawsInt(cbk(((PawsInt*)var->value)->get())));
@@ -103,7 +103,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			val->set(val->get() + ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() + ((PawsInt*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsInt::TYPE
@@ -118,7 +118,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			val->set(val->get() - ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() - ((PawsInt*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsInt::TYPE
@@ -133,7 +133,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			val->set(val->get() * ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() * ((PawsInt*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsInt::TYPE
@@ -148,7 +148,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			val->set(val->get() / ((PawsInt*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() / ((PawsInt*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsInt::TYPE
@@ -208,8 +208,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
-					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() &&
-					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
+					((PawsInt*)runExpr(params[0], parentBlock).value)->get() &&
+					((PawsInt*)runExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsInt::TYPE
@@ -221,8 +221,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(
-					((PawsInt*)codegenExpr(params[0], parentBlock).value)->get() ||
-					((PawsInt*)codegenExpr(params[1], parentBlock).value)->get()
+					((PawsInt*)runExpr(params[0], parentBlock).value)->get() ||
+					((PawsInt*)runExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsInt::TYPE

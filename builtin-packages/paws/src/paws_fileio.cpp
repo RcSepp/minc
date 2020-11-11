@@ -20,8 +20,8 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varname = getIdExprName((MincIdExpr*)params[0]);
-			const std::string& filename = ((PawsString*)codegenExpr(params[1], parentBlock).value)->get();
-			const std::string& mode = ((PawsString*)codegenExpr(params[2], parentBlock).value)->get();
+			const std::string& filename = ((PawsString*)runExpr(params[1], parentBlock).value)->get();
+			const std::string& mode = ((PawsString*)runExpr(params[2], parentBlock).value)->get();
 			MincBlockExpr* block = (MincBlockExpr*)params[3];
 
 			std::ios_base::openmode openmode = (std::ios_base::openmode)0;
@@ -42,7 +42,7 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 
 			try
 			{
-				codegenExpr((MincExpr*)block, parentBlock);
+				runExpr((MincExpr*)block, parentBlock);
 			}
 			catch (...)
 			{

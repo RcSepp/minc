@@ -30,7 +30,7 @@ private:
 	void* stmtArgs;
 public:
 	StaticStmtKernel(StmtBlock cbk, void* stmtArgs = nullptr) : cbk(cbk), stmtArgs(stmtArgs) {}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		cbk(parentBlock, params, stmtArgs);
 		return getVoid();
@@ -52,7 +52,7 @@ public:
 		cbk(parentBlock, params, stmtArgs);
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return getVoid();
 	}
@@ -65,18 +65,18 @@ struct StaticStmtKernel3 : public MincKernel
 {
 private:
 	StmtBlock buildCbk;
-	StmtBlock codegenCbk;
+	StmtBlock runCbk;
 	void* stmtArgs;
 public:
-	StaticStmtKernel3(StmtBlock buildCbk, StmtBlock codegenCbk, void* stmtArgs = nullptr) : buildCbk(buildCbk), codegenCbk(codegenCbk), stmtArgs(stmtArgs) {}
+	StaticStmtKernel3(StmtBlock buildCbk, StmtBlock runCbk, void* stmtArgs = nullptr) : buildCbk(buildCbk), runCbk(runCbk), stmtArgs(stmtArgs) {}
 	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		buildCbk(parentBlock, params, stmtArgs);
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		codegenCbk(parentBlock, params, stmtArgs);
+		runCbk(parentBlock, params, stmtArgs);
 		return getVoid();
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -92,7 +92,7 @@ private:
 	void* exprArgs;
 public:
 	StaticExprKernel(ExprBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return cbk(parentBlock, params, exprArgs);
 	}
@@ -109,7 +109,7 @@ private:
 	void* exprArgs;
 public:
 	StaticExprKernel2(ExprBlock cbk, ExprTypeBlock typecbk, void* exprArgs = nullptr) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return cbk(parentBlock, params, exprArgs);
 	}
@@ -132,7 +132,7 @@ public:
 		value = cbk(parentBlock, params, exprArgs).value;
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return MincSymbol(type, value);
 	}
@@ -160,7 +160,7 @@ public:
 	{
 		delete kernel;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		return symbol;
 	}
@@ -173,19 +173,19 @@ struct StaticExprKernel5 : public MincKernel
 {
 private:
 	StmtBlock buildCbk;
-	ExprBlock codegenCbk;
+	ExprBlock runCbk;
 	MincObject* const type;
 	void* exprArgs;
 public:
-	StaticExprKernel5(StmtBlock buildCbk, ExprBlock codegenCbk, MincObject* type, void* exprArgs = nullptr) : buildCbk(buildCbk), codegenCbk(codegenCbk), type(type), exprArgs(exprArgs) {}
+	StaticExprKernel5(StmtBlock buildCbk, ExprBlock runCbk, MincObject* type, void* exprArgs = nullptr) : buildCbk(buildCbk), runCbk(runCbk), type(type), exprArgs(exprArgs) {}
 	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		buildCbk(parentBlock, params, exprArgs);
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		return codegenCbk(parentBlock, params, exprArgs);
+		return runCbk(parentBlock, params, exprArgs);
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -196,19 +196,19 @@ struct StaticExprKernel6 : public MincKernel
 {
 private:
 	StmtBlock buildCbk;
-	ExprBlock codegenCbk;
+	ExprBlock runCbk;
 	ExprTypeBlock typecbk;
 	void* exprArgs;
 public:
-	StaticExprKernel6(StmtBlock buildCbk, ExprBlock codegenCbk, ExprTypeBlock typecbk, void* exprArgs) : buildCbk(buildCbk), codegenCbk(codegenCbk), typecbk(typecbk), exprArgs(exprArgs) {}
+	StaticExprKernel6(StmtBlock buildCbk, ExprBlock runCbk, ExprTypeBlock typecbk, void* exprArgs) : buildCbk(buildCbk), runCbk(runCbk), typecbk(typecbk), exprArgs(exprArgs) {}
 	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
 		buildCbk(parentBlock, params, exprArgs);
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		return codegenCbk(parentBlock, params, exprArgs);
+		return runCbk(parentBlock, params, exprArgs);
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -226,9 +226,9 @@ public:
 		params[0]->build(parentBlock);
 		return this;
 	}
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		return MincSymbol(type, params[0]->codegen(parentBlock).value);
+		return MincSymbol(type, params[0]->run(parentBlock).value);
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -270,43 +270,43 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* s
 	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
 }
 
-void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> run)
 {
 	if (isBuilt())
 		throw CompileError("defining statement after block has been built", loc);
 
 	struct StmtKernel : public MincKernel
 	{
-		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCtx;
-		StmtKernel(std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
-			: codegenCtx(codegen) {}
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> runCbk;
+		StmtKernel(std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> run)
+			: runCbk(run) {}
 		virtual ~StmtKernel() {}
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { codegenCtx(parentBlock, params); return VOID; }
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { runCbk(parentBlock, params); return VOID; }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
-	defineStmt(tplt, new StmtKernel(codegen));
+	defineStmt(tplt, new StmtKernel(run));
 }
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
 							   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build,
-							   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
+							   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> run)
 {
 	if (isBuilt())
 		throw CompileError("defining statement after block has been built", loc);
 
 	struct StmtKernel : public MincKernel
 	{
-		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> buildCtx;
-		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCtx;
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> buildCbk;
+		const std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> runCbk;
 		StmtKernel(std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build,
-				   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> codegen)
-			: buildCtx(build), codegenCtx(codegen) {}
+				   std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> run)
+			: buildCbk(build), runCbk(run) {}
 		virtual ~StmtKernel() {}
-		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (buildCtx != nullptr) buildCtx(parentBlock, params); return this; }
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (codegenCtx != nullptr) codegenCtx(parentBlock, params); return VOID; }
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (buildCbk != nullptr) buildCbk(parentBlock, params); return this; }
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { if (runCbk != nullptr) runCbk(parentBlock, params); return VOID; }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
-	defineStmt(tplt, new StmtKernel(build, codegen));
+	defineStmt(tplt, new StmtKernel(build, run));
 }
 
 void MincBlockExpr::lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
@@ -359,40 +359,40 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 	// Until such a solution has been implemented, MincBlockExpr::lookupStmt() forgets future expressions after every resolved statement.
 }
 
-void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> run, MincObject* type)
 {
 	if (isBuilt())
 		throw CompileError("defining expression after block has been built", loc);
 
 	struct ExprKernel : public MincKernel
 	{
-		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
+		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> runCbk;
 		MincObject* const type;
-		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, MincObject* type)
-			: codegenCbk(codegen), type(type) {}
+		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> run, MincObject* type)
+			: runCbk(run), type(type) {}
 		virtual ~ExprKernel() {}
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return codegenCbk(parentBlock, params); }
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return runCbk(parentBlock, params); }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return type; }
 	};
-	defineExpr(tplt, new ExprKernel(codegen, type));
+	defineExpr(tplt, new ExprKernel(run, type));
 }
 
-void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 {
 	if (isBuilt())
 		throw CompileError("defining expression after block has been built", loc);
 
 	struct ExprKernel : public MincKernel
 	{
-		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegenCbk;
+		const std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> runCbk;
 		const std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getTypeCbk;
-		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> codegen, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
-			: codegenCbk(codegen), getTypeCbk(getType) {}
+		ExprKernel(std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+			: runCbk(run), getTypeCbk(getType) {}
 		virtual ~ExprKernel() {}
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return codegenCbk(parentBlock, params); }
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return runCbk(parentBlock, params); }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getTypeCbk(parentBlock, params); }
 	};
-	defineExpr(tplt, new ExprKernel(codegen, getType));
+	defineExpr(tplt, new ExprKernel(run, getType));
 }
 
 void MincBlockExpr::lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const
@@ -738,7 +738,7 @@ const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 	return nullptr;
 }
 
-MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
+MincSymbol MincBlockExpr::run(MincBlockExpr* parentBlock, bool resume)
 {
 	if (parentBlock == this)
 		throw CompileError("block expression can't be it's own parent", this->loc);
@@ -785,10 +785,10 @@ MincSymbol MincBlockExpr::codegen(MincBlockExpr* parentBlock, bool resume)
 			MincStmt& currentStmt = builtStmts->at(stmtIdx);
 			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, exprs->end(), currentStmt))
 				throw UndefinedStmtException(&currentStmt);
-			currentStmt.codegen(this);
+			currentStmt.run(this);
 
 			// Clear cached expressions
-			// Coroutines exit codegen() without clearing resultCache by throwing an exception
+			// Coroutines exit run() without clearing resultCache by throwing an exception
 			// They use the resultCache on reentry to avoid reexecuting expressions
 			resultCache.clear();
 			resultCacheIdx = 0;
@@ -1064,9 +1064,9 @@ extern "C"
 		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel2(buildBlock, stmtArgs));
 	}
 
-	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs)
+	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, StmtBlock runBlock, void* stmtArgs)
 	{
-		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel3(buildBlock, codegenBlock, stmtArgs));
+		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel3(buildBlock, runBlock, stmtArgs));
 	}
 
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates)
@@ -1100,9 +1100,9 @@ extern "C"
 		scope->defineDefaultStmt(buildBlock == nullptr ? nullptr : new StaticStmtKernel2(buildBlock, stmtArgs));
 	}
 
-	void defineDefaultStmt6(MincBlockExpr* scope, StmtBlock buildBlock, StmtBlock codegenBlock, void* stmtArgs)
+	void defineDefaultStmt6(MincBlockExpr* scope, StmtBlock buildBlock, StmtBlock runBlock, void* stmtArgs)
 	{
-		scope->defineDefaultStmt(buildBlock == nullptr ? nullptr : new StaticStmtKernel3(buildBlock, codegenBlock, stmtArgs));
+		scope->defineDefaultStmt(buildBlock == nullptr ? nullptr : new StaticStmtKernel3(buildBlock, runBlock, stmtArgs));
 	}
 
 	void defineExpr2(MincBlockExpr* scope, const char* tpltStr, ExprBlock codeBlock, MincObject* type, void* exprArgs)
@@ -1135,14 +1135,14 @@ extern "C"
 		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel4(buildBlock, typeBlock, exprArgs));
 	}
 
-	void defineExpr9(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, MincObject* type, void* exprArgs)
+	void defineExpr9(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock runBlock, MincObject* type, void* exprArgs)
 	{
-		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel5(buildBlock, codegenBlock, type, exprArgs));
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel5(buildBlock, runBlock, type, exprArgs));
 	}
 
-	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock codegenBlock, ExprTypeBlock typeBlock, void* exprArgs)
+	void defineExpr10(MincBlockExpr* scope, const char* tpltStr, StmtBlock buildBlock, ExprBlock runBlock, ExprTypeBlock typeBlock, void* exprArgs)
 	{
-		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel6(buildBlock, codegenBlock, typeBlock, exprArgs));
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel6(buildBlock, runBlock, typeBlock, exprArgs));
 	}
 
 	void lookupExprCandidates(const MincBlockExpr* scope, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates)
@@ -1180,9 +1180,9 @@ extern "C"
 		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
 	}
 
-	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs)
+	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock runBlock, void* castArgs)
 	{
-		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel5(buildBlock, codegenBlock, toType, castArgs)));
+		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel5(buildBlock, runBlock, toType, castArgs)));
 	}
 
 	void defineInheritanceCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, ExprBlock codeBlock, void* castArgs)
@@ -1190,9 +1190,9 @@ extern "C"
 		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
 	}
 
-	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock codegenBlock, void* castArgs)
+	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, StmtBlock buildBlock, ExprBlock runBlock, void* castArgs)
 	{
-		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel5(buildBlock, codegenBlock, toType, castArgs)));
+		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel5(buildBlock, runBlock, toType, castArgs)));
 	}
 
 	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast)
@@ -1445,14 +1445,14 @@ extern "C"
 	void evalCBlock(const char* code, MincBlockExpr* scope)
 	{
 		MincBlockExpr* block = ::parseCCode(code);
-		block->codegen(scope);
+		block->run(scope);
 		delete block;
 	}
 
 	void evalPythonBlock(const char* code, MincBlockExpr* scope)
 	{
 		MincBlockExpr* block = ::parsePythonCode(code);
-		block->codegen(scope);
+		block->run(scope);
 		delete block;
 	}
 }

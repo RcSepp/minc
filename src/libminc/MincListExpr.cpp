@@ -13,7 +13,7 @@ MincListExpr::MincListExpr(char separator, std::vector<MincExpr*> exprs)
 {
 }
 
-MincSymbol MincListExpr::codegen(MincBlockExpr* parentBlock, bool resume)
+MincSymbol MincListExpr::run(MincBlockExpr* parentBlock, bool resume)
 {
 	assert(0);
 	return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE

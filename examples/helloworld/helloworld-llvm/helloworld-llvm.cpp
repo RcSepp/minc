@@ -213,7 +213,7 @@ public:
 				params[0]->build(parentBlock);
 			},
 			[&](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-				Object* const message = (Object*)params[0]->codegen(parentBlock).value;
+				Object* const message = (Object*)params[0]->run(parentBlock).value;
 				builder->CreateCall(printfFunction, { fromLlvmString, message->value });
 				std::cout << "( compiled print statement )\n";
 			}

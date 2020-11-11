@@ -24,7 +24,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		{
 			delete this;
 		}
-		MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			MincSymbol* var = getSymbol(parentBlock, varId);
 			return MincSymbol(PawsDouble::TYPE, new PawsDouble(cbk(((PawsDouble*)var->value)->get())));
@@ -111,7 +111,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() + ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() + ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsDouble::TYPE
@@ -126,7 +126,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() - ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() - ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsDouble::TYPE
@@ -141,7 +141,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() * ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() * ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsDouble::TYPE
@@ -156,7 +156,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() / ((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get());
+			val->set(val->get() / ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
 			return *var;
 		},
 		PawsDouble::TYPE
@@ -238,8 +238,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
-					((PawsDouble*)codegenExpr(params[0], parentBlock).value)->get() &&
-					((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get()
+					((PawsDouble*)runExpr(params[0], parentBlock).value)->get() &&
+					((PawsDouble*)runExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsDouble::TYPE
@@ -251,8 +251,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
 			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
-					((PawsDouble*)codegenExpr(params[0], parentBlock).value)->get() ||
-					((PawsDouble*)codegenExpr(params[1], parentBlock).value)->get()
+					((PawsDouble*)runExpr(params[0], parentBlock).value)->get() ||
+					((PawsDouble*)runExpr(params[1], parentBlock).value)->get()
 			));
 		},
 		PawsDouble::TYPE

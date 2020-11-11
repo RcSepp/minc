@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 			std::cout << "build took " << diff.count() << "ms" << std::endl;
-			rootBlock->codegen(nullptr);
+			rootBlock->run(nullptr);
 		} catch (ExitException err) {
 			result = err.code;
 		} catch (const MincException& err) {

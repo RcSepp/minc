@@ -17,7 +17,7 @@ new minc.MincPackage("helloworld-node", function(pkgScope) {
 		return new minc.MincSymbol(STRING_TYPE, new MyString(literal.value.slice(1, -1)));
 	}, STRING_TYPE);
 	pkgScope.defineStmt(minc.MincBlockExpr.parseCTplt("print($E<string>)"), function(parentBlock, expr) {
-		var message = expr.codegen(parentBlock).value;
+		var message = expr.run(parentBlock).value;
 		console.log(message.str + " from Node.js!");
 	});
 });

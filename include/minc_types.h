@@ -55,7 +55,7 @@ struct MincKernel
 	virtual ~MincKernel() {}
 	virtual MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return this; }
 	virtual void dispose(MincKernel* kernel) {}
-	virtual MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) = 0;
+	virtual MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) = 0;
 	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };
 

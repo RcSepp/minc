@@ -40,17 +40,17 @@ std::string indent;
 // Instead we mark the kernel as UNRESOLVABLE_EXPR_KERNEL or UNRESOLVABLE_STMT_KERNEL.
 static struct UnresolvableExprKernel : public MincKernel
 {
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		throw UndefinedExprException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
+		throw UndefinedExprException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr instead
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_EXPR_KERNEL;
 static struct UnresolvableStmtKernel : public MincKernel
 {
-	MincSymbol codegen(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 	{
-		throw UndefinedStmtException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr to codegen instead
+		throw UndefinedStmtException{parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr instead
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_STMT_KERNEL;

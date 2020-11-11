@@ -51,7 +51,7 @@ pkgScope->defineStmt("print($E<string>)",
 		params[0]->build(parentBlock);
 	},
 	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-		String* const message = (String*)params[0]->codegen(parentBlock).value;
+		String* const message = (String*)params[0]->run(parentBlock).value;
 		std::cout << *message << '\n';
 	}
 );

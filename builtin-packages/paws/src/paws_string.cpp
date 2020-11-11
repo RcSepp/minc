@@ -29,8 +29,8 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			buildExpr(params[1], parentBlock);
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const MincSymbol& a = codegenExpr(params[0], parentBlock);
-			const MincSymbol& b = codegenExpr(params[1], parentBlock);
+			const MincSymbol& a = runExpr(params[0], parentBlock);
+			const MincSymbol& b = runExpr(params[1], parentBlock);
 			((PawsString*)a.value)->get() += ((PawsString*)b.value)->get();
 			return a;
 		},
@@ -122,14 +122,14 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
-			PawsString* str = (PawsString*)codegenExpr(params[1], parentBlock).value;
+			PawsString* str = (PawsString*)runExpr(params[1], parentBlock).value;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsString iter;
 			defineSymbol(body, getIdExprName(iterExpr), PawsString::TYPE, &iter);
 			for (char c: str->get())
 			{
 				iter.set(std::string(1, c));
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			}
 		}
 	);
@@ -149,7 +149,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[1]);
 			std::map<std::string, std::string> map;
 			for (size_t i = 0; i < keys.size(); ++i)
-				map[((PawsString*)codegenExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)codegenExpr(values[i], parentBlock).value)->get();
+				map[((PawsString*)runExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)runExpr(values[i], parentBlock).value)->get();
 			return MincSymbol(PawsStringMap::TYPE, new PawsStringMap(map));
 		},
 		PawsStringMap::TYPE
@@ -184,7 +184,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
-			PawsStringMap* map = (PawsStringMap*)codegenExpr(params[2], parentBlock).value;
+			PawsStringMap* map = (PawsStringMap*)runExpr(params[2], parentBlock).value;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsString::TYPE, &key);
@@ -193,7 +193,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			{
 				key.set(pair.first);
 				value.set(pair.second);
-				codegenExpr((MincExpr*)body, parentBlock);
+				runExpr((MincExpr*)body, parentBlock);
 			}
 		}
 	);

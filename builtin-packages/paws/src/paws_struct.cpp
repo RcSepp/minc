@@ -8,6 +8,8 @@
 
 static struct {} STRUCT_ID;
 
+extern MincBlockExpr* pawsSubroutineScope;
+
 Struct* getStruct(const MincBlockExpr* scope)
 {
 	assert(getBlockExprUserType(scope) == &STRUCT_ID);
@@ -162,7 +164,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					setBlockExprName(block, signature.c_str());
 
 					// Define method in struct scope
-					PawsType* methodType = PawsTpltType::get(strct->body, PawsFunction::TYPE, returnType);
+					PawsType* methodType = PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType);
 					defineSymbol(strct->body, name, methodType, new PawsFunction(method));
 				}
 			);

@@ -458,11 +458,14 @@ public:
 				variables.push_back(var);
 
 				const MincStmt* stmt = block->getCurrentStmt();
-				var.name = "Current Statement";
-				var.value = stmt->shortStr();
-				var.namedVariables = dap::optional<dap::integer>();
-				var.variablesReference = (new StmtCandidates(stmt, block))->id;
-				variables.push_back(var);
+				if (stmt != nullptr)
+				{
+					var.name = "Current Statement";
+					var.value = stmt->shortStr();
+					var.namedVariables = dap::optional<dap::integer>();
+					var.variablesReference = (new StmtCandidates(stmt, block))->id;
+					variables.push_back(var);
+				}
 
 				return variables;
 			}
@@ -567,7 +570,7 @@ public:
 		createThread();
 	}
 
-	int run(MincBlockExpr* rootBlock)
+	int run(char* path)
 	{
 		// Make sure configuration has finished
 		configured.wait();
@@ -611,16 +614,37 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 #endif
 
 		int result = 0;
+		MincBlockExpr* rootBlock = nullptr;
 		try {
+			// Parse source code into AST
+			const char* const PY_EXT = ".py";
+			const int LEN_PY_EXT = 3;
+			if (strncmp(path + strlen(path) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
+				rootBlock = MincBlockExpr::parsePythonFile(path);
+			else
+				rootBlock = MincBlockExpr::parseCFile(path);
+
+			// Name root block
+			std::string rootBlockName = std::max(path, std::max(strrchr(path, '/') + 1, strrchr(path, '\\') + 1));
+			const size_t dt = rootBlockName.rfind(".");
+			if (dt != std::string::npos) rootBlockName = rootBlockName.substr(0, dt);
+			rootBlock->name = rootBlockName;
+
+			// Build and run root block
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			rootBlock->build(nullptr);
 			rootBlock->run(nullptr);
+
 			session->send(dap::TerminatedEvent());
 		} catch (ExitException err) {
 			result = err.code;
 			session->send(dap::TerminatedEvent());
 		} catch (const MincException& err) {
+			if (rootBlock == nullptr)
+				rootBlock = new MincBlockExpr(MincLocation{path, 0, 0, 0, 0}, nullptr);
 			Thread& currentThread = getCurrentThread();
+			if (currentThread.callStack.empty())
+				currentThread.callStack.push_back(StackFrame(rootBlock));
 			StackFrame& top = currentThread.callStack.back();
 			if (err.loc.begin_line != 0)
 			{
@@ -633,6 +657,7 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			sendStopEvent(StopEventReason::Exception, err.what());
 			session->send(dap::TerminatedEvent());
 		} catch (const MincSymbol& err) {
+			assert(rootBlock != nullptr);
 			Thread& currentThread = getCurrentThread();
 			if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, err, &currentThread.errMsg))
 				currentThread.errMsg = "";
@@ -643,6 +668,8 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 #ifdef DEBUG_MULTITHREADING
 t.join();
 #endif
+
+		delete rootBlock;
 
 		// Wait for the debug client to quit
 		terminate.wait();
@@ -1049,7 +1076,7 @@ private:
 	}
 };
 
-int launchDebugClient(MincBlockExpr* rootBlock)
+int launchDebugClient(char* path)
 {
 #ifdef OS_WINDOWS
   // Change stdin & stdout from text mode to binary mode.
@@ -1074,5 +1101,5 @@ int launchDebugClient(MincBlockExpr* rootBlock)
 	else
 		debugger.bind(in, out);
 
-	return debugger.run(rootBlock);
+	return debugger.run(path);
 }

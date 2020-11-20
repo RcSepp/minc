@@ -8,7 +8,7 @@ struct MincSymbol;
 
 typedef std::function<bool(const MincBlockExpr*, const MincSymbol&, std::string*)> GetValueStrFunc;
 
-int launchDebugClient(MincBlockExpr* rootBlock);
+int launchDebugClient(char* path);
 void registerValueSerializer(GetValueStrFunc serializer);
 
 #endif

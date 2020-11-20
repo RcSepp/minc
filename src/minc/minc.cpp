@@ -69,47 +69,44 @@ int main(int argc, char** argv)
 	// Get absolute path to source file
 	char* realPath = use_stdin ? nullptr : realpath(path, nullptr);
 
-	// >>> Parse source code from file or stdin into AST
-
-	MincBlockExpr* rootBlock = nullptr;
-	const char* const PY_EXT = ".py";
-	const int LEN_PY_EXT = 3;
-	try {
-		if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
-			rootBlock = MincBlockExpr::parsePythonFile(realPath);
-		else
-			rootBlock = MincBlockExpr::parseCFile(realPath);
-	} catch (const CompileError& err) {
-		err.print(std::cerr);
-		if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
-		free(realPath);
-		if (rootBlock) delete rootBlock;
-		return -1;
-	}
-
-	// Name root block
-	if (!use_stdin)
-	{
-		std::string rootBlockName = std::max(realPath, std::max(strrchr(realPath, '/') + 1, strrchr(realPath, '\\') + 1));
-		const size_t dt = rootBlockName.rfind(".");
-		if (dt != std::string::npos) rootBlockName = rootBlockName.substr(0, dt);
-
-		rootBlock->name = rootBlockName;
-	}
-	else
-		rootBlock->name = "stdin";
-
-	// >>> Print AST
-
-	//printf("%s\n", rootBlock->str().c_str());
-
-	// >>> Execute source file
-
 	int result = 0;
 	if (debug)
-		result = launchDebugClient(rootBlock);
+		result = launchDebugClient(realPath);
 	else
 	{
+		// Parse source code from file or stdin into AST
+		MincBlockExpr* rootBlock = nullptr;
+		const char* const PY_EXT = ".py";
+		const int LEN_PY_EXT = 3;
+		try {
+			if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
+				rootBlock = MincBlockExpr::parsePythonFile(realPath);
+			else
+				rootBlock = MincBlockExpr::parseCFile(realPath);
+		} catch (const CompileError& err) {
+			err.print(std::cerr);
+			if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
+			free(realPath);
+			if (rootBlock) delete rootBlock;
+			return -1;
+		}
+
+		// Name root block
+		if (!use_stdin)
+		{
+			std::string rootBlockName = std::max(realPath, std::max(strrchr(realPath, '/') + 1, strrchr(realPath, '\\') + 1));
+			const size_t dt = rootBlockName.rfind(".");
+			if (dt != std::string::npos) rootBlockName = rootBlockName.substr(0, dt);
+
+			rootBlock->name = rootBlockName;
+		}
+		else
+			rootBlock->name = "stdin";
+
+		// Print AST
+		//printf("%s\n", rootBlock->str().c_str());
+
+		// Build and run root block
 		try {
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
@@ -130,10 +127,10 @@ int main(int argc, char** argv)
 			std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(err.type, "UNKNOWN_TYPE") << ">\n";
 			result = -1;
 		}
+		delete rootBlock;
 	}
 
 	if (!use_stdin) { ((std::ifstream*)in)->close(); delete in; }
 	free(realPath);
-	delete rootBlock;
 	return result;
 }

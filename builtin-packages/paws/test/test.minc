@@ -59,6 +59,14 @@ PawsVoid test_paws()
 	assert(k == 6);
 	assert { for (j = 0; '0'; j = j + 1) {} } throws PawsException("invalid for condition type: '0'<PawsString>, expected: <PawsInt>");
 
+	// Test NULL
+	assert(str(NULL) == "NULL");
+	assert(type(NULL) == PawsNull);
+	assert(type(PawsNull) == PawsType);
+	assert(sizeof(NULL) == 0);
+	null = NULL;
+	assert(null == NULL);
+
 	// Test expression `str($E<PawsBase>)`
 	assert(str(123) == "123");
 
@@ -575,6 +583,20 @@ PawsVoid test_paws_struct()
 	assert { struct S { T() {} } } throws PawsException("cannot declare non-constructor method T() without a return type");
 	assert { struct S { T(PawsString a, S b) {} } } throws PawsException("cannot declare non-constructor method T(PawsString, S) without a return type");
 	assert { struct S { T(spam a) {} } } throws PawsException("`spam` was not declared in this scope");
+
+	// Test NULL struct
+	struct S
+	{
+		a = 0;
+		PawsVoid b() {}
+	};
+	PawsVoid func(S s)
+	{
+		assert(s.a) throws PawsException("trying to access member a of NULL");
+		assert(s.a = 1) throws PawsException("trying to access member a of NULL");
+		assert(s.b()) throws PawsException("trying to access method b of NULL");
+	}
+	func(NULL);
 
 	// Test struct size
 	struct S

@@ -32,6 +32,12 @@ public:
 	static PawsType* const TYPE;
 };
 
+struct PawsNull : public PawsBase
+{
+public:
+	static PawsMetaType* const TYPE;
+};
+
 struct PawsType : public PawsBase
 {
 	static PawsMetaType* const TYPE;
@@ -138,6 +144,7 @@ typedef PawsValue<std::map<std::string, std::string>> PawsStringMap;
 inline PawsType* const PawsBase::TYPE = new PawsValue<PawsBase>::Type();
 inline PawsType* const PawsStatic::TYPE = new PawsValue<PawsStatic>::Type();
 inline PawsType* const PawsDynamic::TYPE = new PawsValue<PawsDynamic>::Type();
+inline PawsMetaType* const PawsNull::TYPE = new PawsMetaType(0);
 inline PawsMetaType* const PawsType::TYPE = new PawsMetaType(sizeof(PawsMetaType));
 template <typename T> inline PawsType* const PawsValue<T>::TYPE = new PawsValue<T>::Type();
 inline typename PawsVoid::Type* const PawsVoid::TYPE = new PawsVoid::Type();

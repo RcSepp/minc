@@ -24,8 +24,10 @@ MincObject* Struct::copy(MincObject* value)
 std::string Struct::toString(MincObject* value) const
 {
 	StructInstance* instance = ((PawsStructInstance*)value)->get();
-	
-	if (variables.empty())
+
+	if (instance == nullptr)
+		return "NULL";
+	else if (variables.empty())
 		return name + " {}";
 	else
 	{
@@ -50,6 +52,11 @@ void defineStruct(MincBlockExpr* scope, const char* name, Struct* strct)
 	defineSymbol(scope, name, PawsTpltType::get(scope, Struct::TYPE, strct), strct);
 	defineOpaqueInheritanceCast(scope, strct, PawsStructInstance::TYPE);
 	defineOpaqueInheritanceCast(scope, PawsTpltType::get(scope, Struct::TYPE, strct), PawsType::TYPE);
+	defineInheritanceCast2(scope, PawsNull::TYPE, strct,
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
+			return MincSymbol((Struct*)castArgs, new PawsStructInstance(nullptr));
+		}, strct
+	);
 }
 
 void defineStructInstance(MincBlockExpr* scope, const char* name, Struct* strct, StructInstance* instance)
@@ -431,6 +438,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
 
+			if (instance == nullptr)
+				throw CompileError(parentBlock, getLocation(params[0]), "trying to access member %S of NULL", memberName);
+
 			return *lookupSymbol(instance->body, memberName.c_str());
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			if (!ExprIsCast(params[0]))
@@ -474,6 +484,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			//Struct* strct = (Struct*)var.type;
 			StructInstance* instance = ((PawsStructInstance*)var.value)->get();
 			std::string memberName = getIdExprName((MincIdExpr*)params[1]);
+
+			if (instance == nullptr)
+				throw CompileError(parentBlock, getLocation(params[0]), "trying to access member %S of NULL", memberName);
 
 			//auto pair = strct->variables.find(memberName); //TODO: Store variable id during build()
 			MincSymbol val = runExpr(params[2], parentBlock);
@@ -535,6 +548,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			Struct* strct = (Struct*)self.type;
 			StructInstance* instance = ((PawsStructInstance*)self.value)->get();
 			std::string methodName = getIdExprName((MincIdExpr*)params[1]);
+
+			if (instance == nullptr)
+				throw CompileError(parentBlock, getLocation(params[0]), "trying to access method %S of NULL", methodName);
 
 			auto pair = strct->methods.find(methodName);
 			const PawsFunc* method = pair->second;

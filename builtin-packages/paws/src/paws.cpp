@@ -382,6 +382,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	registerType<PawsSym>(pkgScope, "PawsSym");
 	registerType<PawsScopeType>(pkgScope, "PawsScopeType");
 	registerType<PawsStringMap>(pkgScope, "PawsStringMap");
+	registerType<PawsNull>(pkgScope, "PawsNull", true);
+
+	// Create null pointer variable
+	defineSymbol(pkgScope, "NULL", PawsNull::TYPE, nullptr);
 
 	// Create data type for matching against undefined symbols
 	defineSymbol(pkgScope, "PawsErrorType", PawsType::TYPE, getErrorType());
@@ -642,28 +646,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	// Define is-NULL
-	defineExpr9(pkgScope, "$E == NULL",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
-			buildExpr(params[0], parentBlock);
-		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value == nullptr));
-		},
-		PawsInt::TYPE
-	);
-	defineExpr9(pkgScope, "$E != NULL",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
-			buildExpr(params[0], parentBlock);
-		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value != nullptr));
-		},
-		PawsInt::TYPE
-	);
-
-	// Define type relations
-	defineExpr9(pkgScope, "$E<PawsType> == $E<PawsType>",
+	// Define general equivalence operators
+	defineExpr9(pkgScope, "$E == $E",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
@@ -673,7 +657,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		},
 		PawsInt::TYPE
 	);
-	defineExpr9(pkgScope, "$E<PawsType> != $E<PawsType>",
+	defineExpr9(pkgScope, "$E != $E",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
@@ -682,29 +666,6 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			return MincSymbol(PawsInt::TYPE, new PawsInt(runExpr(params[0], parentBlock).value != runExpr(params[1], parentBlock).value));
 		},
 		PawsInt::TYPE
-	);
-
-	// Define pointer equivalence operators
-	//TODO: Generalize this beyond PawsConstExpr
-	defineExpr(pkgScope, "$E<PawsConstExpr> == NULL",
-		+[](const MincExpr* a) -> int {
-			return a == nullptr;
-		}
-	);
-	defineExpr(pkgScope, "$E<PawsConstExpr> != NULL",
-		+[](const MincExpr* a) -> int {
-			return a != nullptr;
-		}
-	);
-	defineExpr(pkgScope, "$E<PawsConstExpr> == $E<PawsConstExpr>",
-		+[](const MincExpr* a, const MincExpr* b) -> int {
-			return a == b;
-		}
-	);
-	defineExpr(pkgScope, "$E<PawsConstExpr> != $E<PawsConstExpr>",
-		+[](const MincExpr* a, const MincExpr* b) -> int {
-			return a != b;
-		}
 	);
 
 	// Define if statement
@@ -1133,7 +1094,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			runExpr(expr, scope);
 		}
 	);
-	defineExpr(pkgScope, "$E<PawsBlockExpr>.run(NULL)",
+	defineExpr(pkgScope, "$E<PawsBlockExpr>.run($E<PawsNull>)",
 		+[](MincBlockExpr* pkgScope) -> void {
 			runExpr((MincExpr*)pkgScope, nullptr);
 		}

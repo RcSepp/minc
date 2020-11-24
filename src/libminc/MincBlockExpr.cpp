@@ -945,6 +945,9 @@ MincExpr* MincBlockExpr::clone() const
 																			   //		symbols into instance blocks
 	clone->symbolMap.insert(this->symbolMap.begin(), this->symbolMap.end());
 	clone->symbolNameMap.insert(this->symbolNameMap.begin(), this->symbolNameMap.end());
+	this->castreg.iterateCasts([&clone](const MincCast* cast) {
+		clone->defineCast(const_cast<MincCast*>(cast)); //TODO: Remove const cast
+	}); // Note: Cloning casts is necessary for run-time argument matching
 	return clone;
 }
 

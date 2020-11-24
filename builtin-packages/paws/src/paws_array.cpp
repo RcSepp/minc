@@ -162,4 +162,46 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		},
 		PawsType::TYPE
 	);
+
+	// Define array iterating for statement
+	class ArrayIterationKernel : public MincKernel
+	{
+		const MincSymbolId iterId;
+	public:
+		ArrayIterationKernel() : iterId(MincSymbolId::NONE) {}
+		ArrayIterationKernel(MincSymbolId iterId) : iterId(iterId) {}
+
+		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			buildExpr(params[1], parentBlock);
+			PawsType* valueType = ((PawsArrayType*)::getType(getDerivedExpr(params[1]), parentBlock))->valueType;
+			defineSymbol((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]), valueType, nullptr);
+			MincSymbolId iterId = lookupSymbolId((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]));
+			buildExpr(params[2], parentBlock);
+			return new ArrayIterationKernel(iterId);
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		{
+			MincSymbol arrVar = runExpr(getDerivedExpr(params[1]), parentBlock);
+			PawsArray* arr = (PawsArray*)arrVar.value;
+			MincBlockExpr* body = (MincBlockExpr*)params[2];
+			MincSymbol* iter = getSymbol(body, iterId);
+			for (MincObject* value: arr->get())
+			{
+				iter->value = value;
+				runExpr((MincExpr*)body, parentBlock);
+			}
+			return getVoid();
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	defineStmt4(pkgScope, "for ($I: $E<PawsArray>) $B", new ArrayIterationKernel());
 });

@@ -109,6 +109,7 @@ extern "C"
 	std::string reportCasts(const MincBlockExpr* scope);
 	size_t countBlockExprCasts(const MincBlockExpr* expr);
 	void iterateBlockExprCasts(const MincBlockExpr* expr, std::function<void(const MincCast* cast)> cbk);
+	void iterateBases(const MincBlockExpr* expr, MincObject* derivedType, std::function<void(MincObject* baseType)> cbk);
 	void importBlock(MincBlockExpr* scope, MincBlockExpr* block);
 	void defineSymbol(MincBlockExpr* scope, const char* name, MincObject* type, MincObject* value);
 	const MincSymbol* lookupSymbol(const MincBlockExpr* scope, const char* name);
@@ -128,6 +129,8 @@ extern "C"
 	MincBlockExpr* getBlockExprParent(const MincBlockExpr* expr);
 	void setBlockExprParent(MincBlockExpr* expr, MincBlockExpr* parent);
 	const std::vector<MincBlockExpr*>& getBlockExprReferences(const MincBlockExpr* expr);
+	void addBlockExprReference(MincBlockExpr* expr, MincBlockExpr* reference);
+	void clearBlockExprReferences(MincBlockExpr* expr);
 	void setBlockExprParams(MincBlockExpr* expr, std::vector<MincSymbol>& blockParams);
 	MincScopeType* getScopeType(const MincBlockExpr* scope);
 	void setScopeType(MincBlockExpr* scope, MincScopeType* scopeType);

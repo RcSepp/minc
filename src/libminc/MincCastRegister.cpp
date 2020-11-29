@@ -159,3 +159,10 @@ void MincCastRegister::iterateCasts(std::function<void(const MincCast* cast)> cb
 	for (const std::pair<const std::pair<MincObject*, MincObject*>, MincCast*>& iter: casts)
 		cbk(iter.second);
 }
+
+void MincCastRegister::iterateBases(MincObject* derivedType, std::function<void(MincObject* baseType)> cbk) const
+{
+	for (const std::pair<const std::pair<MincObject*, MincObject*>, MincCast*>& iter: casts)
+		if (iter.first.first == derivedType && iter.second->getCost() == 0) // Zero-cost casts are inheritance casts
+			cbk(iter.first.second);
+}

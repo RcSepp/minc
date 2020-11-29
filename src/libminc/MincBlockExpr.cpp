@@ -500,6 +500,16 @@ void MincBlockExpr::iterateCasts(std::function<void(const MincCast* cast)> cbk) 
 	castreg.iterateCasts(cbk);
 }
 
+void MincBlockExpr::iterateBases(MincObject* derivedType, std::function<void(MincObject* baseType)> cbk) const
+{
+	for (const MincBlockExpr* block = this; block; block = block->parent)
+	{
+		block->castreg.iterateBases(derivedType, cbk);
+		for (const MincBlockExpr* ref: block->references)
+			ref->castreg.iterateBases(derivedType, cbk);
+	}
+}
+
 void MincBlockExpr::import(MincBlockExpr* importBlock)
 {
 	const MincBlockExpr* block;
@@ -1253,6 +1263,11 @@ extern "C"
 		return expr->iterateCasts(cbk);
 	}
 
+	void iterateBases(const MincBlockExpr* expr, MincObject* derivedType, std::function<void(MincObject* baseType)> cbk)
+	{
+		expr->iterateBases(derivedType, cbk);
+	}
+
 	void importBlock(MincBlockExpr* scope, MincBlockExpr* block)
 	{
 		scope->import(block);
@@ -1348,6 +1363,18 @@ extern "C"
 	const std::vector<MincBlockExpr*>& getBlockExprReferences(const MincBlockExpr* expr)
 	{
 		return expr->references;
+	}
+
+	void addBlockExprReference(MincBlockExpr* expr, MincBlockExpr* reference)
+	{
+		if (reference == expr)
+			throw CompileError("a scope cannot reference itself", expr->loc);
+		expr->references.push_back(reference);
+	}
+
+	void clearBlockExprReferences(MincBlockExpr* expr)
+	{
+		expr->references.clear();
 	}
 
 	void setBlockExprParams(MincBlockExpr* expr, std::vector<MincSymbol>& blockParams)

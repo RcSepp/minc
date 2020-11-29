@@ -201,6 +201,7 @@ public:
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
 	void iterateCasts(std::function<void(const MincCast* cast)> cbk) const;
+	void iterateBases(MincObject* derivedType, std::function<void(MincObject* baseType)> cbk) const;
 };
 
 class MincStmt : public MincExpr
@@ -283,6 +284,7 @@ public:
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;
 	size_t countCasts() const;
 	void iterateCasts(std::function<void(const MincCast* cast)> cbk) const;
+	void iterateBases(MincObject* derivedType, std::function<void(MincObject* baseType)> cbk) const;
 	void import(MincBlockExpr* importBlock);
 	void defineSymbol(std::string name, MincObject* type, MincObject* value);
 	const MincSymbol* lookupSymbol(const std::string& name) const;

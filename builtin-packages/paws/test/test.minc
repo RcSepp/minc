@@ -519,7 +519,7 @@ PawsVoid test_paws_struct()
 		S f(S a) {return a; }
 		g = x + a;
 		PawsInt h() { return e() + this.d(); }
-	};
+	}
 	s = S();
 
 	// Test struct equivalence
@@ -556,7 +556,7 @@ PawsVoid test_paws_struct()
 	assert(str(S()) == "S {}");
 
 	// Test invalid struct definition
-	assert { struct S { print("illegal print statement"); }; } throws PawsException("Invalid command in struct context");
+	assert { struct S { print("illegal print statement"); } } throws PawsException("Invalid command in struct context");
 
 	// Test non-struct member access
 	z = '';
@@ -569,7 +569,7 @@ PawsVoid test_paws_struct()
 	{
 		a = 0;
 		S() { this.a = 1; }
-	};
+	}
 	assert(S().a == 1);
 	assert(S(0)) throws PawsException("no matching constructor for call S(PawsInt)");
 	struct S
@@ -578,7 +578,7 @@ PawsVoid test_paws_struct()
 		S(PawsInt a) { this.a = a; }
 		S(PawsString a) { this.a = a.length; }
 		S(PawsInt a, PawsInt b) { this.a = a + b; }
-	};
+	}
 	assert(S(2).a == 2);
 	assert(S("foo").a == 3);
 	assert(S(2, 2).a == 4);
@@ -595,7 +595,7 @@ PawsVoid test_paws_struct()
 	{
 		a = 0;
 		PawsVoid b() {}
-	};
+	}
 	PawsVoid func(S s)
 	{
 		assert(s.a) throws PawsException("trying to access member a of NULL");
@@ -604,16 +604,53 @@ PawsVoid test_paws_struct()
 	}
 	func(NULL);
 
+	// Test invalid struct
+	assert { struct S { a = 0; a = 1; } } throws PawsException("redeclaration of S::a");
+	assert { struct S { PawsVoid a() {} a = 1; } } throws PawsException("redeclaration of S::a");
+	assert { struct S { PawsVoid a() {} PawsVoid a() {} } } throws PawsException("redeclaration of S::a");
+	assert { struct S { PawsVoid a() {} a = 1; } } throws PawsException("redeclaration of S::a");
+
 	// Test struct size
 	struct S
 	{
 		a = 0;
 		b = 0;
-		c = 0;
+		PawsInt ma() { return a; }
+		PawsInt mb() { return b; }
 		S() {}
-	};
-	assert(sizeof(S) == 192);
-	assert(sizeof(S()) == 12);
+	}
+	assert(sizeof(S) == 200);
+	assert(sizeof(S()) == 8);
+
+	// Test inheritance
+	struct T: S
+	{
+		//b = 1; //TODO: Implement overwriting inherited members
+		c = 2;
+		PawsInt mb() { return b + 10; }
+		PawsInt mc() { return c + 10; }
+	}
+	t = T();
+	PawsVoid func(S s)
+	{
+		assert(s.a == 0);
+		assert(s.b == 0); //TODO: Implement overwriting inherited members
+		assert(s.c) throws PawsException("no member named 'c' in 'S'");
+		assert(s.ma() == 0);
+		assert(s.mb() == 0); //TODO: Implement overwriting inherited members
+		assert(s.mc()) throws PawsException("no method named 'mc' in 'S'");
+	}
+	func(t);
+	PawsVoid func(T s)
+	{
+		assert(s.a == 0);
+		assert(s.b == 0); //TODO: Implement overwriting inherited members
+		assert(s.c == 2);
+		assert(s.ma() == 0);
+		assert(s.mb() == 10); //TODO: Implement overwriting inherited members
+		assert(s.mc() == 12);
+	}
+	func(t);
 }
 
 PawsVoid test_paws_frames()
@@ -722,7 +759,7 @@ PawsVoid test_paws_frames()
 		public a = 0;
 		public b = 0;
 		public c = 0;
-	};
+	}
 	assert(sizeof(A) == 184);
 	assert(sizeof(A()) == 12);
 }

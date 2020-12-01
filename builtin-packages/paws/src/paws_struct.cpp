@@ -111,8 +111,21 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		{
 			// Create struct
 			const char* structName = getIdExprName((MincIdExpr*)params[0]);
-			Struct* strct = new Struct();
-			defineStruct(parentBlock, structName, strct);
+
+			// A struct with null-body is considered a forward declarated struct
+			// If structName refers to a forward declarated struct, define the new struct within the forward declarated struct to preserve its type
+			// Otherwise, create a new struct
+			Struct* strct;
+			const MincSymbol* strctSymbol = lookupSymbol(parentBlock, structName);
+			if (strctSymbol == nullptr ||
+				strctSymbol->value == nullptr ||
+				!isInstance(parentBlock, strctSymbol->value, PawsStructInstance::TYPE) ||
+				(strct = (Struct*)strctSymbol->value)->body != nullptr)
+			{
+				strct = new Struct();
+				defineStruct(parentBlock, structName, strct);
+			}
+
 			strct->body = (MincBlockExpr*)params[1 + hasBase];
 			setBlockExprParent(strct->body, parentBlock);
 
@@ -348,7 +361,18 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		}
 	};
 	defineStmt4(pkgScope, "struct $I $B", new StructDefinitionKernel(false));
-defineStmt4(pkgScope, "struct $I: $E<PawsStruct> $B", new StructDefinitionKernel(true));
+	defineStmt4(pkgScope, "struct $I: $E<PawsStruct> $B", new StructDefinitionKernel(true));
+
+	// Define struct forward declaration
+	defineStmt5(pkgScope, "struct $I",
+		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+			// Create struct with null-body
+			const char* structName = getIdExprName((MincIdExpr*)params[0]);
+			Struct* strct = new Struct();
+			defineStruct(parentBlock, structName, strct);
+			strct->body = nullptr;
+		}
+	);
 
 	// Define struct constructor
 	class StructConstructorKernel : public MincKernel

@@ -651,6 +651,12 @@ PawsVoid test_paws_struct()
 		assert(s.mc() == 12);
 	}
 	func(t);
+
+	// Test forward declaration
+	struct F;
+	PawsVoid func(F f) {}
+	struct F {}
+	func(F());
 }
 
 PawsVoid test_paws_frames()

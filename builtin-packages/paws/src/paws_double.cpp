@@ -187,14 +187,34 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			return sin(f);
 		}
 	);
+	defineExpr(pkgScope, "asin($E<PawsDouble>)",
+		+[](double f) -> double {
+			return asin(f);
+		}
+	);
 	defineExpr(pkgScope, "cos($E<PawsDouble>)",
 		+[](double f) -> double {
 			return cos(f);
 		}
 	);
+	defineExpr(pkgScope, "acos($E<PawsDouble>)",
+		+[](double f) -> double {
+			return acos(f);
+		}
+	);
 	defineExpr(pkgScope, "tan($E<PawsDouble>)",
 		+[](double f) -> double {
 			return tan(f);
+		}
+	);
+	defineExpr(pkgScope, "atan($E<PawsDouble>)",
+		+[](double f) -> double {
+			return atan(f);
+		}
+	);
+	defineExpr(pkgScope, "atan2($E<PawsDouble>, $E<PawsDouble>)",
+		+[](double y, double x) -> double {
+			return atan2(y, x);
 		}
 	);
 

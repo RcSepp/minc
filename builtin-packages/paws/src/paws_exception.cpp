@@ -2,6 +2,11 @@
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
+template<> std::string PawsException::Type::toString(MincObject* value) const
+{
+	return "PawsException(\"" + std::string(((PawsException*)value)->get().what()) + "\")";
+}
+
 MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 	registerType<PawsException>(pkgScope, "PawsException");
 

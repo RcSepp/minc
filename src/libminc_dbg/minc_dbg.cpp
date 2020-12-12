@@ -38,7 +38,7 @@
 #include <io.h> // _setmode
 #endif
 
-#define LOG_TO_FILE "/home/sepp/Development/minc/log.txt"
+#define LOG_TO_FILE "/home/sepp/Development/minc/tmp/log.txt"
 std::shared_ptr<dap::Writer> dapLog;
 
 #define DEBUG_STEP_EVENTS

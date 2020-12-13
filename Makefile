@@ -73,6 +73,7 @@ ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
 coverage: ${TMP_DIR}/minc/minc.gcda
 	lcov -c -d ${TMP_DIR} --include "*/src/*" -o ${TMP_DIR}lcov.info
 	genhtml ${TMP_DIR}lcov.info --output-directory ${COV_DIR}
+	$(MAKE) -C ${PKG_DIR}*/ $(MAKECMDGOALS)
 
 ${TMP_DIR}/minc/minc.gcda: ${BIN_DIR}minc
 	${BIN_DIR}minc ${PKG_DIR}paws/test/test.minc #TODO: Create separate coverage test for minc

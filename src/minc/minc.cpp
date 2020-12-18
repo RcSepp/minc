@@ -114,7 +114,12 @@ int main(int argc, char** argv)
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 			std::cout << "build took " << diff.count() << "ms" << std::endl;
-			rootBlock->run(nullptr);
+			MincRuntime runtime = { nullptr, false };
+			if (rootBlock->run(runtime))
+			{
+				std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(runtime.result.type, "UNKNOWN_TYPE") << ">\n";
+				result = -1;
+			}
 		} catch (ExitException err) {
 			result = err.code;
 		} catch (const MincException& err) {

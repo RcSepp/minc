@@ -6,7 +6,7 @@ struct PawsFunc
 	PawsType* returnType;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
-	virtual MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const = 0;
+	virtual bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const = 0;
 
 	PawsFunc() = default;
 	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
@@ -18,21 +18,21 @@ struct PawsRegularFunc : public PawsFunc
 {
 	MincBlockExpr* body;
 	mutable std::vector<MincSymbolId> args;
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
+	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
 
 	PawsRegularFunc() = default;
 	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 		: PawsFunc(returnType, argTypes, argNames), body(body) {}
 };
 
-typedef MincSymbol (*FuncBlock)(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, void* funcArgs);
+typedef bool (*FuncBlock)(MincRuntime& runtime, const std::vector<MincExpr*>& argExprs, void* funcArgs);
 struct PawsConstFunc : public PawsFunc
 {
 	FuncBlock body;
 	void* funcArgs;
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, const MincSymbol* self=nullptr) const
+	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& argExprs, const MincSymbol* self=nullptr) const
 	{
-		return body(callerScope, argExprs, funcArgs);
+		return body(runtime, argExprs, funcArgs);
 	}
 
 	PawsConstFunc() = default;
@@ -93,29 +93,42 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 		});
 	}
 
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable" // Workaround for gcc bug, where constexpr blocks can cause false positives for
+														   // unused variable warnings
+	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
 	{
+		static MincObject* argValues[sizeof...(A)];
+
+		bool cancel = false;
+		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+			if (cancel || (cancel = runExpr2(args[i], runtime)))
+				return;
+			argValues[i] = runtime.result.value;
+		});
+		if (cancel)
+			return true;
+
 		if constexpr (std::is_void<R>::value)
 		{
 			call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
-				return p->get();
+				return ((PawsValue<P>*)argValues[i])->get();
 			});
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(
+			runtime.result = MincSymbol(
 				PawsValue<R>::TYPE,
 				new PawsValue<R>(
 					call_with_args(func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
-						return p->get();
+						return ((PawsValue<P>*)argValues[i])->get();
 					})
 				)
 			);
+		return false;
 	}
+#pragma GCC diagnostic pop // Restore -Wunused-but-set-variable
 };
 
 template <typename R, typename C, typename... A>
@@ -135,30 +148,43 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 		});
 	}
 
-	MincSymbol call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable" // Workaround for gcc bug, where constexpr blocks can cause false positives for
+														   // unused variable warnings
+	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const
 	{
+		static MincObject* argValues[sizeof...(A)];
 		PawsValue<C*>* s = (PawsValue<C*>*)self->value;
+
+		bool cancel = false;
+		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
+			if (cancel || (cancel = runExpr2(args[i], runtime)))
+				return;
+			argValues[i] = runtime.result.value;
+		});
+		if (cancel)
+			return true;
+
 		if constexpr (std::is_void<R>::value)
 		{
 			call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 				typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-				PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
-				return p->get();
+				return ((PawsValue<P>*)argValues[i])->get();
 			});
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(
+			runtime.result = MincSymbol(
 				PawsValue<R>::TYPE,
 				new PawsValue<R>(
 					call_with_args(s->get(), func, std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 						typedef typename std::tuple_element<i, std::tuple<A...>>::type P;
-						PawsValue<P>* p = (PawsValue<P>*)runExpr(args[i], callerScope).value;
-						return p->get();
+						return ((PawsValue<P>*)argValues[i])->get();
 					})
 				)
 			);
+		return false;
 	}
+#pragma GCC diagnostic pop // Restore -Wunused-but-set-variable
 };
 
 void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body);

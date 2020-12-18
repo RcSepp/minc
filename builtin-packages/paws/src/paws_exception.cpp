@@ -11,27 +11,33 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 	registerType<PawsException>(pkgScope, "PawsException");
 
 	// Define try statement
-	defineStmt6(pkgScope, "try $S catch $S",
+	defineStmt6_2(pkgScope, "try $S catch $S",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			try
 			{
-				runExpr(params[0], parentBlock);
+				if (!runExpr2(params[0], runtime))
+					return false;
 			}
 			catch (const MincException&)
 			{
-				runExpr(params[1], parentBlock);
+				return runExpr2(params[1], runtime);
 			}
-			catch (const MincSymbol&)
+			catch (const MincSymbol& err)
 			{
-				runExpr(params[1], parentBlock);
+				if (err.type == &PAWS_RETURN_TYPE || err.type == &PAWS_AWAIT_TYPE)
+					return true;
+				return runExpr2(params[1], runtime);
 			}
+			if (runtime.result.type == &PAWS_RETURN_TYPE || runtime.result.type == &PAWS_AWAIT_TYPE)
+				return true;
+			return runExpr2(params[1], runtime);
 		}
 	);
-	defineStmt6(pkgScope, "try $S catch ($E $I) $B",
+	defineStmt6_2(pkgScope, "try $S catch ($E $I) $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
@@ -42,43 +48,58 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			//TODO: Store symbolId
 			buildExpr(params[3], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[1], runtime)) //TODO: Consider storing this in the built kernel
+				return true;
+			MincObject* const catchType = runtime.result.value;
+
 			try
 			{
-				runExpr(params[0], parentBlock);
+				if (!runExpr2(params[0], runtime))
+					return false;
 			}
 			catch (const MincException& err)
 			{
-				MincObject* const catchType = runExpr(params[1], parentBlock).value;
-				if (isInstance(parentBlock, PawsException::TYPE, catchType))
+				if (isInstance(runtime.parentBlock, PawsException::TYPE, catchType))
 				{
 					defineSymbol((MincBlockExpr*)params[3], getIdExprName((MincIdExpr*)params[2]), PawsException::TYPE, new PawsException(err));
-					runExpr(params[3], parentBlock);
+					return runExpr2(params[3], runtime);
 				}
 				else
 					throw;
 			}
 			catch (const MincSymbol& err)
 			{
-				MincObject* const catchType = runExpr(params[1], parentBlock).value;
-				if (isInstance(parentBlock, err.type, catchType))
+				if (isInstance(runtime.parentBlock, err.type, catchType))
 				{
 					defineSymbol((MincBlockExpr*)params[3], getIdExprName((MincIdExpr*)params[2]), err.type, err.value);
-					runExpr(params[3], parentBlock);
+					return runExpr2(params[3], runtime);
 				}
 				else
-					throw;
+				{
+					runtime.result = err;
+					return true;
+				}
 			}
+			const MincSymbol& err = runtime.result;
+			if (isInstance(runtime.parentBlock, err.type, catchType))
+			{
+				defineSymbol((MincBlockExpr*)params[3], getIdExprName((MincIdExpr*)params[2]), err.type, err.value);
+				return runExpr2(params[3], runtime);
+			}
+			else
+				return true;
 		}
 	);
 
 	// Define throw statement
-	defineStmt6(pkgScope, "throw $E",
+	defineStmt6_2(pkgScope, "throw $E",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			throw runExpr(params[0], parentBlock);
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			runExpr2(params[0], runtime);
+			return true;
 		}
 	);
 
@@ -88,13 +109,16 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			return MincException();
 		}
 	);
-	defineExpr9(pkgScope, "PawsException($E<PawsString>)",
+	defineExpr9_2(pkgScope, "PawsException($E<PawsString>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const std::string& msg = ((PawsString*)runExpr(params[0], parentBlock).value)->get();
-			return MincSymbol(PawsException::TYPE, new PawsException(MincException(msg, getLocation(params[0]))));
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			const std::string& msg = ((PawsString*)runtime.result.value)->get();
+			runtime.result = MincSymbol(PawsException::TYPE, new PawsException(MincException(msg, getLocation(params[0]))));
+			return false;
 		},
 		PawsException::TYPE
 	);

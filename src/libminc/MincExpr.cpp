@@ -41,7 +41,17 @@ MincSymbol MincExpr::run(MincBlockExpr* parentBlock, bool resume)
 	try
 	{
 		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
-		var = builtKernel->run(parentBlock, resolvedParams);
+		MincRuntime runtime = { parentBlock, parentBlock->isResuming };
+		if (builtKernel->run(runtime, resolvedParams))
+		{
+			parentBlock->isExprSuspended = true;
+			//TODO: Raise error if getType() != &ERROR_TYPE
+			raiseStepEvent(this, STEP_SUSPEND);
+			if (isVolatile)
+				forget();
+			throw runtime.result;
+		}
+		var = runtime.result;
 	}
 	catch (...)
 	{
@@ -95,6 +105,102 @@ MincSymbol MincExpr::run(MincBlockExpr* parentBlock, bool resume)
 	return var;
 }
 
+bool MincExpr::run(MincRuntime& runtime)
+{
+	MincBlockExpr* const parentBlock = runtime.parentBlock;
+
+	// Handle expression caching for coroutines
+	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+	{
+		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+		{
+			const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
+			runtime.result.type = cached.type;
+			runtime.result.value = cached.value;
+			return false;
+		}
+	}
+	else
+	{
+		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+	}
+	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+
+	if (!isResolved())
+		throw UndefinedExprException{this};
+
+	if (builtKernel == nullptr)
+		throw CompileError(parentBlock, loc, "expression not built: %e", this);
+
+	try
+	{
+		raiseStepEvent(this, (runtime.resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
+		if (builtKernel->run(runtime, resolvedParams))
+		{
+			runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+			parentBlock->isExprSuspended = true;
+			//TODO: Raise error if getType() != &ERROR_TYPE
+			raiseStepEvent(this, STEP_SUSPEND);
+			if (isVolatile)
+				forget();
+			return true;
+		}
+	}
+	catch (...)
+	{
+		runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+		parentBlock->isExprSuspended = true;
+		//TODO: Raise error if getType() != &ERROR_TYPE
+		raiseStepEvent(this, STEP_SUSPEND);
+		if (isVolatile)
+			forget();
+		throw;
+	}
+	runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+	parentBlock->isExprSuspended = false;
+
+#ifdef CHECK_RUN_RESULT_TYPES
+	const MincObject *expectedType, *gotType = runtime.result.type;
+	try //TODO: Make getType() noexcept
+	{
+		expectedType = resolvedKernel->getType(parentBlock, resolvedParams);
+	}
+	catch(...)
+	{
+		throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
+	}
+	if (expectedType != gotType)
+	{
+		if (expectedType == &ERROR_TYPE)
+			throw CompileError(
+				("no exception raised in expression returning error type: " + this->str()).c_str(),
+				this->loc
+			);
+
+		throw CompileError(
+			("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
+			this->loc
+		);
+	}
+#endif
+
+	// Cache expression result for coroutines
+	parentBlock->resultCache[resultCacheIdx] = std::make_pair(runtime.result, true);
+	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+	{
+		parentBlock->resultCacheIdx = resultCacheIdx + 1;
+		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+	}
+
+	raiseStepEvent(this, STEP_OUT);
+
+	if (isVolatile)
+		forget();
+
+	return false;
+}
+
 MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 {
 	try //TODO: Make getType() noexcept
@@ -129,7 +235,9 @@ MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
 		builtKernel = resolvedKernel->build(parentBlock, resolvedParams);
 	try
 	{
-		builtKernel->run(parentBlock, resolvedParams);
+		MincRuntime runtime = { parentBlock, parentBlock->isResuming };
+		if (builtKernel->run(runtime, resolvedParams))
+			throw runtime.result;
 	}
 	catch(...)
 	{
@@ -189,6 +297,11 @@ extern "C"
 	MincSymbol runExpr(MincExpr* expr, MincBlockExpr* scope)
 	{
 		return expr->run(scope, false);
+	}
+
+	bool runExpr2(MincExpr* expr, MincRuntime& runtime)
+	{
+		return expr->run(runtime);
 	}
 
 	MincSymbol resumeExpr(MincExpr* expr, MincBlockExpr* scope)

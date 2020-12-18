@@ -2,21 +2,20 @@
 
 extern MincObject ERROR_TYPE;
 
-void raiseStepEvent(const MincExpr* loc, StepEventType type);
-
 MincParamExpr::Kernel::Kernel(MincParamExpr* expr)
 	: expr(expr)
 {
 }
 
-MincSymbol MincParamExpr::Kernel::run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+bool MincParamExpr::Kernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 {
-	const std::vector<MincSymbol>* blockParams = parentBlock->getBlockParams();
+	const std::vector<MincSymbol>* blockParams = runtime.parentBlock->getBlockParams();
 	if (blockParams == nullptr)
 		throw CompileError("invalid use of parameter expression in parameterless scope", expr->loc);
 	if (expr->idx >= blockParams->size())
 		throw CompileError("parameter index out of bounds", expr->loc);
-	return blockParams->at(expr->idx);
+	runtime.result = blockParams->at(expr->idx);
+	return false;
 }
 
 MincObject* MincParamExpr::Kernel::getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const

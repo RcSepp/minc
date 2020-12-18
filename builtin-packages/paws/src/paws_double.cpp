@@ -24,10 +24,11 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		{
 			delete this;
 		}
-		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(parentBlock, varId);
-			return MincSymbol(PawsDouble::TYPE, new PawsDouble(cbk(((PawsDouble*)var->value)->get())));
+			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
+			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(cbk(((PawsDouble*)var->value)->get())));
+			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
@@ -103,61 +104,73 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place double addition
-	defineExpr9(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() + ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
-			return *var;
+			if (runExpr2(params[1], runtime))
+				return true;
+			val->set(val->get() + ((PawsDouble*)runtime.result.value)->get());
+			runtime.result = *var;
+			return false;
 		},
 		PawsDouble::TYPE
 	);
 
 	// Define in-place double subtraction
-	defineExpr9(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() - ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
-			return *var;
+			if (runExpr2(params[1], runtime))
+				return true;
+			val->set(val->get() - ((PawsDouble*)runtime.result.value)->get());
+			runtime.result = *var;
+			return false;
 		},
 		PawsDouble::TYPE
 	);
 
 	// Define in-place double multiplication
-	defineExpr9(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() * ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
-			return *var;
+			if (runExpr2(params[1], runtime))
+				return true;
+			val->set(val->get() * ((PawsDouble*)runtime.result.value)->get());
+			runtime.result = *var;
+			return false;
 		},
 		PawsDouble::TYPE
 	);
 
 	// Define in-place double division
-	defineExpr9(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
-			MincSymbol* var = importSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsDouble* const val = (PawsDouble*)var->value;
-			val->set(val->get() / ((PawsDouble*)runExpr(params[1], parentBlock).value)->get());
-			return *var;
+			if (runExpr2(params[1], runtime))
+				return true;
+			val->set(val->get() / ((PawsDouble*)runtime.result.value)->get());
+			runtime.result = *var;
+			return false;
 		},
 		PawsDouble::TYPE
 	);
@@ -251,29 +264,47 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define logical operators
-	defineExpr9(pkgScope, "$E<PawsDouble> && $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$E<PawsDouble> && $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
-					((PawsDouble*)runExpr(params[0], parentBlock).value)->get() &&
-					((PawsDouble*)runExpr(params[1], parentBlock).value)->get()
-			));
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			const auto a = ((PawsDouble*)runtime.result.value)->get();
+			if (!a)
+			{
+				runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(0));
+				return false;
+			}
+			if (runExpr2(params[1], runtime))
+				return true;
+			const auto b = ((PawsDouble*)runtime.result.value)->get();
+			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(a && b));
+			return false;
 		},
 		PawsDouble::TYPE
 	);
-	defineExpr9(pkgScope, "$E<PawsDouble> || $E<PawsDouble>",
+	defineExpr9_2(pkgScope, "$E<PawsDouble> || $E<PawsDouble>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			return MincSymbol(PawsDouble::TYPE, new PawsDouble(
-					((PawsDouble*)runExpr(params[0], parentBlock).value)->get() ||
-					((PawsDouble*)runExpr(params[1], parentBlock).value)->get()
-			));
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			const auto a = ((PawsDouble*)runtime.result.value)->get();
+			if (a)
+			{
+				runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(1));
+				return false;
+			}
+			if (runExpr2(params[1], runtime))
+				return true;
+			const auto b = ((PawsDouble*)runtime.result.value)->get();
+			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(a || b));
+			return false;
 		},
 		PawsDouble::TYPE
 	);

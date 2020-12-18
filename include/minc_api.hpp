@@ -45,6 +45,7 @@ public:
 	MincExpr(const MincLocation& loc, ExprType exprtype);
 	virtual ~MincExpr();
 	virtual MincSymbol run(MincBlockExpr* parentBlock, bool resume=false);
+	virtual bool run(MincRuntime& runtime);
 	MincObject* getType(const MincBlockExpr* parentBlock) const;
 	MincObject* getType(MincBlockExpr* parentBlock);
 	virtual bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const = 0;
@@ -215,6 +216,7 @@ public:
 	MincStmt();
 	~MincStmt();
 	MincSymbol run(MincBlockExpr* parentBlock, bool resume=false);
+	bool run(MincRuntime& runtime);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
 	void resolve(const MincBlockExpr* block);
@@ -262,8 +264,8 @@ public:
 	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
 	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
-	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> code);
-	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> run);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBlockExpr*, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run);
 	bool lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
@@ -271,8 +273,8 @@ public:
 	void iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const;
 	void defineDefaultStmt(MincKernel* stmt);
 	void defineExpr(MincExpr* tplt, MincKernel* expr);
-	void defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> code, MincObject* type);
-	void defineExpr(MincExpr* tplt, std::function<MincSymbol(MincBlockExpr*, std::vector<MincExpr*>&)> code, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> type);
+	void defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, MincObject* type);
+	void defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> type);
 	bool lookupExpr(MincExpr* expr) const;
 	void lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
@@ -297,6 +299,7 @@ public:
 	MincSymbol* importSymbol(const std::string& name);
 	const std::vector<MincSymbol>* getBlockParams() const;
 	MincSymbol run(MincBlockExpr* parentBlock, bool resume=false);
+	bool run(MincRuntime& runtime);
 	MincKernel* build(MincBlockExpr* parentBlock);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
 	void collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const;
@@ -392,7 +395,7 @@ private:
 		MincParamExpr* expr;
 
 		Kernel(MincParamExpr* expr);
-		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params);
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 	} kernel;
 

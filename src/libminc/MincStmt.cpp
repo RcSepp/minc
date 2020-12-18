@@ -39,7 +39,15 @@ MincSymbol MincStmt::run(MincBlockExpr* parentBlock, bool resume)
 	try
 	{
 		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
-		builtKernel->run(parentBlock, resolvedParams);
+		MincRuntime runtime = { parentBlock, parentBlock->isResuming };
+		if (builtKernel->run(runtime, resolvedParams))
+		{
+			parentBlock->isStmtSuspended = true;
+			raiseStepEvent(this, STEP_SUSPEND);
+			if (isVolatile)
+				forget();
+			throw runtime.result;
+		}
 	}
 	catch (...)
 	{
@@ -65,6 +73,73 @@ MincSymbol MincStmt::run(MincBlockExpr* parentBlock, bool resume)
 		forget();
 
 	return getVoid();
+}
+
+bool MincStmt::run(MincRuntime& runtime)
+{
+	MincBlockExpr* const parentBlock = runtime.parentBlock;
+
+	// Handle expression caching for coroutines
+	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+	{
+		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+		{
+			const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
+			runtime.result.type = cached.type;
+			runtime.result.value = cached.value;
+			return false;
+		}
+	}
+	else
+	{
+		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+	}
+	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+
+	if (builtKernel == nullptr)
+		throw CompileError(parentBlock, loc, "expression not built: %e", this);
+
+	try
+	{
+		raiseStepEvent(this, (runtime.resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
+		if (builtKernel->run(runtime, resolvedParams))
+		{
+			runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+			parentBlock->isStmtSuspended = true;
+			raiseStepEvent(this, STEP_SUSPEND);
+			if (isVolatile)
+				forget();
+			return true;
+		}
+	}
+	catch (...)
+	{
+		runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+		parentBlock->isStmtSuspended = true;
+		raiseStepEvent(this, STEP_SUSPEND);
+		if (isVolatile)
+			forget();
+		throw;
+	}
+	runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
+	parentBlock->isStmtSuspended = false;
+
+	// Cache expression result for coroutines
+	parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
+	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+	{
+		parentBlock->resultCacheIdx = resultCacheIdx + 1;
+		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+	}
+
+	raiseStepEvent(this, STEP_OUT);
+
+	if (isVolatile)
+		forget();
+
+	runtime.result = getVoid();
+	return false;
 }
 
 bool MincStmt::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const

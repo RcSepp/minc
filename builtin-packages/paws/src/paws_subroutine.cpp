@@ -17,14 +17,16 @@ template<> std::string PawsFunction::Type::toString(MincObject* value) const
 		return ""; //TODO
 }
 
-MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, const MincSymbol* self) const
+bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& argExprs, const MincSymbol* self) const
 {
 	MincBlockExpr* instance = cloneBlockExpr(body);
 
 	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
 	{
-		MincSymbol argSym = runExpr(argExprs[i], callerScope);
+		if (runExpr2(argExprs[i], runtime))
+			return true;
+		MincSymbol argSym = runtime.result;
 		MincSymbol* var = getSymbol(instance, args[i]);
 		assert(var->type == argSym.type);
 		var->value = ((PawsType*)argSym.type)->copy((PawsBase*)argSym.value);
@@ -32,17 +34,27 @@ MincSymbol PawsRegularFunc::call(MincBlockExpr* callerScope, const std::vector<M
 
 	try
 	{
-		runExpr((MincExpr*)instance, getBlockExprParent(body));
+		runtime.parentBlock = getBlockExprParent(body);
+		if (runExpr2((MincExpr*)instance, runtime))
+		{
+			if (runtime.result.type != &PAWS_RETURN_TYPE)
+				return true;
+			removeBlockExpr(instance);
+			runtime.result = MincSymbol(returnType, runtime.result.value);
+			return false;
+		}
 	}
 	catch (ReturnException err)
 	{
 		removeBlockExpr(instance);
-		return err.result;
+		runtime.result = err.result;
+		return false;
 	}
 	removeBlockExpr(instance);
 	if (returnType != PawsVoid::TYPE)
 		throw CompileError("non-void function should return a value", getLocation((MincExpr*)body));
-	return MincSymbol(PawsVoid::TYPE, nullptr);
+	runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+	return false;
 }
 
 void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
@@ -132,16 +144,16 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			// Set function parent to function definition scope (the parent may have changed during function cloning)
 			MincBlockExpr* block = (MincBlockExpr*)params[4];
-			setBlockExprParent(block, parentBlock);
+			setBlockExprParent(block, runtime.parentBlock);
 
-			MincSymbol* varFromId = getSymbol(parentBlock, varId);
+			MincSymbol* varFromId = getSymbol(runtime.parentBlock, varId);
 			varFromId->value = func;
 			varFromId->type = funcType;
-			return getVoid();
+			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
@@ -151,15 +163,17 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	defineStmt4(pkgScope, "$E<PawsType> $I($E<PawsType> $I, ...) $B", new FunctionDefinitionKernel());
 
 	// Define function call
-	defineExpr10(pkgScope, "$E<PawsFunction>($E, ...)",
+	defineExpr10_2(pkgScope, "$E<PawsFunction>($E, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
 			for (MincExpr* argExpr: argExprs)
 				buildExpr(argExpr, parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const PawsFunc* func = ((PawsFunction*)runExpr(params[0], parentBlock).value)->get();
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			const PawsFunc* func = ((PawsFunction*)runtime.result.value)->get();
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
 
 			// Check number of arguments
@@ -170,20 +184,20 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				MincExpr* argExpr = argExprs[i];
-				MincObject *expectedType = func->argTypes[i], *gotType = getType(argExpr, parentBlock);
+				MincObject *expectedType = func->argTypes[i], *gotType = getType(argExpr, runtime.parentBlock);
 
 				if (expectedType != gotType)
 				{
-					MincExpr* castExpr = lookupCast(parentBlock, argExpr, expectedType);
+					MincExpr* castExpr = lookupCast(runtime.parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
-						throw CompileError(parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
-					buildExpr(castExpr, parentBlock);
+						throw CompileError(runtime.parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
+					buildExpr(castExpr, runtime.parentBlock);
 					argExprs[i] = castExpr;
 				}
 			}
 
 			// Call function
-			return func->call(parentBlock, argExprs);
+			return func->call(runtime, argExprs);
 		}, [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			assert(ExprIsCast(params[0]));
 			return ((PawsTpltType*)getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->tpltType;
@@ -215,13 +229,16 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		getErrorType()
 	);
 
-	defineExpr9(pkgScope, "PawsFunction<$E<PawsType>>",
+	defineExpr9_2(pkgScope, "PawsFunction<$E<PawsType>>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
 			buildExpr(params[0], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
-			return MincSymbol(PawsType::TYPE, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType));
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			PawsType* returnType = (PawsType*)runtime.result.value;
+			runtime.result = MincSymbol(PawsType::TYPE, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType));
+			return false;
 		},
 		PawsType::TYPE
 	);

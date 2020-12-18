@@ -579,6 +579,8 @@ public:
 		removeAllThreads();
 		createThread();
 
+		MincRuntime runtime = { nullptr, false };
+
 #ifdef DEBUG_MULTITHREADING
 const char* path = "/home/sepp/Development/minc/paws/example11.minc";
 MincBlockExpr* rootBlock2;
@@ -598,7 +600,7 @@ if (parser.parse())
 MINC_PACKAGE_MANAGER().import(rootBlock2); // Import package manager
 auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 	try {
-		runExpr((MincExpr*)rootBlock2, nullptr);
+		runExpr2((MincExpr*)rootBlock2, runtime);
 		debugger->session->send(dap::TerminatedEvent());
 	} catch (ExitException err) {
 		debugger->session->send(dap::TerminatedEvent());
@@ -633,7 +635,13 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			// Build and run root block
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			rootBlock->build(nullptr);
-			rootBlock->run(nullptr);
+			if (rootBlock->run(runtime))
+			{
+				Thread& currentThread = getCurrentThread();
+				if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, runtime.result, &currentThread.errMsg))
+					currentThread.errMsg = "";
+				sendStopEvent(StopEventReason::Exception, currentThread.errMsg);
+			}
 
 			session->send(dap::TerminatedEvent());
 		} catch (ExitException err) {

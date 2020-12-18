@@ -224,7 +224,7 @@ MincPackage* MincPackageManager::discoverPackage(std::string pkgName) const
 				}
 
 #ifdef USE_MINC_PACKAGES
-				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".minc")) // If a Python package library exists for this sub-package, ...
+				if (std::filesystem::exists(pkgPath = pkgDir + subpkgName + ".minc")) // If a Minc package library exists for this sub-package, ...
 				{
 					MincBlockExpr* pkgBlock = parseCFile(pkgPath.c_str());
 					MINC_PACKAGE_MANAGER().import(pkgBlock);

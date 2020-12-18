@@ -30,36 +30,40 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 	// Emphasize that this behaviour allows non-unique type names within a program and that it aids multithreading by making type lookups a local operation within the AST.
 	// (This is the same reason why casts are defined on AST blocks, instead of globally.)
 
-	defineExpr3(pkgScope, "$L",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	defineExpr3_2(pkgScope, "$L",
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 			const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
 
 			if (*valueEnd == '"' || *valueEnd == '\'')
 			{
 				const char* valueStart = strchr(value, *valueEnd) + 1;
-				return MincSymbol(&STRING_TYPE, new String(valueStart, valueEnd - valueStart));
+				runtime.result = MincSymbol(&STRING_TYPE, new String(valueStart, valueEnd - valueStart));
 			}
-
-			raiseCompileError("Non-string literals not implemented", params[0]);
-			return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
+			else
+				raiseCompileError("Non-string literals not implemented", params[0]);
+			return false;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
 			if (*valueEnd == '"' || *valueEnd == '\'')
 				return &STRING_TYPE;
-			return nullptr;
+			else
+				return nullptr;
 		}
 	);
 
-	defineStmt6(pkgScope, "print($E<string>)",
+	defineStmt6_2(pkgScope, "print($E<string>)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			String* const message = (String*)runExpr(params[0], parentBlock).value;
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			String* const message = (String*)runtime.result.value;
 			std::cout << message->val << " from C!\n";
+			return false;
 		}
 	);
 });

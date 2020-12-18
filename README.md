@@ -27,17 +27,21 @@ pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
 ```C++
 // Create expression kernel for interpreting literal expressions
 pkgScope->defineExpr("$L",
-	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) -> MincSymbol {
+	[](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
 		const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
 		if (value.back() == '"' || value.back() == '\'')
-			return MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
-
-		raiseCompileError("Non-string literals not implemented", params[0]);
-		return MincSymbol(nullptr, nullptr);
+			runtime.result = MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
+		else
+			raiseCompileError("Non-string literals not implemented", params[0]);
+		return false;
 	},
 	[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
-		return &STRING_TYPE;
+		const std::string& value = ((MincLiteralExpr*)params[0])->value;
+		if (value.back() == '"' || value.back() == '\'')
+			return &STRING_TYPE;
+		else
+			return nullptr;
 	}
 );
 ```

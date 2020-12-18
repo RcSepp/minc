@@ -235,6 +235,7 @@ struct ReturnException
 	const MincSymbol result;
 	ReturnException(const MincSymbol& result) : result(result) {}
 };
+extern MincObject PAWS_RETURN_TYPE, PAWS_AWAIT_TYPE;
 
 void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, const char* funcName="function");
 
@@ -260,11 +261,11 @@ public:
 	PawsKernel(MincBlockExpr* body, MincObject* type, const std::vector<MincSymbol>& blockParams);
 	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
 	void dispose(MincKernel* kernel);
-	MincSymbol run(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params);
+	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params);
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 };
 
-// Templated version of defineStmt2():
+// Templated version of defineStmt6():
 // defineStmt() calls run() on all inputs
 void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)());
 template<class P0> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0))
@@ -275,11 +276,13 @@ template<class P0> void defineStmt(MincBlockExpr* scope, const char* tpltStr, vo
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 		buildExpr(params[0], parentBlock);
 	};
-	StmtBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 		(*(StmtFunc*)stmtArgs)(p0->get());
+		return false;
 	};
-	defineStmt6(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
+	defineStmt6_2(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
 }
 template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1))
 {
@@ -290,12 +293,15 @@ template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* t
 		buildExpr(params[0], parentBlock);
 		buildExpr(params[1], parentBlock);
 	};
-	StmtBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
 		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get());
+		return false;
 	};
-	defineStmt6(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
+	defineStmt6_2(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
 }
 template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1, P2))
 {
@@ -307,16 +313,20 @@ template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, con
 		buildExpr(params[1], parentBlock);
 		buildExpr(params[2], parentBlock);
 	};
-	StmtBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
 		(*(StmtFunc*)stmtArgs)(p0->get(), p1->get(), p2->get());
+		return false;
 	};
-	defineStmt6(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
+	defineStmt6_2(scope, tpltStr, buildBlock, runBlock, new StmtFunc(stmtFunc));
 }
 
-// Templated version of defineExpr2():
+// Templated version of defineExpr9():
 // defineExpr() calls run() on all inputs and wraps the output in a MincSymbol
 template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)())
 {
@@ -325,16 +335,17 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 		if (params.size() != 0)
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)();
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)()));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)()));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0))
 {
@@ -344,17 +355,19 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 		buildExpr(params[0], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1))
 {
@@ -365,18 +378,21 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 		buildExpr(params[0], parentBlock);
 		buildExpr(params[1], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2))
 {
@@ -388,19 +404,23 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		buildExpr(params[1], parentBlock);
 		buildExpr(params[2], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3))
 {
@@ -413,20 +433,25 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 		buildExpr(params[2], parentBlock);
 		buildExpr(params[3], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4))
 {
@@ -440,21 +465,27 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 		buildExpr(params[3], parentBlock);
 		buildExpr(params[4], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5))
 {
@@ -469,22 +500,29 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 		buildExpr(params[4], parentBlock);
 		buildExpr(params[5], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6))
 {
@@ -500,23 +538,31 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[5], parentBlock);
 		buildExpr(params[6], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7))
 {
@@ -533,24 +579,33 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[6], parentBlock);
 		buildExpr(params[7], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8))
 {
@@ -568,25 +623,35 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[7], parentBlock);
 		buildExpr(params[8], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9))
 {
@@ -605,26 +670,37 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[8], parentBlock);
 		buildExpr(params[9], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10))
 {
@@ -644,27 +720,39 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[9], parentBlock);
 		buildExpr(params[10], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11))
 {
@@ -685,28 +773,41 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[10], parentBlock);
 		buildExpr(params[11], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
-		PawsValue<P11>* p11 = (PawsValue<P11>*)runExpr(params[11], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
+		if (runExpr2(params[11], runtime)) return true;
+		PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12))
 {
@@ -728,29 +829,43 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[11], parentBlock);
 		buildExpr(params[12], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
-		PawsValue<P11>* p11 = (PawsValue<P11>*)runExpr(params[11], parentBlock).value;
-		PawsValue<P12>* p12 = (PawsValue<P12>*)runExpr(params[12], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
+		if (runExpr2(params[11], runtime)) return true;
+		PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
+		if (runExpr2(params[12], runtime)) return true;
+		PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13))
 {
@@ -773,30 +888,45 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[12], parentBlock);
 		buildExpr(params[13], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
-		PawsValue<P11>* p11 = (PawsValue<P11>*)runExpr(params[11], parentBlock).value;
-		PawsValue<P12>* p12 = (PawsValue<P12>*)runExpr(params[12], parentBlock).value;
-		PawsValue<P13>* p13 = (PawsValue<P13>*)runExpr(params[13], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
+		if (runExpr2(params[11], runtime)) return true;
+		PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
+		if (runExpr2(params[12], runtime)) return true;
+		PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
+		if (runExpr2(params[13], runtime)) return true;
+		PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14))
 {
@@ -820,31 +950,47 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[13], parentBlock);
 		buildExpr(params[14], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
-		PawsValue<P11>* p11 = (PawsValue<P11>*)runExpr(params[11], parentBlock).value;
-		PawsValue<P12>* p12 = (PawsValue<P12>*)runExpr(params[12], parentBlock).value;
-		PawsValue<P13>* p13 = (PawsValue<P13>*)runExpr(params[13], parentBlock).value;
-		PawsValue<P14>* p14 = (PawsValue<P14>*)runExpr(params[14], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
+		if (runExpr2(params[11], runtime)) return true;
+		PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
+		if (runExpr2(params[12], runtime)) return true;
+		PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
+		if (runExpr2(params[13], runtime)) return true;
+		PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
+		if (runExpr2(params[14], runtime)) return true;
+		PawsValue<P14>* p14 = (PawsValue<P14>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14, class P15> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15))
 {
@@ -869,35 +1015,52 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		buildExpr(params[14], parentBlock);
 		buildExpr(params[15], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		PawsValue<P3>* p3 = (PawsValue<P3>*)runExpr(params[3], parentBlock).value;
-		PawsValue<P4>* p4 = (PawsValue<P4>*)runExpr(params[4], parentBlock).value;
-		PawsValue<P5>* p5 = (PawsValue<P5>*)runExpr(params[5], parentBlock).value;
-		PawsValue<P6>* p6 = (PawsValue<P6>*)runExpr(params[6], parentBlock).value;
-		PawsValue<P7>* p7 = (PawsValue<P7>*)runExpr(params[7], parentBlock).value;
-		PawsValue<P8>* p8 = (PawsValue<P8>*)runExpr(params[8], parentBlock).value;
-		PawsValue<P9>* p9 = (PawsValue<P9>*)runExpr(params[9], parentBlock).value;
-		PawsValue<P10>* p10 = (PawsValue<P10>*)runExpr(params[10], parentBlock).value;
-		PawsValue<P11>* p11 = (PawsValue<P11>*)runExpr(params[11], parentBlock).value;
-		PawsValue<P12>* p12 = (PawsValue<P12>*)runExpr(params[12], parentBlock).value;
-		PawsValue<P13>* p13 = (PawsValue<P13>*)runExpr(params[13], parentBlock).value;
-		PawsValue<P14>* p14 = (PawsValue<P14>*)runExpr(params[14], parentBlock).value;
-		PawsValue<P15>* p15 = (PawsValue<P15>*)runExpr(params[15], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		if (runExpr2(params[3], runtime)) return true;
+		PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
+		if (runExpr2(params[4], runtime)) return true;
+		PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
+		if (runExpr2(params[5], runtime)) return true;
+		PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
+		if (runExpr2(params[6], runtime)) return true;
+		PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
+		if (runExpr2(params[7], runtime)) return true;
+		PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
+		if (runExpr2(params[8], runtime)) return true;
+		PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
+		if (runExpr2(params[9], runtime)) return true;
+		PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
+		if (runExpr2(params[10], runtime)) return true;
+		PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
+		if (runExpr2(params[11], runtime)) return true;
+		PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
+		if (runExpr2(params[12], runtime)) return true;
+		PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
+		if (runExpr2(params[13], runtime)) return true;
+		PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
+		if (runExpr2(params[14], runtime)) return true;
+		PawsValue<P14>* p14 = (PawsValue<P14>*)runtime.result.value;
+		if (runExpr2(params[15], runtime)) return true;
+		PawsValue<P15>* p15 = (PawsValue<P15>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(ExprFunc*)exprArgs)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get())));
+		return false;
 	};
-	defineExpr9(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
+	defineExpr9_2(scope, tpltStr, buildBlock, runBlock, PawsValue<R>::TYPE, new ExprFunc(exprFunc));
 }
 
-// Templated version of defineExpr3():
+// Templated version of defineExpr10():
 // defineExpr() calls run() on all inputs and wraps the output in a MincSymbol
 void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(), PawsType* (*exprTypeFunc)());
 template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0), PawsType* (*exprTypeFunc)(PawsType*))
@@ -909,15 +1072,17 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 		buildExpr(params[0], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+		runtime.result = ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get());
+		return false;
 	};
 	ExprTypeBlock typeCodeBlock = [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0);
 	};
-	defineExpr10(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10_2(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1), PawsType* (*exprTypeFunc)(PawsType*, PawsType*))
 {
@@ -929,17 +1094,20 @@ template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* t
 		buildExpr(params[0], parentBlock);
 		buildExpr(params[1], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
- 		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+ 		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+		runtime.result = ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get());
+		return false;
 	};
 	ExprTypeBlock typeCodeBlock = [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
 		PawsType* p1 = getType(params[1], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1);
 	};
-	defineExpr10(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10_2(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1, P2), PawsType* (*exprTypeFunc)(PawsType*, PawsType*, PawsType*))
 {
@@ -952,11 +1120,15 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		buildExpr(params[1], parentBlock);
 		buildExpr(params[2], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
- 		PawsValue<P1>* p1 = (PawsValue<P1>*)runExpr(params[1], parentBlock).value;
- 		PawsValue<P2>* p2 = (PawsValue<P2>*)runExpr(params[2], parentBlock).value;
-		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get(), p2->get());
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
+ 		if (runExpr2(params[1], runtime)) return true;
+		PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
+ 		if (runExpr2(params[2], runtime)) return true;
+		PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
+		runtime.result = ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->first(p0->get(), p1->get(), p2->get());
+		return false;
 	};
 	ExprTypeBlock typeCodeBlock = [](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 		PawsType* p0 = getType(params[0], parentBlock);
@@ -964,10 +1136,10 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		PawsType* p2 = getType(params[2], parentBlock);
 		return ((std::pair<ExprFunc, ExprTypeFunc>*)exprArgs)->second(p0, p1, p2);
 	};
-	defineExpr10(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
+	defineExpr10_2(scope, tpltStr, buildBlock, runBlock, typeCodeBlock, new std::pair<ExprFunc, ExprTypeFunc>(exprFunc, exprTypeFunc));
 }
 
-// Templated version of defineTypeCast2():
+// Templated version of defineTypeCast9():
 // defineTypeCast() calls run() on all inputs and wraps the output in a MincSymbol
 template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*exprFunc)(P0))
 {
@@ -977,20 +1149,22 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*exprFu
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 		buildExpr(params[0], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* castArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(CastFunc*)castArgs)(p0->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
+		return false;
 	};
-	defineTypeCast9(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, runBlock, new CastFunc(exprFunc));
+	defineTypeCast9_2(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, runBlock, new CastFunc(exprFunc));
 }
 
-// Templated version of defineInheritanceCast2():
+// Templated version of defineInheritanceCast9():
 // defineInheritanceCast() calls run() on all inputs and wraps the output in a MincSymbol
 template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (*exprFunc)(P0))
 {
@@ -1000,17 +1174,19 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 			raiseCompileError("parameter index out of bounds", (MincExpr*)parentBlock);
 		buildExpr(params[0], parentBlock);
 	};
-	ExprBlock runBlock = [](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* castArgs) -> MincSymbol {
-		PawsValue<P0>* p0 = (PawsValue<P0>*)runExpr(params[0], parentBlock).value;
+	RunBlock runBlock = [](MincRuntime& runtime, std::vector<MincExpr*>& params, void* castArgs) -> bool {
+		if (runExpr2(params[0], runtime)) return true;
+		PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 		if constexpr (std::is_void<R>::value)
 		{
 			(*(CastFunc*)castArgs)(p0->get());
-			return MincSymbol(PawsValue<R>::TYPE, nullptr);
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, nullptr);
 		}
 		else
-			return MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
+			runtime.result = MincSymbol(PawsValue<R>::TYPE, new PawsValue<R>((*(CastFunc*)castArgs)(p0->get())));
+		return false;
 	};
-	defineInheritanceCast9(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, runBlock, new CastFunc(exprFunc));
+	defineInheritanceCast9_2(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, buildBlock, runBlock, new CastFunc(exprFunc));
 }
 
 #endif

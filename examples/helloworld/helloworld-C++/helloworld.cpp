@@ -20,20 +20,21 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 	// (This is the same reason why casts are defined on AST blocks, instead of globally.)
 
 	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$L")[0],
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
 			const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
 			if (value.back() == '"' || value.back() == '\'')
-				return MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
-
-			raiseCompileError("Non-string literals not implemented", params[0]);
-			return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
+				runtime.result = MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
+			else
+				raiseCompileError("Non-string literals not implemented", params[0]);
+			return false;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
 			const std::string& value = ((MincLiteralExpr*)params[0])->value;
 			if (value.back() == '"' || value.back() == '\'')
 				return &STRING_TYPE;
-			return nullptr;
+			else
+				return nullptr;
 		}
 	);
 
@@ -41,9 +42,12 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
 			params[0]->build(parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-			String* const message = (String*)params[0]->run(parentBlock).value;
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+			if (params[0]->run(runtime))
+				return true;
+			String* const message = (String*)runtime.result.value;
 			std::cout << *message << " from C++!\n";
+			return false;
 		}
 	);
 });

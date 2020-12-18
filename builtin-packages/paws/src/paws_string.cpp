@@ -23,16 +23,20 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 	// >>> PawsString expressions
 
 	// Define string concatenation
-	defineExpr9(pkgScope, "$E<PawsString> += $E<PawsString>",
+	defineExpr9_2(pkgScope, "$E<PawsString> += $E<PawsString>",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			const MincSymbol& a = runExpr(params[0], parentBlock);
-			const MincSymbol& b = runExpr(params[1], parentBlock);
-			((PawsString*)a.value)->get() += ((PawsString*)b.value)->get();
-			return a;
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			PawsString* self = (PawsString*)runtime.result.value;
+			if (runExpr2(params[1], runtime))
+				return true;
+			self->get() += ((PawsString*)runtime.result.value)->get();
+			runtime.result.value = self; // result.type is already PawsString::TYPE
+			return false;
 		},
 		PawsString::TYPE
 	);
@@ -114,43 +118,55 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define string iterating for statement
-	defineStmt6(pkgScope, "for ($I: $E<PawsString>) $B",
+	defineStmt6_2(pkgScope, "for ($I: $E<PawsString>) $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[1], parentBlock);
 			defineSymbol((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]), PawsString::TYPE, nullptr);
 			buildExpr(params[2], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
-			PawsString* str = (PawsString*)runExpr(params[1], parentBlock).value;
+			if (runExpr2(params[1], runtime))
+				return true;
+			PawsString* str = (PawsString*)runtime.result.value;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsString iter;
 			defineSymbol(body, getIdExprName(iterExpr), PawsString::TYPE, &iter);
 			for (char c: str->get())
 			{
 				iter.set(std::string(1, c));
-				runExpr((MincExpr*)body, parentBlock);
+				if (runExpr2((MincExpr*)body, runtime))
+					return true;
 			}
+			return false;
 		}
 	);
 
 	// >>> PawsStringMap expressions
 
 	// Define string map constructor
-	defineExpr9(pkgScope, "map($E<PawsString>: $E<PawsString>, ...)",
+	defineExpr9_2(pkgScope, "map($E<PawsString>: $E<PawsString>, ...)",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			for (MincExpr* key: getListExprExprs((MincListExpr*)params[0]))
 				buildExpr(key, parentBlock);
 			for (MincExpr* value: getListExprExprs((MincListExpr*)params[1]))
 				buildExpr(value, parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			std::vector<MincExpr*>& keys = getListExprExprs((MincListExpr*)params[0]);
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[1]);
 			std::map<std::string, std::string> map;
 			for (size_t i = 0; i < keys.size(); ++i)
-				map[((PawsString*)runExpr(keys[i], parentBlock).value)->get()] = ((PawsString*)runExpr(values[i], parentBlock).value)->get();
-			return MincSymbol(PawsStringMap::TYPE, new PawsStringMap(map));
+			{
+				if (runExpr2(keys[i], runtime))
+					return true;
+				const std::string& key = ((PawsString*)runtime.result.value)->get();
+				if (runExpr2(values[i], runtime))
+					return true;
+				map[key] = ((PawsString*)runtime.result.value)->get();
+			}
+			runtime.result = MincSymbol(PawsStringMap::TYPE, new PawsStringMap(map));
+			return false;
 		},
 		PawsStringMap::TYPE
 	);
@@ -171,7 +187,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define string map iterating for statement
-	defineStmt6(pkgScope, "for ($I, $I: $E<PawsStringMap>) $B",
+	defineStmt6_2(pkgScope, "for ($I, $I: $E<PawsStringMap>) $B",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
@@ -181,10 +197,12 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			defineSymbol(body, getIdExprName(valueExpr), PawsString::TYPE, nullptr);
 			buildExpr((MincExpr*)body, parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
-			PawsStringMap* map = (PawsStringMap*)runExpr(params[2], parentBlock).value;
+			if (runExpr2(params[2], runtime))
+				return true;
+			PawsStringMap* map = (PawsStringMap*)runtime.result.value;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString key, value;
 			defineSymbol(body, getIdExprName(keyExpr), PawsString::TYPE, &key);
@@ -193,8 +211,10 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			{
 				key.set(pair.first);
 				value.set(pair.second);
-				runExpr((MincExpr*)body, parentBlock);
+				if (runExpr2((MincExpr*)body, runtime))
+					return true;
 			}
+			return false;
 		}
 	);
 });

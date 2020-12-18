@@ -178,7 +178,7 @@ public:
 		pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
 
 		pkgScope->defineExpr(MincBlockExpr::parseCTplt("$L")[0],
-			[&](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) -> MincSymbol {
+			[&](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
 				const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
 				if (value.back() == '"' || value.back() == '\'')
@@ -194,17 +194,18 @@ public:
 						glob,
 						{ builder->getInt64(0), builder->getInt64(0) }
 					);
-					return MincSymbol(&STRING_TYPE, new Object(value));
+					runtime.result = MincSymbol(&STRING_TYPE, new Object(value));
 				}
-
-				raiseCompileError("Non-string literals not implemented", params[0]);
-				return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
+				else
+					raiseCompileError("Non-string literals not implemented", params[0]);
+				return false;
 			},
 			[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
 				const std::string& value = ((MincLiteralExpr*)params[0])->value;
 				if (value.back() == '"' || value.back() == '\'')
 					return &STRING_TYPE;
-				return nullptr;
+				else
+					return nullptr;
 			}
 		);
 

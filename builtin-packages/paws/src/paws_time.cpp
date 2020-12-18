@@ -108,44 +108,50 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to print measured runtime
-	defineStmt6(pkgScope, "measure($E<PawsString>) $S",
+	defineStmt6_2(pkgScope, "measure($E<PawsString>) $S",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], parentBlock);
 			buildExpr(params[1], parentBlock);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			const std::string& taskName = ((PawsString*)runExpr(params[0], parentBlock).value)->get();
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr2(params[0], runtime))
+				return true;
+			const std::string& taskName = ((PawsString*)runtime.result.value)->get();
 			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			runExpr(stmt, parentBlock);
+			if (runExpr2(stmt, runtime))
+				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Print measured runtime
 			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 			std::cout << taskName << ": " << diff.count() << "ms" << std::endl;
+			return false;
 		}
 	);
 
 	// Define function to measure runtime
-	defineStmt6(pkgScope, "measure $I $S",
+	defineStmt6_2(pkgScope, "measure $I $S",
 		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
 			buildExpr(params[1], parentBlock);
 			defineSymbol(parentBlock, varName, PawsDuration::TYPE, nullptr);
 		},
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
 			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			runExpr(stmt, parentBlock);
+			if (runExpr2(stmt, runtime))
+				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Store measured runtime as `varName`
-			defineSymbol(parentBlock, varName, PawsDuration::TYPE, new PawsDuration(endTime - startTime));
+			defineSymbol(runtime.parentBlock, varName, PawsDuration::TYPE, new PawsDuration(endTime - startTime));
+			return false;
 		}
 	);
 });

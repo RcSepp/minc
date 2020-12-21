@@ -873,13 +873,13 @@ PawsVoid test_paws_extend()
 	stmt test identifier $I
 	{
 	build:
-		$0.build();
+		assert($0.build()) throws PawsException("`id` was not declared in this scope");
 	run:
 		assert(type($0) == PawsIdExpr);
 		assert($0.name == "id");
 		assert($0.getType() == PawsVoid);
 		assert(type($0.run()) == PawsVoid);
-		assert($0.run()) throws PawsException("`id` was not declared in this scope");
+		assert($0.run()) throws PawsException("expression not built: id");
 		++i;
 	}
 	test identifier id;

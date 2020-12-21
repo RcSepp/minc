@@ -500,6 +500,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
 		{
 			MincSymbolId varId = lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == MincSymbolId::NONE)
+				raiseCompileError(("`" + std::string(getIdExprName((MincIdExpr*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
 			return new VariableLookupKernel(varId);
 		}
 		void dispose(MincKernel* kernel)
@@ -510,8 +512,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			MincSymbol* varFromId = getSymbol(runtime.parentBlock, varId);
-			if (varFromId == nullptr)
-				raiseCompileError(("`" + std::string(getIdExprName((MincIdExpr*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
+			assert(varFromId != nullptr);
 			runtime.result = *varFromId;
 			return false;
 		}

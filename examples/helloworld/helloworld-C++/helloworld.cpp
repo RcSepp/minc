@@ -39,10 +39,10 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 	);
 
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("print($E<string>)"),
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-			params[0]->build(parentBlock);
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
+			params[0]->build(buildtime);
 		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
 			if (params[0]->run(runtime))
 				return true;
 			String* const message = (String*)runtime.result.value;

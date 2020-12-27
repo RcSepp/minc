@@ -24,17 +24,17 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt6_2(pkgScope, "for ($I: $E<PawsCastMap>) $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+	defineStmt6(pkgScope, "for ($I: $E<PawsCastMap>) $B",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
-			buildExpr(params[1], parentBlock);
+			buildExpr(params[1], buildtime);
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			defineSymbol(body, getIdExprName(castExpr), PawsCast::TYPE, nullptr);
-			buildExpr((MincExpr*)body, parentBlock);
+			buildExpr((MincExpr*)body, buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			PawsCastMap* casts = (PawsCastMap*)runtime.result.value;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
@@ -43,39 +43,27 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 			bool cancel = false;
 			iterateBlockExprCasts(casts->get(), [&](const MincCast* cast) {
 				value.set(cast);
-				cancel || (cancel = runExpr2((MincExpr*)body, runtime));
+				cancel || (cancel = runExpr((MincExpr*)body, runtime));
 			});
 			return cancel;
 		}
 	);
 
-	defineStmt6_2(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], parentBlock);
-			buildExpr(params[1], parentBlock);
-			buildExpr(params[2], parentBlock);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
-				return true;
-			CastMap const casts = ((PawsCastMap*)runtime.result.value)->get();
+	defineStmt5(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			CastMap const casts = ((PawsCastMap*)buildExpr(params[0], buildtime).value)->get();
 			MincBlockExpr* const scope = casts;
-			if (runExpr2(params[1], runtime))
-				return true;
-			PawsType* fromType = (PawsType*)runtime.result.value;
-			if (runExpr2(params[2], runtime))
-				return true;
-			PawsType* toType = (PawsType*)runtime.result.value;
+			PawsType* fromType = (PawsType*)buildExpr(params[1], buildtime).value;
+			PawsType* toType = (PawsType*)buildExpr(params[2], buildtime).value;
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[3];
 
 			// Get block parameter types
-			std::vector<MincSymbol> blockParams(1, MincSymbol(PawsTpltType::get(runtime.parentBlock, PawsExpr::TYPE, fromType), nullptr));
+			std::vector<MincSymbol> blockParams(1, MincSymbol(PawsTpltType::get(buildtime.parentBlock, PawsExpr::TYPE, fromType), nullptr));
 
 			setBlockExprParent(blockAST, scope);
 			definePawsReturnStmt(blockAST, toType);
 
-			defineTypeCast3(scope, fromType, toType, new PawsKernel(blockAST, toType, blockParams));
-			return false;
+			defineTypeCast3(scope, fromType, toType, new PawsKernel(blockAST, toType, buildtime, blockParams));
 		}
 	);
 

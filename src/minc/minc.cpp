@@ -108,13 +108,14 @@ int main(int argc, char** argv)
 
 		// Build and run root block
 		try {
+			MincBuildtime buildtime = { nullptr };
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			rootBlock->build(nullptr);
+			rootBlock->build(buildtime);
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 			std::cout << "build took " << diff.count() << "ms" << std::endl;
-			MincRuntime runtime = { nullptr, false };
+			MincRuntime runtime(nullptr, false);
 			if (rootBlock->run(runtime))
 			{
 				std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(runtime.result.type, "UNKNOWN_TYPE") << ">\n";

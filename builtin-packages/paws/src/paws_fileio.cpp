@@ -10,20 +10,20 @@ typedef PawsValue<std::shared_ptr<std::fstream>> PawsFile;
 MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
 
-	defineStmt6_2(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+	defineStmt6(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varname = getIdExprName((MincIdExpr*)params[0]);
-			buildExpr(params[1], parentBlock);
-			buildExpr(params[2], parentBlock);
+			buildExpr(params[1], buildtime);
+			buildExpr(params[2], buildtime);
 			defineSymbol((MincBlockExpr*)params[3], varname, PawsFile::TYPE, nullptr);
-			buildExpr(params[3], parentBlock);
+			buildExpr(params[3], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			const char* varname = getIdExprName((MincIdExpr*)params[0]);
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			const std::string& filename = ((PawsString*)runtime.result.value)->get();
-			if (runExpr2(params[2], runtime))
+			if (runExpr(params[2], runtime))
 				return true;
 			const std::string& mode = ((PawsString*)runtime.result.value)->get();
 			MincBlockExpr* block = (MincBlockExpr*)params[3];
@@ -46,7 +46,7 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 
 			try
 			{
-				if (runExpr2((MincExpr*)block, runtime))
+				if (runExpr((MincExpr*)block, runtime))
 				{
 					file->close();
 					return true;

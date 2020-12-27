@@ -50,17 +50,30 @@ struct MincSymbolId
 bool operator==(const MincSymbolId& left, const MincSymbolId& right);
 bool operator!=(const MincSymbolId& left, const MincSymbolId& right);
 
+struct MincBuildtime
+{
+	MincBlockExpr* parentBlock;
+	MincSymbol result;
+};
+
 struct MincRuntime
 {
 	MincBlockExpr* parentBlock;
-	bool resume;
 	MincSymbol result;
+	bool resume;
+
+	MincRuntime() = default;
+	MincRuntime(MincBlockExpr* parentBlock, bool resume)
+	{
+		this->parentBlock = parentBlock;
+		this->resume = resume;
+	}
 };
 
 struct MincKernel
 {
 	virtual ~MincKernel() {}
-	virtual MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) { return this; }
+	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { return this; }
 	virtual void dispose(MincKernel* kernel) {}
 	virtual bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) = 0;
 	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
@@ -127,8 +140,7 @@ struct InvalidTypeException : public CompileError
 	InvalidTypeException(const MincPlchldExpr* plchld);
 };
 
-typedef void (*StmtBlock)(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs);
-typedef MincSymbol (*ExprBlock)(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs);
+typedef void (*BuildBlock)(MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs);
 typedef bool (*RunBlock)(MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs);
 typedef MincObject* (*ExprTypeBlock)(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs);
 typedef void (*ImptBlock)(MincSymbol& symbol, MincScopeType* fromScope, MincScopeType* toScope);

@@ -13,10 +13,10 @@ MincListExpr::MincListExpr(char separator, std::vector<MincExpr*> exprs)
 {
 }
 
-MincSymbol MincListExpr::run(MincBlockExpr* parentBlock, bool resume)
+bool MincListExpr::run(MincRuntime& runtime)
 {
 	assert(0);
-	return MincSymbol(nullptr, nullptr); // LCOV_EXCL_LINE
+	return false; // LCOV_EXCL_LINE
 }
 
 bool MincListExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const

@@ -210,13 +210,16 @@ public:
 		);
 
 		pkgScope->defineStmt(MincBlockExpr::parseCTplt("print($E<string>)"),
-			[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-				params[0]->build(parentBlock);
+			[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
+				params[0]->build(buildtime);
 			},
-			[&](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-				Object* const message = (Object*)params[0]->run(parentBlock).value;
+			[&](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
+				if (params[0]->run(runtime))
+					return true;
+				Object* const message = (Object*)runtime.result.value;
 				builder->CreateCall(printfFunction, { fromLlvmString, message->value });
 				std::cout << "( compiled print statement )\n";
+				return false;
 			}
 		);
 	}

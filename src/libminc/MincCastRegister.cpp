@@ -44,10 +44,10 @@ struct IndirectCast : public MincCast, public MincKernel
 		return derivedSecond == nullptr ? first->derive() : new IndirectCast(first, derivedSecond);
 	}
 
-	MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 	{
 		params[0] = new MincCastExpr(first, params[0]);
-		return second->kernel->build(parentBlock, params);
+		return second->kernel->build(buildtime, params);
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{

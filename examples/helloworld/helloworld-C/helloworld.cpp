@@ -30,7 +30,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 	// Emphasize that this behaviour allows non-unique type names within a program and that it aids multithreading by making type lookups a local operation within the AST.
 	// (This is the same reason why casts are defined on AST blocks, instead of globally.)
 
-	defineExpr3_2(pkgScope, "$L",
+	defineExpr3(pkgScope, "$L",
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 			const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
@@ -54,12 +54,12 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt6_2(pkgScope, "print($E<string>)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], parentBlock);
+	defineStmt6(pkgScope, "print($E<string>)",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
-			if (runExpr2(params[0], runtime))
+			if (runExpr(params[0], runtime))
 				return true;
 			String* const message = (String*)runtime.result.value;
 			std::cout << message->val << " from C!\n";

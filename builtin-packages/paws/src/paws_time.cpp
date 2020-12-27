@@ -108,20 +108,20 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to print measured runtime
-	defineStmt6_2(pkgScope, "measure($E<PawsString>) $S",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], parentBlock);
-			buildExpr(params[1], parentBlock);
+	defineStmt6(pkgScope, "measure($E<PawsString>) $S",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], buildtime);
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
+			if (runExpr(params[0], runtime))
 				return true;
 			const std::string& taskName = ((PawsString*)runtime.result.value)->get();
 			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			if (runExpr2(stmt, runtime))
+			if (runExpr(stmt, runtime))
 				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
@@ -133,11 +133,11 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to measure runtime
-	defineStmt6_2(pkgScope, "measure $I $S",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
+	defineStmt6(pkgScope, "measure $I $S",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
-			buildExpr(params[1], parentBlock);
-			defineSymbol(parentBlock, varName, PawsDuration::TYPE, nullptr);
+			buildExpr(params[1], buildtime);
+			defineSymbol(buildtime.parentBlock, varName, PawsDuration::TYPE, nullptr);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
@@ -145,7 +145,7 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			if (runExpr2(stmt, runtime))
+			if (runExpr(stmt, runtime))
 				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 

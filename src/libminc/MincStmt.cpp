@@ -18,63 +18,6 @@ MincStmt::~MincStmt()
 {
 }
 
-MincSymbol MincStmt::run(MincBlockExpr* parentBlock, bool resume)
-{
-	// Handle expression caching for coroutines
-	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
-	{
-		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
-			return parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
-	}
-	else
-	{
-		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
-	}
-	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
-
-	if (builtKernel == nullptr)
-		throw CompileError(parentBlock, loc, "expression not built: %e", this);
-
-	try
-	{
-		raiseStepEvent(this, (resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
-		MincRuntime runtime = { parentBlock, parentBlock->isResuming };
-		if (builtKernel->run(runtime, resolvedParams))
-		{
-			parentBlock->isStmtSuspended = true;
-			raiseStepEvent(this, STEP_SUSPEND);
-			if (isVolatile)
-				forget();
-			throw runtime.result;
-		}
-	}
-	catch (...)
-	{
-		parentBlock->isStmtSuspended = true;
-		raiseStepEvent(this, STEP_SUSPEND);
-		if (isVolatile)
-			forget();
-		throw;
-	}
-	parentBlock->isStmtSuspended = false;
-
-	// Cache expression result for coroutines
-	parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
-	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
-	{
-		parentBlock->resultCacheIdx = resultCacheIdx + 1;
-		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
-	}
-
-	raiseStepEvent(this, STEP_OUT);
-
-	if (isVolatile)
-		forget();
-
-	return getVoid();
-}
-
 bool MincStmt::run(MincRuntime& runtime)
 {
 	MincBlockExpr* const parentBlock = runtime.parentBlock;
@@ -227,23 +170,27 @@ extern "C"
 		return expr->exprtype == MincExpr::ExprType::STMT;
 	}
 
-	void runStmt(MincStmt* stmt, MincBlockExpr* scope)
-	{
-		stmt->run(scope);
-	}
-
 	void evalCStmt(const char* code, MincBlockExpr* scope)
 	{
 		std::vector<MincExpr*> exprs = ::parseCTplt(code);
-		MincStmt currentStmt;
-		if (!scope->lookupStmt(exprs.begin(), exprs.end(), currentStmt))
-			throw UndefinedStmtException(&currentStmt);
-		currentStmt.run(scope);
+		MincStmt stmt;
+		if (!scope->lookupStmt(exprs.begin(), exprs.end(), stmt))
+			throw UndefinedStmtException(&stmt);
+		stmt.resolve(scope);
+		MincBuildtime buildtime = { scope };
+		stmt.build(buildtime);
+		MincRuntime runtime(scope, false);
+		stmt.run(runtime);
 	}
 
 	void evalPythonStmt(const char* code, MincBlockExpr* scope)
 	{
 		std::vector<MincExpr*> exprs = ::parsePythonTplt(code);
-		MincBlockExpr(MincLocation{"", 0, 0, 0, 0}, &exprs).run(scope);
+		MincBlockExpr stmt(MincLocation{"", 0, 0, 0, 0}, &exprs);
+		stmt.resolve(scope);
+		MincBuildtime buildtime = { scope };
+		stmt.build(buildtime);
+		MincRuntime runtime(scope, false);
+		stmt.run(runtime);
 	}
 }

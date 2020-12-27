@@ -24,7 +24,7 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 	// Define arguments in function instance
 	for (size_t i = 0; i < argExprs.size(); ++i)
 	{
-		if (runExpr2(argExprs[i], runtime))
+		if (runExpr(argExprs[i], runtime))
 			return true;
 		MincSymbol argSym = runtime.result;
 		MincSymbol* var = getSymbol(instance, args[i]);
@@ -35,7 +35,7 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 	try
 	{
 		runtime.parentBlock = getBlockExprParent(body);
-		if (runExpr2((MincExpr*)instance, runtime))
+		if (runExpr((MincExpr*)instance, runtime))
 		{
 			if (runtime.result.type != &PAWS_RETURN_TYPE)
 				return true;
@@ -83,17 +83,16 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		FunctionDefinitionKernel() : varId(MincSymbolId::NONE), func(nullptr), funcType(nullptr) {}
 		FunctionDefinitionKernel(MincSymbolId varId, PawsType* funcType, PawsFunction* func) : varId(varId), func(func), funcType(funcType) {}
 
-		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			buildExpr(params[0], parentBlock);
-			PawsType* returnType = (PawsType*)runExpr(params[0], parentBlock).value;
+			PawsType* returnType = (PawsType*)buildExpr(params[0], buildtime).value;
 			const char* name = getIdExprName((MincIdExpr*)params[1]);
 			const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[2]);
 			const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[3]);
 			MincBlockExpr* block = (MincBlockExpr*)params[4];
 
 			// Set function parent to function definition scope
-			setBlockExprParent(block, parentBlock);
+			setBlockExprParent(block, buildtime.parentBlock);
 
 			// Define return statement in function scope
 			definePawsReturnStmt(block, returnType);
@@ -102,10 +101,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			func->returnType = returnType;
 			func->argTypes.reserve(argTypeExprs.size());
 			for (MincExpr* argTypeExpr: argTypeExprs)
-			{
-				buildExpr(argTypeExpr, parentBlock);
-				func->argTypes.push_back((PawsType*)runExpr(argTypeExpr, parentBlock).value);
-			}
+				func->argTypes.push_back((PawsType*)buildExpr(argTypeExpr, buildtime).value);
 			func->argNames.reserve(argNameExprs.size());
 			for (MincExpr* argNameExpr: argNameExprs)
 				func->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
@@ -133,11 +129,11 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 
 			// Define function symbol in calling scope
 			PawsType* funcType = PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType);
-			defineSymbol(parentBlock, name, funcType, nullptr);
+			defineSymbol(buildtime.parentBlock, name, funcType, nullptr);
 
-			buildExpr((MincExpr*)block, parentBlock);
+			buildExpr((MincExpr*)block, buildtime);
 
-			return new FunctionDefinitionKernel(lookupSymbolId(parentBlock, name), funcType, new PawsFunction(func));
+			return new FunctionDefinitionKernel(lookupSymbolId(buildtime.parentBlock, name), funcType, new PawsFunction(func));
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -163,15 +159,15 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	defineStmt4(pkgScope, "$E<PawsType> $I($E<PawsType> $I, ...) $B", new FunctionDefinitionKernel());
 
 	// Define function call
-	defineExpr10_2(pkgScope, "$E<PawsFunction>($E, ...)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
-			buildExpr(params[0], parentBlock);
+	defineExpr10(pkgScope, "$E<PawsFunction>($E, ...)",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
+			buildExpr(params[0], buildtime);
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
 			for (MincExpr* argExpr: argExprs)
-				buildExpr(argExpr, parentBlock);
+				buildExpr(argExpr, buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
+			if (runExpr(params[0], runtime))
 				return true;
 			const PawsFunc* func = ((PawsFunction*)runtime.result.value)->get();
 			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
@@ -191,7 +187,8 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 					MincExpr* castExpr = lookupCast(runtime.parentBlock, argExpr, expectedType);
 					if (castExpr == nullptr)
 						throw CompileError(runtime.parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
-					buildExpr(castExpr, runtime.parentBlock);
+					MincBuildtime buildtime = { runtime.parentBlock }; //TODO: Do parameter matching and casting at runtime
+					buildExpr(castExpr, buildtime);
 					argExprs[i] = castExpr;
 				}
 			}
@@ -205,40 +202,28 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	);
 	// Define function call on non-function expression
 	defineExpr7(pkgScope, "$E($E, ...)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
-			if (getType1(params[0], parentBlock) == getErrorType()) // If params[0] has errors
-			{
-				buildExpr(params[0], parentBlock);
-				runExpr(params[0], parentBlock); // Raise expression error instead of non-function expression error
-			}
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
+			getType(params[0], buildtime.parentBlock); // Raise expression errors if any
 			raiseCompileError("expression cannot be used as a function", params[0]);
-			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
 		getErrorType()
 	);
 	// Define function call on non-function identifier
 	defineExpr7(pkgScope, "$I($E, ...)",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) -> MincSymbol {
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
 			const char* name = getIdExprName((MincIdExpr*)params[0]);
-			if (lookupSymbol(parentBlock, name) == nullptr)
+			if (lookupSymbol(buildtime.parentBlock, name) == nullptr)
 				raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
 			else
 				raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
-			return MincSymbol(getErrorType(), nullptr); // LCOV_EXCL_LINE
 		},
 		getErrorType()
 	);
 
-	defineExpr9_2(pkgScope, "PawsFunction<$E<PawsType>>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* exprArgs) {
-			buildExpr(params[0], parentBlock);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
-				return true;
-			PawsType* returnType = (PawsType*)runtime.result.value;
-			runtime.result = MincSymbol(PawsType::TYPE, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType));
-			return false;
+	defineExpr7(pkgScope, "PawsFunction<$E<PawsType>>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
+			PawsType* returnType = (PawsType*)buildExpr(params[0], buildtime).value;
+			buildtime.result = MincSymbol(PawsType::TYPE, PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType));
 		},
 		PawsType::TYPE
 	);

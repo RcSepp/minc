@@ -15,9 +15,9 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		int (*cbk)(int& value);
 		MincSymbolId varId;
 		OperatorKernel(int (*cbk)(int& value), MincSymbolId varId=MincSymbolId::NONE) : cbk(cbk), varId(varId) {}
-		MincKernel* build(MincBlockExpr* parentBlock, std::vector<MincExpr*>& params)
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			return new OperatorKernel(cbk, lookupSymbolId(parentBlock, getIdExprName((MincIdExpr*)params[0])));
+			return new OperatorKernel(cbk, lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0])));
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -96,15 +96,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer addition
-	defineExpr9_2(pkgScope, "$I<PawsInt!> += $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$I<PawsInt!> += $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() + ((PawsInt*)runtime.result.value)->get());
 			runtime.result = *var;
@@ -114,15 +114,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer subtraction
-	defineExpr9_2(pkgScope, "$I<PawsInt!> -= $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$I<PawsInt!> -= $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() - ((PawsInt*)runtime.result.value)->get());
 			runtime.result = *var;
@@ -132,15 +132,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer multiplication
-	defineExpr9_2(pkgScope, "$I<PawsInt!> *= $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$I<PawsInt!> *= $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() * ((PawsInt*)runtime.result.value)->get());
 			runtime.result = *var;
@@ -150,15 +150,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place integer division
-	defineExpr9_2(pkgScope, "$I<PawsInt!> /= $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$I<PawsInt!> /= $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			//TODO: import var at build time
 			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
 			PawsInt* const val = (PawsInt*)var->value;
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() / ((PawsInt*)runtime.result.value)->get());
 			runtime.result = *var;
@@ -214,13 +214,13 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define logical operators
-	defineExpr9_2(pkgScope, "$E<PawsInt> && $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], parentBlock);
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$E<PawsInt> && $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], buildtime);
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
+			if (runExpr(params[0], runtime))
 				return true;
 			const auto a = ((PawsInt*)runtime.result.value)->get();
 			if (!a)
@@ -228,7 +228,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 				runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(0));
 				return false;
 			}
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			const auto b = ((PawsInt*)runtime.result.value)->get();
 			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a && b));
@@ -236,13 +236,13 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		},
 		PawsInt::TYPE
 	);
-	defineExpr9_2(pkgScope, "$E<PawsInt> || $E<PawsInt>",
-		[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], parentBlock);
-			buildExpr(params[1], parentBlock);
+	defineExpr9(pkgScope, "$E<PawsInt> || $E<PawsInt>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], buildtime);
+			buildExpr(params[1], buildtime);
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr2(params[0], runtime))
+			if (runExpr(params[0], runtime))
 				return true;
 			const auto a = ((PawsInt*)runtime.result.value)->get();
 			if (a)
@@ -250,7 +250,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 				runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(1));
 				return false;
 			}
-			if (runExpr2(params[1], runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			const auto b = ((PawsInt*)runtime.result.value)->get();
 			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a || b));

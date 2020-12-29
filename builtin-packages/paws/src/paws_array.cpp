@@ -10,7 +10,7 @@ struct PawsArrayType : public PawsType
 {
 private:
 	static std::recursive_mutex mutex;
-	static std::set<PawsArrayType> awaitableTypes;
+	static std::set<PawsArrayType> arrayTypes;
 
 	PawsArrayType(PawsType* valueType)
 		: PawsType(sizeof(std::vector<MincObject*>)), valueType(valueType) {}
@@ -20,10 +20,10 @@ public:
 	static PawsArrayType* get(const MincBlockExpr* scope, PawsType* valueType)
 	{
 		std::unique_lock<std::recursive_mutex> lock(mutex);
-		std::set<PawsArrayType>::iterator iter = awaitableTypes.find(PawsArrayType(valueType));
-		if (iter == awaitableTypes.end())
+		std::set<PawsArrayType>::iterator iter = arrayTypes.find(PawsArrayType(valueType));
+		if (iter == arrayTypes.end())
 		{
-			iter = awaitableTypes.insert(PawsArrayType(valueType)).first;
+			iter = arrayTypes.insert(PawsArrayType(valueType)).first;
 			PawsArrayType* t = const_cast<PawsArrayType*>(&*iter); //TODO: Find a way to avoid const_cast
 			t->name = valueType->name + "[]";
 			defineSymbol(pawsArrayScope, t->name.c_str(), PawsType::TYPE, t);
@@ -52,7 +52,7 @@ public:
 	}
 };
 std::recursive_mutex PawsArrayType::mutex;
-std::set<PawsArrayType> PawsArrayType::awaitableTypes;
+std::set<PawsArrayType> PawsArrayType::arrayTypes;
 bool operator<(const PawsArrayType& lhs, const PawsArrayType& rhs)
 {
 	return lhs.valueType < rhs.valueType;

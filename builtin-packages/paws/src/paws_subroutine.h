@@ -3,16 +3,34 @@
 
 struct PawsFunc
 {
+	std::string name;
 	PawsType* returnType;
 	std::vector<PawsType*> argTypes;
 	std::vector<std::string> argNames;
 	virtual bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const = 0;
 
 	PawsFunc() = default;
-	PawsFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
-		: returnType(returnType), argTypes(argTypes), argNames(argNames) {}
+	PawsFunc(const std::string& name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames)
+		: name(name), returnType(returnType), argTypes(argTypes), argNames(argNames) {}
 };
 typedef PawsValue<PawsFunc*> PawsFunction;
+
+struct PawsFunctionType : public PawsType
+{
+private:
+	static std::recursive_mutex mutex;
+	static std::set<PawsFunctionType> functionTypes;
+
+	PawsFunctionType(PawsType* returnType, const std::vector<PawsType*>& argTypes);
+
+public:
+	PawsType* const returnType;
+	const std::vector<PawsType*> argTypes;
+
+	static PawsFunctionType* get(const MincBlockExpr* scope, PawsType* returnType, const std::vector<PawsType*>& argTypes);
+	MincObject* copy(MincObject* value);
+	std::string toString(MincObject* value) const;
+};
 
 struct PawsRegularFunc : public PawsFunc
 {
@@ -21,8 +39,8 @@ struct PawsRegularFunc : public PawsFunc
 	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
 
 	PawsRegularFunc() = default;
-	PawsRegularFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
-		: PawsFunc(returnType, argTypes, argNames), body(body) {}
+	PawsRegularFunc(const std::string& name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
+		: PawsFunc(name, returnType, argTypes, argNames), body(body) {}
 };
 
 typedef bool (*FuncBlock)(MincRuntime& runtime, const std::vector<MincExpr*>& argExprs, void* funcArgs);
@@ -36,8 +54,8 @@ struct PawsConstFunc : public PawsFunc
 	}
 
 	PawsConstFunc() = default;
-	PawsConstFunc(PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr)
-		: PawsFunc(returnType, argTypes, argNames), body(body), funcArgs(funcArgs) {}
+	PawsConstFunc(const std::string& name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr)
+		: PawsFunc(name, returnType, argTypes, argNames), body(body), funcArgs(funcArgs) {}
 };
 
 template<std::size_t...Is, class L>
@@ -73,7 +91,7 @@ constexpr auto call_with_args(C* self, F func, std::index_sequence<Is...>, L&& c
 template <typename F>
 struct PawsExternFunc : public PawsFunc
 {
-	PawsExternFunc(F func);
+	PawsExternFunc(F func, const std::string& name="");
 };
 
 template <typename R, typename... A>
@@ -82,8 +100,9 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 	typedef R F(A...);
 
 	F* func;
-	PawsExternFunc(F func) : func(func)
+	PawsExternFunc(F func, const std::string& name="") : func(func)
 	{
+		this->name = name;
 		returnType = PawsValue<R>::TYPE;
 
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
@@ -137,8 +156,9 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 	typedef R (C::*F)(A...);
 
 	F func;
-	PawsExternFunc(F func) : func(func)
+	PawsExternFunc(F func, const std::string& name="") : func(func)
 	{
+		this->name = name;
 		returnType = PawsValue<R>::TYPE;
 
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
@@ -191,8 +211,8 @@ void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType
 void defineConstantFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs = nullptr);
 template<class F> void defineExternFunction(MincBlockExpr* scope, const char* name, F func)
 {
-	PawsFunc* pawsFunc = new PawsExternFunc(func);
-	defineSymbol(scope, name, PawsTpltType::get(scope, PawsFunction::TYPE, pawsFunc->returnType), new PawsFunction(pawsFunc));
+	PawsFunc* pawsFunc = new PawsExternFunc(func, name);
+	defineSymbol(scope, name, PawsFunctionType::get(scope, pawsFunc->returnType, pawsFunc->argTypes), new PawsFunction(pawsFunc));
 }
 
 #endif

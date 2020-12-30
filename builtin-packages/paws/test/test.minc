@@ -430,7 +430,7 @@ PawsVoid test_paws_subroutine()
 	}
 	f();
 	assert(type(f()) == PawsVoid);
-	assert(str(f) == "f()");
+	assert(str(f) == "PawsVoid f()");
 	assert(sizeof(f()) == 0);
 	assert(sizeof(f) == 8);
 
@@ -471,7 +471,7 @@ PawsVoid test_paws_subroutine()
 	assert(f(1, 2, 3)) throws PawsException("invalid number of function arguments");
 	assert(f(1, '2')) throws PawsException("invalid function argument type: '2'<PawsString>, expected: <PawsInt>");
 	assert(f(1.1, 2.9) == -1);
-	assert(str(f) == "f(PawsInt, PawsInt)");
+	assert(str(f) == "PawsInt f(PawsInt a, PawsInt b)");
 
 	// Test non-function call
 	g = 1;
@@ -487,12 +487,12 @@ PawsVoid test_paws_subroutine()
 		return i;
 	}
 	assert(f(1) == -106);
-	assert(str(f) == "f(PawsInt)");
+	assert(str(f) == "PawsInt f(PawsInt i)");
 
 	// Test callback function
 	PawsInt f(PawsInt a, PawsInt b) { return a + b; }
-	PawsInt g(PawsFunction<PawsInt> a, PawsInt b) { return a(1, 2) + b; }
-	assert(str(g) == "g(PawsFunction<PawsInt>, PawsInt)");
+	PawsInt g(PawsFunction<PawsInt(PawsInt, PawsInt)> a, PawsInt b) { return a(1, 2) + b; }
+	assert(str(g) == "PawsInt g(PawsFunction<PawsInt(PawsInt, PawsInt)> a, PawsInt b)");
 	assert(g(f, 3) == 6);
 }
 

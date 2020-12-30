@@ -225,7 +225,7 @@ public:
 	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 	{
 		params[0]->build(buildtime);
-		buildtime.result = MincSymbol(type, buildtime.result.value);
+		buildtime.result.type = type;
 		return this;
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)

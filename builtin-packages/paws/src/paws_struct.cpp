@@ -134,7 +134,11 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			{
 				strct->base = (Struct*)((PawsTpltType*)::getType(getCastExprSource((MincCastExpr*)params[1]), buildtime.parentBlock))->tpltType;
 				addBlockExprReference(strct->body, strct->base->body);
-				defineInheritanceCast2(buildtime.parentBlock, strct, strct->base,
+				defineInheritanceCast9(buildtime.parentBlock, strct, strct->base,
+					[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* castArgs) {
+						buildExpr(params[0], buildtime);
+						buildtime.result.type = (Struct*)castArgs;
+					},
 					[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* castArgs) -> bool {
 						if (runExpr(params[0], runtime))
 							return true;
@@ -215,6 +219,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					definePawsReturnStmt(block, returnType);
 
 					PawsRegularFunc* method = new PawsRegularFunc();
+					method->name = name;
 					method->returnType = returnType;
 					method->argTypes.reserve(argTypeExprs.size());
 					for (MincExpr* argTypeExpr: argTypeExprs)
@@ -232,22 +237,14 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 						method->args.push_back(lookupSymbolId(block, method->argNames[i].c_str()));
 					}
 
-					// Name method block
-					std::string signature(name);
-					signature += '(';
-					if (method->argTypes.size())
-					{
-						signature += method->argTypes[0]->name;
-						for (size_t i = 1; i != method->argTypes.size(); ++i)
-							signature += ", " + method->argTypes[i]->name;
-					}
-					signature += ')';
-					setBlockExprName(block, signature.c_str());
-
 					// Define method in struct scope
 					strct->methods.insert(std::make_pair(name, method));
-					PawsType* methodType = PawsTpltType::get(pawsSubroutineScope, PawsFunction::TYPE, returnType);
-					defineSymbol(strct->body, name, methodType, new PawsFunction(method));
+					PawsType* methodType = PawsFunctionType::get(pawsSubroutineScope, returnType, method->argTypes);
+					PawsFunction* methodValue = new PawsFunction(method);
+					defineSymbol(strct->body, name, methodType, methodValue);
+
+					// Name method block
+					setBlockExprName(block, methodType->toString(methodValue).c_str());
 				}
 			);
 
@@ -278,6 +275,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					definePawsReturnStmt(block, PawsVoid::TYPE);
 
 					PawsRegularFunc* constructor = new PawsRegularFunc();
+					constructor->name = name;
 					strct->constructors.push_back(constructor);
 					constructor->returnType = PawsVoid::TYPE;
 					constructor->argTypes.reserve(argTypeExprs.size());
@@ -301,9 +299,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					signature += '(';
 					if (constructor->argTypes.size())
 					{
-						signature += constructor->argTypes[0]->name;
+						signature += constructor->argTypes[0]->name + ' ' + constructor->argNames[0];
 						for (size_t i = 1; i != constructor->argTypes.size(); ++i)
-							signature += ", " + constructor->argTypes[i]->name;
+							signature += ", " + constructor->argTypes[i]->name + ' ' + constructor->argNames[i];
 					}
 					signature += ')';
 					setBlockExprName(block, signature.c_str());
@@ -665,11 +663,10 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 						MincExpr* castExpr = lookupCast(buildtime.parentBlock, argExpr, expectedType);
 						if (castExpr == nullptr)
 							throw CompileError(buildtime.parentBlock, getLocation(argExpr), "invalid method argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
-						buildExpr(castExpr, buildtime);
-						argExprs[i] = castExpr;
+						buildExpr(argExprs[i] = castExpr, buildtime);
 					}
-
-					buildExpr(argExprs[i], buildtime);
+					else
+						buildExpr(argExpr, buildtime);
 				}
 				return;
 			}

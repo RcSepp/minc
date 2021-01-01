@@ -121,15 +121,18 @@ struct StaticExprKernel3 : public MincKernel
 private:
 	BuildBlock cbk;
 	MincObject* const type;
-	MincObject* value;
+	MincObject* const value;
 	void* exprArgs;
 public:
-	StaticExprKernel3(BuildBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), value(nullptr), exprArgs(exprArgs) {}
+	StaticExprKernel3(BuildBlock cbk, MincObject* type, MincObject* value, void* exprArgs = nullptr) : cbk(cbk), type(type), value(value), exprArgs(exprArgs) {}
 	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 	{
 		cbk(buildtime, params, exprArgs);
-		value = buildtime.result.value;
-		return this;
+		return new StaticExprKernel3(cbk, buildtime.result.type = type, buildtime.result.value, exprArgs);
+	}
+	void dispose(MincKernel* kernel)
+	{
+		delete kernel;
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
@@ -1178,7 +1181,7 @@ extern "C"
 
 	void defineExpr7(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, MincObject* type, void* exprArgs)
 	{
-		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel3(buildBlock, type, exprArgs));
+		scope->defineExpr(parseCTplt(tpltStr)[0], new StaticExprKernel3(buildBlock, type, nullptr, exprArgs));
 	}
 
 	void defineExpr8(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, ExprTypeBlock typeBlock, void* exprArgs)

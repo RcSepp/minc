@@ -605,11 +605,14 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (ExprIsCast(varExpr))
 				varExpr = getCastExprSource((MincCastExpr*)varExpr);
 			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr));
-			if (varId == MincSymbolId::NONE)
+			if (varId == MincSymbolId::NONE) // If variable is undefined
 			{
+				// Define new variable
 				defineSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr), valType, nullptr);
 				varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr));
 			}
+			else // If variable already exists
+				getSymbol(buildtime.parentBlock, varId)->type = valType; // Update type
 			return new VariableAssignmentKernel(varId);
 		}
 		void dispose(MincKernel* kernel)
@@ -946,11 +949,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		PawsVoid::TYPE
 	);
 
-	defineExpr2(pkgScope, "type($E<PawsBase>)",
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
-			MincObject* type = getType(getDerivedExpr(params[0]), runtime.parentBlock);
-			runtime.result = MincSymbol(PawsType::TYPE, type);
-			return false;
+	defineExpr7(pkgScope, "type($E<PawsBase>)",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
+			MincObject* type = getType(getDerivedExpr(params[0]), buildtime.parentBlock);
+			buildtime.result = MincSymbol(PawsType::TYPE, type);
 		},
 		PawsType::TYPE
 	);
@@ -973,11 +975,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		PawsInt::TYPE
 	);
 
-	defineExpr2(pkgScope, "sizeof($E<PawsBase>)",
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
-			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), runtime.parentBlock);
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(type->size));
-			return false;
+	defineExpr7(pkgScope, "sizeof($E<PawsBase>)",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
+			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), buildtime.parentBlock);
+			buildtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(type->size));
 		},
 		PawsInt::TYPE
 	);

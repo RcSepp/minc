@@ -742,15 +742,13 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	defineExpr10(pkgScope, "$E<PawsInt> ? $E : $E",
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
+			MincObject* ta = buildExpr(params[1], buildtime).type;
+			MincObject* tb = buildExpr(params[2], buildtime).type;
+			if (ta != tb)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "operands to ?: have different types <%T> and <%T>", params[1], params[2]);
+			buildtime.result.type = ta;
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
-			MincObject* ta = getType(params[1], runtime.parentBlock);
-			MincObject* tb = getType(params[2], runtime.parentBlock);
-			if (ta != tb)
-				throw CompileError(runtime.parentBlock, getLocation(params[0]), "operands to ?: have different types <%T> and <%T>", params[1], params[2]);
-
 			if (runExpr(params[0], runtime))
 				return true;
 			const PawsInt* condition = (PawsInt*)runtime.result.value;

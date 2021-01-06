@@ -104,76 +104,160 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define in-place double addition
-	defineExpr9(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class InlineAddKernel : public MincKernel
+	{
+		const MincSymbolId varId;
+	public:
+		InlineAddKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			buildExpr(params[1], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			//TODO: import var at build time
-			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == MincSymbolId::NONE)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineAddKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
 			PawsDouble* const val = (PawsDouble*)var->value;
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() + ((PawsDouble*)runtime.result.value)->get());
-			runtime.result = *var;
+			runtime.result.value = val;
 			return false;
-		},
-		PawsDouble::TYPE
-	);
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsDouble::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsDouble!> += $E<PawsDouble>", new InlineAddKernel());
 
 	// Define in-place double subtraction
-	defineExpr9(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class InlineSubKernel : public MincKernel
+	{
+		const MincSymbolId varId;
+	public:
+		InlineSubKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			buildExpr(params[1], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			//TODO: import var at build time
-			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == MincSymbolId::NONE)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineSubKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
 			PawsDouble* const val = (PawsDouble*)var->value;
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() - ((PawsDouble*)runtime.result.value)->get());
-			runtime.result = *var;
+			runtime.result.value = val;
 			return false;
-		},
-		PawsDouble::TYPE
-	);
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsDouble::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsDouble!> -= $E<PawsDouble>", new InlineSubKernel());
 
 	// Define in-place double multiplication
-	defineExpr9(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class InlineMulKernel : public MincKernel
+	{
+		const MincSymbolId varId;
+	public:
+		InlineMulKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			buildExpr(params[1], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			//TODO: import var at build time
-			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == MincSymbolId::NONE)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineMulKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
 			PawsDouble* const val = (PawsDouble*)var->value;
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() * ((PawsDouble*)runtime.result.value)->get());
-			runtime.result = *var;
+			runtime.result.value = val;
 			return false;
-		},
-		PawsDouble::TYPE
-	);
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsDouble::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsDouble!> *= $E<PawsDouble>", new InlineMulKernel());
 
 	// Define in-place double division
-	defineExpr9(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class InlineDivKernel : public MincKernel
+	{
+		const MincSymbolId varId;
+	public:
+		InlineDivKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			buildExpr(params[1], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			//TODO: import var at build time
-			MincSymbol* var = importSymbol(runtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == MincSymbolId::NONE)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineDivKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
 			PawsDouble* const val = (PawsDouble*)var->value;
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() / ((PawsDouble*)runtime.result.value)->get());
-			runtime.result = *var;
+			runtime.result.value = val;
 			return false;
-		},
-		PawsDouble::TYPE
-	);
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsDouble::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsDouble!> /= $E<PawsDouble>", new InlineDivKernel());
 
 	// Define double minimum
 	defineExpr(pkgScope, "min($E<PawsDouble>, $E<PawsDouble>)",

@@ -144,6 +144,12 @@ PawsVoid test_paws_int()
 	assert((a -= 5) == 2);
 	assert((a *= 4) == 8);
 	assert((a /= 3) == 2);
+	assert(a == 2);
+
+	assert(c += 6) throws PawsException("`c` was not declared in this scope");
+	assert(c -= 5) throws PawsException("`c` was not declared in this scope");
+	assert(c *= 4) throws PawsException("`c` was not declared in this scope");
+	assert(c /= 3) throws PawsException("`c` was not declared in this scope");
 
 	// Test builtin functions
 	assert(str(-4) == "-4");
@@ -209,6 +215,12 @@ PawsVoid test_paws_double()
 	assert((a -= 5.0) == 2.0);
 	assert((a *= 4.0) == 8.0);
 	assert((a /= 2.0) == 4.0);
+	assert(a == 4.0);
+
+	assert(c += 6.0) throws PawsException("`c` was not declared in this scope");
+	assert(c -= 5.0) throws PawsException("`c` was not declared in this scope");
+	assert(c *= 4.0) throws PawsException("`c` was not declared in this scope");
+	assert(c /= 3.0) throws PawsException("`c` was not declared in this scope");
 
 	// Test builtin functions
 	assert(str(-4.0) == "-4.000000");

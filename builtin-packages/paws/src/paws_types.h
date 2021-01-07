@@ -239,11 +239,6 @@ template<typename T> void registerType(MincBlockExpr* scope, const char* name, b
 	}
 }
 
-struct ReturnException
-{
-	const MincSymbol result;
-	ReturnException(const MincSymbol& result) : result(result) {}
-};
 extern MincObject PAWS_RETURN_TYPE, PAWS_AWAIT_TYPE;
 
 void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, const char* funcName="function");

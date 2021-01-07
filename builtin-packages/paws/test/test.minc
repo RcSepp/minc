@@ -464,7 +464,7 @@ PawsVoid test_paws_subroutine()
 	assert(f()) throws PawsException("non-void function should return a value");
 
 	// Test return from try block
-	// Internally `return ...` is handled by raising a ReturnException. Make sure try/catch does not catch the ReturnException
+	// Internally `return ...` is handled like an exception. Make sure try/catch does not catch return
 	PawsInt f()
 	{
 		try
@@ -722,7 +722,7 @@ PawsVoid test_paws_frames()
 	assert(await 1) throws PawsException("expression is not awaitable");
 
 	// Test await from try block
-	// Internally `await ...` is handled by raising an AwaitException. Make sure try/catch does not catch the AwaitException
+	// Internally `await ...` is handled like an exception. Make sure try/catch does not catch await
 	//
 	// This also tests nested resuming:
 	// When the frame block is resumed after sleep(0), the nested try block should also be resumed.

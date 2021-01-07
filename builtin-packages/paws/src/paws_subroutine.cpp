@@ -73,22 +73,13 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 		var->value = ((PawsType*)argSym.type)->copy((PawsBase*)argSym.value);
 	}
 
-	try
+	runtime.parentBlock = getBlockExprParent(body);
+	if (runExpr((MincExpr*)instance, runtime))
 	{
-		runtime.parentBlock = getBlockExprParent(body);
-		if (runExpr((MincExpr*)instance, runtime))
-		{
-			if (runtime.result.type != &PAWS_RETURN_TYPE)
-				return true;
-			removeBlockExpr(instance);
-			runtime.result = MincSymbol(returnType, runtime.result.value);
-			return false;
-		}
-	}
-	catch (ReturnException err)
-	{
+		if (runtime.result.type != &PAWS_RETURN_TYPE)
+			return true;
 		removeBlockExpr(instance);
-		runtime.result = err.result;
+		runtime.result = MincSymbol(returnType, runtime.result.value);
 		return false;
 	}
 	removeBlockExpr(instance);

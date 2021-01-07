@@ -270,20 +270,11 @@ MincKernel* PawsKernel::build(MincBuildtime& buildtime, std::vector<MincExpr*>& 
 	defineSymbol(instance, "parentBlock", PawsBlockExpr::TYPE, new PawsBlockExpr(buildtime.parentBlock));
 
 	// Execute expression code block
-	try
+	MincRuntime runtime(getBlockExprParent(body), false);
+	if (runExpr((MincExpr*)instance, runtime))
 	{
-		MincRuntime runtime(getBlockExprParent(body), false);
-		if (runExpr((MincExpr*)instance, runtime))
-		{
-			//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
-			instanceKernel->buildResult = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
-			instanceKernel->hasBuildResult = true;
-			return instanceKernel;
-		}
-	}
-	catch (ReturnException err)
-	{
-		instanceKernel->buildResult = err.result;
+		//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
+		instanceKernel->buildResult = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
 		instanceKernel->hasBuildResult = true;
 		return instanceKernel;
 	}
@@ -310,18 +301,10 @@ bool PawsKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 
 	// Execute expression code block
 	runtime.parentBlock = getBlockExprParent(body);
-	try
+	if (runExpr((MincExpr*)instance, runtime))
 	{
-		if (runExpr((MincExpr*)instance, runtime))
-		{
-			//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
-			runtime.result = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
-			return false;
-		}
-	}
-	catch (ReturnException err)
-	{
-		runtime.result = err.result;
+		//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
+		runtime.result = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
 		return false;
 	}
 
@@ -475,7 +458,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	// Define return statement
 	definePawsReturnStmt(pkgScope, PawsInt::TYPE);
 
-	// Overwrite return statement with correct type in function scope to call quit() instead of raising ReturnException
+	// Overwrite return statement with correct type in function scope to call quit() instead of raising PAWS_RETURN_TYPE
 	defineStmt(pkgScope, "return $E<PawsInt>",
 		+[](int returnCode) {
 			quit(returnCode);

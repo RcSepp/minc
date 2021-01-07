@@ -326,8 +326,6 @@ public:
 };
 typedef PawsValue<EventInstance*> PawsEventInstance;
 
-struct AwaitException {};
-
 Awaitable* Awaitable::get(PawsType* returnType)
 {
 	std::unique_lock<std::mutex> lock(mutex);
@@ -393,7 +391,7 @@ FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, con
 bool FrameInstance::resume(MincSymbol& result, bool& done)
 {
 	// Avoid executing instance while it's being executed by another thread
-	// This happens when a frame is resumed by a new thread while the old thread is still busy unrolling the AwaitException
+	// This happens when a frame is resumed by a new thread while the old thread is still busy unrolling the stack
 	if (isBlockExprBusy(instance))
 	{
 		eventPool->post(std::bind(&SingleshotAwaitableInstance::wakeup, this, result), 0.0f); // Re-post self
@@ -401,39 +399,24 @@ bool FrameInstance::resume(MincSymbol& result, bool& done)
 		return false;
 	}
 
-	try
+	MincRuntime runtime(getBlockExprParent(instance), suspended);
+	if (runExpr((MincExpr*)instance, runtime))
 	{
-		MincRuntime runtime(getBlockExprParent(instance), suspended);
-		if (runExpr((MincExpr*)instance, runtime))
+		if (runtime.result.type == &PAWS_RETURN_TYPE)
 		{
-			if (runtime.result.type == &PAWS_RETURN_TYPE)
-			{
-				result.value = runtime.result.value;
-				result.type = frame->returnType;
-				done = true;
-				return false;
-			}
-			else if (runtime.result.type == &PAWS_AWAIT_TYPE)
-			{
-				suspended = true;
-				done = false;
-				return false;
-			}
-			else
-				return true;
+			result.value = runtime.result.value;
+			result.type = frame->returnType;
+			done = true;
+			return false;
 		}
-	}
-	catch (ReturnException err)
-	{
-		result = err.result;
-		done = true;
-		return false;
-	}
-	catch (AwaitException)
-	{
-		suspended = true;
-		done = false;
-		return false;
+		else if (runtime.result.type == &PAWS_AWAIT_TYPE)
+		{
+			suspended = true;
+			done = false;
+			return false;
+		}
+		else
+			return true;
 	}
 
 	if (frame->returnType != getVoid().type && frame->returnType != PawsVoid::TYPE)

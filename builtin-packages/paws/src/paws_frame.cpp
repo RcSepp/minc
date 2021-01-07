@@ -192,6 +192,7 @@ private:
 public:
 	MincBlockExpr* instance;
 	std::map<std::string, MincObject*> variables;
+	bool suspended;
 
 	FrameInstance(const Frame* frame, MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool);
 	~FrameInstance() { removeBlockExpr(instance); }
@@ -381,7 +382,7 @@ std::string Event::toString(MincObject* value) const
 }
 
 FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool)
-	: frame(frame), eventPool(eventPool), instance(cloneBlockExpr(frame->body))
+	: frame(frame), eventPool(eventPool), instance(cloneBlockExpr(frame->body)), suspended(false)
 {
 	setBlockExprParent(instance, getBlockExprParent(frame->body));
 	setBlockExprUser(instance, this);
@@ -402,7 +403,7 @@ bool FrameInstance::resume(MincSymbol& result, bool& done)
 
 	try
 	{
-		MincRuntime runtime(getBlockExprParent(instance), true);
+		MincRuntime runtime(getBlockExprParent(instance), suspended);
 		if (runExpr((MincExpr*)instance, runtime))
 		{
 			if (runtime.result.type == &PAWS_RETURN_TYPE)
@@ -414,6 +415,7 @@ bool FrameInstance::resume(MincSymbol& result, bool& done)
 			}
 			else if (runtime.result.type == &PAWS_AWAIT_TYPE)
 			{
+				suspended = true;
 				done = false;
 				return false;
 			}
@@ -429,6 +431,7 @@ bool FrameInstance::resume(MincSymbol& result, bool& done)
 	}
 	catch (AwaitException)
 	{
+		suspended = true;
 		done = false;
 		return false;
 	}

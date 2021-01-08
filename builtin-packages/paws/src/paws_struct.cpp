@@ -461,7 +461,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					if (runExpr(pair.second.initExpr, runtime))
 						return true;
 					assert(runtime.result.type == pair.second.type);
-					defineSymbol(instance->body, pair.first.c_str(), pair.second.type, runtime.result.value);
+					defineSymbol(instance->body, pair.first.c_str(), pair.second.type, pair.second.type->copy(runtime.result.value));
 				}
 				for (const std::pair<std::string, PawsFunc*>& pair: strct->methods)
 				{

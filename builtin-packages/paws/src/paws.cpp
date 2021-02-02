@@ -186,7 +186,7 @@ PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type)
 }
 
 PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type, MincBuildtime& buildtime, const std::vector<MincSymbol>& blockParams)
-	: body(cloneBlockExpr(body)), type(type), blockParams(blockParams), phase(Phase::INIT), activePhase(Phase::INIT), instance(nullptr), callerScope(nullptr)
+	: body(cloneBlockExpr(body)), type(type), blockParams(blockParams), phase(Phase::INIT), activePhase(Phase::INIT), callerScope(nullptr)
 {
 	// Create kernel definition scope
 	// All statements within the kernel body are conditionally executed in run or build phase
@@ -252,29 +252,27 @@ PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type, MincBuildtime& bui
 
 MincKernel* PawsKernel::build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 {
-	MincBlockExpr* instance = cloneBlockExpr(body);
-
 	PawsKernel* instanceKernel = new PawsKernel(body, type);
-	instanceKernel->activePhase = Phase::BUILD; // Execute build phase statements when running instance
-	instanceKernel->instance = instance;
+	instanceKernel->activePhase = Phase::BUILD; // Execute build phase statements when running kernel block
 	instanceKernel->callerScope = buildtime.parentBlock;
 
-	setBlockExprUser(instance, instanceKernel); // Store kernel instance in block instance user data
-	setBlockExprUserType(instance, &PAWS_KERNEL_ID);
+	setBlockExprUser(body, instanceKernel); // Store kernel instance in kernel block user data
+	setBlockExprUserType(body, &PAWS_KERNEL_ID);
 
 	// Set block parameters
 	for (size_t i = 0; i < params.size(); ++i)
 		blockParams[i].value = new PawsExpr(params[i]);
-	setBlockExprParams(instance, blockParams);
+	setBlockExprParams(body, blockParams);
 
-	defineSymbol(instance, "parentBlock", PawsBlockExpr::TYPE, new PawsBlockExpr(buildtime.parentBlock));
+	defineSymbol(body, "parentBlock", PawsBlockExpr::TYPE, new PawsBlockExpr(buildtime.parentBlock));
 
 	// Execute expression code block
 	MincRuntime runtime(getBlockExprParent(body), false);
-	if (runExpr((MincExpr*)instance, runtime))
+	if (runExpr((MincExpr*)body, runtime))
 	{
-		//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
-		instanceKernel->buildResult = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
+		if (runtime.result.type != &PAWS_RETURN_TYPE)
+			throw runtime.result;
+		instanceKernel->buildResult = runtime.result.value;
 		instanceKernel->hasBuildResult = true;
 		return instanceKernel;
 	}
@@ -292,24 +290,26 @@ bool PawsKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 {
 	if (hasBuildResult)
 	{
-		runtime.result = buildResult;
+		runtime.result.type = type;
+		runtime.result.value = buildResult;
 		return false;
 	}
 
-	activePhase = Phase::RUN; // Execute run phase statements when running instance
+	activePhase = Phase::RUN; // Execute run phase statements when running kernel block
 	callerScope = runtime.parentBlock;
 
 	// Execute expression code block
 	runtime.parentBlock = getBlockExprParent(body);
-	if (runExpr((MincExpr*)instance, runtime))
+	if (runExpr((MincExpr*)body, runtime))
 	{
-		//TODO: Check if runtime.result.type == &PAWS_RETURN_TYPE
-		runtime.result = MincSymbol(type, runtime.result.value); //TODO: Consider changing type of PawsKernel::buildResult to MincObject*, since it should always return PawsKernel::type
+		if (runtime.result.type != &PAWS_RETURN_TYPE)
+			return true;
+		runtime.result.type = type;
 		return false;
 	}
 
 	if (type != getVoid().type && type != PawsVoid::TYPE)
-		raiseCompileError("missing return statement in expression block", (MincExpr*)instance);
+		raiseCompileError("missing return statement in expression block", (MincExpr*)body);
 	runtime.result = getVoid();
 	return false;
 }
@@ -465,21 +465,20 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		} // LCOV_EXCL_LINE
 	);
 
-	// Define variable lookup
-	class VariableLookupKernel : public MincKernel
+	// Define build-time variable lookup
+	class BuildtimeVariableLookupKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincSymbol symbol;
 	public:
-		VariableLookupKernel() : varId(MincSymbolId::NONE) {}
-		VariableLookupKernel(MincSymbolId varId) : varId(varId) {}
+		BuildtimeVariableLookupKernel() : symbol() {}
+		BuildtimeVariableLookupKernel(const MincSymbol& symbol) : symbol(symbol) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (varId == MincSymbolId::NONE)
+			const MincSymbol* var = importSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (var == nullptr)
 				raiseCompileError(("`" + std::string(getIdExprName((MincIdExpr*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
-			buildtime.result = *getSymbol(buildtime.parentBlock, varId);
-			return new VariableLookupKernel(varId);
+			return new BuildtimeVariableLookupKernel(buildtime.result = *var);
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -488,9 +487,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* varFromId = getSymbol(runtime.parentBlock, varId);
-			assert(varFromId != nullptr);
-			runtime.result = *varFromId;
+			runtime.result.type = symbol.type;
+			runtime.result.value = symbol.value;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -499,21 +497,54 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			return var != nullptr ? var->type : getErrorType();
 		}
 	};
-	defineExpr6(pkgScope, "$I<PawsDynamic>", new VariableLookupKernel());
+	defineExpr6(pkgScope, "$I<PawsStatic>", new BuildtimeVariableLookupKernel());
 
-	// Define build-time variable lookup
-	defineExpr8(pkgScope, "$I<PawsStatic>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
-			const MincSymbol* var = importSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (var == nullptr)
-				raiseCompileError(("`" + std::string(getIdExprName((MincIdExpr*)params[0])) + "` was not declared in this scope").c_str(), params[0]);
-			buildtime.result = *var;
-		},
-		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
-			const MincSymbol* var = lookupSymbol(parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			return var != nullptr ? var->type : getErrorType();
+	// Define stack variable lookup
+	class StackVariableLookupKernel : public MincKernel
+	{
+		const MincStackSymbol* const stackSymbol;
+	public:
+		StackVariableLookupKernel(const MincStackSymbol* stackSymbol=nullptr) : stackSymbol(stackSymbol) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			const char* name = getIdExprName((MincIdExpr*)params[0]);
+			const MincStackSymbol* stackSymbol = lookupStackSymbol(buildtime.parentBlock, name);
+			if (stackSymbol != nullptr)
+			{
+				buildtime.result = MincSymbol(stackSymbol->type, nullptr);
+				return new StackVariableLookupKernel(stackSymbol);
+			}
+			const MincSymbol* var = importSymbol(buildtime.parentBlock, name);
+			if (var != nullptr)
+				return new BuildtimeVariableLookupKernel(buildtime.result = *var);
+			raiseCompileError(("`" + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
+			return nullptr; // LCOV_EXCL_LINE
 		}
-	);
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			MincObject* value = getStackSymbol(runtime.parentBlock, runtime, stackSymbol);
+			runtime.result = MincSymbol(stackSymbol->type, value);
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			const char* name = getIdExprName((MincIdExpr*)params[0]);
+			const MincSymbol* var = lookupSymbol(parentBlock, name);
+			if (var != nullptr)
+				return var->type;
+			const MincStackSymbol* stackSymbol = lookupStackSymbol(parentBlock, name);
+			if (stackSymbol != nullptr)
+				return stackSymbol->type;
+			return getErrorType();
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsDynamic>", new StackVariableLookupKernel());
 
 	// Define literal definition
 	class LiteralDefinitionKernel : public MincKernel
@@ -571,32 +602,31 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	defineExpr6(pkgScope, "$L", new LiteralDefinitionKernel());
 
 	// Define variable (re)assignment
-	class VariableAssignmentKernel : public MincKernel
+	class StackVariableAssignmentKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincStackSymbol* const stackSymbol;
 	public:
-		VariableAssignmentKernel() : varId(MincSymbolId::NONE) {}
-		VariableAssignmentKernel(MincSymbolId varId) : varId(varId) {}
+		StackVariableAssignmentKernel(const MincStackSymbol* stackSymbol=nullptr) : stackSymbol(stackSymbol) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			params[1] = getDerivedExpr(params[1]);
 			buildExpr(params[1], buildtime);
-			MincObject* valType = ::getType(params[1], buildtime.parentBlock);
+			PawsType* valType = (PawsType*)::getType(params[1], buildtime.parentBlock);
 
 			MincExpr* varExpr = params[0];
 			if (ExprIsCast(varExpr))
 				varExpr = getCastExprSource((MincCastExpr*)varExpr);
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr));
-			if (varId == MincSymbolId::NONE) // If variable is undefined
-			{
-				// Define new variable
-				defineSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr), valType, nullptr);
-				varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)varExpr));
-			}
-			else // If variable already exists
-				getSymbol(buildtime.parentBlock, varId)->type = valType; // Update type
-			return new VariableAssignmentKernel(varId);
+			const char* name = getIdExprName((MincIdExpr*)varExpr);
+
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, name);
+			if (varId == nullptr) // If `name` is undefined, ...
+				// Define `name`
+				varId = allocStackSymbol(buildtime.parentBlock, name, valType, ((PawsType*)valType)->size);
+			else if (varId->type != valType) // If `name` is defined with a different type, ...
+				// Redefine `name` with new type
+				varId = allocStackSymbol(varId->scope, name, valType, ((PawsType*)valType)->size);
+			return new StackVariableAssignmentKernel(varId);
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -607,9 +637,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (runExpr(params[1], runtime))
 				return true;
-			MincSymbol* varFromId = getSymbol(runtime.parentBlock, varId);
-			varFromId->value = runtime.result.value = ((PawsType*)runtime.result.type)->copy((PawsBase*)runtime.result.value);
-			varFromId->type = runtime.result.type;
+
+			MincObject* value = getStackSymbol(runtime.parentBlock, runtime, stackSymbol);
+			((PawsType*)runtime.result.type)->allocTo(value);
+			((PawsType*)runtime.result.type)->copyTo(runtime.result.value, value);
+			runtime.result.value = value;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -617,8 +649,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			return ::getType(getDerivedExpr(params[1]), parentBlock);
 		}
 	};
-	defineExpr6(pkgScope, "$I<PawsDynamic> = $E<PawsDynamic>", new VariableAssignmentKernel());
-	defineExpr6(pkgScope, "$I<PawsErrorType> = $E<PawsDynamic>", new VariableAssignmentKernel());
+	defineExpr6(pkgScope, "$I<PawsDynamic> = $E<PawsDynamic>", new StackVariableAssignmentKernel());
+	defineExpr6(pkgScope, "$I<PawsErrorType> = $E<PawsDynamic>", new StackVariableAssignmentKernel());
 
 	// Define build-time variable reassignment
 	defineExpr8(pkgScope, "$I<PawsStatic> = $E<PawsStatic>",
@@ -817,6 +849,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 			// Inherent global scope into loop block scope
 			setBlockExprParent(forBlock, parentBlock);
+			MincEnteredBlockExpr entered(runtime, forBlock);
 
 			// Run init expression in loop block scope
 			runtime.parentBlock = forBlock;
@@ -831,7 +864,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			{
 				// Run loop block in parent scope
 				runtime.parentBlock = parentBlock;
-				if (runExpr((MincExpr*)forBlock, runtime))
+				if (entered.run())
 					return true;
 
 				// Run update expression in loop block scope

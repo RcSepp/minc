@@ -133,25 +133,40 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to measure runtime
-	defineStmt6(pkgScope, "measure $I $S",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class MeasureKernel : public MincKernel
+	{
+		const MincStackSymbol* const stackSymbol;
+	public:
+		MeasureKernel(const MincStackSymbol* stackSymbol=nullptr) : stackSymbol(stackSymbol) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			const char* varName = getIdExprName((MincIdExpr*)params[0]);
 			buildExpr(params[1], buildtime);
-			defineSymbol(buildtime.parentBlock, varName, PawsDuration::TYPE, nullptr);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			const char* varName = getIdExprName((MincIdExpr*)params[0]);
-			MincExpr* stmt = params[1];
+			return new MeasureKernel(allocStackSymbol(buildtime.parentBlock, varName, PawsDuration::TYPE, PawsDuration::TYPE->size));
+		}
 
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			if (runExpr(stmt, runtime))
+			if (runExpr(params[1], runtime))
 				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Store measured runtime as `varName`
-			defineSymbol(runtime.parentBlock, varName, PawsDuration::TYPE, new PawsDuration(endTime - startTime));
+			new(getStackSymbol(runtime.parentBlock, runtime, stackSymbol)) PawsDuration(endTime - startTime);
 			return false;
 		}
-	);
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	defineStmt4(pkgScope, "measure $I $S", new MeasureKernel());
 });

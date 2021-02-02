@@ -26,7 +26,7 @@
 #include <assert.h>
 #include "minc_api.hpp"
 
-extern MincObject ERROR_TYPE;
+extern MincObject ERROR_TYPE, NONE_TYPE;
 extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
 unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 #ifdef DEBUG_STMTREG
@@ -42,7 +42,7 @@ static struct UnresolvableExprKernel : public MincKernel
 {
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		throw UndefinedExprException{runtime.parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr instead
+		throw UndefinedExprException{runtime.currentExpr};
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_EXPR_KERNEL;
@@ -50,7 +50,8 @@ static struct UnresolvableStmtKernel : public MincKernel
 {
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		throw UndefinedStmtException{runtime.parentBlock->getCurrentStmt()}; //TODO: Pass calling stmt/expr instead
+assert(runtime.currentExpr->exprtype == MincExpr::ExprType::STMT);
+		throw UndefinedStmtException{(MincStmt*)runtime.currentExpr};
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
 } UNRESOLVABLE_STMT_KERNEL;

@@ -35,6 +35,10 @@ CADD		\+=
 CSUB		-=
 CMUL		\*=
 CDIV		\/=
+CBA			&=
+CBO			\|=
+CBN			~=
+CBX			\^=
 AWT			await
 NEW			new
 PAND		and
@@ -143,6 +147,10 @@ DEC			--
 {CSUB}							return token::CSUB;
 {CMUL}							return token::CMUL;
 {CDIV}							return token::CDIV;
+{CBA}							return token::CBA;
+{CBO}							return token::CBO;
+{CBN}							return token::CBN;
+{CBX}							return token::CBX;
 
 ;|=|\+|\(|\)|,|\{|\}|\[|\]|.|&|!|:|\?	return yytext[0];
 

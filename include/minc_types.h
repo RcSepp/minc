@@ -41,14 +41,15 @@ struct MincSymbol
 	MincSymbol(MincObject* type, MincObject* value) : type(type), value(value) {}
 };
 
-struct MincSymbolId
+struct MincStackSymbol
 {
-	uint32_t i;
-	uint16_t p, r;
-	static const MincSymbolId NONE;
+	MincObject* type;
+	MincBlockExpr* scope;
+	size_t location;
+	MincStackSymbol() = default;
+	MincStackSymbol(const MincStackSymbol& v) = default;
+	MincStackSymbol(MincObject* type, MincBlockExpr* scope, size_t location) : type(type), scope(scope), location(location) {}
 };
-bool operator==(const MincSymbolId& left, const MincSymbolId& right);
-bool operator!=(const MincSymbolId& left, const MincSymbolId& right);
 
 struct MincBuildtime
 {
@@ -56,18 +57,45 @@ struct MincBuildtime
 	MincSymbol result;
 };
 
+struct MincStackFrame
+{
+	union {
+		size_t stackPointer;
+		unsigned char* heapPointer;
+	};
+	size_t stmtIndex;
+	MincStackFrame* next; //TODO: Only used for heap frame. Consider separating this struct into MincStackFrame and MincHeapFrame
+
+	MincStackFrame() : heapPointer(nullptr), next(nullptr) {}
+};
+
 struct MincRuntime
 {
 	MincBlockExpr* parentBlock;
+	MincExpr* currentExpr;
 	MincSymbol result;
 	bool resume;
+	MincStackFrame* const stackFrames;
+	MincStackFrame* heapFrame;
+	size_t currentStackPointerIndex;
+	const size_t stackSize;
+	unsigned char* const stack;
+	size_t currentStackSize;
 
-	MincRuntime() = default;
-	MincRuntime(MincBlockExpr* parentBlock, bool resume)
-	{
-		this->parentBlock = parentBlock;
-		this->resume = resume;
-	}
+	MincRuntime();
+	MincRuntime(MincBlockExpr* parentBlock, bool resume);
+	~MincRuntime();
+};
+
+struct MincEnteredBlockExpr
+{
+	MincRuntime& runtime;
+	MincBlockExpr* block;
+	MincStackFrame* const prevStackFrame;
+	MincEnteredBlockExpr(MincRuntime& runtime, MincBlockExpr* block);
+	~MincEnteredBlockExpr();
+	bool run();
+	void exit();
 };
 
 struct MincKernel
@@ -122,6 +150,7 @@ struct CompileError : public MincException
 	CompileError(const char* msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
 	CompileError(std::string msg, MincLocation loc={ nullptr, 0, 0, 0, 0 });
 	CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
+	CompileError(MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
 };
 struct UndefinedStmtException : public CompileError
 {

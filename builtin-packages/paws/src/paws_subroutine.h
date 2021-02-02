@@ -29,13 +29,17 @@ public:
 
 	static PawsFunctionType* get(const MincBlockExpr* scope, PawsType* returnType, const std::vector<PawsType*>& argTypes);
 	MincObject* copy(MincObject* value);
+	void copyTo(MincObject* src, MincObject* dest);
+	void copyToNew(MincObject* src, MincObject* dest);
+	MincObject* alloc();
+	MincObject* allocTo(MincObject* memory);
 	std::string toString(MincObject* value) const;
 };
 
 struct PawsRegularFunc : public PawsFunc
 {
 	MincBlockExpr* body;
-	mutable std::vector<MincSymbolId> args;
+	mutable std::vector<const MincStackSymbol*> args;
 	bool call(MincRuntime& runtime, const std::vector<MincExpr*>& args, const MincSymbol* self=nullptr) const;
 
 	PawsRegularFunc() = default;

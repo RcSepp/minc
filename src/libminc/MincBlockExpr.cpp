@@ -11,18 +11,6 @@ MincBlockExpr* topLevelBlock = nullptr;
 std::map<std::pair<MincScopeType*, MincScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
 std::map<StepEvent, void*> stepEventListeners;
 
-const MincSymbolId MincSymbolId::NONE = { 0, 0, 0 };
-
-bool operator==(const MincSymbolId& left, const MincSymbolId& right)
-{
-	return left.i == right.i && left.p == right.p && left.r == right.r;
-}
-
-bool operator!=(const MincSymbolId& left, const MincSymbolId& right)
-{
-	return left.i != right.i || left.p != right.p || left.r != right.r;
-}
-
 struct StaticStmtKernel : public MincKernel
 {
 private:
@@ -92,7 +80,10 @@ public:
 	StaticExprKernel(RunBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		return cbk(runtime, params, exprArgs);
+		if (cbk(runtime, params, exprArgs))
+			return true;
+		runtime.result.type = type;
+		return false;
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -185,11 +176,15 @@ public:
 	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 	{
 		buildCbk(buildtime, params, exprArgs);
+		buildtime.result.type = type;
 		return this;
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		return runCbk(runtime, params, exprArgs);
+		if (runCbk(runtime, params, exprArgs))
+			return true;
+		runtime.result.type = type;
+		return false;
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -235,7 +230,7 @@ public:
 	{
 		if (params[0]->run(runtime))
 			return true;
-		runtime.result = MincSymbol(type, runtime.result.value);
+		runtime.result.type = type;
 		return false;
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -250,22 +245,10 @@ void raiseStepEvent(const MincExpr* loc, StepEventType type)
 		listener.first(loc, type, listener.second);
 }
 
-MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* builtStmts)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), builtStmts(builtStmts), ownesResolvedStmts(false), parent(nullptr), exprs(exprs),
-	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
-{
-}
-
 MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs)
-	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), builtStmts(new std::vector<MincStmt>()), ownesResolvedStmts(true), parent(nullptr), exprs(exprs),
-	  stmtIdx(0), scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
+	: MincExpr(loc, MincExpr::ExprType::BLOCK), defaultStmtKernel(nullptr), defaultExprKernel(nullptr), castreg(this), stackSize(0), parent(nullptr), exprs(exprs),
+	  scopeType(nullptr), resultCacheIdx(0), isBlockSuspended(false), isStmtSuspended(false), isExprSuspended(false), isResuming(false), isBusy(false), user(nullptr), userType(nullptr)
 {
-}
-
-MincBlockExpr::~MincBlockExpr()
-{
-	if (ownesResolvedStmts)
-		delete builtStmts;
 }
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
@@ -354,10 +337,10 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 	stmtreg.defineExpr(tplt, expr);
 
 	// // Forget future expressions
-	// if (stmtIdx + 1 == builtStmts->size()) // If the current statement is the last statement
+	// if (stmtIdx + 1 == builtStmts.size()) // If the current statement is the last statement
 	// 									   // This avoids forgetting statements during consecutive iterations of already resolved blocks.
 	// 	// Forget expressions beyond the current statement
-	// 	for (MincExprIter expr = builtStmts->back().end; expr != exprs->end() && (*expr)->isResolved(); ++expr)
+	// 	for (MincExprIter expr = builtStmts.back().end; expr != exprs->end() && (*expr)->isResolved(); ++expr)
 	// 		(*expr)->forget();
 	//TODO: This doesn't forget future expressions for child blocks of the define target
 	// For example test_mutable_exprs() will fail, because an expression is defined in file scope, while an already resolved expression in
@@ -379,8 +362,17 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, 
 		ExprKernel(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, MincObject* type)
 			: runCbk(run), type(type) {}
 		virtual ~ExprKernel() {}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
-		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return type; }
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			if (runCbk(runtime, params))
+				return true;
+			runtime.result.type = type;
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return type;
+		}
 	};
 	defineExpr(tplt, new ExprKernel(run, type));
 }
@@ -545,12 +537,20 @@ void MincBlockExpr::defineSymbol(std::string name, MincObject* type, MincObject*
 	if (isBuilt())
 		throw CompileError("defining symbol after block has been built", loc);
 
-	auto inserted = symbolMap.insert(std::make_pair(name, symbols.size())); // Insert forward mapping if not already present
-	if (inserted.second) // If name was already present
+	auto inserted = symbolMap.insert(std::make_pair(name, std::make_pair(symbols.size(), SymbolType::BUILDTIME))); // Insert forward mapping if not already present
+	if (inserted.second || // If name refers to a new symbol or ...
+		inserted.first->second.second != SymbolType::BUILDTIME || // ... existing symbol is a stack symbol or ...
+		type != symbols[inserted.first->second.first]->type) // ... existing symbol is of a different type
+	{
+		// Insert new symbol
+		inserted.first->second.first = symbols.size();
+		inserted.first->second.second = SymbolType::BUILDTIME;
 		symbols.push_back(new MincSymbol(type, value)); // Insert symbol
+	}
 	else
 	{
-		MincSymbol* symbol = symbols[inserted.first->second];
+		// Update existing symbol
+		MincSymbol* symbol = symbols[inserted.first->second.first];
 		symbol->type = type; // Update symbol type
 		symbol->value = value; // Update symbol value
 	}
@@ -561,13 +561,13 @@ const MincSymbol* MincBlockExpr::lookupSymbol(const std::string& name) const
 {
 	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
 	{
-		std::map<std::string, size_t>::const_iterator symbolIter;
+		std::map<std::string, std::pair<size_t, SymbolType>>::const_iterator symbolIter;
 		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
-			return block->symbols[symbolIter->second]; // Symbol found in local scope
+			return symbolIter->second.second == SymbolType::BUILDTIME ? block->symbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
 
 		for (const MincBlockExpr* ref: block->references)
 			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
-				return ref->symbols[symbolIter->second]; // Symbol found in ref scope
+				return symbolIter->second.second == SymbolType::BUILDTIME ? ref->symbols[symbolIter->second.first] : nullptr; // Symbol found in ref scope
 	}
 	return nullptr; // Symbol not found
 }
@@ -602,75 +602,46 @@ const std::string& MincBlockExpr::lookupSymbolName(const MincObject* value, cons
 	return defaultName; // Symbol not found
 }
 
-MincSymbolId MincBlockExpr::lookupSymbolId(const std::string& name) const
-{
-	MincSymbolId symbolId = { 0, 0, 0 };
-	const MincBlockExpr* block = this;
-
-	do
-	{
-		std::map<std::string, size_t>::const_iterator symbolIter;
-		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
-		{
-			symbolId.i = symbolIter->second + 1;
-			return symbolId; // Symbol found in local scope
-		}
-
-		for (const MincBlockExpr* ref: block->references)
-		{
-			++symbolId.r;
-			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
-			{
-				symbolId.i = symbolIter->second + 1;
-				return symbolId; // Symbol found in ref scope
-			}
-		}
-		symbolId.r = 0;
-
-		++symbolId.p;
-		block = block->parent;
-	} while (block != nullptr);
-
-	return MincSymbolId::NONE; // Symbol not found
-}
-MincSymbol* MincBlockExpr::getSymbol(MincSymbolId id) const
-{
-	if (id.i == 0)
-		return nullptr;
-
-	const MincBlockExpr* block = this;
-
-	while (id.p-- != 0)
-		block = block->parent;
-
-	if (id.r != 0)
-		block = block->references[id.r - 1];
-
-	return block->symbols[id.i - 1];
-}
-
 size_t MincBlockExpr::countSymbols() const
 {
 	return symbolMap.size();
 }
 
-void MincBlockExpr::iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const
+size_t MincBlockExpr::countSymbols(SymbolType symbolType) const
 {
-	for (const std::pair<std::string, size_t>& iter: symbolMap)
-		cbk(iter.first, *symbols[iter.second]);
+	size_t c = 0;
+	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
+		c += iter.second.second == symbolType;
+	return c;
+}
+
+void MincBlockExpr::iterateBuildtimeSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const
+{
+	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
+		if (iter.second.second == SymbolType::BUILDTIME)
+			cbk(iter.first, *symbols[iter.second.first]);
+}
+
+void MincBlockExpr::iterateStackSymbols(std::function<void(const std::string& name, const MincStackSymbol& symbol)> cbk) const
+{
+	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
+		if (iter.second.second == SymbolType::STACK)
+			cbk(iter.first, *stackSymbols[iter.second.first]);
 }
 
 MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 {
-	std::map<std::string, size_t>::iterator symbolIter;
+	std::map<std::string, std::pair<size_t, SymbolType>>::iterator symbolIter;
 	if ((symbolIter = symbolMap.find(name)) != symbolMap.end())
-		return symbols[symbolIter->second]; // Symbol found in local scope
+		return symbolIter->second.second == SymbolType::BUILDTIME ? symbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
 
 	MincSymbol* symbol;
 	for (MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.end())
 		{
-			symbol = ref->symbols[symbolIter->second]; // Symbol found in ref scope
+			if (symbolIter->second.second != SymbolType::BUILDTIME)
+				continue;
+			symbol = ref->symbols[symbolIter->second.first]; // Symbol found in ref scope
 
 			if (ref->scopeType == nullptr || scopeType == nullptr)
 				return symbol; // Scope type undefined for either ref scope or local scope
@@ -743,6 +714,76 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 	return nullptr; // Symbol not found
 }
 
+const MincStackSymbol* MincBlockExpr::allocStackSymbol(const char* name, MincObject* type, size_t size)
+{
+	if (size == 0)
+		throw CompileError("defining symbol of size 0", loc);
+	if (isBuilt())
+		throw CompileError("defining symbol after block has been built", loc);
+
+	auto inserted = symbolMap.insert(std::make_pair(name, std::make_pair(stackSymbols.size(), SymbolType::STACK))); // Insert stack symbol if not already present
+	if (inserted.second) // If name refers to a new symbol
+	{
+		// Insert new symbol
+		stackSymbols.push_back(new MincStackSymbol(type, this, stackSize)); // Insert symbol
+		stackSize += size; // Grow stack
+	}
+	else if (inserted.first->second.second != SymbolType::STACK || // If the existing symbol is a build time symbol or ...
+			 type != stackSymbols[inserted.first->second.first]->type) // ... the existing symbol is of a different type
+	{
+		// Replace symbol
+		symbolMap[name] = std::make_pair(stackSymbols.size(), SymbolType::STACK); // Replace symbol in symbol map
+		stackSymbols.push_back(new MincStackSymbol(type, this, stackSize)); // Insert symbol
+		stackSize += size; // Grow stack
+	}
+
+	return stackSymbols[inserted.first->second.first];
+}
+
+const MincStackSymbol* MincBlockExpr::allocStackSymbol(MincObject* type, size_t size)
+{
+	if (isBuilt())
+		throw CompileError("defining symbol after block has been built", loc);
+
+	MincStackSymbol* stackSymbol = new MincStackSymbol(type, this, stackSize);
+	stackSymbols.push_back(stackSymbol); // Insert symbol
+	stackSize += size; // Grow stack
+	return stackSymbol;
+}
+
+const MincStackSymbol* MincBlockExpr::lookupStackSymbol(const char* name) const
+{
+	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
+	{
+		std::map<std::string, std::pair<size_t, SymbolType>>::const_iterator symbolIter;
+		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
+			return symbolIter->second.second == SymbolType::STACK ? block->stackSymbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
+
+		for (const MincBlockExpr* ref: block->references)
+			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
+				return symbolIter->second.second == SymbolType::STACK ? ref->stackSymbols[symbolIter->second.first] : nullptr; // Symbol found in ref scope
+	}
+	return nullptr; // Symbol not found
+}
+
+MincObject* MincBlockExpr::getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const
+{
+	const MincStackFrame* stackFrame = stackSymbol->scope->stackFrame;
+	if (stackFrame == nullptr)
+		throw CompileError(this, loc, "accessing symbol in stack frame of inactive block `%S`", stackSymbol->scope->name);
+
+	if (stackSymbol->scope->isResumable)
+		return (MincObject*)(stackFrame->heapPointer + stackSymbol->location);
+	else
+		return (MincObject*)(runtime.stack + stackFrame->stackPointer + stackSymbol->location);
+}
+
+MincObject* MincBlockExpr::getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const
+{
+	size_t location = runtime.currentStackSize + stackSymbol->location;
+	return (MincObject*)(runtime.stack + location);
+}
+
 const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 {
 	for (const MincBlockExpr* block = this; block; block = block->parent)
@@ -756,138 +797,194 @@ const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 	return nullptr;
 }
 
-bool MincBlockExpr::run(MincRuntime& runtime)
+MincEnteredBlockExpr::MincEnteredBlockExpr(MincRuntime& runtime, MincBlockExpr* block)
+	: runtime(runtime), block(block), prevStackFrame(block->stackFrame) // Store previous stack frame
 {
-	if (runtime.parentBlock == this)
-		throw CompileError("block expression can't be it's own parent", this->loc);
-	if (isBusy)
-		throw CompileError("block expression already executing. Use MincBlockExpr::clone() when executing blocks recursively", this->loc);
-	if (builtStmts->size() == 0 && exprs->size() != 0)
-		throw CompileError(runtime.parentBlock, loc, "expression not built: %e", this);
-	isBusy = true;
-	isResuming = isBlockSuspended && (runtime.resume || runtime.parentBlock->isResuming);
+	if (block->isResumable) // If this is resumable block, ...
+	{
+		if ((block->stackFrame = runtime.heapFrame) == nullptr) // Make sure a heap frame was provided
+			throw CompileError("No heap frame passed to resumable block");
+		if (block->stackFrame->heapPointer == nullptr) // If the heap frame is unallocated, ...
+		{
+			// Allocate heap frame
+			block->stackFrame->heapPointer = new unsigned char[block->stackSize];
+			block->stackFrame->stmtIndex = 0;
+			block->stackFrame->next = new MincStackFrame();
+		}
+		runtime.heapFrame = block->stackFrame->next;
+	}
+	else // If this is regular block, ...
+	{
+		// Reserve a frame from the stack
+		block->stackFrame = &runtime.stackFrames[runtime.currentStackPointerIndex++]; // Get stack pointer for this block
+		block->stackFrame->stackPointer = runtime.currentStackSize; // Set stack pointer for this block to the bottom of the stack
+		runtime.currentStackSize += block->stackSize; // Grow the stack by this block's stack size
+
+		if (runtime.currentStackSize >= runtime.stackSize) //TODO: Replace hardcoded stack size
+			throw CompileError("Stack overflow", block->loc);
+	}
+}
+MincEnteredBlockExpr::~MincEnteredBlockExpr()
+{
+	if (block != nullptr)
+		exit();
+}
+
+void MincEnteredBlockExpr::exit()
+{
+	if (block == nullptr)
+		return;
+
+	if (!block->isResumable)
+	{
+		runtime.currentStackSize -= block->stackSize; // Shrink the stack by this block's stack size
+		--runtime.currentStackPointerIndex; // Release stack pointer for this block
+	}
+	block->stackFrame = prevStackFrame; // Restore previous stack frame (for recursion)
+
+	block = nullptr;
+}
+
+bool MincEnteredBlockExpr::run()
+{
+	if (runtime.parentBlock == block)
+		throw CompileError("block expression can't be it's own parent", block->loc);
+	if (block->builtStmts.size() == 0 && block->exprs->size() != 0)
+		throw CompileError(runtime.parentBlock, block->loc, "expression not built: %e", block);
+	block->isBusy = true;
+	block->isResuming = block->isBlockSuspended && (runtime.resume || runtime.parentBlock->isResuming);
 
 	try
 	{
-		raiseStepEvent(this, isResuming ? STEP_RESUME : STEP_IN);
+		raiseStepEvent(block, block->isResuming ? STEP_RESUME : STEP_IN);
 	}
 	catch (...)
 	{
-		isBlockSuspended = true;
-		raiseStepEvent(this, STEP_SUSPEND);
-		isBusy = false;
-		isResuming = false;
+		block->isBlockSuspended = true;
+		raiseStepEvent(block, STEP_SUSPEND);
+		block->isBusy = false;
+		block->isResuming = false;
 		runtime.resume = false;
 		throw;
 	}
-	if (isBlockSuspended && !isResuming)
-		reset();
-	isBlockSuspended = false;
+	if (block->isBlockSuspended && !block->isResuming)
+		block->reset();
+	block->isBlockSuspended = false;
 
-	parent = runtime.parentBlock;
+	if (!block->isResumable)
+		block->stackFrame->stmtIndex = 0;
+
+	block->parent = runtime.parentBlock;
 
 	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
 	if (runtime.parentBlock == nullptr)
 	{
-		parent = rootBlock;
-		topLevelBlock = this;
+		block->parent = rootBlock;
+		topLevelBlock = block;
 	}
 
 	MincBlockExpr* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
-		fileBlock = this;
+		fileBlock = block;
 
 	try
 	{
-		for (; stmtIdx < builtStmts->size(); ++stmtIdx)
+		const size_t numBuiltStmts = block->builtStmts.size();
+		for (; block->stackFrame->stmtIndex < numBuiltStmts; ++block->stackFrame->stmtIndex)
 		{
-			MincStmt& currentStmt = builtStmts->at(stmtIdx);
-			if (!currentStmt.isResolved() && !lookupStmt(currentStmt.begin, exprs->end(), currentStmt))
+			MincStmt& currentStmt = block->builtStmts.at(block->stackFrame->stmtIndex);
+			if (!currentStmt.isResolved() && !block->lookupStmt(currentStmt.begin, block->exprs->end(), currentStmt))
 				throw UndefinedStmtException(&currentStmt);
-			runtime.parentBlock = this; // Set parent of block expr statement to block expr
+			runtime.parentBlock = block; // Set parent of block expr statement to block expr
 			if (currentStmt.run(runtime))
 			{
-				resultCacheIdx = 0;
+				block->resultCacheIdx = 0;
 
-				runtime.parentBlock = parent; // Restore parent
+				runtime.parentBlock = block->parent; // Restore parent
 
-				if (topLevelBlock == this)
+				if (topLevelBlock == block)
 					topLevelBlock = oldTopLevelBlock;
 
-				if (fileBlock == this)
+				if (fileBlock == block)
 					fileBlock = oldFileBlock;
 
-				isBlockSuspended = true;
-				raiseStepEvent(this, STEP_SUSPEND);
+				block->isBlockSuspended = true;
+				raiseStepEvent(block, STEP_SUSPEND);
 
-				if (isVolatile)
-					forget();
+				if (block->isVolatile)
+					block->forget();
 
-				isBusy = false;
-				isResuming = false;
+				block->isBusy = false;
+				block->isResuming = false;
 				runtime.resume = false;
 				return true;
 			}
 
 			// Clear cached expressions
+#ifdef CACHE_RESULTS
 			// Coroutines exit run() without clearing resultCache by throwing an exception
 			// They use the resultCache on reentry to avoid reexecuting expressions
-			resultCache.clear();
-			resultCacheIdx = 0;
+			block->resultCache.clear();
+			block->resultCacheIdx = 0;
+#endif
 		}
-		stmtIdx = builtStmts->size(); // Handle case `stmtIdx > builtStmts->size()`
 	}
 	catch (...)
 	{
-		resultCacheIdx = 0;
+		block->resultCacheIdx = 0;
 
-		runtime.parentBlock = parent; // Restore parent
+		runtime.parentBlock = block->parent; // Restore parent
 
-		if (topLevelBlock == this)
+		if (topLevelBlock == block)
 			topLevelBlock = oldTopLevelBlock;
 
-		if (fileBlock == this)
+		if (fileBlock == block)
 			fileBlock = oldFileBlock;
 
-		isBlockSuspended = true;
-		raiseStepEvent(this, STEP_SUSPEND);
+		block->isBlockSuspended = true;
+		raiseStepEvent(block, STEP_SUSPEND);
 
-		if (isVolatile)
-			forget();
+		if (block->isVolatile)
+			block->forget();
 
-		isBusy = false;
-		isResuming = false;
+		block->isBusy = false;
+		block->isResuming = false;
 		runtime.resume = false;
 		throw;
 	}
 
-	stmtIdx = 0;
+	runtime.parentBlock = block->parent; // Restore parent
 
-	runtime.parentBlock = parent; // Restore parent
-
-	if (topLevelBlock == this)
+	if (topLevelBlock == block)
 		topLevelBlock = oldTopLevelBlock;
 
-	if (fileBlock == this)
+	if (fileBlock == block)
 		fileBlock = oldFileBlock;
 
-	raiseStepEvent(this, STEP_OUT);
+	raiseStepEvent(block, STEP_OUT);
 
-	if (isVolatile)
-		forget();
+	if (block->isVolatile)
+		block->forget();
 
-	isBusy = false;
-	isResuming = false;
+	block->isBusy = false;
+	block->isResuming = false;
 	runtime.resume = false;
 	runtime.result = VOID;
 	return false;
 }
 
+bool MincBlockExpr::run(MincRuntime& runtime)
+{
+	MincEnteredBlockExpr entered(runtime, this);
+	return entered.run();
+}
+
 MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 {
-	if (builtStmts->size() != 0)
+	if (builtStmts.size() != 0)
 		return buildtime.result = MincSymbol(nullptr, nullptr); // Already built
 
+	isBusy = true;
 	parent = buildtime.parentBlock;
 
 	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
@@ -904,8 +1001,8 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 	// Resolve and build statements from expressions
 	for (MincExprIter stmtBeginExpr = exprs->cbegin(); stmtBeginExpr != exprs->cend();)
 	{
-		builtStmts->push_back(MincStmt());
-		MincStmt& currentStmt = builtStmts->back();
+		builtStmts.push_back(MincStmt());
+		MincStmt& currentStmt = builtStmts.back();
 		if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
 			throw UndefinedStmtException(&currentStmt);
 		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
@@ -916,6 +1013,7 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 	}
 
 	buildtime.parentBlock = parent; // Restore parent
+	isBusy = false;
 
 	if (topLevelBlock == this)
 		topLevelBlock = oldTopLevelBlock;
@@ -984,18 +1082,18 @@ int MincBlockExpr::comp(const MincExpr* other) const
 
 MincExpr* MincBlockExpr::clone() const
 {
-	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs, this->builtStmts);
+	MincBlockExpr* clone = new MincBlockExpr(this->loc, this->exprs);
+	clone->stackSize = this->stackSize;
 	clone->parent = this->parent;
 	clone->references = this->references;
+	clone->isResumable = this->isResumable;
 	clone->name = this->name;
 	clone->scopeType = this->scopeType;
 	clone->blockParams = this->blockParams;
-	clone->symbols.reserve(this->symbols.size());
-	for (MincSymbol* symbol: this->symbols)
-		clone->symbols.push_back(new MincSymbol(symbol->type, symbol->value)); // Note: Cloning symbol->value is necessary to copy static
-																			   //		symbols into instance blocks
-	clone->symbolMap.insert(this->symbolMap.begin(), this->symbolMap.end());
-	clone->symbolNameMap.insert(this->symbolNameMap.begin(), this->symbolNameMap.end());
+	clone->symbols = this->symbols;
+	clone->stackSymbols = this->stackSymbols;
+	clone->symbolMap = this->symbolMap;
+	clone->symbolNameMap = this->symbolNameMap;
 	this->castreg.iterateCasts([&clone](const MincCast* cast) {
 		clone->defineCast(const_cast<MincCast*>(cast)); //TODO: Remove const cast
 	}); // Note: Cloning casts is necessary for run-time argument matching
@@ -1004,9 +1102,10 @@ MincExpr* MincBlockExpr::clone() const
 
 void MincBlockExpr::reset()
 {
+#ifdef CACHE_RESULTS
 	resultCache.clear();
 	resultCacheIdx = 0;
-	stmtIdx = 0;
+#endif
 	isBlockSuspended = false;
 	isStmtSuspended = false;
 	isExprSuspended = false;
@@ -1014,16 +1113,13 @@ void MincBlockExpr::reset()
 
 void MincBlockExpr::clearCache(size_t targetSize)
 {
+#ifdef CACHE_RESULTS
 	if (targetSize > resultCache.size())
 		targetSize = resultCache.size();
 
 	resultCacheIdx = targetSize;
 	resultCache.erase(resultCache.begin() + targetSize, resultCache.end());
-}
-
-const MincStmt* MincBlockExpr::getCurrentStmt() const
-{
-	return stmtIdx < builtStmts->size() ? &builtStmts->at(stmtIdx) : nullptr;
+#endif
 }
 
 MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)
@@ -1334,19 +1430,19 @@ extern "C"
 		return scope->lookupSymbolName(value, defaultName);
 	}
 
-	MincSymbolId lookupSymbolId(const MincBlockExpr* scope, const char* name)
-	{
-		return scope->lookupSymbolId(name);
-	}
-
-	MincSymbol* getSymbol(const MincBlockExpr* scope, MincSymbolId id)
-	{
-		return scope->getSymbol(id);
-	}
-
 	size_t countBlockExprSymbols(const MincBlockExpr* expr)
 	{
 		return expr->countSymbols();
+	}
+
+	size_t countBlockExprBuildtimeSymbols(const MincBlockExpr* expr)
+	{
+		return expr->countSymbols(MincBlockExpr::SymbolType::BUILDTIME);
+	}
+
+	size_t countBlockExprStackSymbols(const MincBlockExpr* expr)
+	{
+		return expr->countSymbols(MincBlockExpr::SymbolType::STACK);
 	}
 
 	MincSymbol* importSymbol(MincBlockExpr* scope, const char* name)
@@ -1356,7 +1452,34 @@ extern "C"
 
 	void iterateBlockExprSymbols(const MincBlockExpr* expr, std::function<void(const std::string& name, const MincSymbol& symbol)> cbk)
 	{
-		return expr->iterateSymbols(cbk);
+		return expr->iterateBuildtimeSymbols(cbk);
+	}
+
+	const MincStackSymbol* allocStackSymbol(MincBlockExpr* scope, const char* name, MincObject* type, size_t size)
+	{
+		return scope->allocStackSymbol(name, type, size);
+	}
+
+	const MincStackSymbol* allocAnonymousStackSymbol(MincBlockExpr* scope, MincObject* type, size_t size)
+	{
+		while (!scope->isBusy)
+			scope = scope->parent;
+		return scope->allocStackSymbol(type, size);
+	}
+
+	const MincStackSymbol* lookupStackSymbol(const MincBlockExpr* scope, const char* name)
+	{
+		return scope->lookupStackSymbol(name);
+	}
+
+	MincObject* getStackSymbol(const MincBlockExpr* scope, MincRuntime& runtime, const MincStackSymbol* stackSymbol)
+	{
+		return scope->getStackSymbol(runtime, stackSymbol);
+	}
+
+	MincObject* getStackSymbolOfNextStackFrame(const MincBlockExpr* scope, MincRuntime& runtime, const MincStackSymbol* stackSymbol)
+	{
+		return scope->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
 	}
 
 	MincBlockExpr* cloneBlockExpr(MincBlockExpr* expr)
@@ -1372,21 +1495,6 @@ extern "C"
 	void resetBlockExprCache(MincBlockExpr* block, size_t targetState)
 	{
 		block->clearCache(targetState);
-	}
-
-	const MincStmt* getCurrentBlockExprStmt(const MincBlockExpr* expr)
-	{
-		return expr->getCurrentStmt();
-	}
-
-	const size_t getCurrentBlockExprStmtIndex(const MincBlockExpr* expr)
-	{
-		return expr->stmtIdx;
-	}
-
-	const void setCurrentBlockExprStmtIndex(MincBlockExpr* expr, size_t index)
-	{
-		expr->stmtIdx = index;
 	}
 
 	MincBlockExpr* getBlockExprParent(const MincBlockExpr* expr)
@@ -1466,6 +1574,19 @@ extern "C"
 	size_t getBlockExprCacheState(MincBlockExpr* block)
 	{
 		return block->resultCacheIdx;
+	}
+
+	bool isResumable(MincBlockExpr* block)
+	{
+		return block->isResumable;
+	}
+
+	void setResumable(MincBlockExpr* block, bool resumable)
+	{
+		if (block->isBuilt())
+			throw CompileError("setting resumable after block has been built"); //TODO: Check this from C++ API
+
+		block->isResumable = resumable;
 	}
 
 	bool isBlockExprBusy(MincBlockExpr* block)

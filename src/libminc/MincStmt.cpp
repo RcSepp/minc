@@ -23,28 +23,35 @@ bool MincStmt::run(MincRuntime& runtime)
 	MincBlockExpr* const parentBlock = runtime.parentBlock;
 
 	// Handle expression caching for coroutines
-	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+#ifdef CACHE_RESULTS
+	size_t resultCacheIdx;
+	if (parentBlock->isResumable)
 	{
-		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+		if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
 		{
-			const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
-			runtime.result.type = cached.type;
-			runtime.result.value = cached.value;
-			return false;
+			if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+			{
+				const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
+				runtime.result.type = cached.type;
+				runtime.result.value = cached.value;
+				return false;
+			}
 		}
+		else
+		{
+			assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+			parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+		}
+		resultCacheIdx = parentBlock->resultCacheIdx++;
 	}
-	else
-	{
-		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
-	}
-	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+#endif
 
 	if (builtKernel == nullptr)
 		throw CompileError(parentBlock, loc, "expression not built: %e", this);
 
 	try
 	{
+		runtime.currentExpr = this;
 		raiseStepEvent(this, (runtime.resume || parentBlock->isResuming) && parentBlock->isStmtSuspended ? STEP_RESUME : STEP_IN);
 		if (builtKernel->run(runtime, resolvedParams))
 		{
@@ -69,12 +76,17 @@ bool MincStmt::run(MincRuntime& runtime)
 	parentBlock->isStmtSuspended = false;
 
 	// Cache expression result for coroutines
-	parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
-	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+#ifdef CACHE_RESULTS
+	if (parentBlock->isResumable)
 	{
-		parentBlock->resultCacheIdx = resultCacheIdx + 1;
-		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+		parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
+		if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+		{
+			parentBlock->resultCacheIdx = resultCacheIdx + 1;
+			parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+		}
 	}
+#endif
 
 	raiseStepEvent(this, STEP_OUT);
 

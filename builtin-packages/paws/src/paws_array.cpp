@@ -4,7 +4,7 @@
 
 MincBlockExpr* pawsArrayScope = nullptr;
 
-typedef PawsValue<std::vector<MincObject*>> PawsArray;
+typedef PawsValue<std::vector<MincObject*>*> PawsArray;
 
 struct PawsArrayType : public PawsType
 {
@@ -13,7 +13,7 @@ private:
 	static std::set<PawsArrayType> arrayTypes;
 
 	PawsArrayType(PawsType* valueType)
-		: PawsType(sizeof(std::vector<MincObject*>)), valueType(valueType) {}
+		: PawsType(sizeof(std::vector<MincObject*>*)), valueType(valueType) {}
 
 public:
 	PawsType* const valueType;
@@ -36,17 +36,21 @@ public:
 		return const_cast<PawsArrayType*>(&*iter); //TODO: Find a way to avoid const_cast
 	}
 	MincObject* copy(MincObject* value) { return value; }//new PawsArray(*(PawsArray*)value); }
+	void copyTo(MincObject* src, MincObject* dest) { ((PawsArray*)dest)->set(((PawsArray*)src)->get()); }
+	void copyToNew(MincObject* src, MincObject* dest) { new(dest) PawsArray(((PawsArray*)src)->get()); }
+	MincObject* alloc() { return new PawsArray(new std::vector<MincObject*>()); }
+	MincObject* allocTo(MincObject* memory) { return new(memory) PawsArray(); }
 	std::string toString(MincObject* value) const
 	{
-		const std::vector<MincObject*>& val = ((PawsArray*)value)->get();
-		const size_t size = val.size();
+		std::vector<MincObject*>* const val = ((PawsArray*)value)->get();
+		const size_t size = val->size();
 		if (size == 0)
 			return "[]";
 		else
 		{
-			std::string str = "[" + PawsInt::TYPE->toString(val[0]); //TODO: Check if val is instance of PawsBase
+			std::string str = "[" + valueType->toString(val->at(0));
 			for (size_t i = 1; i < size; ++i)
-				str += ", " + PawsInt::TYPE->toString(val[i]); //TODO: Check if val is instance of PawsBase
+				str += ", " + valueType->toString(val->at(i));
 			return str + ']';
 		}
 	}
@@ -70,18 +74,18 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		},
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
 			std::vector<MincExpr*>& values = getListExprExprs((MincListExpr*)params[0]);
-			PawsArray* arr = new PawsArray();
+			PawsArray* arr = new PawsArray(new std::vector<MincObject*>());
 			if (values.size() == 0)
 			{
 				runtime.result = MincSymbol(PawsArrayType::get(runtime.parentBlock, PawsVoid::TYPE), arr);
 				return false;
 			}
-			arr->get().reserve(values.size());
+			arr->get()->reserve(values.size());
 			for (MincExpr* value: values)
 			{
 				if (runExpr(value, runtime))
 					return true;
-				arr->get().push_back(runtime.result.value);
+				arr->get()->push_back(runtime.result.value);
 			}
 			runtime.result = MincSymbol(PawsArrayType::get(runtime.parentBlock, (PawsType*)getType(getDerivedExpr(values[0]), runtime.parentBlock)), arr);
 			return false;
@@ -113,9 +117,9 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			if (runExpr(params[1], runtime))
 				return true;
 			size_t idx = ((PawsInt*)runtime.result.value)->get();
-			if (idx >= arr->get().size())
-				throw CompileError(runtime.parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
-			runtime.result = MincSymbol(valueType, arr->get()[idx]);
+			if (idx >= arr->get()->size())
+				throw CompileError(runtime.parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get()->size());
+			runtime.result = MincSymbol(valueType, arr->get()->at(idx));
 			return false;
 		},
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
@@ -155,13 +159,13 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			if (runExpr(params[1], runtime))
 				return true;
 			size_t idx = ((PawsInt*)runtime.result.value)->get();
-			if (idx >= arr->get().size())
-				throw CompileError(runtime.parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get().size());
+			if (idx >= arr->get()->size())
+				throw CompileError(runtime.parentBlock, getLocation(params[0]), "index %i out of bounds for array of length %i", (int)idx, (int)arr->get()->size());
 
 			if (runExpr(params[2], runtime))
 				return true;
 			MincObject* value = ((PawsType*)runtime.result.type)->copy((PawsBase*)runtime.result.value);
-			arr->get()[idx] = value;
+			arr->get()->at(idx) = value;
 
 			runtime.result = MincSymbol(valueType, value);
 			return false;
@@ -169,6 +173,47 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
 			PawsType* type = (PawsType*)getType(getDerivedExpr(params[0]), parentBlock);
 			return ((PawsArrayType*)type)->valueType;
+		}
+	);
+
+	// Array appender
+	defineExpr10(pkgScope, "$E<PawsArray> += $E<PawsBase>",
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+			buildExpr(params[0], buildtime);
+
+			PawsType* valueType = ((PawsArrayType*)getType(getDerivedExpr(params[0]), buildtime.parentBlock))->valueType;
+			if (valueType == PawsVoid::TYPE)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "cannot assign to empty array");
+			MincExpr* valueExpr = getCastExprSource((MincCastExpr*)params[1]);
+
+			MincObject *expectedType = valueType, *gotType = getType(valueExpr, buildtime.parentBlock);
+			if (expectedType != gotType)
+			{
+				MincExpr* castExpr = lookupCast(buildtime.parentBlock, valueExpr, expectedType);
+				if (castExpr == nullptr)
+					throw CompileError(buildtime.parentBlock, getLocation(valueExpr), "invalid conversion of %E from <%t> to <%t>", valueExpr, gotType, expectedType);
+				buildExpr(castExpr, buildtime);
+				valueExpr = castExpr;
+			}
+
+			buildExpr(params[1] = valueExpr, buildtime);
+		},
+		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			if (runExpr(getDerivedExpr(params[0]), runtime))
+				return true;
+			PawsArray* arr = (PawsArray*)runtime.result.value;
+			PawsArrayType* arrType = (PawsArrayType*)runtime.result.type;
+
+			if (runExpr(params[1], runtime))
+				return true;
+			MincObject* value = ((PawsType*)runtime.result.type)->copy((PawsBase*)runtime.result.value);
+			arr->get()->push_back(value);
+
+			runtime.result = MincSymbol(arrType, arr);
+			return false;
+		},
+		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs) -> MincObject* {
+			return getType(getDerivedExpr(params[0]), parentBlock);
 		}
 	);
 
@@ -184,17 +229,18 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 	// Define array iterating for statement
 	class ArrayIterationKernel : public MincKernel
 	{
-		const MincSymbolId iterId;
+		const MincStackSymbol* const iterId;
 	public:
-		ArrayIterationKernel() : iterId(MincSymbolId::NONE) {}
-		ArrayIterationKernel(MincSymbolId iterId) : iterId(iterId) {}
+		ArrayIterationKernel(const MincStackSymbol* iterId=nullptr) : iterId(iterId) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[1], buildtime);
 			PawsType* valueType = ((PawsArrayType*)::getType(getDerivedExpr(params[1]), buildtime.parentBlock))->valueType;
-			defineSymbol((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]), valueType, nullptr);
-			MincSymbolId iterId = lookupSymbolId((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]));
+			const MincStackSymbol* iterId =
+				valueType == PawsVoid::TYPE ? nullptr // Cannot allocate void
+				: allocStackSymbol((MincBlockExpr*)params[2], getIdExprName((MincIdExpr*)params[0]), valueType, valueType->size)
+			;
 			buildExpr(params[2], buildtime);
 			return new ArrayIterationKernel(iterId);
 		}
@@ -208,11 +254,13 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			if (runExpr(getDerivedExpr(params[1]), runtime))
 				return true;
 			PawsArray* arr = (PawsArray*)runtime.result.value;
+			if (arr->get()->empty())
+				return false;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
-			MincSymbol* iter = getSymbol(body, iterId);
-			for (MincObject* value: arr->get())
+			MincObject* iter = getStackSymbolOfNextStackFrame(body, runtime, iterId);
+			for (MincObject* value: *arr->get())
 			{
-				iter->value = value;
+				((PawsType*)iterId->type)->copyTo(value, iter);
 				if (runExpr((MincExpr*)body, runtime))
 					return true;
 			}

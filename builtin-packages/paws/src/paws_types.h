@@ -6,6 +6,7 @@
 #include <map>
 #include <cstring>
 #include <mutex>
+#include <new>
 
 struct MincScopeType;
 
@@ -48,6 +49,10 @@ protected:
 	PawsType(int size=0) : valType(nullptr), ptrType(nullptr), name("UNKNOWN_PAWS_TYPE"), size(size) {}
 public:
 	virtual MincObject* copy(MincObject* value) = 0;
+	virtual void copyTo(MincObject* src, MincObject* dest) = 0;
+	virtual void copyToNew(MincObject* src, MincObject* dest) = 0;
+	virtual MincObject* alloc() = 0;
+	virtual MincObject* allocTo(MincObject* memory) = 0;
 	virtual std::string toString(MincObject* value) const;
 };
 
@@ -55,6 +60,10 @@ struct PawsMetaType : public PawsType
 {
 	PawsMetaType(int size) : PawsType(size) {}
 	MincObject* copy(MincObject* value) { return value; }
+	void copyTo(MincObject* src, MincObject* dest) {}
+	void copyToNew(MincObject* src, MincObject* dest) {}
+	MincObject* alloc() { return nullptr; }
+	MincObject* allocTo(MincObject* memory) { return nullptr; }
 	std::string toString(MincObject* value) const { return ((PawsType*)value)->name; }
 };
 
@@ -65,6 +74,32 @@ template<typename T> struct PawsValue : PawsBase
 	{
 		Type() : PawsType(sizeof(T)) {}
 		MincObject* copy(MincObject* value) { return new PawsValue<T>(((PawsValue<T>*)value)->get()); }
+		void copyTo(MincObject* src, MincObject* dest)
+		{
+			if constexpr (std::is_assignable<T&, T>())
+			{
+				auto foo = ((PawsValue<T>*)src)->get();
+				((PawsValue<T>*)dest)->set(foo);
+			}
+		}
+		void copyToNew(MincObject* src, MincObject* dest)
+		{
+			new(dest) PawsValue<T>(((PawsValue<T>*)src)->get());
+		}
+		MincObject* alloc()
+		{
+			if constexpr (std::is_default_constructible<T>())
+				return new PawsValue<T>(T());
+			else
+				return (PawsValue<T>*)new unsigned char[size];
+		}
+		MincObject* allocTo(MincObject* memory)
+		{
+			if constexpr (std::is_default_constructible<T>())
+				return new(memory) PawsValue<T>(T());
+			else
+				return (PawsValue<T>*)new(memory) unsigned char[size];
+		}
 		std::string toString(MincObject* value) const { return PawsType::toString(value); }
 	};
 
@@ -79,6 +114,10 @@ public:
 	const T& get() const { return val; }
 	void set(const T& val) { this->val = val; }
 	MincObject* copy() { return TYPE->copy(this); }
+	void copyTo(MincObject* dest) { return TYPE->copyTo(this, dest); }
+	void copyToNew(MincObject* src, MincObject* dest) { return TYPE->copyToNew(src, dest); }
+	MincObject* alloc() { return TYPE->alloc(); }
+	MincObject* allocTo(MincObject* memory) { return TYPE->allocTo(memory); }
 	std::string toString() const { return TYPE->toString(this); }
 };
 static_assert(sizeof(PawsValue<int>) == sizeof(int), "PawsValue class should not be dynamic");
@@ -97,6 +136,10 @@ template<> struct PawsValue<void> : public PawsBase
 	{
 		Type() : PawsType(0) {}
 		MincObject* copy(MincObject* value) { return value; }
+		void copyTo(MincObject* src, MincObject* dest) {}
+		void copyToNew(MincObject* src, MincObject* dest) {}
+		MincObject* alloc() { return nullptr; }
+	MincObject* allocTo(MincObject* memory) { return nullptr; }
 	};
 	static Type* const TYPE;
 };
@@ -112,6 +155,10 @@ public:
 	PawsType *const baseType, *const tpltType;
 	static PawsTpltType* get(MincBlockExpr* scope, PawsType* baseType, PawsType* tpltType);
 	MincObject* copy(MincObject* value) { return baseType->copy(value); }
+	void copyTo(MincObject* src, MincObject* dest) { return baseType->copyTo(src, dest); }
+	void copyToNew(MincObject* src, MincObject* dest) { return baseType->copyToNew(src, dest); }
+	MincObject* alloc() { return baseType->alloc(); }
+	MincObject* allocTo(MincObject* memory) { return baseType->allocTo(memory); }
 	std::string toString(MincObject* value) const { return baseType->toString(value); }
 };
 namespace std
@@ -255,11 +302,11 @@ protected:
 	std::vector<MincSymbol> blockParams;
 public:
 	enum Phase { INIT, BUILD, RUN } phase, activePhase;
-	MincBlockExpr *instance, *callerScope;
+	MincBlockExpr *callerScope;
 
 private:
 	bool hasBuildResult;
-	MincSymbol buildResult;
+	MincObject* buildResult;
 
 public:
 	PawsKernel(MincBlockExpr* body, MincObject* type, MincBuildtime& buildtime, const std::vector<MincSymbol>& blockParams);

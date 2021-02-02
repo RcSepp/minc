@@ -10,6 +10,8 @@
 
 #include "minc_types.h"
 
+#define CACHE_RESULTS
+
 typedef std::vector<MincExpr*>::const_iterator MincExprIter;
 
 extern "C"
@@ -37,6 +39,7 @@ public:
 
 	// Resolved state
 	MincKernel* resolvedKernel;
+	mutable MincObject* resolvedType;
 	std::vector<MincExpr*> resolvedParams;
 
 	// Built state
@@ -231,28 +234,35 @@ public:
 
 class MincBlockExpr : public MincExpr
 {
+	friend MincEnteredBlockExpr;
+public:
+	enum SymbolType {
+		BUILDTIME, STACK
+	};
 private:
 	MincStatementRegister stmtreg;
 	MincKernel *defaultStmtKernel, *defaultExprKernel;
 	std::vector<MincSymbol*> symbols;
-	std::map<std::string, size_t> symbolMap;
+	std::vector<MincStackSymbol*> stackSymbols;
+	std::map<std::string, std::pair<size_t, SymbolType>> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	MincCastRegister castreg;
-	std::vector<MincStmt>* builtStmts;
-	bool ownesResolvedStmts;
-
-	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs, std::vector<MincStmt>* builtStmts);
+	std::vector<MincStmt> builtStmts;
+	size_t stackSize;
+	MincStackFrame* stackFrame;
 
 public:
 	MincBlockExpr* parent;
 	std::vector<MincBlockExpr*> references;
 	std::vector<MincExpr*>* exprs;
-	size_t stmtIdx;
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
+#ifdef CACHE_RESULTS
 	std::vector<std::pair<MincSymbol, bool>> resultCache;
+#endif
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended, isResuming;
+	bool isResumable;
 	bool isBusy;
 
 	// Meta data
@@ -260,7 +270,6 @@ public:
 	void *user, *userType;
 
 	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
-	~MincBlockExpr();
 	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run);
 	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run);
@@ -290,12 +299,18 @@ public:
 	const MincSymbol* lookupSymbol(const std::string& name) const;
 	const std::string* lookupSymbolName(const MincObject* value) const;
 	const std::string& lookupSymbolName(const MincObject* value, const std::string& defaultName) const;
-	MincSymbolId lookupSymbolId(const std::string& name) const;
-	MincSymbol* getSymbol(MincSymbolId id) const;
 	size_t countSymbols() const;
-	void iterateSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
+	size_t countSymbols(SymbolType symbolType) const;
+	void iterateBuildtimeSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
+	void iterateStackSymbols(std::function<void(const std::string& name, const MincStackSymbol& symbol)> cbk) const;
 	MincSymbol* importSymbol(const std::string& name);
+	const MincStackSymbol* allocStackSymbol(const char* name, MincObject* type, size_t size);
+	const MincStackSymbol* allocStackSymbol(MincObject* type, size_t size);
+	const MincStackSymbol* lookupStackSymbol(const char* name) const;
+	MincObject* getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
+	MincObject* getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
 	const std::vector<MincSymbol>* getBlockParams() const;
+	void enter(MincEnteredBlockExpr& entered);
 	bool run(MincRuntime& runtime);
 	MincSymbol& build(MincBuildtime& buildtime);
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;
@@ -306,7 +321,6 @@ public:
 	MincExpr* clone() const;
 	void reset();
 	void clearCache(size_t targetSize);
-	const MincStmt* getCurrentStmt() const;
 
 	static MincBlockExpr* parseCFile(const char* filename);
 	static MincBlockExpr* parseCCode(const char* code);

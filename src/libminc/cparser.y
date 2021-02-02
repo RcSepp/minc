@@ -27,7 +27,7 @@
 %}
 
 %token ELLIPSIS // ...
-%token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR IDIV CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV // Operators
+%token EQ NE GEQ LEQ GR LE DM SR INC DEC RS LS AND OR IDIV CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CBA CBO CBN CBX CLS CRS CPOW CIDV // Operators
 %token AWT NEW PAND POR IF ELSE FOR WHL NOT IN NIN IS // Keywords
 %token<const char*> LITERAL ID PLCHLD2
 %token<char> PLCHLD1
@@ -37,7 +37,7 @@
 %type<MincExpr*> id_or_plchld expr
 
 %start file
-%right CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CLS CRS CPOW CIDV
+%right CADD CSUB CMUL CMML CDIV CMOD CAND COR CXOR CBA CBO CBN CBX CLS CRS CPOW CIDV
 %right IF ELSE FOR WHL
 %left IN IS
 %right '=' '?' ':'
@@ -158,6 +158,10 @@ expr
 	| expr CSUB expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CSUB, "-=", $1, $3); }
 	| expr CMUL expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CMUL, "*=", $1, $3); }
 	| expr CDIV expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CDIV, "/=", $1, $3); }
+	| expr CBA expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CBA, "&=", $1, $3); }
+	| expr CBO expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CBO, "|=", $1, $3); }
+	| expr CBN expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CBN, "~=", $1, $3); }
+	| expr CBX expr { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::CBX, "^=", $1, $3); }
 	| expr '.' id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)'.', ".", $1, $3); }
 	| expr '.' ELLIPSIS { $$ = new MincVarBinOpExpr(getloc(@1, @3), (int)'.', ".", $1); }
 	| expr DM id_or_plchld { $$ = new MincBinOpExpr(getloc(@1, @3), (int)token::DM, "->", $1, $3); }

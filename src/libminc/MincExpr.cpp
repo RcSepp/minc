@@ -4,11 +4,12 @@
 
 //#define CHECK_RUN_RESULT_TYPES
 
-MincObject ERROR_TYPE;
+MincObject ERROR_TYPE, NONE_TYPE;
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
-MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype) : loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr), builtKernel(nullptr)
+MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype)
+	: loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr), resolvedType(&NONE_TYPE), builtKernel(nullptr)
 {
 }
 
@@ -21,22 +22,28 @@ bool MincExpr::run(MincRuntime& runtime)
 	MincBlockExpr* const parentBlock = runtime.parentBlock;
 
 	// Handle expression caching for coroutines
-	if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
+#ifdef CACHE_RESULTS
+	size_t resultCacheIdx;
+	if (parentBlock->isResumable)
 	{
-		if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+		if (parentBlock->resultCacheIdx < parentBlock->resultCache.size())
 		{
-			const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
-			runtime.result.type = cached.type;
-			runtime.result.value = cached.value;
-			return false;
+			if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
+			{
+				const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
+				runtime.result.type = cached.type;
+				runtime.result.value = cached.value;
+				return false;
+			}
 		}
+		else
+		{
+			assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
+			parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+		}
+		resultCacheIdx = parentBlock->resultCacheIdx++;
 	}
-	else
-	{
-		assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-		parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
-	}
-	size_t resultCacheIdx = parentBlock->resultCacheIdx++;
+#endif
 
 	if (!isResolved())
 		throw UndefinedExprException{this};
@@ -46,6 +53,7 @@ bool MincExpr::run(MincRuntime& runtime)
 
 	try
 	{
+		runtime.currentExpr = this;
 		raiseStepEvent(this, (runtime.resume || parentBlock->isResuming) && parentBlock->isExprSuspended ? STEP_RESUME : STEP_IN);
 		if (builtKernel->run(runtime, resolvedParams))
 		{
@@ -97,12 +105,17 @@ bool MincExpr::run(MincRuntime& runtime)
 #endif
 
 	// Cache expression result for coroutines
-	parentBlock->resultCache[resultCacheIdx] = std::make_pair(runtime.result, true);
-	if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+#ifdef CACHE_RESULTS
+	if (parentBlock->isResumable)
 	{
-		parentBlock->resultCacheIdx = resultCacheIdx + 1;
-		parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+		parentBlock->resultCache[resultCacheIdx] = std::make_pair(runtime.result, true);
+		if (resultCacheIdx + 1 != parentBlock->resultCache.size())
+		{
+			parentBlock->resultCacheIdx = resultCacheIdx + 1;
+			parentBlock->resultCache.erase(parentBlock->resultCache.begin() + resultCacheIdx + 1, parentBlock->resultCache.end());
+		}
 	}
+#endif
 
 	raiseStepEvent(this, STEP_OUT);
 
@@ -116,6 +129,8 @@ bool MincExpr::run(MincRuntime& runtime)
 
 MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 {
+	if (resolvedType != &NONE_TYPE && resolvedType != &ERROR_TYPE)
+		return resolvedType;
 	try //TODO: Make getType() noexcept
 	{
 		return resolvedKernel ? resolvedKernel->getType(parentBlock, resolvedParams) : nullptr;
@@ -128,6 +143,8 @@ MincObject* MincExpr::getType(const MincBlockExpr* parentBlock) const
 
 MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
 {
+	if (resolvedType != &NONE_TYPE && resolvedType != &ERROR_TYPE)
+		return resolvedType;
 	if (resolvedKernel == nullptr)
 		return nullptr;
 
@@ -152,6 +169,7 @@ MincObject* MincExpr::getType(MincBlockExpr* parentBlock)
 	try
 	{
 		MincRuntime runtime(parentBlock, parentBlock->isResuming);
+		runtime.currentExpr = this;
 		if (builtKernel->run(runtime, resolvedParams))
 			throw runtime.result;
 	}
@@ -171,6 +189,7 @@ void MincExpr::resolve(const MincBlockExpr* block)
 void MincExpr::forget()
 {
 	resolvedKernel = nullptr;
+	resolvedType = &NONE_TYPE;
 }
 
 MincSymbol& MincExpr::build(MincBuildtime& buildtime)
@@ -180,7 +199,11 @@ MincSymbol& MincExpr::build(MincBuildtime& buildtime)
 
 	buildtime.result = MincSymbol(nullptr, nullptr);
 	if (!isBuilt())
+	{
+		resolvedType = resolvedKernel->getType(buildtime.parentBlock, resolvedParams);
 		builtKernel = resolvedKernel->build(buildtime, resolvedParams);
+	}
+	buildtime.result.type = resolvedType;
 	return buildtime.result;
 }
 

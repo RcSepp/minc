@@ -13,11 +13,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	struct OperatorKernel : public MincKernel
 	{
 		int (*cbk)(int& value);
-		MincSymbolId varId;
-		OperatorKernel(int (*cbk)(int& value), MincSymbolId varId=MincSymbolId::NONE) : cbk(cbk), varId(varId) {}
+		const MincStackSymbol* varId;
+		OperatorKernel(int (*cbk)(int& value), const MincStackSymbol* varId=nullptr) : cbk(cbk), varId(varId) {}
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			return new OperatorKernel(cbk, lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0])));
+			const char* name = getIdExprName((MincIdExpr*)params[0]);
+			const MincStackSymbol* stackSymbol = lookupStackSymbol(buildtime.parentBlock, name);
+			if (stackSymbol == nullptr)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", name);
+			return new OperatorKernel(cbk, stackSymbol);
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -25,8 +29,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		}
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(cbk(((PawsInt*)var->value)->get())));
+			MincObject* var = getStackSymbol(runtime.parentBlock, runtime, varId);
+			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(cbk(((PawsInt*)var)->get())));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -98,15 +102,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	// Define in-place integer addition
 	class InlineAddKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincStackSymbol* const varId;
 	public:
-		InlineAddKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+		InlineAddKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[1], buildtime);
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (varId == MincSymbolId::NONE)
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
 				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
 			return new InlineAddKernel(varId);
 		}
@@ -118,8 +122,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
-			PawsInt* const val = (PawsInt*)var->value;
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() + ((PawsInt*)runtime.result.value)->get());
@@ -137,15 +140,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	// Define in-place integer subtraction
 	class InlineSubKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincStackSymbol* const varId;
 	public:
-		InlineSubKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+		InlineSubKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[1], buildtime);
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (varId == MincSymbolId::NONE)
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
 				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
 			return new InlineSubKernel(varId);
 		}
@@ -157,8 +160,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
-			PawsInt* const val = (PawsInt*)var->value;
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() - ((PawsInt*)runtime.result.value)->get());
@@ -176,15 +178,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	// Define in-place integer multiplication
 	class InlineMulKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincStackSymbol* const varId;
 	public:
-		InlineMulKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+		InlineMulKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[1], buildtime);
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (varId == MincSymbolId::NONE)
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
 				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
 			return new InlineMulKernel(varId);
 		}
@@ -196,8 +198,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
-			PawsInt* const val = (PawsInt*)var->value;
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() * ((PawsInt*)runtime.result.value)->get());
@@ -215,15 +216,15 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	// Define in-place integer division
 	class InlineDivKernel : public MincKernel
 	{
-		const MincSymbolId varId;
+		const MincStackSymbol* const varId;
 	public:
-		InlineDivKernel(MincSymbolId varId=MincSymbolId::NONE) : varId(varId) {}
+		InlineDivKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			buildExpr(params[1], buildtime);
-			MincSymbolId varId = lookupSymbolId(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
-			if (varId == MincSymbolId::NONE)
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
 				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
 			return new InlineDivKernel(varId);
 		}
@@ -235,8 +236,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincSymbol* var = getSymbol(runtime.parentBlock, varId);
-			PawsInt* const val = (PawsInt*)var->value;
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
 			if (runExpr(params[1], runtime))
 				return true;
 			val->set(val->get() / ((PawsInt*)runtime.result.value)->get());
@@ -251,6 +251,82 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	};
 	defineExpr6(pkgScope, "$I<PawsInt!> /= $E<PawsInt>", new InlineDivKernel());
 
+	// Define in-place bitwise integer AND
+	class InlineBitwiseAndKernel : public MincKernel
+	{
+		const MincStackSymbol* const varId;
+	public:
+		InlineBitwiseAndKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			buildExpr(params[1], buildtime);
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineBitwiseAndKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
+			if (runExpr(params[1], runtime))
+				return true;
+			val->set(val->get() & ((PawsInt*)runtime.result.value)->get());
+			runtime.result.value = val;
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsInt::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsInt!> &= $E<PawsInt>", new InlineBitwiseAndKernel());
+
+	// Define in-place bitwise integer XOR
+	class InlineBitwiseXorKernel : public MincKernel
+	{
+		const MincStackSymbol* const varId;
+	public:
+		InlineBitwiseXorKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			buildExpr(params[1], buildtime);
+			const MincStackSymbol* varId = lookupStackSymbol(buildtime.parentBlock, getIdExprName((MincIdExpr*)params[0]));
+			if (varId == nullptr)
+				throw CompileError(buildtime.parentBlock, getLocation(params[0]), "`%s` was not declared in this scope", getIdExprName((MincIdExpr*)params[0]));
+			return new InlineBitwiseXorKernel(varId);
+		}
+
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			PawsInt* const val = (PawsInt*)getStackSymbol(runtime.parentBlock, runtime, varId);
+			if (runExpr(params[1], runtime))
+				return true;
+			val->set(val->get() ^ ((PawsInt*)runtime.result.value)->get());
+			runtime.result.value = val;
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsInt::TYPE;
+		}
+	};
+	defineExpr6(pkgScope, "$I<PawsInt!> ^= $E<PawsInt>", new InlineBitwiseXorKernel());
+
 	// Define integer minimum
 	defineExpr(pkgScope, "min($E<PawsInt>, $E<PawsInt>)",
 		+[](int a, int b) -> int {
@@ -262,6 +338,13 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 	defineExpr(pkgScope, "max($E<PawsInt>, $E<PawsInt>)",
 		+[](int a, int b) -> int {
 			return a > b ? a : b;
+		}
+	);
+
+	// Define random integer generator
+	defineExpr(pkgScope, "rand($E<PawsInt>, $E<PawsInt>)",
+		+[](int a, int b) -> int {
+			return rand() % (b - a) + a;
 		}
 	);
 

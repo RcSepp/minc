@@ -77,7 +77,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	defineStmt6(pkgScope, "$E<PawsStmtMap>[$E ...] = $B",
+	defineStmt5(pkgScope, "$E<PawsStmtMap>[$E ...] = $B",
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			StmtMap const stmts = ((PawsStmtMap*)buildExpr(params[0], buildtime).value)->get();
 			MincBlockExpr* const scope = stmts;
@@ -97,12 +97,6 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			definePawsReturnStmt(blockAST, PawsVoid::TYPE);
 
 			defineStmt3(scope, stmtParamsAST, new PawsKernel(blockAST, getVoid().type, buildtime, blockParams));
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			// Set expr parent (the parent may have changed during function cloning)
-			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
-			setBlockExprParent(blockAST, runtime.parentBlock);
-			return false;
 		}
 	);
 
@@ -139,7 +133,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return cancel;
 		}
 	);
-	defineStmt6(pkgScope, "$E<PawsExprMap>[$E] = <$I> $B",
+	defineStmt5(pkgScope, "$E<PawsExprMap>[$E] = <$I> $B",
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			ExprMap const exprs = ((PawsExprMap*)buildExpr(params[0], buildtime).value)->get();
 			MincBlockExpr* const scope = exprs;
@@ -162,12 +156,6 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			definePawsReturnStmt(blockAST, exprType);
 
 			defineExpr5(scope, exprParamAST, new PawsKernel(blockAST, exprType, buildtime, blockParams));
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			// Set expr parent (the parent may have changed during function cloning)
-			MincBlockExpr* blockAST = (MincBlockExpr*)params[3];
-			setBlockExprParent(blockAST, runtime.parentBlock);
-			return false;
 		}
 	);
 

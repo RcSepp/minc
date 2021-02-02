@@ -41,7 +41,9 @@
 #define LOG_TO_FILE "/home/sepp/Development/minc/tmp/log.txt"
 std::shared_ptr<dap::Writer> dapLog;
 
-#define DEBUG_STEP_EVENTS
+//#define DEBUG_STEP_EVENTS
+
+MincRuntime* runtime = nullptr;
 
 std::vector<GetValueStrFunc> valueSerializers;
 void registerValueSerializer(GetValueStrFunc serializer)
@@ -338,17 +340,50 @@ public:
 
 	struct StackFrame : public dap::StackFrame, public Identifiable
 	{
-		struct Locals : public Scope, public Identifiable
+		struct StackSymbols : public Scope, public Identifiable
 		{
 			const MincBlockExpr* const block;
-			Locals(const MincBlockExpr* const block) : block(block) {}
+			StackSymbols(const MincBlockExpr* const block) : block(block) {}
 			dap::Scope scope()
 			{
 				dap::Scope scope;
 				scope.name = "Locals";
 				scope.presentationHint = "locals";
 				scope.variablesReference = id;
-				scope.namedVariables = (int)block->countSymbols();
+				scope.namedVariables = (int)block->countSymbols(MincBlockExpr::SymbolType::STACK);
+				return scope;
+			}
+			dap::array<dap::Variable> variables()
+			{
+				dap::array<dap::Variable> variables;
+				for (const MincBlockExpr* block = this->block; block != nullptr; block = block->parent)
+				{
+					auto cbk = [&](const std::string& name, const MincStackSymbol& symbol) {
+						dap::Variable var;
+						var.name = name;
+						if (!getValueStr(block, MincSymbol(symbol.type, block->getStackSymbol(*runtime, &symbol)), &var.value))
+							var.value = "UNKNOWN";
+						var.type = block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
+						variables.push_back(var);
+					};
+					block->iterateStackSymbols(cbk);
+					for (const MincBlockExpr* ref: block->references)
+						ref->iterateStackSymbols(cbk);
+				}
+				return variables;
+			}
+		} stacksymbols;
+		struct BuildtimeSymbols : public Scope, public Identifiable
+		{
+			const MincBlockExpr* const block;
+			BuildtimeSymbols(const MincBlockExpr* const block) : block(block) {}
+			dap::Scope scope()
+			{
+				dap::Scope scope;
+				scope.name = "Static variables";
+				scope.presentationHint = "locals";
+				scope.variablesReference = id;
+				scope.namedVariables = (int)block->countSymbols(MincBlockExpr::SymbolType::BUILDTIME);
 				return scope;
 			}
 			dap::array<dap::Variable> variables()
@@ -364,13 +399,13 @@ public:
 						var.type = block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
 						variables.push_back(var);
 					};
-					block->iterateSymbols(cbk);
+					block->iterateBuildtimeSymbols(cbk);
 					for (const MincBlockExpr* ref: block->references)
-						ref->iterateSymbols(cbk);
+						ref->iterateBuildtimeSymbols(cbk);
 				}
 				return variables;
 			}
-		} locals;
+		} buildtimeSymbols;
 		struct Statements : public Scope, public Identifiable //TODO: Move to MincScope -> Packages
 		{
 			const MincBlockExpr* const block;
@@ -457,7 +492,7 @@ public:
 				var.variablesReference = (new Packages(block))->id;
 				variables.push_back(var);
 
-				const MincStmt* stmt = block->getCurrentStmt();
+				const MincStmt* stmt = (MincStmt*)runtime->currentExpr;
 				if (stmt != nullptr)
 				{
 					var.name = "Current Statement";
@@ -473,7 +508,7 @@ public:
 		const MincBlockExpr* const block;
 
 
-		StackFrame(const MincBlockExpr* block) : locals(block), statements(block), expressions(block), mincScope(block), block(block)
+		StackFrame(const MincBlockExpr* block) : stacksymbols(block), buildtimeSymbols(block), statements(block), expressions(block), mincScope(block), block(block)
 		{
 			name = block->name;
 			if (name.empty())
@@ -580,7 +615,7 @@ public:
 		createThread();
 
 		MincBuildtime buildtime = { nullptr };
-		MincRuntime runtime(nullptr, false);
+		runtime = new MincRuntime(nullptr, false);
 
 #ifdef DEBUG_MULTITHREADING
 const char* path = "/home/sepp/Development/minc/paws/example11.minc";
@@ -601,7 +636,7 @@ if (parser.parse())
 MINC_PACKAGE_MANAGER().import(rootBlock2); // Import package manager
 auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 	try {
-		runExpr((MincExpr*)rootBlock2, runtime);
+		runExpr((MincExpr*)rootBlock2, *runtime);
 		debugger->session->send(dap::TerminatedEvent());
 	} catch (ExitException err) {
 		debugger->session->send(dap::TerminatedEvent());
@@ -636,10 +671,10 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			// Build and run root block
 			MINC_PACKAGE_MANAGER().import(rootBlock); // Import package manager
 			rootBlock->build(buildtime);
-			if (rootBlock->run(runtime))
+			if (rootBlock->run(*runtime))
 			{
 				Thread& currentThread = getCurrentThread();
-				if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, runtime.result, &currentThread.errMsg))
+				if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, runtime->result, &currentThread.errMsg))
 					currentThread.errMsg = "";
 				sendStopEvent(StopEventReason::Exception, currentThread.errMsg);
 			}
@@ -928,7 +963,8 @@ private:
 
 		//const MincBlockExpr* const block = frame->block;
 		dap::ScopesResponse response;
-		response.scopes.push_back(frame->locals.scope());
+		response.scopes.push_back(frame->stacksymbols.scope());
+		response.scopes.push_back(frame->buildtimeSymbols.scope());
 		response.scopes.push_back(frame->expressions.scope());
 		response.scopes.push_back(frame->statements.scope());
 		response.scopes.push_back(frame->mincScope.scope());

@@ -91,6 +91,47 @@ CompileError::CompileError(const MincBlockExpr* scope, MincLocation loc, const c
 	va_end(args);
 }
 
+CompileError::CompileError(MincBlockExpr* scope, MincLocation loc, const char* fmt, ...)
+	: MincException(loc)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	std::stringstream msg;
+	while (*fmt != '\0')
+	{
+		if (*fmt != '%')
+		{
+			msg << *fmt++;
+			continue;
+		}
+		if (*++fmt == '\0')
+			break;
+
+		switch (*fmt++)
+		{
+		case '%': msg << '%'; break;
+		case 'd': case 'i': msg << va_arg(args, int); break;
+		case 'u': msg << va_arg(args, unsigned int); break;
+		case 'o': msg << std::oct << va_arg(args, unsigned int) << std::dec; break;
+		case 'x': msg << std::hex << va_arg(args, int) << std::dec; break;
+		case 'p': msg << std::hex << va_arg(args, void*) << std::dec; break;
+		case 'c': msg << (char)va_arg(args, int); break;
+		case 'f': msg << va_arg(args, double); break;
+		case 'S': msg << va_arg(args, std::string); break;
+		case 's': msg << va_arg(args, char*); break;
+		case 'E': msg << va_arg(args, MincExpr*)->str(); break;
+		case 'e': msg << va_arg(args, MincExpr*)->shortStr(); break;
+		case 'T': msg << scope->lookupSymbolName(va_arg(args, MincExpr*)->getType(scope), "UNKNOWN_TYPE"); break;
+		case 't': msg << scope->lookupSymbolName(va_arg(args, MincObject*), "UNKNOWN_TYPE"); break;
+		}
+	}
+	*this->msg = new char[msg.str().size() + 1];
+	strcpy(*this->msg, msg.str().c_str());
+
+	va_end(args);
+}
+
 MincException::~MincException()
 {
 	if (--(*refcount) == 0)

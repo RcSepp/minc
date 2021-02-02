@@ -1330,6 +1330,11 @@ extern "C"
 		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
 	}
 
+	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast)
+	{
+		scope->defineCast(new TypeCast(fromType, toType, cast));
+	}
+
 	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs)
 	{
 		scope->defineCast(new TypeCast(fromType, toType, new StaticExprKernel5(buildBlock, runBlock, toType, castArgs)));
@@ -1340,19 +1345,14 @@ extern "C"
 		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel(codeBlock, toType, castArgs)));
 	}
 
-	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs)
-	{
-		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel5(buildBlock, runBlock, toType, castArgs)));
-	}
-
-	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast)
-	{
-		scope->defineCast(new TypeCast(fromType, toType, cast));
-	}
-
 	void defineInheritanceCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast)
 	{
 		scope->defineCast(new InheritanceCast(fromType, toType, cast));
+	}
+
+	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs)
+	{
+		scope->defineCast(new InheritanceCast(fromType, toType, new StaticExprKernel5(buildBlock, runBlock, toType, castArgs)));
 	}
 
 	void defineOpaqueTypeCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType)

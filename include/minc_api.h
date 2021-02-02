@@ -95,11 +95,11 @@ extern "C"
 	void defineDefaultExpr3(MincBlockExpr* scope, RunBlock codeBlock, ExprTypeBlock typeBlock, void* exprArgs=nullptr);
 	void defineDefaultExpr5(MincBlockExpr* scope, MincKernel* expr);
 	void defineTypeCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, RunBlock codeBlock, void* castArgs=nullptr);
+	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast);
 	void defineTypeCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs=nullptr);
 	void defineInheritanceCast2(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, RunBlock codeBlock, void* castArgs=nullptr);
-	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs=nullptr);
-	void defineTypeCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast);
 	void defineInheritanceCast3(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, MincKernel* cast);
+	void defineInheritanceCast9(MincBlockExpr* scope, MincObject* fromType, MincObject* toType, BuildBlock buildBlock, RunBlock runBlock, void* castArgs=nullptr);
 	void defineOpaqueTypeCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType);
 	void defineOpaqueInheritanceCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType);
 	MincExpr* lookupCast(const MincBlockExpr* scope, MincExpr* expr, MincObject* toType);

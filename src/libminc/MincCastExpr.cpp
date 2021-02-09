@@ -58,6 +58,6 @@ extern "C"
 
 	MincExpr* getCastExprSource(const MincCastExpr* expr)
 	{
-		return expr->resolvedParams[0];
+		return expr->getSourceExpr();
 	}
 }

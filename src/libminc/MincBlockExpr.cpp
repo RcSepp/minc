@@ -214,30 +214,28 @@ public:
 		return typecbk(parentBlock, params, exprArgs);
 	}
 };
-struct OpaqueExprKernel : public MincKernel
+
+MincOpaqueCastKernel::MincOpaqueCastKernel(MincObject* type)
+	: type(type)
 {
-private:
-	MincObject* const type;
-public:
-	OpaqueExprKernel(MincObject* type) : type(type) {}
-	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
-	{
-		params[0]->build(buildtime);
-		buildtime.result.type = type;
-		return this;
-	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
-	{
-		if (params[0]->run(runtime))
-			return true;
-		runtime.result.type = type;
-		return false;
-	}
-	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
-	{
-		return type;
-	}
-};
+}
+MincKernel* MincOpaqueCastKernel::build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+{
+	params[0]->build(buildtime);
+	buildtime.result.type = type;
+	return this;
+}
+bool MincOpaqueCastKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+{
+	if (params[0]->run(runtime))
+		return true;
+	runtime.result.type = type;
+	return false;
+}
+MincObject* MincOpaqueCastKernel::getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+{
+	return type;
+}
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type)
 {
@@ -469,6 +467,8 @@ const MincCast* MincBlockExpr::lookupCast(MincObject* fromType, MincObject* toTy
 
 bool MincBlockExpr::isInstance(MincObject* derivedType, MincObject* baseType) const
 {
+	if (derivedType == baseType)
+		return true;
 	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		if (block->castreg.isInstance(derivedType, baseType))
@@ -714,7 +714,7 @@ MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 	return nullptr; // Symbol not found
 }
 
-const MincStackSymbol* MincBlockExpr::allocStackSymbol(const char* name, MincObject* type, size_t size)
+const MincStackSymbol* MincBlockExpr::allocStackSymbol(const std::string& name, MincObject* type, size_t size)
 {
 	if (size == 0)
 		throw CompileError("defining symbol of size 0", loc);
@@ -751,7 +751,7 @@ const MincStackSymbol* MincBlockExpr::allocStackSymbol(MincObject* type, size_t 
 	return stackSymbol;
 }
 
-const MincStackSymbol* MincBlockExpr::lookupStackSymbol(const char* name) const
+const MincStackSymbol* MincBlockExpr::lookupStackSymbol(const std::string& name) const
 {
 	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
 	{
@@ -1357,12 +1357,12 @@ extern "C"
 
 	void defineOpaqueTypeCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType)
 	{
-		scope->defineCast(new TypeCast(fromType, toType, new OpaqueExprKernel(toType)));
+		scope->defineCast(new TypeCast(fromType, toType, new MincOpaqueCastKernel(toType)));
 	}
 
 	void defineOpaqueInheritanceCast(MincBlockExpr* scope, MincObject* fromType, MincObject* toType)
 	{
-		scope->defineCast(new InheritanceCast(fromType, toType, new OpaqueExprKernel(toType)));
+		scope->defineCast(new InheritanceCast(fromType, toType, new MincOpaqueCastKernel(toType)));
 	}
 
 	MincExpr* lookupCast(const MincBlockExpr* scope, MincExpr* expr, MincObject* toType)
@@ -1377,7 +1377,7 @@ extern "C"
 
 	bool isInstance(const MincBlockExpr* scope, MincObject* fromType, MincObject* toType)
 	{
-		return fromType == toType || scope->isInstance(fromType, toType);
+		return scope->isInstance(fromType, toType);
 	}
 
 	std::string reportCasts(const MincBlockExpr* scope)

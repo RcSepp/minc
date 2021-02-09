@@ -1,5 +1,5 @@
 #include "paws_frame_eventloop.h"
-#include "minc_api.h"
+#include "minc_api.hpp"
 
 thread_local IEventLoop* threadlocalEventLoop = nullptr;
 
@@ -8,10 +8,10 @@ void IEventLoop::aquire()
 	if (threadlocalEventLoop == this)
 		return; // Ignore if this event loop is already current
 	if (threadlocalEventLoop == nullptr)
-		raiseCompileError("No event loop to aquire");
+		throw CompileError("No event loop to aquire");
 	EventLoop* oldEventLoop = dynamic_cast<EventLoop*>(threadlocalEventLoop);
 	if (dynamic_cast<EventLoop*>(threadlocalEventLoop) == nullptr)
-		raiseCompileError("Can't aquire custom event loop");
+		throw CompileError("Can't aquire custom event loop");
 
 	oldEventLoop->mutex.lock();
 

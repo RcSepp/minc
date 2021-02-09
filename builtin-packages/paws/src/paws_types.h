@@ -211,19 +211,20 @@ template<typename T> void registerType(MincBlockExpr* scope, const char* name, b
 
 	// Define type and add type symbol to scope
 	T::TYPE->name = name;
-	defineSymbol(scope, name, PawsType::TYPE, T::TYPE);
+	scope->defineSymbol(name, PawsType::TYPE, T::TYPE);
 
 	if (T::TYPE == PawsStatic::TYPE || T::TYPE == PawsDynamic::TYPE)
 	{
 		// Let type derive from PawsBase
-		defineOpaqueInheritanceCast(scope, T::TYPE, PawsBase::TYPE);
+		scope->defineCast(new InheritanceCast(T::TYPE, PawsBase::TYPE, new MincOpaqueCastKernel(PawsBase::TYPE)));
 	}
 	else if (T::TYPE != PawsBase::TYPE)
 	{
-		if (!isInstance(scope, T::TYPE, PawsBase::TYPE)) // Do not overwrite static-ness when registering derived types
+		if (!scope->isInstance(T::TYPE, PawsBase::TYPE)) // Do not overwrite static-ness when registering derived types
 		{
 			// Let type derive from PawsStatic or PawsDynamic
-			defineOpaqueInheritanceCast(scope, T::TYPE, isStatic ? PawsStatic::TYPE : PawsDynamic::TYPE);
+			PawsType* const base = isStatic ? PawsStatic::TYPE : PawsDynamic::TYPE;
+			scope->defineCast(new InheritanceCast(T::TYPE, base, new MincOpaqueCastKernel(base)));
 		}
 
 		if (isStatic)
@@ -265,7 +266,11 @@ template<typename T> void registerType(MincBlockExpr* scope, const char* name, b
 			if (std::is_const<baseCType>()) // If T::CType is a const type
 			{
 				if (!std::is_same<MincExpr, rawCType>()) // If T::CType != const MincExpr*
-					defineOpaqueInheritanceCast(scope, T::TYPE, PawsValue<const MincExpr*>::TYPE); // Let type derive from PawsConstExpr
+				{
+					// Let type derive from PawsConstExpr
+					PawsType* const base = PawsValue<const MincExpr*>::TYPE;
+					scope->defineCast(new InheritanceCast(T::TYPE, base, new MincOpaqueCastKernel(base)));
+				}
 			}
 			else // If T::CType is not a const type
 			{
@@ -277,10 +282,13 @@ template<typename T> void registerType(MincBlockExpr* scope, const char* name, b
 				registerType<constT>(scope, constExprASTName);
 
 				// Let type derive from const type
-				defineOpaqueInheritanceCast(scope, T::TYPE, constT::TYPE);
+				scope->defineCast(new InheritanceCast(T::TYPE, constT::TYPE, new MincOpaqueCastKernel(constT::TYPE)));
 
 				if (!std::is_same<MincExpr, baseCType>()) // If T::CType != MincExpr*
-					defineOpaqueInheritanceCast(scope, T::TYPE, PawsExpr::TYPE); // Let type derive from PawsExpr
+				{
+					// Let type derive from PawsExpr
+					scope->defineCast(new InheritanceCast(T::TYPE, PawsExpr::TYPE, new MincOpaqueCastKernel(PawsExpr::TYPE)));
+				}
 			}
 		}
 	}
@@ -330,20 +338,20 @@ template<class P0> void defineStmt(MincBlockExpr* scope, const char* tpltStr, vo
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 1)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
 			return this;
 		}
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 			(*stmtFunc)(p0->get());
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getVoid().type; }
 	};
-	defineStmt4(scope, tpltStr, new StmtKernel(new StmtFunc(stmtFunc)));
+	scope->defineStmt(MincBlockExpr::parseCTplt(tpltStr), new StmtKernel(new StmtFunc(stmtFunc)));
 }
 template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1))
 {
@@ -356,23 +364,23 @@ template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* t
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 2)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
 			return this;
 		}
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
 			(*stmtFunc)(p0->get(), p1->get());
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getVoid().type; }
 	};
-	defineStmt4(scope, tpltStr, new StmtKernel(new StmtFunc(stmtFunc)));
+	scope->defineStmt(MincBlockExpr::parseCTplt(tpltStr), new StmtKernel(new StmtFunc(stmtFunc)));
 }
 template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, const char* tpltStr, void (*stmtFunc)(P0, P1, P2))
 {
@@ -385,26 +393,26 @@ template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, con
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 3)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
 			return this;
 		}
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
 			(*stmtFunc)(p0->get(), p1->get(), p2->get());
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getVoid().type; }
 	};
-	defineStmt4(scope, tpltStr, new StmtKernel(new StmtFunc(stmtFunc)));
+	scope->defineStmt(MincBlockExpr::parseCTplt(tpltStr), new StmtKernel(new StmtFunc(stmtFunc)));
 }
 
 // Templated version of defineExpr9():
@@ -421,8 +429,8 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 0)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
@@ -434,13 +442,13 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)());
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0))
 {
@@ -454,14 +462,14 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 1)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -470,13 +478,13 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1))
 {
@@ -490,17 +498,17 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 2)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -509,13 +517,13 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2))
 {
@@ -529,20 +537,20 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 3)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -551,13 +559,13 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3))
 {
@@ -571,23 +579,23 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 4)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -596,13 +604,13 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4))
 {
@@ -616,26 +624,26 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 5)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -644,13 +652,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5))
 {
@@ -664,29 +672,29 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 6)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -695,13 +703,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6))
 {
@@ -715,32 +723,32 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 7)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -749,13 +757,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7))
 {
@@ -769,35 +777,35 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 8)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -806,13 +814,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8))
 {
@@ -826,38 +834,38 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 9)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -866,13 +874,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9))
 {
@@ -886,41 +894,41 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 10)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -929,13 +937,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10))
 {
@@ -949,44 +957,44 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 11)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -995,13 +1003,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11))
 {
@@ -1015,47 +1023,47 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 12)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			buildExpr(params[11], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			params[11]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
-			if (runExpr(params[11], runtime)) return true;
+			if (params[11]->run(runtime)) return true;
 			PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1064,13 +1072,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12))
 {
@@ -1084,50 +1092,50 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 13)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			buildExpr(params[11], buildtime);
-			buildExpr(params[12], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			params[11]->build(buildtime);
+			params[12]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
-			if (runExpr(params[11], runtime)) return true;
+			if (params[11]->run(runtime)) return true;
 			PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
-			if (runExpr(params[12], runtime)) return true;
+			if (params[12]->run(runtime)) return true;
 			PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1136,13 +1144,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13))
 {
@@ -1156,53 +1164,53 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 14)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			buildExpr(params[11], buildtime);
-			buildExpr(params[12], buildtime);
-			buildExpr(params[13], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			params[11]->build(buildtime);
+			params[12]->build(buildtime);
+			params[13]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
-			if (runExpr(params[11], runtime)) return true;
+			if (params[11]->run(runtime)) return true;
 			PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
-			if (runExpr(params[12], runtime)) return true;
+			if (params[12]->run(runtime)) return true;
 			PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
-			if (runExpr(params[13], runtime)) return true;
+			if (params[13]->run(runtime)) return true;
 			PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1211,13 +1219,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14))
 {
@@ -1231,56 +1239,56 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 15)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			buildExpr(params[11], buildtime);
-			buildExpr(params[12], buildtime);
-			buildExpr(params[13], buildtime);
-			buildExpr(params[14], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			params[11]->build(buildtime);
+			params[12]->build(buildtime);
+			params[13]->build(buildtime);
+			params[14]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
-			if (runExpr(params[11], runtime)) return true;
+			if (params[11]->run(runtime)) return true;
 			PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
-			if (runExpr(params[12], runtime)) return true;
+			if (params[12]->run(runtime)) return true;
 			PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
-			if (runExpr(params[13], runtime)) return true;
+			if (params[13]->run(runtime)) return true;
 			PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
-			if (runExpr(params[14], runtime)) return true;
+			if (params[14]->run(runtime)) return true;
 			PawsValue<P14>* p14 = (PawsValue<P14>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1289,13 +1297,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 template<class R, class P0, class P1, class P2, class P3, class P4, class P5, class P6, class P7, class P8, class P9, class P10, class P11, class P12, class P13, class P14, class P15> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (*exprFunc)(P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15))
 {
@@ -1309,59 +1317,59 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 16)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			buildExpr(params[3], buildtime);
-			buildExpr(params[4], buildtime);
-			buildExpr(params[5], buildtime);
-			buildExpr(params[6], buildtime);
-			buildExpr(params[7], buildtime);
-			buildExpr(params[8], buildtime);
-			buildExpr(params[9], buildtime);
-			buildExpr(params[10], buildtime);
-			buildExpr(params[11], buildtime);
-			buildExpr(params[12], buildtime);
-			buildExpr(params[13], buildtime);
-			buildExpr(params[14], buildtime);
-			buildExpr(params[15], buildtime);
-			return new ExprKernel(exprFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			params[3]->build(buildtime);
+			params[4]->build(buildtime);
+			params[5]->build(buildtime);
+			params[6]->build(buildtime);
+			params[7]->build(buildtime);
+			params[8]->build(buildtime);
+			params[9]->build(buildtime);
+			params[10]->build(buildtime);
+			params[11]->build(buildtime);
+			params[12]->build(buildtime);
+			params[13]->build(buildtime);
+			params[14]->build(buildtime);
+			params[15]->build(buildtime);
+			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
-			if (runExpr(params[3], runtime)) return true;
+			if (params[3]->run(runtime)) return true;
 			PawsValue<P3>* p3 = (PawsValue<P3>*)runtime.result.value;
-			if (runExpr(params[4], runtime)) return true;
+			if (params[4]->run(runtime)) return true;
 			PawsValue<P4>* p4 = (PawsValue<P4>*)runtime.result.value;
-			if (runExpr(params[5], runtime)) return true;
+			if (params[5]->run(runtime)) return true;
 			PawsValue<P5>* p5 = (PawsValue<P5>*)runtime.result.value;
-			if (runExpr(params[6], runtime)) return true;
+			if (params[6]->run(runtime)) return true;
 			PawsValue<P6>* p6 = (PawsValue<P6>*)runtime.result.value;
-			if (runExpr(params[7], runtime)) return true;
+			if (params[7]->run(runtime)) return true;
 			PawsValue<P7>* p7 = (PawsValue<P7>*)runtime.result.value;
-			if (runExpr(params[8], runtime)) return true;
+			if (params[8]->run(runtime)) return true;
 			PawsValue<P8>* p8 = (PawsValue<P8>*)runtime.result.value;
-			if (runExpr(params[9], runtime)) return true;
+			if (params[9]->run(runtime)) return true;
 			PawsValue<P9>* p9 = (PawsValue<P9>*)runtime.result.value;
-			if (runExpr(params[10], runtime)) return true;
+			if (params[10]->run(runtime)) return true;
 			PawsValue<P10>* p10 = (PawsValue<P10>*)runtime.result.value;
-			if (runExpr(params[11], runtime)) return true;
+			if (params[11]->run(runtime)) return true;
 			PawsValue<P11>* p11 = (PawsValue<P11>*)runtime.result.value;
-			if (runExpr(params[12], runtime)) return true;
+			if (params[12]->run(runtime)) return true;
 			PawsValue<P12>* p12 = (PawsValue<P12>*)runtime.result.value;
-			if (runExpr(params[13], runtime)) return true;
+			if (params[13]->run(runtime)) return true;
 			PawsValue<P13>* p13 = (PawsValue<P13>*)runtime.result.value;
-			if (runExpr(params[14], runtime)) return true;
+			if (params[14]->run(runtime)) return true;
 			PawsValue<P14>* p14 = (PawsValue<P14>*)runtime.result.value;
-			if (runExpr(params[15], runtime)) return true;
+			if (params[15]->run(runtime)) return true;
 			PawsValue<P15>* p15 = (PawsValue<P15>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1370,13 +1378,13 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc)));
 }
 
 // Templated version of defineExpr10():
@@ -1396,29 +1404,29 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 1)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
 			PawsType* type = getType(buildtime.parentBlock, params);
-			return new ExprKernel(exprFunc, exprTypeFunc, allocAnonymousStackSymbol(buildtime.parentBlock, type, type->size));
+			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 			runtime.result = (*exprFunc)(p0->get());
-			MincObject* resultValue = getStackSymbol(runtime.parentBlock, runtime, result);
+			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
 			((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, resultValue);
 			runtime.result.value = resultValue;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
-			PawsType* p0 = getType(params[0], parentBlock);
+			PawsType* p0 = params[0]->getType(parentBlock);
 			return (*exprTypeFunc)(p0);
 		}
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
 }
 template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1), PawsType* (*exprTypeFunc)(PawsType*, PawsType*))
 {
@@ -1434,33 +1442,33 @@ template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* t
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 2)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
 			PawsType* type = getType(buildtime.parentBlock, params);
-			return new ExprKernel(exprFunc, exprTypeFunc, allocAnonymousStackSymbol(buildtime.parentBlock, type, type->size));
+			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
 			runtime.result = (*exprFunc)(p0->get(), p1->get());
-			MincObject* resultValue = getStackSymbol(runtime.parentBlock, runtime, result);
+			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
 			((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, resultValue);
 			runtime.result.value = resultValue;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
-			PawsType* p0 = getType(params[0], parentBlock);
-			PawsType* p1 = getType(params[1], parentBlock);
+			PawsType* p0 = params[0]->getType(parentBlock);
+			PawsType* p1 = params[1]->getType(parentBlock);
 			return (*exprTypeFunc)(p0, p1);
 		}
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
 }
 template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* scope, const char* tpltStr, MincSymbol (*exprFunc)(P0, P1, P2), PawsType* (*exprTypeFunc)(PawsType*, PawsType*, PawsType*))
 {
@@ -1476,40 +1484,40 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 3)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
 			PawsType* type = getType(buildtime.parentBlock, params);
-			return new ExprKernel(exprFunc, exprTypeFunc, allocAnonymousStackSymbol(buildtime.parentBlock, type, type->size));
+			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
-			if (runExpr(params[1], runtime)) return true;
+			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result.value;
-			if (runExpr(params[2], runtime)) return true;
+			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result.value;
 			runtime.result = (*exprFunc)(p0->get(), p1->get(), p2->get());
-			MincObject* resultValue = getStackSymbol(runtime.parentBlock, runtime, result);
+			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
 			((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, resultValue);
 			runtime.result.value = resultValue;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
-			PawsType* p0 = getType(params[0], parentBlock);
-			PawsType* p1 = getType(params[1], parentBlock);
-			PawsType* p2 = getType(params[2], parentBlock);
+			PawsType* p0 = params[0]->getType(parentBlock);
+			PawsType* p1 = params[1]->getType(parentBlock);
+			PawsType* p2 = params[2]->getType(parentBlock);
 			return (*exprTypeFunc)(p0, p1, p2);
 		}
 	};
-	defineExpr6(scope, tpltStr, new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
+	scope->defineExpr(MincBlockExpr::parseCTplt(tpltStr)[0], new ExprKernel(new ExprFunc(exprFunc), new ExprTypeFunc(exprTypeFunc)));
 }
 
-// Templated version of defineTypeCast9():
+// Templated version of defineCast(TypeCast()):
 // defineTypeCast() calls run() on all inputs and wraps the output in a MincSymbol
 template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*castFunc)(P0))
 {
@@ -1523,14 +1531,14 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*castFu
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 1)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			return new CastKernel(castFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			return new CastKernel(castFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1539,16 +1547,16 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*castFu
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*castFunc)(p0->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineTypeCast3(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, new CastKernel(new CastFunc(castFunc)));
+	scope->defineCast(new TypeCast(PawsValue<P0>::TYPE, PawsValue<R>::TYPE, new CastKernel(new CastFunc(castFunc))));
 }
 
-// Templated version of defineInheritanceCast9():
+// Templated version of defineCast(InheritanceCast()):
 // defineInheritanceCast() calls run() on all inputs and wraps the output in a MincSymbol
 template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (*castFunc)(P0))
 {
@@ -1562,14 +1570,14 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			if (params.size() != 1)
-				raiseCompileError("parameter index out of bounds", (MincExpr*)buildtime.parentBlock);
-			buildExpr(params[0], buildtime);
-			return new CastKernel(castFunc, allocAnonymousStackSymbol(buildtime.parentBlock, PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
+				throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "parameter index out of bounds");
+			params[0]->build(buildtime);
+			return new CastKernel(castFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime)) return true;
+			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result.value;
 			runtime.result.type = PawsValue<R>::TYPE;
 			if constexpr (std::is_void<R>::value)
@@ -1578,13 +1586,13 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 				runtime.result.value = nullptr;
 			}
 			else
-				new(runtime.result.value = getStackSymbol(runtime.parentBlock, runtime, result))
+				new(runtime.result.value = runtime.parentBlock->getStackSymbol(runtime, result))
 					PawsValue<R>((*castFunc)(p0->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return PawsValue<R>::TYPE; }
 	};
-	defineInheritanceCast3(scope, PawsValue<P0>::TYPE, PawsValue<R>::TYPE, new CastKernel(new CastFunc(castFunc)));
+	scope->defineCast(new InheritanceCast(PawsValue<P0>::TYPE, PawsValue<R>::TYPE, new CastKernel(new CastFunc(castFunc))));
 }
 
 #endif

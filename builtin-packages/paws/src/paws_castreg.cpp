@@ -1,5 +1,5 @@
 #include <cassert>
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
@@ -20,52 +20,77 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 
 	defineExpr(pkgScope, "$E<PawsCastMap>.length",
 		+[](CastMap stmts) -> int {
-			return countBlockExprCasts(stmts);
+			return stmts.block->countCasts();
 		}
 	);
 
-	defineStmt6(pkgScope, "for ($I: $E<PawsCastMap>) $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
+	class CastMapIterationKernel : public MincKernel
+	{
+	public:
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
-			buildExpr(params[1], buildtime);
+			params[1]->build(buildtime);
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
-			defineSymbol(body, getIdExprName(castExpr), PawsCast::TYPE, nullptr);
-			buildExpr((MincExpr*)body, buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
+			body->defineSymbol(castExpr->name, PawsCast::TYPE, nullptr);
+			body->build(buildtime);
+			return this;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
-			if (runExpr(params[1], runtime))
+			if (params[1]->run(runtime))
 				return true;
 			PawsCastMap* casts = (PawsCastMap*)runtime.result.value;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsCast value;
-			defineSymbol(body, getIdExprName(castExpr), PawsCast::TYPE, &value);
+			body->defineSymbol(castExpr->name, PawsCast::TYPE, &value);
 			bool cancel = false;
-			iterateBlockExprCasts(casts->get(), [&](const MincCast* cast) {
+			casts->get().block->iterateCasts([&](const MincCast* cast) {
 				value.set(cast);
-				cancel || (cancel = runExpr((MincExpr*)body, runtime));
+				cancel || (cancel = body->run(runtime));
 			});
 			return cancel;
 		}
-	);
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("for ($I: $E<PawsCastMap>) $B"), new CastMapIterationKernel());
 
-	defineStmt5(pkgScope, "$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			CastMap const casts = ((PawsCastMap*)buildExpr(params[0], buildtime).value)->get();
+	class CastDefinitionKernel : public MincKernel
+	{
+	public:
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			CastMap const casts = ((PawsCastMap*)params[0]->build(buildtime).value)->get();
 			MincBlockExpr* const scope = casts;
-			PawsType* fromType = (PawsType*)buildExpr(params[1], buildtime).value;
-			PawsType* toType = (PawsType*)buildExpr(params[2], buildtime).value;
+			PawsType* fromType = (PawsType*)params[1]->build(buildtime).value;
+			PawsType* toType = (PawsType*)params[2]->build(buildtime).value;
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[3];
 
 			// Get block parameter types
 			std::vector<MincSymbol> blockParams(1, MincSymbol(PawsTpltType::get(buildtime.parentBlock, PawsExpr::TYPE, fromType), nullptr));
 
-			setBlockExprParent(blockAST, scope);
+			blockAST->parent = scope;
 			definePawsReturnStmt(blockAST, toType);
 
-			defineTypeCast3(scope, fromType, toType, new PawsKernel(blockAST, toType, buildtime, blockParams));
+			scope->defineCast(new TypeCast(fromType, toType, new PawsKernel(blockAST, toType, buildtime, blockParams)));
+			return this;
 		}
-	);
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("$E<PawsCastMap>[$E<PawsType> -> $E<PawsType>] = $B"), new CastDefinitionKernel());
 
 	defineExpr(pkgScope, "$E<PawsCast>.fromType",
 		+[](const MincCast* cast) -> MincObject* {

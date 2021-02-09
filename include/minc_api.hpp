@@ -304,9 +304,9 @@ public:
 	void iterateBuildtimeSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const;
 	void iterateStackSymbols(std::function<void(const std::string& name, const MincStackSymbol& symbol)> cbk) const;
 	MincSymbol* importSymbol(const std::string& name);
-	const MincStackSymbol* allocStackSymbol(const char* name, MincObject* type, size_t size);
+	const MincStackSymbol* allocStackSymbol(const std::string& name, MincObject* type, size_t size);
 	const MincStackSymbol* allocStackSymbol(MincObject* type, size_t size);
-	const MincStackSymbol* lookupStackSymbol(const char* name) const;
+	const MincStackSymbol* lookupStackSymbol(const std::string& name) const;
 	MincObject* getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
 	MincObject* getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
 	const std::vector<MincSymbol>* getBlockParams() const;
@@ -556,6 +556,17 @@ public:
 	std::string shortStr() const;
 	int comp(const MincExpr* other) const;
 	MincExpr* clone() const;
+};
+
+struct MincOpaqueCastKernel : public MincKernel
+{
+private:
+	MincObject* const type;
+public:
+	MincOpaqueCastKernel(MincObject* type);
+	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params);
+	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params);
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 };
 
 #endif

@@ -1,49 +1,79 @@
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
 MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
-	defineStmt5(pkgScope, "stmt $E ... $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			const std::vector<MincExpr*>& stmtParamsAST = getListExprExprs((MincListExpr*)params[0]);
+	class StmtDefinitionKernel : public MincKernel
+	{
+	public:
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			const std::vector<MincExpr*>& stmtParamsAST = ((MincListExpr*)params[0])->exprs;
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[1];
 
 			// Collect parameters
 			std::vector<MincExpr*> stmtParams;
 			for (MincExpr* stmtParam: stmtParamsAST)
-				collectParams(buildtime.parentBlock, stmtParam, stmtParam, stmtParams);
+			{
+				size_t paramIdx = stmtParams.size();
+				stmtParam->collectParams(buildtime.parentBlock, stmtParam, stmtParams, paramIdx);
+			}
 
 			// Get block parameter types
-			std::vector<MincSymbol> blockParams;
-			getBlockParameterTypes(buildtime.parentBlock, stmtParams, blockParams);
+			getBlockParameterTypes(buildtime.parentBlock, stmtParams, blockAST->blockParams);
 
-			setBlockExprParams(blockAST, blockParams);
-			setBlockExprParent(blockAST, buildtime.parentBlock);
+			blockAST->parent = buildtime.parentBlock;
 			definePawsReturnStmt(blockAST, PawsVoid::TYPE); //TODO: Move this line into PawsKernel
 
-			defineStmt3(buildtime.parentBlock, stmtParamsAST, new PawsKernel(blockAST, getVoid().type, buildtime, blockParams));
+			std::vector<MincExpr*> tplt(stmtParamsAST);
+			tplt.push_back(new MincStopExpr(MincLocation{}));
+			buildtime.parentBlock->defineStmt(tplt, new PawsKernel(blockAST, getVoid().type, buildtime, blockAST->blockParams));
+			return this;
 		}
-	);
 
-	defineStmt5(pkgScope, "$E expr $E $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			MincObject* exprType = buildExpr(params[0], buildtime).value;
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("stmt $E ... $B"), new StmtDefinitionKernel());
+
+	class ExprDefinitionKernel : public MincKernel
+	{
+	public:
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			MincObject* exprType = params[0]->build(buildtime).value;
 			MincExpr* exprParamAST = params[1];
 			MincBlockExpr* blockAST = (MincBlockExpr*)params[2];
 
 			// Collect parameters
 			std::vector<MincExpr*> exprParams;
-			collectParams(buildtime.parentBlock, exprParamAST, exprParamAST, exprParams);
+			size_t paramIdx = exprParams.size();
+			exprParamAST->collectParams(buildtime.parentBlock, exprParamAST, exprParams, paramIdx);
 
 			// Get block parameter types
-			std::vector<MincSymbol> blockParams;
-			getBlockParameterTypes(buildtime.parentBlock, exprParams, blockParams);
+			getBlockParameterTypes(buildtime.parentBlock, exprParams, blockAST->blockParams);
 
-			setBlockExprParams(blockAST, blockParams);
-			setBlockExprParent(blockAST, buildtime.parentBlock);
+			blockAST->parent = buildtime.parentBlock;
 			definePawsReturnStmt(blockAST, exprType); //TODO: Move this line into PawsKernel
 
-			defineExpr5(buildtime.parentBlock, exprParamAST, new PawsKernel(blockAST, exprType, buildtime, blockParams));
+			buildtime.parentBlock->defineExpr(exprParamAST, new PawsKernel(blockAST, exprType, buildtime, blockAST->blockParams));
+			return this;
 		}
-	);
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("$E expr $E $B"), new ExprDefinitionKernel());
 });

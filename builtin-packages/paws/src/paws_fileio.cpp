@@ -1,7 +1,7 @@
 #include <fstream>
 #include <memory>
 #include <sstream>
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 
@@ -10,20 +10,32 @@ typedef PawsValue<std::shared_ptr<std::fstream>> PawsFile;
 MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFile>(pkgScope, "PawsFile");
 
-	defineStmt6(pkgScope, "open $I($E<PawsString>, $E<PawsString>) $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			const char* varname = getIdExprName((MincIdExpr*)params[0]);
-			buildExpr(params[1], buildtime);
-			buildExpr(params[2], buildtime);
-			defineSymbol((MincBlockExpr*)params[3], varname, PawsFile::TYPE, nullptr);
-			buildExpr(params[3], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			const char* varname = getIdExprName((MincIdExpr*)params[0]);
-			if (runExpr(params[1], runtime))
+	class OpenFileKernel : public MincKernel
+	{
+		const MincStackSymbol* const varId;
+	public:
+		OpenFileKernel(const MincStackSymbol* varId=nullptr) : varId(varId) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			const std::string& varname = ((MincIdExpr*)params[0])->name;
+			params[1]->build(buildtime);
+			params[2]->build(buildtime);
+			const MincStackSymbol* varId = ((MincBlockExpr*)params[3])->allocStackSymbol(varname, PawsFile::TYPE, PawsFile::TYPE->size);
+			params[3]->build(buildtime);
+			return new OpenFileKernel(varId);
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			if (params[1]->run(runtime))
 				return true;
 			const std::string& filename = ((PawsString*)runtime.result.value)->get();
-			if (runExpr(params[2], runtime))
+			if (params[2]->run(runtime))
 				return true;
 			const std::string& mode = ((PawsString*)runtime.result.value)->get();
 			MincBlockExpr* block = (MincBlockExpr*)params[3];
@@ -37,16 +49,17 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 				case 'a': openmode |= std::ios_base::out | std::ios_base::app; break;
 				case 'b': openmode |= std::ios_base::binary; break;
 				case 't': openmode &= ~std::ios_base::binary; break;
-				default: raiseCompileError(("invalid mode " + mode).c_str(), params[2]); break;
+				default: throw CompileError(runtime.parentBlock, params[2]->loc, "invalid mode %S", mode); break;
 				}
 
 			std::shared_ptr<std::fstream> file = std::make_shared<std::fstream>();
 			file->open(filename, openmode);
-			defineSymbol(block, varname, PawsFile::TYPE, new PawsFile(file));
+			MincObject* var = block->getStackSymbolOfNextStackFrame(runtime, varId);
+			new(var) PawsFile(file);
 
 			try
 			{
-				if (runExpr((MincExpr*)block, runtime))
+				if (block->run(runtime))
 				{
 					file->close();
 					return true;
@@ -60,7 +73,13 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 			file->close();
 			return false;
 		}
-	);
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("open $I($E<PawsString>, $E<PawsString>) $B"), new OpenFileKernel());
 
 	defineExpr(pkgScope, "$E<PawsFile>.read()",
 		+[](std::shared_ptr<std::fstream> file) -> std::string {

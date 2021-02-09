@@ -1,7 +1,7 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "paws_types.h"
 #include "paws_subroutine.h"
 #include "minc_pkgmgr.h"
@@ -28,9 +28,9 @@ PawsFunctionType* PawsFunctionType::get(const MincBlockExpr* scope, PawsType* re
 				t->name += ", " + argTypes[i]->name;
 		}
 		t->name += ")>";
-		defineSymbol(pawsSubroutineScope, t->name.c_str(), PawsType::TYPE, t);
-		defineOpaqueInheritanceCast(pawsSubroutineScope, t, PawsBase::TYPE);
-		defineOpaqueInheritanceCast(pawsSubroutineScope, t, PawsFunction::TYPE);
+		pawsSubroutineScope->defineSymbol(t->name, PawsType::TYPE, t);
+		pawsSubroutineScope->defineCast(new InheritanceCast(t, PawsBase::TYPE, new MincOpaqueCastKernel(PawsBase::TYPE)));
+		pawsSubroutineScope->defineCast(new InheritanceCast(t, PawsFunction::TYPE, new MincOpaqueCastKernel(PawsFunction::TYPE)));
 	}
 	return const_cast<PawsFunctionType*>(&*iter); //TODO: Find a way to avoid const_cast
 }
@@ -79,16 +79,16 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 	// Assign arguments in function body
 	for (size_t i = 0; i < argExprs.size(); ++i)
 	{
-		if (runExpr(argExprs[i], runtime))
+		if (argExprs[i]->run(runtime))
 			return true;
 		assert(args[i]->type == runtime.result.type);
-		MincObject* var = getStackSymbolOfNextStackFrame(body, runtime, args[i]);
+		MincObject* var = body->getStackSymbolOfNextStackFrame(runtime, args[i]);
 		((PawsType*)runtime.result.type)->allocTo(var);
 		((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
 	}
 
-	runtime.parentBlock = getBlockExprParent(body);
-	if (runExpr((MincExpr*)body, runtime))
+	runtime.parentBlock = body->parent;
+	if (body->run(runtime))
 	{
 		if (runtime.result.type != &PAWS_RETURN_TYPE)
 			return true;
@@ -96,7 +96,7 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 		return false;
 	}
 	if (returnType != PawsVoid::TYPE)
-		throw CompileError("non-void function should return a value", getLocation((MincExpr*)body));
+		throw CompileError("non-void function should return a value", body->loc);
 	runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
 	return false;
 }
@@ -104,13 +104,13 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 void defineFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, MincBlockExpr* body)
 {
 	PawsFunc* pawsFunc = new PawsRegularFunc(name, returnType, argTypes, argNames, body);
-	defineSymbol(scope, name, PawsFunctionType::get(pawsSubroutineScope, returnType, argTypes), new PawsFunction(pawsFunc));
+	scope->defineSymbol(name, PawsFunctionType::get(pawsSubroutineScope, returnType, argTypes), new PawsFunction(pawsFunc));
 }
 
 void defineConstantFunction(MincBlockExpr* scope, const char* name, PawsType* returnType, std::vector<PawsType*> argTypes, std::vector<std::string> argNames, FuncBlock body, void* funcArgs)
 {
 	PawsFunc* pawsFunc = new PawsConstFunc(name, returnType, argTypes, argNames, body, funcArgs);
-	defineSymbol(scope, name, PawsFunctionType::get(pawsSubroutineScope, returnType, argTypes), new PawsFunction(pawsFunc));
+	scope->defineSymbol(name, PawsFunctionType::get(pawsSubroutineScope, returnType, argTypes), new PawsFunction(pawsFunc));
 }
 
 MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
@@ -118,16 +118,18 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 	registerType<PawsFunction>(pkgScope, "PawsFunction");
 
 	// Define function definition
-	defineStmt5(pkgScope, "$E<PawsType> $I($E<PawsType> $I, ...) $B",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			PawsType* returnType = (PawsType*)buildExpr(params[0], buildtime).value;
-			const char* name = getIdExprName((MincIdExpr*)params[1]);
-			const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[2]);
-			const std::vector<MincExpr*>& argNameExprs = getListExprExprs((MincListExpr*)params[3]);
+	struct FunctionDefinitionKernel : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			PawsType* returnType = (PawsType*)params[0]->build(buildtime).value;
+			const std::string& name = ((MincIdExpr*)params[1])->name;
+			const std::vector<MincExpr*>& argTypeExprs = ((MincListExpr*)params[2])->exprs;
+			const std::vector<MincExpr*>& argNameExprs = ((MincListExpr*)params[3])->exprs;
 			MincBlockExpr* block = (MincBlockExpr*)params[4];
 
 			// Set function parent to function definition scope
-			setBlockExprParent(block, buildtime.parentBlock);
+			block->parent = buildtime.parentBlock;
 
 			// Define return statement in function scope
 			definePawsReturnStmt(block, returnType);
@@ -138,33 +140,45 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			func->argTypes.reserve(argTypeExprs.size());
 			for (MincExpr* argTypeExpr: argTypeExprs)
 			{
-				PawsType* argType = (PawsType*)buildExpr(argTypeExpr, buildtime).value;
+				PawsType* argType = (PawsType*)argTypeExpr->build(buildtime).value;
 				if (argType == nullptr)
-					throw CompileError(buildtime.parentBlock, getLocation(argTypeExpr), "%E is not a vailid type", argTypeExpr);
+					throw CompileError(buildtime.parentBlock, argTypeExpr->loc, "%E is not a vailid type", argTypeExpr);
 				func->argTypes.push_back(argType);
 			}
 			func->argNames.reserve(argNameExprs.size());
 			for (MincExpr* argNameExpr: argNameExprs)
-				func->argNames.push_back(getIdExprName((MincIdExpr*)argNameExpr));
+				func->argNames.push_back(((MincIdExpr*)argNameExpr)->name);
 			func->body = block;
 
 			// Define arguments in function scope
 			func->args.reserve(func->argTypes.size());
 			for (size_t i = 0; i < func->argTypes.size(); ++i)
-				func->args.push_back(allocStackSymbol(block, func->argNames[i].c_str(), func->argTypes[i], func->argTypes[i]->size));
+				func->args.push_back(block->allocStackSymbol(func->argNames[i], func->argTypes[i], func->argTypes[i]->size));
 
 			// Define function symbol in calling scope
 			PawsType* funcType = PawsFunctionType::get(pawsSubroutineScope, returnType, func->argTypes);
 			PawsFunction* funcValue = new PawsFunction(func);
-			defineSymbol(buildtime.parentBlock, name, funcType, funcValue);
+			buildtime.parentBlock->defineSymbol(name, funcType, funcValue);
 
 			// Name function block
-			setBlockExprName(block, funcType->toString(funcValue).c_str());
+			block->name = funcType->toString(funcValue);
 
 			// Define function block
-			buildExpr((MincExpr*)block, buildtime);
+			block->build(buildtime);
+			return this;
 		}
-	);
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("$E<PawsType> $I($E<PawsType> $I, ...) $B"), new FunctionDefinitionKernel());
 
 	// Define function call
 	class FunctionCallKernel : public MincKernel
@@ -175,32 +189,32 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			PawsFunctionType* funcType = (PawsFunctionType*)buildExpr(params[0] = getDerivedExpr(params[0]), buildtime).type;
-			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
+			PawsFunctionType* funcType = (PawsFunctionType*)(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime).type;
+			std::vector<MincExpr*>& argExprs = ((MincListExpr*)params[1])->exprs;
 
 			// Check number of arguments
 			if (funcType->argTypes.size() != argExprs.size())
-				raiseCompileError("invalid number of function arguments", params[0]);
+				throw CompileError(buildtime.parentBlock, params[0]->loc, "invalid number of function arguments");
 
 			// Check argument types, perform inherent type casts and build argument expressions
 			for (size_t i = 0; i < argExprs.size(); ++i)
 			{
 				MincExpr* argExpr = argExprs[i];
-				MincObject *expectedType = funcType->argTypes[i], *gotType = ::getType(argExpr, buildtime.parentBlock);
+				MincObject *expectedType = funcType->argTypes[i], *gotType = argExpr->getType(buildtime.parentBlock);
 
 				if (expectedType != gotType)
 				{
-					MincExpr* castExpr = lookupCast(buildtime.parentBlock, argExpr, expectedType);
-					if (castExpr == nullptr)
-						throw CompileError(buildtime.parentBlock, getLocation(argExpr), "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
-					buildExpr(argExprs[i] = castExpr, buildtime);
+					const MincCast* cast = buildtime.parentBlock->lookupCast(gotType, expectedType);
+					if (cast == nullptr)
+						throw CompileError(buildtime.parentBlock, argExpr->loc, "invalid function argument type: %E<%t>, expected: <%t>", argExpr, gotType, expectedType);
+					(argExprs[i] = new MincCastExpr(cast, argExpr))->build(buildtime);
 				}
 				else
-					buildExpr(argExpr, buildtime);
+					argExpr->build(buildtime);
 			}
 
 			// Allocate anonymous symbol for return value in calling scope
-			return new FunctionCallKernel(allocAnonymousStackSymbol(buildtime.parentBlock, funcType->returnType, funcType->returnType->size));
+			return new FunctionCallKernel(buildtime.parentBlock->allocStackSymbol(funcType->returnType, funcType->returnType->size));
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -209,15 +223,15 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runExpr(params[0], runtime))
+			if (params[0]->run(runtime))
 				return true;
 			const PawsFunc* func = ((PawsFunction*)runtime.result.value)->get();
-			std::vector<MincExpr*>& argExprs = getListExprExprs((MincListExpr*)params[1]);
+			std::vector<MincExpr*>& argExprs = ((MincListExpr*)params[1])->exprs;
 
 			// Call function
 			if (func->call(runtime, argExprs))
 				return true;
-			MincObject* resultValue = getStackSymbol(runtime.parentBlock, runtime, result);
+			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
 			func->returnType->copyTo(runtime.result.value, resultValue);
 			runtime.result.value = resultValue;
 			return false;
@@ -225,42 +239,80 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
-			assert(ExprIsCast(params[0])); //TODO: This fails when debugging python37.paws
-			return ((PawsFunctionType*)::getType(getCastExprSource((MincCastExpr*)params[0]), parentBlock))->returnType;
+			assert(params[0]->exprtype == MincExpr::ExprType::CAST); //TODO: This fails when debugging python37.paws
+			return ((PawsFunctionType*)((MincCastExpr*)params[0])->getSourceExpr()->getType(parentBlock))->returnType;
 		}
 	};
-	defineExpr6(pkgScope, "$E<PawsFunction>($E, ...)", new FunctionCallKernel());
+	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$E<PawsFunction>($E, ...)")[0], new FunctionCallKernel());
 
 	// Define function call on non-function expression
-	defineExpr7(pkgScope, "$E($E, ...)",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
-			getType(params[0], buildtime.parentBlock); // Raise expression errors if any
-			raiseCompileError("expression cannot be used as a function", params[0]);
-		},
-		getErrorType()
-	);
-	// Define function call on non-function identifier
-	defineExpr7(pkgScope, "$I($E, ...)",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
-			const char* name = getIdExprName((MincIdExpr*)params[0]);
-			if (lookupSymbol(buildtime.parentBlock, name) == nullptr && lookupStackSymbol(buildtime.parentBlock, name) == nullptr)
-				raiseCompileError(('`' + std::string(name) + "` was not declared in this scope").c_str(), params[0]);
-			else
-				raiseCompileError(('`' + std::string(name) + "` cannot be used as a function").c_str(), params[0]);
-		},
-		getErrorType()
-	);
+	struct NonFunctionCallKernel1 : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			params[0]->getType(buildtime.parentBlock); // Raise expression errors if any
+			throw CompileError(buildtime.parentBlock, params[0]->loc, "expression cannot be used as a function");
+		}
 
-	defineExpr7(pkgScope, "PawsFunction<$E<PawsType>($E<PawsType>, ...)>",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs) {
-			PawsType* returnType = (PawsType*)buildExpr(params[0], buildtime).value;
-			const std::vector<MincExpr*>& argTypeExprs = getListExprExprs((MincListExpr*)params[1]);
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getErrorType();
+		}
+	};
+	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$E($E, ...)")[0], new NonFunctionCallKernel1());
+
+	// Define function call on non-function identifier
+	struct NonFunctionCallKernel2 : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			const std::string& name = ((MincIdExpr*)params[0])->name;
+			if (buildtime.parentBlock->lookupSymbol(name) == nullptr && buildtime.parentBlock->lookupStackSymbol(name) == nullptr)
+				throw CompileError(buildtime.parentBlock, params[0]->loc, "`%S` was not declared in this scope", name);
+			else
+				throw CompileError(buildtime.parentBlock, params[0]->loc, "`%S` cannot be used as a function", name);
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getErrorType();
+		}
+	};
+	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$I($E, ...)")[0], new NonFunctionCallKernel2());
+
+	struct FunctionDelegateKernel : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			PawsType* returnType = (PawsType*)params[0]->build(buildtime).value;
+			const std::vector<MincExpr*>& argTypeExprs = ((MincListExpr*)params[1])->exprs;
 			std::vector<PawsType*> argTypes;
 			argTypes.reserve(argTypeExprs.size());
 			for (MincExpr* argTypeExpr: argTypeExprs)
-				argTypes.push_back((PawsType*)buildExpr(argTypeExpr, buildtime).value);
+				argTypes.push_back((PawsType*)argTypeExpr->build(buildtime).value);
 			buildtime.result = MincSymbol(PawsType::TYPE, PawsFunctionType::get(pawsSubroutineScope, returnType, argTypes));
-		},
-		PawsType::TYPE
-	);
+			return this;
+		}
+
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return PawsType::TYPE;
+		}
+	};
+	pkgScope->defineExpr(MincBlockExpr::parseCTplt("PawsFunction<$E<PawsType>($E<PawsType>, ...)>")[0], new FunctionDelegateKernel());
 });

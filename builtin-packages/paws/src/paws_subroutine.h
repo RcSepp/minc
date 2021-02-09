@@ -124,7 +124,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 
 		bool cancel = false;
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
-			if (cancel || (cancel = runExpr(args[i], runtime)))
+			if (cancel || (cancel = args[i]->run(runtime)))
 				return;
 			argValues[i] = runtime.result.value;
 		});
@@ -181,7 +181,7 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 
 		bool cancel = false;
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
-			if (cancel || (cancel = runExpr(args[i], runtime)))
+			if (cancel || (cancel = args[i]->run(runtime)))
 				return;
 			argValues[i] = runtime.result.value;
 		});
@@ -216,7 +216,7 @@ void defineConstantFunction(MincBlockExpr* scope, const char* name, PawsType* re
 template<class F> void defineExternFunction(MincBlockExpr* scope, const char* name, F func)
 {
 	PawsFunc* pawsFunc = new PawsExternFunc(func, name);
-	defineSymbol(scope, name, PawsFunctionType::get(scope, pawsFunc->returnType, pawsFunc->argTypes), new PawsFunction(pawsFunc));
+	scope->defineSymbol(name, PawsFunctionType::get(scope, pawsFunc->returnType, pawsFunc->argTypes), new PawsFunction(pawsFunc));
 }
 
 #endif

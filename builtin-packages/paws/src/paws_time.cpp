@@ -1,4 +1,4 @@
-#include "minc_api.h"
+#include "minc_api.hpp"
 #include "paws_types.h"
 #include "minc_pkgmgr.h"
 #include <thread>
@@ -108,31 +108,6 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 	);
 
 	// Define function to print measured runtime
-	defineStmt6(pkgScope, "measure($E<PawsString>) $S",
-		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
-			buildExpr(params[0], buildtime);
-			buildExpr(params[1], buildtime);
-		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* stmtArgs) -> bool {
-			if (runExpr(params[0], runtime))
-				return true;
-			const std::string& taskName = ((PawsString*)runtime.result.value)->get();
-			MincExpr* stmt = params[1];
-
-			// Measure runtime of stmt
-			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			if (runExpr(stmt, runtime))
-				return true;
-			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
-
-			// Print measured runtime
-			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-			std::cout << taskName << ": " << diff.count() << "ms" << std::endl;
-			return false;
-		}
-	);
-
-	// Define function to measure runtime
 	class MeasureKernel : public MincKernel
 	{
 		const MincStackSymbol* const stackSymbol;
@@ -141,11 +116,49 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			const char* varName = getIdExprName((MincIdExpr*)params[0]);
-			buildExpr(params[1], buildtime);
-			return new MeasureKernel(allocStackSymbol(buildtime.parentBlock, varName, PawsDuration::TYPE, PawsDuration::TYPE->size));
+			params[0]->build(buildtime);
+			params[1]->build(buildtime);
+			return this;
 		}
 
+		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		{
+			if (params[0]->run(runtime))
+				return true;
+			const std::string& taskName = ((PawsString*)runtime.result.value)->get();
+			MincExpr* stmt = params[1];
+
+			// Measure runtime of stmt
+			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
+			if (stmt->run(runtime))
+				return true;
+			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
+
+			// Print measured runtime
+			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+			std::cout << taskName << ": " << diff.count() << "ms" << std::endl;
+			return false;
+		}
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("measure($E<PawsString>) $S"), new MeasureKernel());
+
+	// Define function to measure runtime
+	class MeasureKernel2 : public MincKernel
+	{
+		const MincStackSymbol* const stackSymbol;
+	public:
+		MeasureKernel2(const MincStackSymbol* stackSymbol=nullptr) : stackSymbol(stackSymbol) {}
+
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			const std::string& varName = ((MincIdExpr*)params[0])->name;
+			params[1]->build(buildtime);
+			return new MeasureKernel2(buildtime.parentBlock->allocStackSymbol(varName, PawsDuration::TYPE, PawsDuration::TYPE->size));
+		}
 		void dispose(MincKernel* kernel)
 		{
 			delete kernel;
@@ -155,12 +168,12 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 		{
 			// Measure runtime of stmt
 			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-			if (runExpr(params[1], runtime))
+			if (params[1]->run(runtime))
 				return true;
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Store measured runtime as `varName`
-			new(getStackSymbol(runtime.parentBlock, runtime, stackSymbol)) PawsDuration(endTime - startTime);
+			new(runtime.parentBlock->getStackSymbol(runtime, stackSymbol)) PawsDuration(endTime - startTime);
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -168,5 +181,5 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 			return getVoid().type;
 		}
 	};
-	defineStmt4(pkgScope, "measure $I $S", new MeasureKernel());
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("measure $I $S"), new MeasureKernel2());
 });

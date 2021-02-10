@@ -81,22 +81,16 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 	{
 		if (argExprs[i]->run(runtime))
 			return true;
-		assert(args[i]->type == runtime.result.type);
 		MincObject* var = body->getStackSymbolOfNextStackFrame(runtime, args[i]);
-		((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
+		((PawsType*)args[i]->type)->copyToNew(runtime.result, var);
 	}
 
 	runtime.parentBlock = body->parent;
 	if (body->run(runtime))
-	{
-		if (runtime.result.type != &PAWS_RETURN_TYPE)
-			return true;
-		runtime.result.type = returnType;
-		return false;
-	}
+		return runtime.exceptionType != &PAWS_RETURN_TYPE;
 	if (returnType != PawsVoid::TYPE)
 		throw CompileError("non-void function should return a value", body->loc);
-	runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+	runtime.result = nullptr;
 	return false;
 }
 
@@ -224,15 +218,15 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const PawsFunc* func = ((PawsFunction*)runtime.result.value)->get();
+			const PawsFunc* func = ((PawsFunction*)runtime.result)->get();
 			std::vector<MincExpr*>& argExprs = ((MincListExpr*)params[1])->exprs;
 
 			// Call function
 			if (func->call(runtime, argExprs))
 				return true;
 			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
-			func->returnType->copyTo(runtime.result.value, resultValue);
-			runtime.result.value = resultValue;
+			func->returnType->copyTo(runtime.result, resultValue);
+			runtime.result = resultValue;
 			return false;
 		}
 

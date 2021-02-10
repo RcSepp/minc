@@ -73,7 +73,8 @@ struct MincRuntime
 {
 	MincBlockExpr* parentBlock;
 	MincExpr* currentExpr;
-	MincSymbol result;
+	MincObject* result;
+	MincObject* exceptionType;
 	bool resume;
 	MincStackFrame* const stackFrames;
 	MincStackFrame* heapFrame;

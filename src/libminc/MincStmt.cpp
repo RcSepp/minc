@@ -31,16 +31,14 @@ bool MincStmt::run(MincRuntime& runtime)
 		{
 			if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
 			{
-				const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
-				runtime.result.type = cached.type;
-				runtime.result.value = cached.value;
+				runtime.result = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
 				return false;
 			}
 		}
 		else
 		{
 			assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-			parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+			parentBlock->resultCache.push_back(std::make_pair(nullptr, false));
 		}
 		resultCacheIdx = parentBlock->resultCacheIdx++;
 	}
@@ -79,7 +77,7 @@ bool MincStmt::run(MincRuntime& runtime)
 #ifdef CACHE_RESULTS
 	if (parentBlock->isResumable)
 	{
-		parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid(), true);
+		parentBlock->resultCache[resultCacheIdx] = std::make_pair(getVoid().value, true);
 		if (resultCacheIdx + 1 != parentBlock->resultCache.size())
 		{
 			parentBlock->resultCacheIdx = resultCacheIdx + 1;
@@ -93,7 +91,7 @@ bool MincStmt::run(MincRuntime& runtime)
 	if (isVolatile)
 		forget();
 
-	runtime.result = getVoid();
+	runtime.result = nullptr; // Note: getVoid().value == nullptr
 	return false;
 }
 

@@ -29,7 +29,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			MincObject* var = runtime.parentBlock->getStackSymbol(runtime, varId);
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(cbk(((PawsInt*)var)->get())));
+			runtime.result = new PawsInt(cbk(((PawsInt*)var)->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -124,8 +124,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() + ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() + ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -162,8 +162,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() - ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() - ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -200,8 +200,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() * ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() * ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -238,8 +238,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() / ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() / ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -276,8 +276,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() & ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() & ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -314,8 +314,8 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() ^ ((PawsInt*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() ^ ((PawsInt*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -393,16 +393,16 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const auto a = ((PawsInt*)runtime.result.value)->get();
+			const auto a = ((PawsInt*)runtime.result)->get();
 			if (!a)
 			{
-				runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(0));
+				runtime.result = new PawsInt(0);
 				return false;
 			}
 			if (params[1]->run(runtime))
 				return true;
-			const auto b = ((PawsInt*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a && b));
+			const auto b = ((PawsInt*)runtime.result)->get();
+			runtime.result = new PawsInt(a && b);
 			return false;
 		}
 
@@ -425,16 +425,16 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const auto a = ((PawsInt*)runtime.result.value)->get();
+			const auto a = ((PawsInt*)runtime.result)->get();
 			if (a)
 			{
-				runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(1));
+				runtime.result = new PawsInt(1);
 				return false;
 			}
 			if (params[1]->run(runtime))
 				return true;
-			const auto b = ((PawsInt*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a || b));
+			const auto b = ((PawsInt*)runtime.result)->get();
+			runtime.result = new PawsInt(a || b);
 			return false;
 		}
 

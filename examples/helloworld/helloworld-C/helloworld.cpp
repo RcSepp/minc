@@ -17,6 +17,7 @@ struct String : public std::string, MincObject
 	String(const char* val, size_t len) : val(new char[len + 1])
 	{
 		strncpy(this->val, val, len);
+		this->val[len] = '\0';
 	}
 	~String()
 	{
@@ -38,7 +39,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 			if (*valueEnd == '"' || *valueEnd == '\'')
 			{
 				const char* valueStart = strchr(value, *valueEnd) + 1;
-				runtime.result = MincSymbol(&STRING_TYPE, new String(valueStart, valueEnd - valueStart));
+				runtime.result = new String(valueStart, valueEnd - valueStart);
 			}
 			else
 				raiseCompileError("Non-string literals not implemented", params[0]);
@@ -61,7 +62,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 			if (runExpr(params[0], runtime))
 				return true;
-			String* const message = (String*)runtime.result.value;
+			String* const message = (String*)runtime.result;
 			std::cout << message->val << " from C!\n";
 			return false;
 		}

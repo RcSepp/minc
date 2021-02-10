@@ -126,7 +126,7 @@ struct PawsExternFunc<R (*)(A...)> : public PawsFunc
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 			if (cancel || (cancel = args[i]->run(runtime)))
 				return;
-			argValues[i] = runtime.result.value;
+			argValues[i] = runtime.result;
 		});
 		if (cancel)
 			return true;
@@ -183,7 +183,7 @@ struct PawsExternFunc<R (C::*)(A...)> : public PawsFunc
 		for_each(std::make_index_sequence<sizeof...(A)>{}, [&](auto i) constexpr {
 			if (cancel || (cancel = args[i]->run(runtime)))
 				return;
-			argValues[i] = runtime.result.value;
+			argValues[i] = runtime.result;
 		});
 		if (cancel)
 			return true;

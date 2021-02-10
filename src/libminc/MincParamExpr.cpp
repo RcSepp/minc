@@ -14,7 +14,7 @@ bool MincParamExpr::Kernel::run(MincRuntime& runtime, std::vector<MincExpr*>& pa
 		throw CompileError("invalid use of parameter expression in parameterless scope", expr->loc);
 	if (expr->idx >= blockParams->size())
 		throw CompileError("parameter index out of bounds", expr->loc);
-	runtime.result = blockParams->at(expr->idx);
+	runtime.result = blockParams->at(expr->idx).value;
 	return false;
 }
 

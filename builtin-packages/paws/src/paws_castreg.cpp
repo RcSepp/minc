@@ -42,7 +42,7 @@ MincPackage PAWS_CASTREG("paws.castreg", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* castExpr = (MincIdExpr*)params[0];
 			if (params[1]->run(runtime))
 				return true;
-			PawsCastMap* casts = (PawsCastMap*)runtime.result.value;
+			PawsCastMap* casts = (PawsCastMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsCast value;
 			body->defineSymbol(castExpr->name, PawsCast::TYPE, &value);

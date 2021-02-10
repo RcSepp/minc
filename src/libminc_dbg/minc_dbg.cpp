@@ -674,7 +674,7 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			if (rootBlock->run(*runtime))
 			{
 				Thread& currentThread = getCurrentThread();
-				if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, runtime->result, &currentThread.errMsg))
+				if (!getValueStr(rootBlock/*currentThread.callStack.back().block*/, MincSymbol(runtime->exceptionType, runtime->result), &currentThread.errMsg))
 					currentThread.errMsg = "";
 				sendStopEvent(StopEventReason::Exception, currentThread.errMsg);
 			}

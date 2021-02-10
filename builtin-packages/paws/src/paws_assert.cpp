@@ -15,7 +15,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			int test = ((PawsInt*)runtime.result.value)->get();
+			int test = ((PawsInt*)runtime.result)->get();
 			if (!test)
 				throw CompileError(runtime.parentBlock, params[0]->loc, "Assertion failed: %e", params[0]);
 			return false;
@@ -91,7 +91,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 
 			if (params[1]->run(runtime))
 				return true;
-			const MincException& expected = ((PawsException*)runtime.result.value)->get();
+			const MincException& expected = ((PawsException*)runtime.result)->get();
 			const std::string expectedStr = expected.what() == nullptr ? std::string() : '"' + std::string(expected.what()) + '"';
 			try
 			{

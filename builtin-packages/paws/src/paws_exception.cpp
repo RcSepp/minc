@@ -37,7 +37,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 					return true;
 				return params[1]->run(runtime);
 			}
-			if (runtime.result.type == &PAWS_RETURN_TYPE || runtime.result.type == &PAWS_AWAIT_TYPE)
+			if (runtime.exceptionType == &PAWS_RETURN_TYPE || runtime.exceptionType == &PAWS_AWAIT_TYPE)
 				return true;
 			return params[1]->run(runtime);
 		}
@@ -74,7 +74,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[1]->run(runtime)) //TODO: Consider storing this in the built kernel
 				return true;
-			MincObject* const catchType = runtime.result.value;
+			MincObject* const catchType = runtime.result;
 
 			try
 			{
@@ -102,15 +102,15 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 				}
 				else
 				{
-					runtime.result = err;
+					runtime.exceptionType = err.type;
+					runtime.result = err.value;
 					return true;
 				}
 			}
-			const MincSymbol& err = runtime.result;
-			if (runtime.parentBlock->isInstance(err.type, catchType))
+			if (runtime.parentBlock->isInstance(runtime.exceptionType, catchType))
 			{
 				MincObject* errValue = ((MincBlockExpr*)params[3])->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
-				((PawsType*)stackSymbol->type)->copyToNew(err.value, errValue);
+				((PawsType*)stackSymbol->type)->copyToNew(runtime.result, errValue);
 				return params[3]->run(runtime);
 			}
 			else
@@ -124,17 +124,26 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("try $S catch ($E<PawsType> $I) $B"), new TryCatchKernel2());
 
 	// Define throw statement
-	struct ThrowKernel : public MincKernel
+	class ThrowKernel : public MincKernel
 	{
+		MincObject* const exceptionType;
+	public:
+		ThrowKernel(MincObject* exceptionType=nullptr) : exceptionType(exceptionType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			params[0]->build(buildtime);
-			return this;
+			return new ThrowKernel(params[0]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			params[0]->run(runtime);
+			runtime.exceptionType = exceptionType;
 			return true;
 		}
 
@@ -159,7 +168,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			if (buildtime.result.value != nullptr)
 			{
 				const std::string& msg = ((PawsString*)buildtime.result.value)->get();
-				buildtime.result = MincSymbol(PawsException::TYPE, new PawsException(MincException(msg, params[0]->loc)));
+				buildtime.result.value = new PawsException(MincException(msg, params[0]->loc));
 			}
 			return this;
 		}
@@ -168,8 +177,8 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const std::string& msg = ((PawsString*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsException::TYPE, new PawsException(MincException(msg, params[0]->loc)));
+			const std::string& msg = ((PawsString*)runtime.result)->get();
+			runtime.result = new PawsException(MincException(msg, params[0]->loc));
 			return false;
 		}
 

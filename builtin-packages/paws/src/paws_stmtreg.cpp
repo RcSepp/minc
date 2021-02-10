@@ -64,7 +64,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
 			if (params[2]->run(runtime))
 				return true;
-			PawsStmtMap* stmts = (PawsStmtMap*)runtime.result.value;
+			PawsStmtMap* stmts = (PawsStmtMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsValue<const MincListExpr*> key, value;
 			body->defineSymbol(keyExpr->name, PawsValue<const MincListExpr*>::TYPE, &key);
@@ -152,7 +152,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
 			if (params[2]->run(runtime))
 				return true;
-			PawsExprMap* exprs = (PawsExprMap*)runtime.result.value;
+			PawsExprMap* exprs = (PawsExprMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsValue<const MincExpr*> key, value;
 			body->defineSymbol(keyExpr->name, PawsValue<const MincExpr*>::TYPE, &key);
@@ -239,7 +239,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
 			if (params[2]->run(runtime))
 				return true;
-			PawsSymbolMap* symbols = (PawsSymbolMap*)runtime.result.value;
+			PawsSymbolMap* symbols = (PawsSymbolMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString key;
 			PawsSym value;
@@ -262,25 +262,32 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 
 	class SymbolDefinitionKernel : public MincKernel
 	{
+		MincObject* const symbolType;
 	public:
+		SymbolDefinitionKernel(MincObject* symbolType=nullptr) : symbolType(symbolType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			params[0]->build(buildtime);
 			params[2]->build(buildtime);
-			return this;
+			return new SymbolDefinitionKernel(params[2]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			SymbolMap const symbols = ((PawsSymbolMap*)runtime.result.value)->get();
+			SymbolMap const symbols = ((PawsSymbolMap*)runtime.result)->get();
 			MincBlockExpr* const scope = symbols;
 			MincIdExpr* symbolNameAST = (MincIdExpr*)params[1];
 			if (params[2]->run(runtime))
 				return true;
 
-			scope->defineSymbol(symbolNameAST->name, runtime.result.type, runtime.result.value);
+			scope->defineSymbol(symbolNameAST->name, symbolType, runtime.result);
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const

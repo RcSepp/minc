@@ -2,8 +2,6 @@
 #include "minc_api.h"
 #include "minc_api.hpp"
 
-//#define CHECK_RUN_RESULT_TYPES
-
 MincObject ERROR_TYPE, NONE_TYPE;
 
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
@@ -30,16 +28,14 @@ bool MincExpr::run(MincRuntime& runtime)
 		{
 			if (parentBlock->resultCache[parentBlock->resultCacheIdx].second)
 			{
-				const MincSymbol& cached = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
-				runtime.result.type = cached.type;
-				runtime.result.value = cached.value;
+				runtime.result = parentBlock->resultCache[parentBlock->resultCacheIdx++].first; // Return cached expression
 				return false;
 			}
 		}
 		else
 		{
 			assert(parentBlock->resultCacheIdx == parentBlock->resultCache.size());
-			parentBlock->resultCache.push_back(std::make_pair(MincSymbol(), false));
+			parentBlock->resultCache.push_back(std::make_pair(nullptr, false));
 		}
 		resultCacheIdx = parentBlock->resultCacheIdx++;
 	}
@@ -78,31 +74,6 @@ bool MincExpr::run(MincRuntime& runtime)
 	}
 	runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
 	parentBlock->isExprSuspended = false;
-
-#ifdef CHECK_RUN_RESULT_TYPES
-	const MincObject *expectedType, *gotType = runtime.result.type;
-	try //TODO: Make getType() noexcept
-	{
-		expectedType = resolvedKernel->getType(parentBlock, resolvedParams);
-	}
-	catch(...)
-	{
-		throw CompileError(("exception raised in expression type resolver: " + this->str()).c_str(), this->loc);
-	}
-	if (expectedType != gotType)
-	{
-		if (expectedType == &ERROR_TYPE)
-			throw CompileError(
-				("no exception raised in expression returning error type: " + this->str()).c_str(),
-				this->loc
-			);
-
-		throw CompileError(
-			("invalid expression return type: " + this->str() + "<" + parentBlock->lookupSymbolName(gotType, "UNKNOWN_TYPE") + ">, expected: <" + parentBlock->lookupSymbolName(expectedType, "UNKNOWN_TYPE") + ">").c_str(),
-			this->loc
-		);
-	}
-#endif
 
 	// Cache expression result for coroutines
 #ifdef CACHE_RESULTS
@@ -338,7 +309,7 @@ extern "C"
 		MincBuildtime buildtime = { scope };
 		expr->build(buildtime);
 		MincRuntime runtime(scope, false);
-		return expr->run(runtime) ? MincSymbol(nullptr, nullptr) : runtime.result;
+		return MincSymbol(expr->getType(scope), expr->run(runtime) ? nullptr : runtime.result);
 	}
 
 	MincSymbol evalPythonExpr(const char* code, MincBlockExpr* scope)
@@ -348,6 +319,6 @@ extern "C"
 		MincBuildtime buildtime = { scope };
 		expr->build(buildtime);
 		MincRuntime runtime(scope, false);
-		return expr->run(runtime) ? MincSymbol(nullptr, nullptr) : runtime.result;
+		return MincSymbol(expr->getType(scope), expr->run(runtime) ? nullptr : runtime.result);
 	}
 }

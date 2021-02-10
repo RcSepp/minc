@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 			MincRuntime runtime(nullptr, false);
 			if (rootBlock->run(runtime))
 			{
-				std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(runtime.result.type, "UNKNOWN_TYPE") << ">\n";
+				std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(runtime.exceptionType, "UNKNOWN_TYPE") << ">\n";
 				result = -1;
 			}
 		} catch (ExitException err) {

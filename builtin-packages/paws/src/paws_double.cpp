@@ -30,7 +30,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			MincObject* var = runtime.parentBlock->getStackSymbol(runtime, varId);
-			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(cbk(((PawsDouble*)var)->get())));
+			runtime.result = new PawsDouble(cbk(((PawsDouble*)var)->get()));
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -132,8 +132,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() + ((PawsDouble*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() + ((PawsDouble*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -170,8 +170,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() - ((PawsDouble*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() - ((PawsDouble*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -208,8 +208,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() * ((PawsDouble*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() * ((PawsDouble*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -246,8 +246,8 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
 				return true;
-			val->set(val->get() / ((PawsDouble*)runtime.result.value)->get());
-			runtime.result.value = val;
+			val->set(val->get() / ((PawsDouble*)runtime.result)->get());
+			runtime.result = val;
 			return false;
 		}
 
@@ -360,16 +360,16 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const auto a = ((PawsDouble*)runtime.result.value)->get();
+			const auto a = ((PawsDouble*)runtime.result)->get();
 			if (!a)
 			{
-				runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(0));
+				runtime.result = new PawsDouble(0);
 				return false;
 			}
 			if (params[1]->run(runtime))
 				return true;
-			const auto b = ((PawsDouble*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(a && b));
+			const auto b = ((PawsDouble*)runtime.result)->get();
+			runtime.result = new PawsDouble(a && b);
 			return false;
 		}
 
@@ -392,16 +392,16 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const auto a = ((PawsDouble*)runtime.result.value)->get();
+			const auto a = ((PawsDouble*)runtime.result)->get();
 			if (a)
 			{
-				runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(1));
+				runtime.result = new PawsDouble(1);
 				return false;
 			}
 			if (params[1]->run(runtime))
 				return true;
-			const auto b = ((PawsDouble*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(a || b));
+			const auto b = ((PawsDouble*)runtime.result)->get();
+			runtime.result = new PawsDouble(a || b);
 			return false;
 		}
 

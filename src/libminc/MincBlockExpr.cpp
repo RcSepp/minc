@@ -80,10 +80,7 @@ public:
 	StaticExprKernel(RunBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		if (cbk(runtime, params, exprArgs))
-			return true;
-		runtime.result.type = type;
-		return false;
+		return cbk(runtime, params, exprArgs);
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -127,7 +124,7 @@ public:
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		runtime.result = MincSymbol(type, value);
+		runtime.result = value;
 		return false;
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -141,14 +138,13 @@ private:
 	BuildBlock cbk;
 	ExprTypeBlock typecbk;
 	void* exprArgs;
-	MincSymbol symbol;
+	MincObject* const value;
 public:
-	StaticExprKernel4(BuildBlock cbk, ExprTypeBlock typecbk, void* exprArgs) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
-	StaticExprKernel4(BuildBlock cbk, ExprTypeBlock typecbk, void* exprArgs, MincSymbol symbol) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs), symbol(symbol) {}
+	StaticExprKernel4(BuildBlock cbk, ExprTypeBlock typecbk, void* exprArgs, MincObject* value=nullptr) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs), value(value) {}
 	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 	{
 		cbk(buildtime, params, exprArgs);
-		return new StaticExprKernel4(cbk, typecbk, exprArgs, buildtime.result);
+		return new StaticExprKernel4(cbk, typecbk, exprArgs, buildtime.result.value);
 	}
 	void dispose(MincKernel* kernel)
 	{
@@ -156,7 +152,7 @@ public:
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		runtime.result = symbol;
+		runtime.result = value;
 		return false;
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -181,10 +177,7 @@ public:
 	}
 	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	{
-		if (runCbk(runtime, params, exprArgs))
-			return true;
-		runtime.result.type = type;
-		return false;
+		return runCbk(runtime, params, exprArgs);
 	}
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 	{
@@ -227,10 +220,7 @@ MincKernel* MincOpaqueCastKernel::build(MincBuildtime& buildtime, std::vector<Mi
 }
 bool MincOpaqueCastKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 {
-	if (params[0]->run(runtime))
-		return true;
-	runtime.result.type = type;
-	return false;
+	return params[0]->run(runtime);
 }
 MincObject* MincOpaqueCastKernel::getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 {
@@ -362,10 +352,7 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, 
 		virtual ~ExprKernel() {}
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if (runCbk(runtime, params))
-				return true;
-			runtime.result.type = type;
-			return false;
+			return runCbk(runtime, params);
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
@@ -969,7 +956,7 @@ bool MincEnteredBlockExpr::run()
 	block->isBusy = false;
 	block->isResuming = false;
 	runtime.resume = false;
-	runtime.result = VOID;
+	runtime.result = VOID.value;
 	return false;
 }
 

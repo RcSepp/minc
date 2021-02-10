@@ -36,11 +36,11 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			PawsString* self = (PawsString*)runtime.result.value;
+			PawsString* self = (PawsString*)runtime.result;
 			if (params[1]->run(runtime))
 				return true;
-			self->get() += ((PawsString*)runtime.result.value)->get();
-			runtime.result.value = self; // result.type is already PawsString::TYPE
+			self->get() += ((PawsString*)runtime.result)->get();
+			runtime.result = self; // result.type is already PawsString::TYPE
 			return false;
 		}
 
@@ -153,7 +153,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[1]->run(runtime))
 				return true;
-			PawsString* str = (PawsString*)runtime.result.value;
+			PawsString* str = (PawsString*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsString* iter = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, iterId);
 			PawsString::TYPE->allocTo(iter);
@@ -195,12 +195,12 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 			{
 				if (keys[i]->run(runtime))
 					return true;
-				const std::string& key = ((PawsString*)runtime.result.value)->get();
+				const std::string& key = ((PawsString*)runtime.result)->get();
 				if (values[i]->run(runtime))
 					return true;
-				map[key] = ((PawsString*)runtime.result.value)->get();
+				map[key] = ((PawsString*)runtime.result)->get();
 			}
-			runtime.result = MincSymbol(PawsStringMap::TYPE, new PawsStringMap(map));
+			runtime.result = new PawsStringMap(map);
 			return false;
 		}
 
@@ -255,7 +255,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[2]->run(runtime))
 				return true;
-			PawsStringMap* map = (PawsStringMap*)runtime.result.value;
+			PawsStringMap* map = (PawsStringMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
 			PawsString* key = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, keyId);
 			PawsString* value = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, valueId);

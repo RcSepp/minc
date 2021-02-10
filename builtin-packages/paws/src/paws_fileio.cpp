@@ -34,10 +34,10 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[1]->run(runtime))
 				return true;
-			const std::string& filename = ((PawsString*)runtime.result.value)->get();
+			const std::string& filename = ((PawsString*)runtime.result)->get();
 			if (params[2]->run(runtime))
 				return true;
-			const std::string& mode = ((PawsString*)runtime.result.value)->get();
+			const std::string& mode = ((PawsString*)runtime.result)->get();
 			MincBlockExpr* block = (MincBlockExpr*)params[3];
 
 			std::ios_base::openmode openmode = (std::ios_base::openmode)0;

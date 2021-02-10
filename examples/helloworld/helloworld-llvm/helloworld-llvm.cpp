@@ -194,7 +194,7 @@ public:
 						glob,
 						{ builder->getInt64(0), builder->getInt64(0) }
 					);
-					runtime.result = MincSymbol(&STRING_TYPE, new Object(value));
+					runtime.result = new Object(value);
 				}
 				else
 					raiseCompileError("Non-string literals not implemented", params[0]);
@@ -216,7 +216,7 @@ public:
 			[&](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
 				if (params[0]->run(runtime))
 					return true;
-				Object* const message = (Object*)runtime.result.value;
+				Object* const message = (Object*)runtime.result;
 				builder->CreateCall(printfFunction, { fromLlvmString, message->value });
 				std::cout << "( compiled print statement )\n";
 				return false;

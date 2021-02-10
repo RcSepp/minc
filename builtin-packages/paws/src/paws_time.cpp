@@ -125,7 +125,7 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const std::string& taskName = ((PawsString*)runtime.result.value)->get();
+			const std::string& taskName = ((PawsString*)runtime.result)->get();
 			MincExpr* stmt = params[1];
 
 			// Measure runtime of stmt

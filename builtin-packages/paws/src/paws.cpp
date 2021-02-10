@@ -107,7 +107,8 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 		{
 			bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 			{
-				runtime.result = MincSymbol(&PAWS_RETURN_TYPE, nullptr);
+				runtime.exceptionType = &PAWS_RETURN_TYPE;
+				runtime.result = nullptr;
 				return true;
 			}
 
@@ -154,7 +155,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 			{
 				if (params[0]->run(runtime))
 					return true;
-				runtime.result.type = &PAWS_RETURN_TYPE;
+				runtime.exceptionType = &PAWS_RETURN_TYPE;
 				return true;
 			}
 
@@ -365,9 +366,9 @@ MincKernel* PawsKernel::build(MincBuildtime& buildtime, std::vector<MincExpr*>& 
 	MincRuntime runtime(body->parent, false);
 	if (body->run(runtime))
 	{
-		if (runtime.result.type != &PAWS_RETURN_TYPE)
+		if (runtime.exceptionType != &PAWS_RETURN_TYPE)
 			throw runtime.result;
-		instanceKernel->buildResult = runtime.result.value;
+		instanceKernel->buildResult = runtime.result;
 		instanceKernel->hasBuildResult = true;
 		return instanceKernel;
 	}
@@ -385,8 +386,7 @@ bool PawsKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 {
 	if (hasBuildResult)
 	{
-		runtime.result.type = type;
-		runtime.result.value = buildResult;
+		runtime.result = buildResult;
 		return false;
 	}
 
@@ -396,16 +396,11 @@ bool PawsKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 	// Execute expression code block
 	runtime.parentBlock = body->parent;
 	if (body->run(runtime))
-	{
-		if (runtime.result.type != &PAWS_RETURN_TYPE)
-			return true;
-		runtime.result.type = type;
-		return false;
-	}
+		return runtime.exceptionType != &PAWS_RETURN_TYPE;
 
 	if (type != getVoid().type && type != PawsVoid::TYPE)
 		throw CompileError(runtime.parentBlock, body->loc, "missing return statement in expression block");
-	runtime.result = getVoid();
+	runtime.result = getVoid().value;
 	return false;
 }
 
@@ -510,7 +505,6 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			return params[0]->run(runtime);
-			return false;
 		}
 
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -594,8 +588,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			runtime.result.type = symbol.type;
-			runtime.result.value = symbol.value;
+			runtime.result = symbol.value;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -634,8 +627,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			MincObject* value = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
-			runtime.result = MincSymbol(stackSymbol->type, value);
+			runtime.result = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -690,7 +682,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			runtime.result = var;
+			runtime.result = var.value;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -743,8 +735,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 				return true;
 
 			MincObject* value = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
-			((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, value);
-			runtime.result.value = value;
+			((PawsType*)stackSymbol->type)->copyToNew(runtime.result, value);
+			runtime.result = value;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -827,11 +819,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const MincObject* a = runtime.result.value;
+			const MincObject* a = runtime.result;
 			if (params[1]->run(runtime))
 				return true;
-			const MincObject* b = runtime.result.value;
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a == b));
+			const MincObject* b = runtime.result;
+			runtime.result = new PawsInt(a == b);
 			return false;
 		}
 
@@ -855,11 +847,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const MincObject* a = runtime.result.value;
+			const MincObject* a = runtime.result;
 			if (params[1]->run(runtime))
 				return true;
-			const MincObject* b = runtime.result.value;
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(a != b));
+			const MincObject* b = runtime.result;
+			runtime.result = new PawsInt(a != b);
 			return false;
 		}
 
@@ -884,7 +876,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const PawsInt* condition = (PawsInt*)runtime.result.value;
+			const PawsInt* condition = (PawsInt*)runtime.result;
 			return condition->get() ? params[1]->run(runtime) : false;
 		}
 
@@ -910,7 +902,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const PawsInt* condition = (PawsInt*)runtime.result.value;
+			const PawsInt* condition = (PawsInt*)runtime.result;
 			return params[condition->get() ? 1 : 2]->run(runtime);
 		}
 
@@ -939,7 +931,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			const PawsInt* condition = (PawsInt*)runtime.result.value;
+			const PawsInt* condition = (PawsInt*)runtime.result;
 			return params[condition->get() ? 1 : 2]->run(runtime);
 		}
 
@@ -970,7 +962,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (params[0]->run(runtime))
 				return true;
 
-			while (((PawsInt*)runtime.result.value)->get())
+			while (((PawsInt*)runtime.result)->get())
 			{
 				// Run loop block
 				if (params[1]->run(runtime))
@@ -1052,7 +1044,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (params[1]->run(runtime))
 				return true;
 
-			while (((PawsInt*)runtime.result.value)->get())
+			while (((PawsInt*)runtime.result)->get())
 			{
 				// Run loop block in parent scope
 				runtime.parentBlock = parentBlock;
@@ -1078,29 +1070,36 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	};
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("for($E; $D; $D) $B"), new ForKernel());
 
-	struct StringConversionKernel : public MincKernel
+	class StringConversionKernel : public MincKernel
 	{
+		PawsType* const valueType;
+	public:
+		StringConversionKernel(PawsType* valueType=nullptr) : valueType(valueType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
-			params[0]->build(buildtime);
-			return this;
+			(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime);
+			return new StringConversionKernel((PawsType*)params[0]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			if(((MincCastExpr*)params[0])->getDerivedExpr()->run(runtime))
+			if(params[0]->run(runtime))
 				return true;
-			const MincSymbol& symbol = runtime.result;
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			if (symbol.value == getErrorType())
-				runtime.result = MincSymbol(PawsString::TYPE, new PawsString("ERROR"));
-			else if (symbol.type == PawsString::TYPE)
-				runtime.result = MincSymbol(PawsString::TYPE, new PawsString(((PawsString*)symbol.value)->get()));
-			else if (symbol.value != nullptr)
-				runtime.result = MincSymbol(PawsString::TYPE, new PawsString(((PawsType*)symbol.type)->toString((PawsBase*)symbol.value)));
+			if (runtime.result == getErrorType())
+				runtime.result = new PawsString("ERROR");
+			else if (valueType == PawsString::TYPE)
+				runtime.result = new PawsString(((PawsString*)runtime.result)->get());
+			else if (runtime.result != nullptr)
+				runtime.result = new PawsString(valueType->toString((PawsBase*)runtime.result));
 			else
-				runtime.result = MincSymbol(PawsString::TYPE, new PawsString("NULL"));
+				runtime.result = new PawsString("NULL");
 			return false;
 		}
 
@@ -1117,31 +1116,38 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	struct ParameterizedPrintKernel : public MincKernel
+	class ParameterizedPrintKernel : public MincKernel
 	{
+		PawsType* const valueType;
+	public:
+		ParameterizedPrintKernel(PawsType* valueType=nullptr) : valueType(valueType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime);
-			return this;
+			return new ParameterizedPrintKernel((PawsType*)params[0]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if(params[0]->run(runtime))
 				return true;
-			const MincSymbol& symbol = runtime.result;
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			if (symbol.value == getErrorType())
+			if (runtime.result == getErrorType())
 				std::cout << "ERROR\n";
-			else if (symbol.type == PawsString::TYPE)
-				std::cout << ((PawsString*)symbol.value)->get() << '\n';
-			else if (symbol.value != nullptr)
-				std::cout << ((PawsType*)symbol.type)->toString((PawsBase*)symbol.value) << '\n';
+			else if (valueType == PawsString::TYPE)
+				std::cout << ((PawsString*)runtime.result)->get() << '\n';
+			else if (runtime.result != nullptr)
+				std::cout << valueType->toString((PawsBase*)runtime.result) << '\n';
 			else
 				std::cout << "NULL\n";
 
-			runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+			runtime.result = nullptr;
 			return false;
 		}
 
@@ -1179,31 +1185,38 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	struct ParameterizedPrintErrKernel : public MincKernel
+	class ParameterizedPrintErrKernel : public MincKernel
 	{
+		PawsType* const valueType;
+	public:
+		ParameterizedPrintErrKernel(PawsType* valueType=nullptr) : valueType(valueType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime);
-			return this;
+			return new ParameterizedPrintErrKernel((PawsType*)params[0]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if(params[0]->run(runtime))
 				return true;
-			const MincSymbol& symbol = runtime.result;
 
 			// Do not use PawsString::toString(), because it surrounds the value string with quotes
-			if (symbol.value == getErrorType())
+			if (runtime.result == getErrorType())
 				std::cerr << "ERROR\n";
-			else if (symbol.type == PawsString::TYPE)
-				std::cerr << ((PawsString*)symbol.value)->get() << '\n';
-			else if (symbol.value != nullptr)
-				std::cerr << ((PawsType*)symbol.type)->toString((PawsBase*)symbol.value) << '\n';
+			else if (valueType == PawsString::TYPE)
+				std::cerr << ((PawsString*)runtime.result)->get() << '\n';
+			else if (runtime.result != nullptr)
+				std::cerr << valueType->toString((PawsBase*)runtime.result) << '\n';
 			else
 				std::cerr << "NULL\n";
 
-			runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+			runtime.result = nullptr;
 			return false;
 		}
 
@@ -1233,8 +1246,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			runtime.result.type = symbol.type;
-			runtime.result.value = symbol.value;
+			runtime.result = symbol.value;
 			return false;
 		}
 
@@ -1258,11 +1270,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			MincObject* fromType = runtime.result.value;
+			MincObject* fromType = runtime.result;
 			if (params[1]->run(runtime))
 				return true;
-			MincObject* toType = runtime.result.value;
-			runtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(runtime.parentBlock->isInstance(fromType, toType) != 0));
+			MincObject* toType = runtime.result;
+			runtime.result = new PawsInt(runtime.parentBlock->isInstance(fromType, toType) != 0);
 			return false;
 		}
 
@@ -1292,8 +1304,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			runtime.result.type = symbol.type;
-			runtime.result.value = symbol.value;
+			runtime.result = symbol.value;
 			return false;
 		}
 
@@ -1346,8 +1357,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			PawsType* returnType = (PawsType*)runtime.result.value;
-			runtime.result = MincSymbol(PawsType::TYPE, PawsTpltType::get(runtime.parentBlock, PawsExpr::TYPE, returnType));
+			PawsType* returnType = (PawsType*)runtime.result;
+			runtime.result = PawsTpltType::get(runtime.parentBlock, PawsExpr::TYPE, returnType);
 			return false;
 		}
 
@@ -1370,8 +1381,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			PawsType* returnType = (PawsType*)runtime.result.value;
-			runtime.result = MincSymbol(PawsType::TYPE, PawsTpltType::get(runtime.parentBlock, PawsValue<const MincExpr*>::TYPE, returnType));
+			PawsType* returnType = (PawsType*)runtime.result;
+			runtime.result = PawsTpltType::get(runtime.parentBlock, PawsValue<const MincExpr*>::TYPE, returnType);
 			return false;
 		}
 
@@ -1439,11 +1450,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			MincExpr* expr = ((PawsExpr*)runtime.result.value)->get();
+			MincExpr* expr = ((PawsExpr*)runtime.result)->get();
 			if (params[1]->run(runtime))
 				return true;
-			MincBlockExpr* scope = ((PawsBlockExpr*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsType::TYPE, expr->getType(scope));
+			MincBlockExpr* scope = ((PawsBlockExpr*)runtime.result)->get();
+			runtime.result = expr->getType(scope);
 			return false;
 		}
 
@@ -1470,15 +1481,15 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			PawsType* paramType = (PawsType*)param->getType(runtime.parentBlock);
 			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
 			{
-				runtime.result = MincSymbol(PawsType::TYPE, PawsVoid::TYPE);
+				runtime.result = PawsVoid::TYPE;
 				return false;
 			}
 
 			if (params[0]->run(runtime))
 				return true;
-			const MincExpr* expr = ((PawsValue<const MincExpr*>*)runtime.result.value)->get();
+			const MincExpr* expr = ((PawsValue<const MincExpr*>*)runtime.result)->get();
 			MincBlockExpr* scope = runtime.parentBlock->parent;
-			runtime.result = MincSymbol(PawsType::TYPE, expr->getType(scope));
+			runtime.result = expr->getType(scope);
 			return false;
 		}
 
@@ -1502,11 +1513,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if (params[0]->run(runtime))
 				return true;
-			MincExpr* expr = ((PawsExpr*)runtime.result.value)->get();
+			MincExpr* expr = ((PawsExpr*)runtime.result)->get();
 			MincBlockExpr* scope = getKernelFromUserData(runtime.parentBlock)->callerScope;
 			MincBuildtime buildtime = { scope };
 			expr->build(buildtime);
-			runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+			runtime.result = nullptr;
 			return false;
 		}
 
@@ -1536,15 +1547,15 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 			if (params[0]->run(runtime))
 				return true;
-			MincExpr* expr = ((PawsExpr*)runtime.result.value)->get();
+			MincExpr* expr = ((PawsExpr*)runtime.result)->get();
 			if (params[1]->run(runtime))
 				return true;
-			runtime.parentBlock = ((PawsBlockExpr*)runtime.result.value)->get();
+			runtime.parentBlock = ((PawsBlockExpr*)runtime.result)->get();
 			if (expr->run(runtime))
 				return true;
 
 			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
-				runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+				runtime.result = nullptr;
 			// Else, runtime.result is result of expr->run(runtime)
 
 			return false;
@@ -1580,13 +1591,13 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			
 			if (params[0]->run(runtime))
 				return true;
-			MincExpr* expr = ((PawsExpr*)runtime.result.value)->get();
+			MincExpr* expr = ((PawsExpr*)runtime.result)->get();
 			runtime.parentBlock = getKernelFromUserData(runtime.parentBlock)->callerScope;
 			if (expr->run(runtime))
 				return true;
 
 			if (paramType == PawsExpr::TYPE || paramType == PawsLiteralExpr::TYPE || paramType == PawsIdExpr::TYPE || paramType == PawsBlockExpr::TYPE)
-				runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+				runtime.result = nullptr;
 			// Else, runtime.result is result of expr->run(runtime)
 
 			return false;
@@ -1665,7 +1676,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
 			if(params[1]->run(runtime))
 				return true;
-			const std::vector<MincBlockExpr*>& exprs = ((PawsConstBlockExprList*)runtime.result.value)->get();
+			const std::vector<MincBlockExpr*>& exprs = ((PawsConstBlockExprList*)runtime.result)->get();
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsBlockExpr iter;
 			body->defineSymbol(iterExpr->name, PawsBlockExpr::TYPE, &iter);
@@ -1697,25 +1708,32 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
-	struct ExprListGetterKernel : public MincKernel
+	class ExprListGetterKernel : public MincKernel
 	{
+		PawsTpltType* const exprListType;
+	public:
+		ExprListGetterKernel(PawsTpltType* exprListType=nullptr) : exprListType(exprListType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime);
 			params[1]->build(buildtime);
-			return this;
+			return new ExprListGetterKernel((PawsTpltType*)params[0]->getType(buildtime.parentBlock));
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if(params[0]->run(runtime))
 				return true;
-			PawsTpltType* exprsType = (PawsTpltType*)runtime.result.type;
-			MincListExpr* exprs = ((PawsListExpr*)runtime.result.value)->get();
+			MincListExpr* exprs = ((PawsListExpr*)runtime.result)->get();
 			if(params[1]->run(runtime))
 				return true;
-			int idx = ((PawsInt*)runtime.result.value)->get();
-			runtime.result = MincSymbol(exprsType->tpltType, new PawsExpr(exprs->exprs[idx]));
+			int idx = ((PawsInt*)runtime.result)->get();
+			runtime.result = new PawsExpr(exprs->exprs[idx]);
 			return false;
 		}
 
@@ -1726,8 +1744,12 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	};
 	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$E<PawsListExpr>[$E<PawsInt>]")[0], new ExprListGetterKernel());
 
-	struct ListExprIteratorKernel : public MincKernel
+	class ListExprIteratorKernel : public MincKernel
 	{
+		PawsType* const exprType;
+	public:
+		ListExprIteratorKernel(PawsType* exprType=nullptr) : exprType(exprType) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
@@ -1736,7 +1758,11 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			body->defineSymbol(iterExpr->name, exprType, nullptr);
 			body->build(buildtime);
-			return this;
+			return new ListExprIteratorKernel(exprType);
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
@@ -1745,8 +1771,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			MincIdExpr* iterExpr = (MincIdExpr*)params[0];
 			if(params[1]->run(runtime))
 				return true;
-			MincListExpr* exprs = ((PawsListExpr*)runtime.result.value)->get();
-			PawsType* exprType = ((PawsTpltType*)runtime.result.type)->tpltType;
+			MincListExpr* exprs = ((PawsListExpr*)runtime.result)->get();
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
 			PawsExpr iter;
 			body->defineSymbol(iterExpr->name, exprType, &iter);
@@ -1784,13 +1809,13 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		{
 			if(params[0]->run(runtime))
 				return true;
-			const std::string& path = ((PawsString*)runtime.result.value)->get();
+			const std::string& path = ((PawsString*)runtime.result)->get();
 			char* realPath = realpath(path.c_str(), nullptr);
 			if (realPath == nullptr)
 				throw CompileError(runtime.parentBlock, params[0]->loc, "%S: No such file or directory", path);
 			PawsString* realPathStr = new PawsString(realPath);
 			free(realPath);
-			runtime.result = MincSymbol(PawsString::TYPE, realPathStr);
+			runtime.result = realPathStr;
 			return false;
 		}
 
@@ -1839,13 +1864,17 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			(params[0] = ((MincCastExpr*)params[0])->getDerivedExpr())->build(buildtime);
 			return this;
 		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
+		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if(params[0]->run(runtime))
 				return true;
-			MincObject* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)runtime.result.value)->get());
-			runtime.result = MincSymbol(((PawsType*)runtime.result.type)->ptrType, ptr);
+			MincObject* ptr = new PawsValue<uint8_t*>(&((PawsValue<uint8_t>*)runtime.result)->get());
+			runtime.result = ptr;
 			return false;
 		}
 

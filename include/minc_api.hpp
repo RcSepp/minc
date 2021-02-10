@@ -258,7 +258,7 @@ public:
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
 #ifdef CACHE_RESULTS
-	std::vector<std::pair<MincSymbol, bool>> resultCache;
+	std::vector<std::pair<MincObject*, bool>> resultCache;
 #endif
 	size_t resultCacheIdx;
 	bool isBlockSuspended, isStmtSuspended, isExprSuspended, isResuming;

@@ -450,15 +450,15 @@ bool FrameInstance::resume(MincRuntime* runtime, MincSymbol& result, bool& done)
 	runtime->heapFrame = &heapFrame; // Assign heap frame
 	if (frame->body->run(*runtime))
 	{
-		if (runtime->result.type == &PAWS_RETURN_TYPE)
+		if (runtime->exceptionType == &PAWS_RETURN_TYPE)
 		{
 			result.value = frame->returnType->alloc();
-			frame->returnType->copyTo(runtime->result.value, result.value);
+			frame->returnType->copyTo(runtime->result, result.value);
 			result.type = frame->returnType;
 			done = true;
 			return false;
 		}
-		else if (runtime->result.type == &PAWS_AWAIT_TYPE)
+		else if (runtime->exceptionType == &PAWS_AWAIT_TYPE)
 		{
 			suspended = true;
 			done = false;
@@ -525,10 +525,10 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if(args[0]->run(runtime))
 				return true;
-			double duration = ((PawsDouble*)runtime.result.value)->get();
+			double duration = ((PawsDouble*)runtime.result)->get();
 			SingleshotAwaitableInstance* sleepInstance = new SingleshotAwaitableInstance();
 			((EventPool*)funcArgs)->post(std::bind(&SingleshotAwaitableInstance::wakeup, sleepInstance, &runtime, MincSymbol(PawsVoid::TYPE, nullptr)), duration);
-			runtime.result = MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(sleepInstance));
+			runtime.result = new PawsAwaitableInstance(sleepInstance);
 			return false;
 		}, eventPool
 	);
@@ -555,8 +555,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
-			runtime.result.type = symbol.type;
-			runtime.result.value = symbol.value;
+			runtime.result = symbol.value;
 			return false;
 		}
 
@@ -580,7 +579,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			runtime.result = MincSymbol(PawsType::TYPE, Event::get((PawsType*)runtime.result.value));
+			runtime.result = Event::get((PawsType*)runtime.result);
 			return false;
 		}
 
@@ -732,18 +731,22 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				{
 					if (params[0]->run(runtime))
 						return true;
-					AwaitableInstance* blocker = ((PawsAwaitableInstance*)runtime.result.value)->get();
+					AwaitableInstance* blocker = ((PawsAwaitableInstance*)runtime.result)->get();
 					MincBlockExpr* instance = runtime.parentBlock;
 					while (instance->userType != &FRAME_INSTANCE_ID)
 						instance = instance->parent;
-					if (blocker->awaitResult(&runtime, (FrameInstance*)instance->user, runtime.result))
+					MincSymbol result(PawsAwaitableInstance::TYPE, nullptr);
+					if (blocker->awaitResult(&runtime, (FrameInstance*)instance->user, result))
+					{
+						runtime.result = result.value;
 						return false;
+					}
 					else
 					{
-						runtime.result = MincSymbol(&PAWS_AWAIT_TYPE, nullptr);
+						runtime.exceptionType = &PAWS_AWAIT_TYPE;
+						runtime.result = nullptr;
 						return true;
 					}
-					return false;
 				}
 
 				MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -837,7 +840,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			Frame* frame = (Frame*)runtime.result.value;
+			Frame* frame = (Frame*)runtime.result;
 			std::vector<MincExpr*>& argExprs = ((MincListExpr*)params[1])->exprs;
 
 			// Instantiate frame
@@ -851,9 +854,8 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				if (argExprs[i]->run(runtime))
 					return true;
-				assert(frame->args[i]->type == runtime.result.type);
 				MincObject* var = frame->body->getStackSymbol(runtime, frame->args[i]);
-				((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
+				((PawsType*)frame->args[i]->type)->copyToNew(runtime.result, var);
 			}
 
 			// Initialize and assign frame variables in frame instance
@@ -862,16 +864,15 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				if (pair.second.initExpr->run(runtime))
 					return true;
-				assert(pair.second.symbol->type == runtime.result.type);
 				MincObject* var = frame->body->getStackSymbol(runtime, pair.second.symbol);
-				((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
+				((PawsType*)pair.second.symbol->type)->copyToNew(runtime.result, var);
 				instance->variables[pair.first] = var;
 			}
 
 			// Call frame
 			eventPool->post(std::bind(&FrameInstance::wakeup, instance, &runtime, MincSymbol(PawsVoid::TYPE, nullptr)), 0.0f);
 
-			runtime.result = MincSymbol(frame, new PawsFrameInstance(instance));
+			runtime.result = new PawsFrameInstance(instance);
 			return false;
 		}
 
@@ -885,30 +886,36 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$E<PawsFrame>($E, ...)")[0], new FrameCallKernel(eventPool));
 
 	// Define frame member getter
-	struct FrameMemberGetterKernel : public MincKernel
+	class FrameMemberGetterKernel : public MincKernel
 	{
+		Frame* const frame;
+	public:
+		FrameMemberGetterKernel(Frame* frame=nullptr) : frame(frame) {}
+
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			(params[0] = ((MincCastExpr*)params[0])->getSourceExpr())->build(buildtime);
-			Frame* strct = (Frame*)params[0]->getType(buildtime.parentBlock);
+			Frame* frame = (Frame*)params[0]->getType(buildtime.parentBlock);
 			const std::string& memberName = ((MincIdExpr*)params[1])->name;
 
-			auto variable = strct->variables.find(memberName);
-			if (variable == strct->variables.end())
-				throw CompileError(buildtime.parentBlock, params[1]->loc, "no member named '%S' in '%S'", memberName, strct->name);
-			return this;
+			auto variable = frame->variables.find(memberName);
+			if (variable == frame->variables.end())
+				throw CompileError(buildtime.parentBlock, params[1]->loc, "no member named '%S' in '%S'", memberName, frame->name);
+			return new FrameMemberGetterKernel(frame);
+		}
+		void dispose(MincKernel* kernel)
+		{
+			delete kernel;
 		}
 
 		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			Frame* strct = (Frame*)runtime.result.type;
-			FrameInstance* instance = ((PawsFrameInstance*)runtime.result.value)->get();
+			FrameInstance* instance = ((PawsFrameInstance*)runtime.result)->get();
 			const std::string& memberName = ((MincIdExpr*)params[1])->name;
 
-			auto variable = strct->variables.find(memberName);
-			runtime.result = MincSymbol(variable->second.symbol->type, instance->variables[memberName]);
+			runtime.result = instance->variables[memberName];
 			return false;
 		}
 
@@ -940,11 +947,11 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			AwaitableInstance* a = ((PawsAwaitableInstance*)runtime.result.value)->get();
+			AwaitableInstance* a = ((PawsAwaitableInstance*)runtime.result)->get();
 			if (params[1]->run(runtime))
 				return true;
-			AwaitableInstance* b = ((PawsAwaitableInstance*)runtime.result.value)->get();
-			runtime.result = MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new AnyAwaitableInstance(&runtime, a, b)));
+			AwaitableInstance* b = ((PawsAwaitableInstance*)runtime.result)->get();
+			runtime.result = new PawsAwaitableInstance(new AnyAwaitableInstance(&runtime, a, b));
 			return false;
 		}
 
@@ -968,11 +975,11 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			AwaitableInstance* a = ((PawsAwaitableInstance*)runtime.result.value)->get();
+			AwaitableInstance* a = ((PawsAwaitableInstance*)runtime.result)->get();
 			if (params[1]->run(runtime))
 				return true;
-			AwaitableInstance* b = ((PawsAwaitableInstance*)runtime.result.value)->get();
-			runtime.result = MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(new AllAwaitableInstance(&runtime, a, b)));
+			AwaitableInstance* b = ((PawsAwaitableInstance*)runtime.result)->get();
+			runtime.result = new PawsAwaitableInstance(new AllAwaitableInstance(&runtime, a, b));
 			return false;
 		}
 
@@ -1000,14 +1007,15 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			AwaitableInstance* blocker = ((PawsAwaitableInstance*)runtime.result.value)->get();
-			runtime.result = MincSymbol(PawsVoid::TYPE, nullptr);
+			AwaitableInstance* blocker = ((PawsAwaitableInstance*)runtime.result)->get();
+			MincSymbol result(PawsAwaitableInstance::TYPE, nullptr);
 
-			if (!blocker->awaitResult(&runtime, new TopLevelInstance(eventPool), runtime.result))
+			if (!blocker->awaitResult(&runtime, new TopLevelInstance(eventPool), result))
 			{
 				eventPool->run();
-				blocker->getResult(&runtime, &runtime.result);
+				blocker->getResult(&runtime, &result);
 			}
+			runtime.result = result.value;
 			return false;
 		}
 
@@ -1094,16 +1102,16 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 		{
 			if (params[0]->run(runtime))
 				return true;
-			EventInstance* const event = ((PawsEventInstance*)runtime.result.value)->get();
+			EventInstance* const event = ((PawsEventInstance*)runtime.result)->get();
 			MincExpr* argExpr = params[1];
 
 			// Invoke event
 			if (argExpr->run(runtime))
 				return true;
 			SingleshotAwaitableInstance* invokeInstance = new SingleshotAwaitableInstance();
-			eventPool->post(std::bind(&EventInstance::invoke, event, &runtime, invokeInstance, runtime.result.value), 0.0f);
+			eventPool->post(std::bind(&EventInstance::invoke, event, &runtime, invokeInstance, runtime.result), 0.0f);
 
-			runtime.result = MincSymbol(Awaitable::get(PawsVoid::TYPE), new PawsAwaitableInstance(invokeInstance));
+			runtime.result = new PawsAwaitableInstance(invokeInstance);
 			return false;
 		}
 

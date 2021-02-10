@@ -83,8 +83,7 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 			return true;
 		assert(args[i]->type == runtime.result.type);
 		MincObject* var = body->getStackSymbolOfNextStackFrame(runtime, args[i]);
-		((PawsType*)runtime.result.type)->allocTo(var);
-		((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
+		((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
 	}
 
 	runtime.parentBlock = body->parent;

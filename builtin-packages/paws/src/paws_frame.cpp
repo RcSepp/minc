@@ -853,8 +853,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					return true;
 				assert(frame->args[i]->type == runtime.result.type);
 				MincObject* var = frame->body->getStackSymbol(runtime, frame->args[i]);
-				((PawsType*)runtime.result.type)->allocTo(var);
-				((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
+				((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
 			}
 
 			// Initialize and assign frame variables in frame instance
@@ -865,8 +864,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					return true;
 				assert(pair.second.symbol->type == runtime.result.type);
 				MincObject* var = frame->body->getStackSymbol(runtime, pair.second.symbol);
-				((PawsType*)runtime.result.type)->allocTo(var);
-				((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
+				((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
 				instance->variables[pair.first] = var;
 			}
 

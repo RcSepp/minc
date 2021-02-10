@@ -743,8 +743,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 				return true;
 
 			MincObject* value = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
-			((PawsType*)runtime.result.type)->allocTo(value);
-			((PawsType*)runtime.result.type)->copyTo(runtime.result.value, value);
+			((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, value);
 			runtime.result.value = value;
 			return false;
 		}

@@ -97,8 +97,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 				if (runtime.parentBlock->isInstance(err.type, catchType))
 				{
 					MincObject* errValue = ((MincBlockExpr*)params[3])->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
-					((PawsType*)stackSymbol->type)->allocTo(errValue);
-					((PawsType*)stackSymbol->type)->copyTo(err.value, errValue);
+					((PawsType*)stackSymbol->type)->copyToNew(err.value, errValue);
 					return params[3]->run(runtime);
 				}
 				else

@@ -555,8 +555,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 						return true;
 					assert(runtime.result.type == pair.second.symbol->type);
 					MincObject* var = strct->body->getStackSymbol(runtime, pair.second.symbol);
-					((PawsType*)runtime.result.type)->allocTo(var);
-					((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
+					((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
 				}
 				if (strct->base != nullptr) //TODO: Create baseInstance within StructInstance
 				{
@@ -571,8 +570,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 							return true;
 						assert(runtime.result.type == pair.second.symbol->type);
 						MincObject* var = strct->body->getStackSymbol(runtime, pair.second.symbol);
-						((PawsType*)runtime.result.type)->allocTo(var);
-						((PawsType*)runtime.result.type)->copyTo(runtime.result.value, var);
+						((PawsType*)runtime.result.type)->copyToNew(runtime.result.value, var);
 					}
 				}
 				runtime.heapFrame = &instance->heapFrame; // Assign heap frame

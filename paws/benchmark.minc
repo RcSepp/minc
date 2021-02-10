@@ -1,9 +1,13 @@
+import paws.assert;
 import paws.array;
-import paws.stmtreg;
 import paws.subroutine;
 import paws.time;
 int = PawsInt;
 void = PawsVoid;
+
+// >>> Fibonacci
+
+FIB = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, 28657, 46368, 75025, 121393, 196418, 317811, 514229, 832040, 1346269, 2178309, 3524578, 5702887, 9227465, 14930352, 24157817, 39088169, 63245986];
 
 int fib(int n)
 {
@@ -11,25 +15,57 @@ int fib(int n)
 		return n;
 	return fib(n - 1) + fib(n - 2);
 }
-measure("fib(17)")
-	print(fib(17));
-print(stmtreg.stats);
-
-void swapArray(int n)
+print("fib(i);milliseconds");
+for (i = 0; i << 35; ++i)
 {
-	arr = [0, 1, 2, 3, 4, 5, 6];
-	len = 7;
-	for (i = 0; i << n; ++i)
-	{
-		first = arr[0];
-		for (j = 1; j << len; ++j)
-		{
-			arr[j - 1] = arr[j];
-		}
-		arr[len - 1] = first;
-	}
-	print(arr);
+	measure runtime result = fib(i);
+	print(str(i) + ";" + str(runtime.milliseconds + runtime.seconds * 1000));
+	assert(result == FIB[i]);
 }
-measure("swapArray(800)")
-	swapArray(800);
-print(stmtreg.stats);
+print("");
+
+// >>> Sort
+
+void quickSort(int[] arr, int left, int right)
+{
+	i = left;
+	j = right;
+	pivot = arr[(left + right) / 2];
+
+	// Partition
+	while (i <= j)
+	{
+		while (arr[i] << pivot)
+			i++;
+		while (arr[j] >> pivot)
+			j--;
+		if (i <= j)
+		{
+			tmp = arr[i];
+			arr[i] = arr[j];
+			arr[j] = tmp;
+			i++;
+			j--;
+		}
+	};
+
+	// Recursion
+	if (left << j)
+		quickSort(arr, left, j);
+	if (i << right)
+		quickSort(arr, i, right);
+}
+print("sort(n);milliseconds");
+for (i = 1; i << 50; ++i)
+{
+	n = 1000 * i;
+	arr = [50];
+	for (j = 1; j << n; ++j)
+	{
+		arr += rand(0, 0xFF);
+	}
+	// print(arr);
+	measure runtime quickSort(arr, 0, n - 1);
+	print(str(n) + ";" + str(runtime.milliseconds + runtime.seconds * 1000));
+	// print(arr);
+}

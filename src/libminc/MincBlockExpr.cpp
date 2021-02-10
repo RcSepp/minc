@@ -7,7 +7,6 @@
 const MincSymbol VOID = MincSymbol(new MincObject(), nullptr);
 MincBlockExpr* const rootBlock = new MincBlockExpr({0}, {});
 MincBlockExpr* fileBlock = nullptr;
-MincBlockExpr* topLevelBlock = nullptr;
 std::map<std::pair<MincScopeType*, MincScopeType*>, std::map<MincObject*, ImptBlock>> importRules;
 std::map<StepEvent, void*> stepEventListeners;
 
@@ -863,12 +862,8 @@ bool MincEnteredBlockExpr::run()
 
 	block->parent = runtime.parentBlock;
 
-	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
 	if (runtime.parentBlock == nullptr)
-	{
 		block->parent = rootBlock;
-		topLevelBlock = block;
-	}
 
 	MincBlockExpr* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
@@ -888,9 +883,6 @@ bool MincEnteredBlockExpr::run()
 				block->resultCacheIdx = 0;
 
 				runtime.parentBlock = block->parent; // Restore parent
-
-				if (topLevelBlock == block)
-					topLevelBlock = oldTopLevelBlock;
 
 				if (fileBlock == block)
 					fileBlock = oldFileBlock;
@@ -922,9 +914,6 @@ bool MincEnteredBlockExpr::run()
 
 		runtime.parentBlock = block->parent; // Restore parent
 
-		if (topLevelBlock == block)
-			topLevelBlock = oldTopLevelBlock;
-
 		if (fileBlock == block)
 			fileBlock = oldFileBlock;
 
@@ -941,9 +930,6 @@ bool MincEnteredBlockExpr::run()
 	}
 
 	runtime.parentBlock = block->parent; // Restore parent
-
-	if (topLevelBlock == block)
-		topLevelBlock = oldTopLevelBlock;
 
 	if (fileBlock == block)
 		fileBlock = oldFileBlock;
@@ -974,12 +960,8 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 	isBusy = true;
 	parent = buildtime.parentBlock;
 
-	MincBlockExpr* oldTopLevelBlock = topLevelBlock;
 	if (buildtime.parentBlock == nullptr)
-	{
 		parent = rootBlock;
-		topLevelBlock = this;
-	}
 
 	MincBlockExpr* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
@@ -1001,9 +983,6 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 
 	buildtime.parentBlock = parent; // Restore parent
 	isBusy = false;
-
-	if (topLevelBlock == this)
-		topLevelBlock = oldTopLevelBlock;
 
 	if (fileBlock == this)
 		fileBlock = oldFileBlock;

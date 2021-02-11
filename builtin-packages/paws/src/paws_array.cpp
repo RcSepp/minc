@@ -77,7 +77,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			std::vector<MincExpr*>& values = ((MincListExpr*)params[0])->exprs;
 			PawsArray* arr = new PawsArray(new std::vector<MincObject*>());
@@ -122,7 +122,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getDerivedExpr()->run(runtime))
 				return true;
@@ -178,7 +178,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getDerivedExpr()->run(runtime))
 				return true;
@@ -240,7 +240,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getDerivedExpr()->run(runtime))
 				return true;
@@ -277,7 +277,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			runtime.result = arrayType;
 			return false;
@@ -313,7 +313,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[1])->getDerivedExpr()->run(runtime))
 				return true;

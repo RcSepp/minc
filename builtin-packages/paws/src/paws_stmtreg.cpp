@@ -58,7 +58,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
@@ -114,7 +114,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -146,7 +146,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
@@ -201,7 +201,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -233,7 +233,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			MincIdExpr* keyExpr = (MincIdExpr*)params[0];
 			MincIdExpr* valueExpr = (MincIdExpr*)params[1];
@@ -277,7 +277,7 @@ MincPackage PAWS_STMTREG("paws.stmtreg", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;

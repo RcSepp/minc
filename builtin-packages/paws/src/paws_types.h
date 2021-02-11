@@ -309,8 +309,9 @@ protected:
 	MincObject* const type;
 	std::vector<MincSymbol> blockParams;
 public:
-	enum Phase { INIT, BUILD, RUN } phase, activePhase;
-	MincBlockExpr *callerScope;
+	enum Phase { INIT, BUILD, RUN } phase;
+	Phase activePhase;
+	const MincBlockExpr *callerScope;
 
 private:
 	bool hasBuildResult;
@@ -320,7 +321,7 @@ public:
 	PawsKernel(MincBlockExpr* body, MincObject* type, MincBuildtime& buildtime, const std::vector<MincSymbol>& blockParams);
 	MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params);
 	void dispose(MincKernel* kernel);
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params);
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params);
 	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 };
 
@@ -342,7 +343,7 @@ template<class P0> void defineStmt(MincBlockExpr* scope, const char* tpltStr, vo
 			params[0]->build(buildtime);
 			return this;
 		}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -369,7 +370,7 @@ template<class P0, class P1> void defineStmt(MincBlockExpr* scope, const char* t
 			params[1]->build(buildtime);
 			return this;
 		}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -399,7 +400,7 @@ template<class P0, class P1, class P2> void defineStmt(MincBlockExpr* scope, con
 			params[2]->build(buildtime);
 			return this;
 		}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -433,7 +434,7 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if constexpr (std::is_void<R>::value)
 			{
@@ -466,7 +467,7 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -502,7 +503,7 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -541,7 +542,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -583,7 +584,7 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -628,7 +629,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -676,7 +677,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -727,7 +728,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -781,7 +782,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -838,7 +839,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -898,7 +899,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -961,7 +962,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1027,7 +1028,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1096,7 +1097,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1168,7 +1169,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1243,7 +1244,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1321,7 +1322,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 			return new ExprKernel(exprFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1393,7 +1394,7 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1432,7 +1433,7 @@ template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* t
 			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1475,7 +1476,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 			return new ExprKernel(exprFunc, exprTypeFunc, buildtime.parentBlock->allocStackSymbol(type, type->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1519,7 +1520,7 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*castFu
 			return new CastKernel(castFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
@@ -1557,7 +1558,7 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 			return new CastKernel(castFunc, buildtime.parentBlock->allocStackSymbol(PawsValue<R>::TYPE, PawsValue<R>::TYPE->size));
 		}
 		void dispose(MincKernel* kernel) { delete kernel; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;

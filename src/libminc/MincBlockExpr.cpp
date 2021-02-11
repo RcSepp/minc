@@ -17,7 +17,7 @@ private:
 	void* stmtArgs;
 public:
 	StaticStmtKernel(RunBlock cbk, void* stmtArgs = nullptr) : cbk(cbk), stmtArgs(stmtArgs) {}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return cbk(runtime, params, stmtArgs);
 	}
@@ -38,7 +38,7 @@ public:
 		cbk(buildtime, params, stmtArgs);
 		return this;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return false;
 	}
@@ -60,7 +60,7 @@ public:
 		buildCbk(buildtime, params, stmtArgs);
 		return this;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return runCbk(runtime, params, stmtArgs);
 	}
@@ -77,7 +77,7 @@ private:
 	void* exprArgs;
 public:
 	StaticExprKernel(RunBlock cbk, MincObject* type, void* exprArgs = nullptr) : cbk(cbk), type(type), exprArgs(exprArgs) {}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return cbk(runtime, params, exprArgs);
 	}
@@ -94,7 +94,7 @@ private:
 	void* exprArgs;
 public:
 	StaticExprKernel2(RunBlock cbk, ExprTypeBlock typecbk, void* exprArgs = nullptr) : cbk(cbk), typecbk(typecbk), exprArgs(exprArgs) {}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return cbk(runtime, params, exprArgs);
 	}
@@ -121,7 +121,7 @@ public:
 	{
 		delete kernel;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		runtime.result = value;
 		return false;
@@ -149,7 +149,7 @@ public:
 	{
 		delete kernel;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		runtime.result = value;
 		return false;
@@ -174,7 +174,7 @@ public:
 		buildtime.result.type = type;
 		return this;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return runCbk(runtime, params, exprArgs);
 	}
@@ -197,7 +197,7 @@ public:
 		buildCbk(buildtime, params, exprArgs);
 		return this;
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		return runCbk(runtime, params, exprArgs);
 	}
@@ -217,7 +217,7 @@ MincKernel* MincOpaqueCastKernel::build(MincBuildtime& buildtime, std::vector<Mi
 	buildtime.result.type = type;
 	return this;
 }
-bool MincOpaqueCastKernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+bool MincOpaqueCastKernel::run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 {
 	return params[0]->run(runtime);
 }
@@ -248,18 +248,18 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* s
 	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
 }
 
-void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
 {
 	if (isBuilt())
 		throw CompileError("defining statement after block has been built", loc);
 
 	struct StmtKernel : public MincKernel
 	{
-		const std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> runCbk;
-		StmtKernel(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run)
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
+		StmtKernel(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
 			: runCbk(run) {}
 		virtual ~StmtKernel() {}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
 	defineStmt(tplt, new StmtKernel(run));
@@ -267,7 +267,7 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
 							   std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
-							   std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run)
+							   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
 {
 	if (isBuilt())
 		throw CompileError("defining statement after block has been built", loc);
@@ -275,13 +275,13 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
 	struct StmtKernel : public MincKernel
 	{
 		const std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> buildCbk;
-		const std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> runCbk;
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
 		StmtKernel(std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
-				   std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run)
+				   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
 			: buildCbk(build), runCbk(run) {}
 		virtual ~StmtKernel() {}
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { if (buildCbk != nullptr) buildCbk(buildtime, params); return this; }
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) { if (runCbk != nullptr) return runCbk(runtime, params); return false; }
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { if (runCbk != nullptr) return runCbk(runtime, params); return false; }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
 	defineStmt(tplt, new StmtKernel(build, run));
@@ -337,19 +337,19 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, MincKernel* expr)
 	// Until such a solution has been implemented, MincBlockExpr::lookupStmt() forgets future expressions after every resolved statement.
 }
 
-void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, MincObject* type)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincObject* type)
 {
 	if (isBuilt())
 		throw CompileError("defining expression after block has been built", loc);
 
 	struct ExprKernel : public MincKernel
 	{
-		const std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> runCbk;
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
 		MincObject* const type;
-		ExprKernel(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, MincObject* type)
+		ExprKernel(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincObject* type)
 			: runCbk(run), type(type) {}
 		virtual ~ExprKernel() {}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return runCbk(runtime, params);
 		}
@@ -361,19 +361,19 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, 
 	defineExpr(tplt, new ExprKernel(run, type));
 }
 
-void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 {
 	if (isBuilt())
 		throw CompileError("defining expression after block has been built", loc);
 
 	struct ExprKernel : public MincKernel
 	{
-		const std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> runCbk;
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
 		const std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getTypeCbk;
-		ExprKernel(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+		ExprKernel(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
 			: runCbk(run), getTypeCbk(getType) {}
 		virtual ~ExprKernel() {}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getTypeCbk(parentBlock, params); }
 	};
 	defineExpr(tplt, new ExprKernel(run, getType));
@@ -783,7 +783,7 @@ const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 	return nullptr;
 }
 
-MincEnteredBlockExpr::MincEnteredBlockExpr(MincRuntime& runtime, MincBlockExpr* block)
+MincEnteredBlockExpr::MincEnteredBlockExpr(MincRuntime& runtime, const MincBlockExpr* block)
 	: runtime(runtime), block(block), prevStackFrame(block->stackFrame) // Store previous stack frame
 {
 	if (block->isResumable) // If this is resumable block, ...
@@ -860,22 +860,13 @@ bool MincEnteredBlockExpr::run()
 	if (!block->isResumable)
 		block->stackFrame->stmtIndex = 0;
 
-	block->parent = runtime.parentBlock;
-
-	if (runtime.parentBlock == nullptr)
-		block->parent = rootBlock;
-
-	MincBlockExpr* oldFileBlock = fileBlock;
-	if (fileBlock == nullptr)
-		fileBlock = block;
-
 	try
 	{
 		const size_t numBuiltStmts = block->builtStmts.size();
 		for (; block->stackFrame->stmtIndex < numBuiltStmts; ++block->stackFrame->stmtIndex)
 		{
-			MincStmt& currentStmt = block->builtStmts.at(block->stackFrame->stmtIndex);
-			if (!currentStmt.isResolved() && !block->lookupStmt(currentStmt.begin, block->exprs->end(), currentStmt))
+			const MincStmt& currentStmt = block->builtStmts.at(block->stackFrame->stmtIndex);
+			if (!currentStmt.isResolved())
 				throw UndefinedStmtException(&currentStmt);
 			runtime.parentBlock = block; // Set parent of block expr statement to block expr
 			if (currentStmt.run(runtime))
@@ -884,14 +875,8 @@ bool MincEnteredBlockExpr::run()
 
 				runtime.parentBlock = block->parent; // Restore parent
 
-				if (fileBlock == block)
-					fileBlock = oldFileBlock;
-
 				block->isBlockSuspended = true;
 				raiseStepEvent(block, STEP_SUSPEND);
-
-				if (block->isVolatile)
-					block->forget();
 
 				block->isBusy = false;
 				block->isResuming = false;
@@ -914,14 +899,8 @@ bool MincEnteredBlockExpr::run()
 
 		runtime.parentBlock = block->parent; // Restore parent
 
-		if (fileBlock == block)
-			fileBlock = oldFileBlock;
-
 		block->isBlockSuspended = true;
 		raiseStepEvent(block, STEP_SUSPEND);
-
-		if (block->isVolatile)
-			block->forget();
 
 		block->isBusy = false;
 		block->isResuming = false;
@@ -931,13 +910,7 @@ bool MincEnteredBlockExpr::run()
 
 	runtime.parentBlock = block->parent; // Restore parent
 
-	if (fileBlock == block)
-		fileBlock = oldFileBlock;
-
 	raiseStepEvent(block, STEP_OUT);
-
-	if (block->isVolatile)
-		block->forget();
 
 	block->isBusy = false;
 	block->isResuming = false;
@@ -946,7 +919,7 @@ bool MincEnteredBlockExpr::run()
 	return false;
 }
 
-bool MincBlockExpr::run(MincRuntime& runtime)
+bool MincBlockExpr::run(MincRuntime& runtime) const
 {
 	MincEnteredBlockExpr entered(runtime, this);
 	return entered.run();
@@ -1066,7 +1039,7 @@ MincExpr* MincBlockExpr::clone() const
 	return clone;
 }
 
-void MincBlockExpr::reset()
+void MincBlockExpr::reset() const
 {
 #ifdef CACHE_RESULTS
 	resultCache.clear();
@@ -1077,7 +1050,7 @@ void MincBlockExpr::reset()
 	isExprSuspended = false;
 }
 
-void MincBlockExpr::clearCache(size_t targetSize)
+void MincBlockExpr::clearCache(size_t targetSize) const
 {
 #ifdef CACHE_RESULTS
 	if (targetSize > resultCache.size())

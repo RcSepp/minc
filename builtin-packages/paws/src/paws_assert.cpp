@@ -11,7 +11,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -36,7 +36,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 			throw CompileError(buildtime.parentBlock, params[0]->loc, "Assertion expression is undefined");
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -84,7 +84,7 @@ MincPackage PAWS_ASSERT("paws.assert", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (thrownDuringBuild)
 				return false;

@@ -31,7 +31,7 @@ MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -66,7 +66,7 @@ MincPackage PAWS_EXTEND("paws.extend", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}

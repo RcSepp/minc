@@ -71,8 +71,8 @@ struct MincStackFrame
 
 struct MincRuntime
 {
-	MincBlockExpr* parentBlock;
-	MincExpr* currentExpr;
+	const MincBlockExpr* parentBlock;
+	const MincExpr* currentExpr;
 	MincObject* result;
 	MincObject* exceptionType;
 	bool resume;
@@ -91,9 +91,9 @@ struct MincRuntime
 struct MincEnteredBlockExpr
 {
 	MincRuntime& runtime;
-	MincBlockExpr* block;
+	const MincBlockExpr* block;
 	MincStackFrame* const prevStackFrame;
-	MincEnteredBlockExpr(MincRuntime& runtime, MincBlockExpr* block);
+	MincEnteredBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
 	~MincEnteredBlockExpr();
 	bool run();
 	void exit();
@@ -104,7 +104,7 @@ struct MincKernel
 	virtual ~MincKernel() {}
 	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { return this; }
 	virtual void dispose(MincKernel* kernel) {}
-	virtual bool run(MincRuntime& runtime, std::vector<MincExpr*>& params) = 0;
+	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) = 0;
 	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };
 
@@ -171,7 +171,7 @@ struct InvalidTypeException : public CompileError
 };
 
 typedef void (*BuildBlock)(MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs);
-typedef bool (*RunBlock)(MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs);
+typedef bool (*RunBlock)(MincRuntime& runtime, const std::vector<MincExpr*>& params, void* exprArgs);
 typedef MincObject* (*ExprTypeBlock)(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params, void* exprArgs);
 typedef void (*ImptBlock)(MincSymbol& symbol, MincScopeType* fromScope, MincScopeType* toScope);
 typedef void (*StepEvent)(const MincExpr* loc, StepEventType type, void* eventArgs);

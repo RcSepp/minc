@@ -150,7 +150,7 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			if (!this->tryImportPackage(buildtime.parentBlock, pkgName))
 				throw CompileError("unknown package " + pkgName, params[0]->loc);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 
 	// Define import statement
@@ -166,7 +166,7 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			if (!this->tryImportPackage(buildtime.parentBlock, pkgName))
 				throw CompileError("unknown package " + pkgName, params[0]->loc);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 
 	// Define export statement
@@ -183,14 +183,14 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $I. ..."),
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
 			std::vector<MincExpr*>& pkgPath = ((MincListExpr*)params[0])->exprs;
 			throw CompileError("Missing export block", pkgPath.empty() ? MincLocation{nullptr, 0, 0, 0, 0} : pkgPath.front()->loc);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 
 	// Define export statement
@@ -208,13 +208,13 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 			// Export package
 			new MincPackage(pkgName.c_str(), nullptr, exportBlock);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 	pkgScope->defineStmt(MincBlockExpr::parseCTplt("export $L"),
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
 			throw CompileError("Missing export block", params[0]->loc);
 		},
-		(std::function<bool(MincRuntime&, std::vector<MincExpr*>&)>)nullptr
+		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);
 
 	// Load extensions

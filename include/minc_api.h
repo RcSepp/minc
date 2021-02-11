@@ -35,7 +35,6 @@ extern "C"
 	void resolveExpr(MincExpr* expr, MincBlockExpr* scope);
 	void forgetExpr(MincExpr* expr);
 	MincSymbol& buildExpr(MincExpr* expr, MincBuildtime& buildtime);
-	void setExprVolatile(MincExpr* expr, bool isVolatile);
 	char* ExprToString(const MincExpr* expr);
 	char* ExprToShortString(const MincExpr* expr);
 	MincExpr* cloneExpr(const MincExpr* expr);

@@ -40,7 +40,7 @@ std::string indent;
 // Instead we mark the kernel as UNRESOLVABLE_EXPR_KERNEL or UNRESOLVABLE_STMT_KERNEL.
 static struct UnresolvableExprKernel : public MincKernel
 {
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		throw UndefinedExprException{runtime.currentExpr};
 	}
@@ -48,7 +48,7 @@ static struct UnresolvableExprKernel : public MincKernel
 } UNRESOLVABLE_EXPR_KERNEL;
 static struct UnresolvableStmtKernel : public MincKernel
 {
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 assert(runtime.currentExpr->exprtype == MincExpr::ExprType::STMT);
 		throw UndefinedStmtException{(MincStmt*)runtime.currentExpr};

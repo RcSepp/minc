@@ -7,7 +7,7 @@ MincObject ERROR_TYPE, NONE_TYPE;
 void raiseStepEvent(const MincExpr* loc, StepEventType type);
 
 MincExpr::MincExpr(const MincLocation& loc, ExprType exprtype)
-	: loc(loc), exprtype(exprtype), isVolatile(false), resolvedKernel(nullptr), resolvedType(&NONE_TYPE), builtKernel(nullptr)
+	: loc(loc), exprtype(exprtype), resolvedKernel(nullptr), resolvedType(&NONE_TYPE), builtKernel(nullptr)
 {
 }
 
@@ -15,9 +15,9 @@ MincExpr::~MincExpr()
 {
 }
 
-bool MincExpr::run(MincRuntime& runtime)
+bool MincExpr::run(MincRuntime& runtime) const
 {
-	MincBlockExpr* const parentBlock = runtime.parentBlock;
+	const MincBlockExpr* const parentBlock = runtime.parentBlock;
 
 	// Handle expression caching for coroutines
 #ifdef CACHE_RESULTS
@@ -57,8 +57,6 @@ bool MincExpr::run(MincRuntime& runtime)
 			parentBlock->isExprSuspended = true;
 			//TODO: Raise error if getType() != &ERROR_TYPE
 			raiseStepEvent(this, STEP_SUSPEND);
-			if (isVolatile)
-				forget();
 			return true;
 		}
 	}
@@ -68,8 +66,6 @@ bool MincExpr::run(MincRuntime& runtime)
 		parentBlock->isExprSuspended = true;
 		//TODO: Raise error if getType() != &ERROR_TYPE
 		raiseStepEvent(this, STEP_SUSPEND);
-		if (isVolatile)
-			forget();
 		throw;
 	}
 	runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
@@ -89,9 +85,6 @@ bool MincExpr::run(MincRuntime& runtime)
 #endif
 
 	raiseStepEvent(this, STEP_OUT);
-
-	if (isVolatile)
-		forget();
 
 	return false;
 }
@@ -239,11 +232,6 @@ extern "C"
 	MincSymbol& buildExpr(MincExpr* expr, MincBuildtime& buildtime)
 	{
 		return expr->build(buildtime);
-	}
-
-	void setExprVolatile(MincExpr* expr, bool isVolatile)
-	{
-		expr->isVolatile = isVolatile;
 	}
 
 	char* ExprToString(const MincExpr* expr)

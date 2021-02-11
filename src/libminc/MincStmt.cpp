@@ -18,9 +18,9 @@ MincStmt::~MincStmt()
 {
 }
 
-bool MincStmt::run(MincRuntime& runtime)
+bool MincStmt::run(MincRuntime& runtime) const
 {
-	MincBlockExpr* const parentBlock = runtime.parentBlock;
+	const MincBlockExpr* const parentBlock = runtime.parentBlock;
 
 	// Handle expression caching for coroutines
 #ifdef CACHE_RESULTS
@@ -56,8 +56,6 @@ bool MincStmt::run(MincRuntime& runtime)
 			runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
 			parentBlock->isStmtSuspended = true;
 			raiseStepEvent(this, STEP_SUSPEND);
-			if (isVolatile)
-				forget();
 			return true;
 		}
 	}
@@ -66,8 +64,6 @@ bool MincStmt::run(MincRuntime& runtime)
 		runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
 		parentBlock->isStmtSuspended = true;
 		raiseStepEvent(this, STEP_SUSPEND);
-		if (isVolatile)
-			forget();
 		throw;
 	}
 	runtime.parentBlock = parentBlock; // Restore runtime.parentBlock
@@ -87,9 +83,6 @@ bool MincStmt::run(MincRuntime& runtime)
 #endif
 
 	raiseStepEvent(this, STEP_OUT);
-
-	if (isVolatile)
-		forget();
 
 	runtime.result = nullptr; // Note: getVoid().value == nullptr
 	return false;

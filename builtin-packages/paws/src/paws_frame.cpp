@@ -203,7 +203,7 @@ public:
 	MincStackFrame heapFrame;
 	bool suspended;
 
-	FrameInstance(const Frame* frame, MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool, const MincStackSymbol* result);
+	FrameInstance(const Frame* frame, const MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool, const MincStackSymbol* result);
 
 protected:
 	bool resume(MincRuntime* runtime, MincSymbol& result, bool& done);
@@ -425,7 +425,7 @@ std::string Event::toString(MincObject* value) const
 	return PawsType::toString(value); //TODO: This uses default toString() behaviour. Consider a more verbose format.
 }
 
-FrameInstance::FrameInstance(const Frame* frame, MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool, const MincStackSymbol* result)
+FrameInstance::FrameInstance(const Frame* frame, const MincBlockExpr* callerScope, const std::vector<MincExpr*>& argExprs, EventPool* eventPool, const MincStackSymbol* result)
 	: frame(frame), eventPool(eventPool), resultSymbol(result), suspended(false)
 {
 	frame->body->parent = frame->body->parent;
@@ -553,7 +553,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			delete this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			runtime.result = symbol.value;
 			return false;
@@ -575,7 +575,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -650,7 +650,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					return false;
 				}
@@ -679,7 +679,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 							throw CompileError(buildtime.parentBlock, params[0]->loc, "frame variables have to be defined at the beginning of the frame");
 						}
 
-						bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+						bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 						{
 							return false;
 						}
@@ -699,7 +699,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					// Run current statement
 					return params[0]->run(runtime);
@@ -727,12 +727,12 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					if (params[0]->run(runtime))
 						return true;
 					AwaitableInstance* blocker = ((PawsAwaitableInstance*)runtime.result)->get();
-					MincBlockExpr* instance = runtime.parentBlock;
+					const MincBlockExpr* instance = runtime.parentBlock;
 					while (instance->userType != &FRAME_INSTANCE_ID)
 						instance = instance->parent;
 					MincSymbol result(PawsAwaitableInstance::TYPE, nullptr);
@@ -783,7 +783,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -836,7 +836,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -908,7 +908,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -943,7 +943,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -971,7 +971,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -1003,7 +1003,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -1037,7 +1037,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			throw CompileError(buildtime.parentBlock, params[0]->loc, "expression is not awaitable");
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -1061,7 +1061,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 				throw CompileError(buildtime.parentBlock, params[0]->loc, "`%S` is not awaitable", name);
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -1098,7 +1098,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;

@@ -105,7 +105,7 @@ void defineStruct(MincBlockExpr* scope, const std::string& name, Struct* strct)
 	public:
 		CastFromNullKernel(Struct* strct) : strct(strct) {}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			runtime.result = new PawsStructInstance(nullptr);
 			return false;
@@ -177,7 +177,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 						return this;
 					}
 
-					bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+					bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 					{
 						if (params[0]->run(runtime))
 							return true;
@@ -242,7 +242,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					return false;
 				}
@@ -304,7 +304,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					return false;
 				}
@@ -375,7 +375,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					return this;
 				}
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					return false;
 				}
@@ -395,7 +395,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					throw CompileError(buildtime.parentBlock, buildtime.parentBlock->loc, "Invalid command in struct context");
 				} // LCOV_EXCL_LINE
 
-				bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 				{
 					return false;
 				}
@@ -426,7 +426,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -451,7 +451,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -538,9 +538,9 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			MincBlockExpr* const parentBlock = runtime.parentBlock;
+			const MincBlockExpr* const parentBlock = runtime.parentBlock;
 			MincSymbol self(strct, nullptr);
 			StructInstance* instance = new StructInstance();
 			MincEnteredBlockExpr* entered = nullptr; //TODO: Implement this without context-manager pattern
@@ -657,7 +657,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getSourceExpr()->run(runtime))
 				return true;
@@ -735,7 +735,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getSourceExpr()->run(runtime))
 				return true;
@@ -822,7 +822,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (((MincCastExpr*)params[0])->getSourceExpr()->run(runtime))
 				return true;
@@ -880,7 +880,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			throw CompileError(buildtime.parentBlock, params[0]->loc, "cannot access member of non-struct type <%T>", params[0]);
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			return false;
 		}
@@ -903,7 +903,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -931,7 +931,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;

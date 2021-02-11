@@ -26,7 +26,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		{
 			delete this;
 		}
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			MincObject* var = runtime.parentBlock->getStackSymbol(runtime, varId);
 			runtime.result = new PawsInt(cbk(((PawsInt*)var)->get()));
@@ -119,7 +119,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -157,7 +157,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -195,7 +195,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -233,7 +233,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -271,7 +271,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -309,7 +309,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			delete kernel;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
 			if (params[1]->run(runtime))
@@ -389,7 +389,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;
@@ -421,7 +421,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			return this;
 		}
 
-		bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
 			if (params[0]->run(runtime))
 				return true;

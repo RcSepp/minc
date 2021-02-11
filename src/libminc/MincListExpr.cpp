@@ -13,7 +13,7 @@ MincListExpr::MincListExpr(char separator, std::vector<MincExpr*> exprs)
 {
 }
 
-bool MincListExpr::run(MincRuntime& runtime)
+bool MincListExpr::run(MincRuntime& runtime) const
 {
 	assert(0);
 	return false; // LCOV_EXCL_LINE

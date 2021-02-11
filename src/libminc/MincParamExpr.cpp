@@ -7,7 +7,7 @@ MincParamExpr::Kernel::Kernel(MincParamExpr* expr)
 {
 }
 
-bool MincParamExpr::Kernel::run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+bool MincParamExpr::Kernel::run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 {
 	const std::vector<MincSymbol>* blockParams = runtime.parentBlock->getBlockParams();
 	if (blockParams == nullptr)

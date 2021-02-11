@@ -49,7 +49,7 @@ struct IndirectCast : public MincCast, public MincKernel
 		params[0] = new MincCastExpr(first, params[0]);
 		return second->kernel->build(buildtime, params);
 	}
-	bool run(MincRuntime& runtime, std::vector<MincExpr*>& params)
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 	{
 		assert(0);
 		return false; // LCOV_EXCL_LINE

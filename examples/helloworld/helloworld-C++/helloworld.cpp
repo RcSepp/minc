@@ -4,7 +4,7 @@
 #include "minc_api.hpp"
 #include "minc_pkgmgr.h"
 
-//TODO: Implement package loading in other langauages (i.e. Python)
+//TODO: Implement package loading in other languages (i.e. Python)
 
 MincObject STRING_TYPE, META_TYPE;
 

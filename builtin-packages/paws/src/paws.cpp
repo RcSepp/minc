@@ -647,10 +647,10 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	// Define literal definition
 	class LiteralDefinitionKernel : public MincKernel
 	{
-		const MincSymbol var;
+		MincObject* const val;
 	public:
-		LiteralDefinitionKernel() : var(nullptr, nullptr) {}
-		LiteralDefinitionKernel(const MincSymbol& var) : var(var) {}
+		LiteralDefinitionKernel() : val(nullptr) {}
+		LiteralDefinitionKernel(MincObject* val) : val(val) {}
 
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
@@ -659,13 +659,15 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (value.back() == '"' || value.back() == '\'')
 			{
 				auto valueStart = value.find(value.back()) + 1;
-				return new LiteralDefinitionKernel(buildtime.result = MincSymbol(PawsString::TYPE, new PawsString(value.substr(valueStart, value.size() - valueStart - 1))));
+				buildtime.result.type = PawsString::TYPE;
+				return new LiteralDefinitionKernel(buildtime.result.value = new PawsString(value.substr(valueStart, value.size() - valueStart - 1)));
 			}
 
 			if (value.find('.') != std::string::npos)
 			{
 				double doubleValue = std::stod(value);
-				return new LiteralDefinitionKernel(buildtime.result = MincSymbol(PawsDouble::TYPE, new PawsDouble(doubleValue)));
+				buildtime.result.type = PawsDouble::TYPE;
+				return new LiteralDefinitionKernel(buildtime.result.value = new PawsDouble(doubleValue));
 			}
 			
 			int intValue;
@@ -673,7 +675,8 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 				intValue = std::stoi(value, 0, 16);
 			else
 				intValue = std::stoi(value, 0, 10);
-			return new LiteralDefinitionKernel(buildtime.result = MincSymbol(PawsInt::TYPE, new PawsInt(intValue)));
+			buildtime.result.type = PawsInt::TYPE;
+			return new LiteralDefinitionKernel(buildtime.result.value = new PawsInt(intValue));
 		}
 		void dispose(MincKernel* kernel)
 		{
@@ -682,7 +685,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			runtime.result = var.value;
+			runtime.result = val;
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const

@@ -281,6 +281,8 @@ public:
 	void defineExpr(MincExpr* tplt, MincKernel* expr);
 	void defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincObject* type);
 	void defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> type);
+	void defineExpr(MincExpr* tplt, std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincObject* type);
+	void defineExpr(MincExpr* tplt, std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> type);
 	bool lookupExpr(MincExpr* expr) const;
 	void lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;

@@ -379,6 +379,56 @@ void MincBlockExpr::defineExpr(MincExpr* tplt, std::function<bool(MincRuntime&, 
 	defineExpr(tplt, new ExprKernel(run, getType));
 }
 
+void MincBlockExpr::defineExpr(MincExpr* tplt,
+							   std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
+							   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run,
+							   MincObject* type)
+{
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
+	struct ExprKernel : public MincKernel
+	{
+		const std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> buildCbk;
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
+		MincObject* const type;
+		ExprKernel(std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
+				   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run,
+				   MincObject* type)
+			: buildCbk(build), runCbk(run), type(type) {}
+		virtual ~ExprKernel() {}
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { if (buildCbk != nullptr) buildCbk(buildtime, params); return this; }
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { if (runCbk != nullptr) return runCbk(runtime, params); return false; }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return type; }
+	};
+	defineExpr(tplt, new ExprKernel(build, run, type));
+}
+
+void MincBlockExpr::defineExpr(MincExpr* tplt,
+							   std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
+							   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run,
+							   std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+{
+	if (isBuilt())
+		throw CompileError("defining expression after block has been built", loc);
+
+	struct ExprKernel : public MincKernel
+	{
+		const std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> buildCbk;
+		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
+		const std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getTypeCbk;
+		ExprKernel(std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
+				   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run,
+				   std::function<MincObject*(const MincBlockExpr*, const std::vector<MincExpr*>&)> getType)
+			: buildCbk(build), runCbk(run), getTypeCbk(getType) {}
+		virtual ~ExprKernel() {}
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { if (buildCbk != nullptr) buildCbk(buildtime, params); return this; }
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { if (runCbk != nullptr) return runCbk(runtime, params); return false; }
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return getTypeCbk(parentBlock, params); }
+	};
+	defineExpr(tplt, new ExprKernel(build, run, getType));
+}
+
 void MincBlockExpr::lookupExprCandidates(const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const
 {
 	for (const MincBlockExpr* block = this; block; block = block->parent)

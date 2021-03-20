@@ -6,12 +6,12 @@ extern MincObject ERROR_TYPE;
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx);
 
 MincPlchldExpr::MincPlchldExpr(const MincLocation& loc, char p1)
-	: MincExpr(loc, MincExpr::ExprType::PLCHLD), p1(p1), p2(nullptr), allowCast(false)
+	: MincExpr(loc, MincExpr::ExprType::PLCHLD), p1(p1), p2(nullptr), flags(Flags::NONE)
 {
 }
 
-MincPlchldExpr::MincPlchldExpr(const MincLocation& loc, char p1, const char* p2, bool allowCast)
-	: MincExpr(loc, MincExpr::ExprType::PLCHLD), p1(p1), allowCast(allowCast)
+MincPlchldExpr::MincPlchldExpr(const MincLocation& loc, char p1, const char* p2, Flags flags)
+	: MincExpr(loc, MincExpr::ExprType::PLCHLD), p1(p1), flags(flags)
 {
 	size_t p2len = strlen(p2);
 	this->p2 = new char[p2len + 1];
@@ -24,17 +24,21 @@ MincPlchldExpr::MincPlchldExpr(const MincLocation& loc, const char* p2)
 	size_t p2len = strlen(++p2);
 	if (p2len && p2[p2len - 1] == '!')
 	{
-		allowCast = false;
-		this->p2 = new char[p2len];
-		memcpy(this->p2, p2, p2len - 1);
-		this->p2[p2len - 1] = '\0';
+		--p2len;
+		if (p2len && p2[p2len - 1] == '!')
+		{
+			--p2len;
+			flags = Flags::NO_CAST;
+		}
+		else
+			flags = Flags::NO_TYPECAST;
 	}
 	else
-	{
-		allowCast = true;
-		this->p2 = new char[p2len + 1];
-		memcpy(this->p2, p2, p2len + 1);
-	}
+		flags = Flags::NONE;
+
+	this->p2 = new char[p2len + 1];
+	memcpy(this->p2, p2, p2len);
+	this->p2[p2len] = '\0';
 }
 
 MincObject* MincPlchldExpr::getType(const MincBlockExpr* parentBlock) const
@@ -115,11 +119,14 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 			score -= 256; // Penalize erroneous match
 			return true;
 		}
-		const MincCast* cast = allowCast ? block->lookupCast(exprType, tpltType) : nullptr;
+		const MincCast* cast = flags == Flags::NO_CAST ? nullptr : block->lookupCast(exprType, tpltType);
 		if (cast != nullptr)
 		{
+			int cost = cast->getCost();
+			if (cost != 0 && flags == Flags::NO_TYPECAST)
+				return false;
 			score += 3; // Reward inexact match (inheritance or type-cast)
-			score -= cast->getCost(); // Penalize type-cast
+			score -= cost; // Penalize type-cast
 			return true;
 		}
 		return false;
@@ -153,7 +160,10 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 
 std::string MincPlchldExpr::str() const
 {
-	return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + (allowCast ? ">" : "!>"));
+	static const char* suffixes[] = {
+		">", "!>", "!!>"
+	};
+	return '$' + std::string(1, p1) + (p2 == nullptr ? "" : '<' + std::string(p2) + (suffixes[flags]));
 }
 
 int MincPlchldExpr::comp(const MincExpr* other) const
@@ -163,7 +173,7 @@ int MincPlchldExpr::comp(const MincExpr* other) const
 	const MincPlchldExpr* _other = (const MincPlchldExpr*)other;
 	c = this->p1 - _other->p1;
 	if (c) return c;
-	c = (int)this->allowCast - (int)_other->allowCast;
+	c = (int)this->flags - (int)_other->flags;
 	if (c) return c;
 	if (this->p2 == nullptr || _other->p2 == nullptr) return this->p2 - _other->p2;
 	return strcmp(this->p2, _other->p2);
@@ -171,7 +181,7 @@ int MincPlchldExpr::comp(const MincExpr* other) const
 
 MincExpr* MincPlchldExpr::clone() const
 {
-	return p2 == nullptr ? new MincPlchldExpr(loc, p1) : new MincPlchldExpr(loc, p1, p2, allowCast);
+	return p2 == nullptr ? new MincPlchldExpr(loc, p1) : new MincPlchldExpr(loc, p1, p2, flags);
 }
 
 extern "C"

@@ -385,11 +385,14 @@ public:
 class MincPlchldExpr : public MincExpr
 {
 public:
+	enum Flags {
+		NONE, NO_TYPECAST, NO_CAST
+	};
 	char p1;
 	char* p2;
-	bool allowCast;
+	Flags flags;
 	MincPlchldExpr(const MincLocation& loc, char p1);
-	MincPlchldExpr(const MincLocation& loc, char p1, const char* p2, bool allowCast);
+	MincPlchldExpr(const MincLocation& loc, char p1, const char* p2, Flags flags);
 	MincPlchldExpr(const MincLocation& loc, const char* p2);
 	MincObject* getType(const MincBlockExpr* parentBlock) const;
 	bool match(const MincBlockExpr* block, const MincExpr* expr, MatchScore& score) const;

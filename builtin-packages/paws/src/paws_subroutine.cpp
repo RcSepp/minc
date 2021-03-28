@@ -116,6 +116,8 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
 		{
 			PawsType* returnType = (PawsType*)params[0]->build(buildtime).value;
+			if (returnType == nullptr)
+					throw CompileError(buildtime.parentBlock, params[0]->loc, "%E is not a valid type", params[0]);
 			const std::string& name = ((MincIdExpr*)params[1])->name;
 			const std::vector<MincExpr*>& argTypeExprs = ((MincListExpr*)params[2])->exprs;
 			const std::vector<MincExpr*>& argNameExprs = ((MincListExpr*)params[3])->exprs;
@@ -135,7 +137,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			{
 				PawsType* argType = (PawsType*)argTypeExpr->build(buildtime).value;
 				if (argType == nullptr)
-					throw CompileError(buildtime.parentBlock, argTypeExpr->loc, "%E is not a vailid type", argTypeExpr);
+					throw CompileError(buildtime.parentBlock, argTypeExpr->loc, "%E is not a valid type", argTypeExpr);
 				func->argTypes.push_back(argType);
 			}
 			func->argNames.reserve(argNameExprs.size());

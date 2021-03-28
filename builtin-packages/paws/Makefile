@@ -54,7 +54,7 @@ ${TMP_DIR}/minc/minc.gcda: ${OUT_DIR}paws.so
 
 ${OUT_DIR}paws.so: ${OBJPATHS}
 	-mkdir -p ${OUT_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${OBJPATHS}
+	${CXX} ${CPPFLAGS} -shared -o $@ ${OBJPATHS} -L${MINC_BIN} -lminc -lminc_pkgmgr
 
 # Compiler code
 

@@ -1111,6 +1111,11 @@ void MincBlockExpr::clearCache(size_t targetSize) const
 #endif
 }
 
+MincBlockExpr* MincBlockExpr::parseCStream(std::istream& stream)
+{
+	return ::parseCStream(stream);
+}
+
 MincBlockExpr* MincBlockExpr::parseCFile(const char* filename)
 {
 	return ::parseCFile(filename);
@@ -1129,6 +1134,11 @@ const std::vector<MincExpr*> MincBlockExpr::parseCTplt(const char* tpltStr)
 void MincBlockExpr::evalCCode(const char* code, MincBlockExpr* scope)
 {
 	::evalCBlock(code, scope);
+}
+
+MincBlockExpr* MincBlockExpr::parsePythonStream(std::istream& stream)
+{
+	return ::parsePythonStream(stream);
 }
 
 MincBlockExpr* MincBlockExpr::parsePythonFile(const char* filename)

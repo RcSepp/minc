@@ -254,6 +254,17 @@ void yy::PyParser::error(const location_type &l, const std::string &err_message)
 
 extern "C"
 {
+	MincBlockExpr* parsePythonStream(std::istream& stream)
+	{
+		// Parse stream into rootBlock
+		MincBlockExpr* rootBlock;
+		PyLexer lexer(stream, std::cout);
+		yy::PyParser parser(lexer, "", &rootBlock);
+		parser.parse();
+
+		return rootBlock;
+	}
+
 	MincBlockExpr* parsePythonFile(const char* filename)
 	{
 		// Open source file
@@ -263,7 +274,7 @@ extern "C"
 
 		// Parse file into rootBlock
 		MincBlockExpr* rootBlock;
-		PyLexer lexer(&in, &std::cout);
+		PyLexer lexer(in, std::cout);
 		yy::PyParser parser(lexer, filename, &rootBlock);
 		parser.parse();
 

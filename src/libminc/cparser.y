@@ -211,6 +211,17 @@ void yy::CParser::error(const location_type &l, const std::string &err_message)
 
 extern "C"
 {
+	MincBlockExpr* parseCStream(std::istream& stream)
+	{
+		// Parse stream into rootBlock
+		MincBlockExpr* rootBlock;
+		CLexer lexer(stream, std::cout);
+		yy::CParser parser(lexer, "", &rootBlock);
+		parser.parse();
+
+		return rootBlock;
+	}
+
 	MincBlockExpr* parseCFile(const char* filename)
 	{
 		// Open source file
@@ -220,7 +231,7 @@ extern "C"
 
 		// Parse file into rootBlock
 		MincBlockExpr* rootBlock;
-		CLexer lexer(&in, &std::cout);
+		CLexer lexer(in, std::cout);
 		yy::CParser parser(lexer, filename, &rootBlock);
 		parser.parse();
 

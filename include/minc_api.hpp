@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <functional>
+#include <istream>
 #include <list>
 #include <map>
 #include <string>
@@ -323,11 +324,13 @@ public:
 	void reset() const;
 	void clearCache(size_t targetSize) const;
 
+	static MincBlockExpr* parseCStream(std::istream& stream);
 	static MincBlockExpr* parseCFile(const char* filename);
 	static MincBlockExpr* parseCCode(const char* code);
 	static const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
 	static void evalCCode(const char* code, MincBlockExpr* scope);
 
+	static MincBlockExpr* parsePythonStream(std::istream& stream);
 	static MincBlockExpr* parsePythonFile(const char* filename);
 	static MincBlockExpr* parsePythonCode(const char* code);
 	static const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);

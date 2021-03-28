@@ -1,6 +1,7 @@
 #ifndef __MINC_API_H
 #define __MINC_API_H
 
+#include <istream>
 #include <map>
 #include <string>
 #include <vector>
@@ -12,12 +13,14 @@ extern "C"
 {
 	// >>> C Parser
 
+	MincBlockExpr* parseCStream(std::istream& stream);
 	MincBlockExpr* parseCFile(const char* filename);
 	MincBlockExpr* parseCCode(const char* code);
 	const std::vector<MincExpr*> parseCTplt(const char* tpltStr);
 
 	// >>> Python Parser
 
+	MincBlockExpr* parsePythonStream(std::istream& stream);
 	MincBlockExpr* parsePythonFile(const char* filename);
 	MincBlockExpr* parsePythonCode(const char* code);
 	const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);

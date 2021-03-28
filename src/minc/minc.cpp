@@ -34,20 +34,34 @@ void quit(int code)
 int main(int argc, char** argv)
 {
 	const bool use_stdin = argc == 1;
-	const bool debug = argc >= 2 && strcmp(argv[1], "-d") == 0;
-	const char* path = use_stdin ? nullptr : argv[debug + 1];
 
-	// Remove debug flag from command line arguments
-	if (debug)
+	enum Mode {
+		RUN, DEBUG
+	} mode = RUN;
+	if (argc > 2)
 	{
+		if (strcmp(argv[1], "run") == 0)
+			mode = RUN;
+		else if (strcmp(argv[1], "debug") == 0)
+			mode = DEBUG;
+		else
+		{
+			std::cerr << "\e[31merror:\e[0m Invalid mode '" << std::string(argv[1]) << "'. Should be one of 'run' or 'debug'\n";
+			return -1;
+		}
+
+		// Remove mode flag from command line arguments
 		argv[1] = argv[0];
 		++argv;
 		--argc;
 	}
 
-	// Remove source file path from command line arguments
+	const char* path = nullptr;
 	if (!use_stdin)
 	{
+		path = argv[1];
+
+		// Remove source file path from command line arguments
 		argv[1] = argv[0];
 		++argv;
 		--argc;
@@ -70,7 +84,7 @@ int main(int argc, char** argv)
 	char* realPath = use_stdin ? nullptr : realpath(path, nullptr);
 
 	int result = 0;
-	if (debug)
+	if (mode == DEBUG)
 		result = launchDebugClient(realPath);
 	else
 	{
@@ -79,7 +93,9 @@ int main(int argc, char** argv)
 		const char* const PY_EXT = ".py";
 		const int LEN_PY_EXT = 3;
 		try {
-			if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
+			if (use_stdin)
+				rootBlock = MincBlockExpr::parseCStream(*in);
+			else if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
 				rootBlock = MincBlockExpr::parsePythonFile(realPath);
 			else
 				rootBlock = MincBlockExpr::parseCFile(realPath);

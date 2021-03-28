@@ -90,9 +90,12 @@ struct MincRuntime
 
 struct MincEnteredBlockExpr
 {
+private:
 	MincRuntime& runtime;
 	const MincBlockExpr* block;
 	MincStackFrame* const prevStackFrame;
+
+public:
 	MincEnteredBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
 	~MincEnteredBlockExpr();
 	bool run();

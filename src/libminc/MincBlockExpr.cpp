@@ -1642,4 +1642,13 @@ extern "C"
 		block->run(runtime);
 		delete block;
 	}
+
+	MincEnteredBlockExpr* enterBlockExpr(MincRuntime& runtime, const MincBlockExpr* block)
+	{
+		return new MincEnteredBlockExpr(runtime, block);
+	}
+	void exitBlockExpr(MincEnteredBlockExpr* enteredBlock)
+	{
+		delete enteredBlock;
+	}
 }

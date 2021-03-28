@@ -152,6 +152,8 @@ extern "C"
 	void deregisterStepEventListener(StepEvent listener);
 	void evalCBlock(const char* code, MincBlockExpr* scope);
 	void evalPythonBlock(const char* code, MincBlockExpr* scope);
+	MincEnteredBlockExpr* enterBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
+	void exitBlockExpr(MincEnteredBlockExpr* enteredBlock);
 
 	// >>> MincStopExpr
 

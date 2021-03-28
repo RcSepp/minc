@@ -88,25 +88,25 @@ builtin:
 
 ${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg ${MINC_LIBS}
+	${CXX} ${CPPFLAGS} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg ${MINC_LIBS}
 
 # libminc.so library
 
 ${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_OBJPATHS}
+	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_OBJPATHS}
 
 # libminc_pkgmgr.so library
 
 ${BIN_DIR}libminc_pkgmgr.so: ${LIBMINC_PKGMGR_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_PKGMGR_OBJPATHS}
+	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_PKGMGR_OBJPATHS}
 
 # libminc_dbg.so library
 
 ${BIN_DIR}libminc_dbg.so: ${LIBMINC_DBG_OBJPATHS}
 	-mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} ${INCLUDES} -shared -o $@ ${LIBMINC_DBG_OBJPATHS} third_party/cppdap/lib/libcppdap.a
+	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_DBG_OBJPATHS} third_party/cppdap/lib/libcppdap.a
 
 # Parser code
 

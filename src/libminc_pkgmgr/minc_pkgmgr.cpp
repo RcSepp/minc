@@ -148,7 +148,7 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 
 			// Import package
 			if (!this->tryImportPackage(buildtime.parentBlock, pkgName))
-				throw CompileError("unknown package " + pkgName, params[0]->loc);
+				throw CompileError("unknown package " + pkgName, pkgPath[0]->loc);
 		},
 		(std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)>)nullptr
 	);

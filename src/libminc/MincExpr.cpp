@@ -181,6 +181,16 @@ int MincExpr::comp(const MincExpr* other) const
 	return this->exprtype - other->exprtype;
 }
 
+MincExpr* MincExpr::getSourceExpr()
+{
+	return exprtype == ExprType::CAST ? ((MincCastExpr*)this)->getSourceExpr() : this;
+}
+
+MincExpr* MincExpr::getDerivedExpr()
+{
+	return exprtype == ExprType::CAST ? ((MincCastExpr*)this)->getDerivedExpr() : this;
+}
+
 MincSymbol MincExpr::evalCCode(const char* code, MincBlockExpr* scope)
 {
 	return ::evalCExpr(code, scope);

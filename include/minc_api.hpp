@@ -61,6 +61,8 @@ public:
 	virtual std::string shortStr() const;
 	virtual int comp(const MincExpr* other) const;
 	virtual MincExpr* clone() const = 0;
+	MincExpr* getSourceExpr();
+	MincExpr* getDerivedExpr();
 
 	static MincSymbol evalCCode(const char* code, MincBlockExpr* scope);
 

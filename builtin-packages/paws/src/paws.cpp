@@ -100,7 +100,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				return getVoid().type;
 			}
 		};
-		scope->defineStmt(MincBlockExpr::parseCTplt("return $E"), new ReturnKernel1(funcName));
+		pawsScope->defineStmt(MincBlockExpr::parseCTplt("return $E"), new ReturnKernel1(funcName), scope);
 
 		// Define return statement without type in function scope
 		struct ReturnKernel2 : public MincKernel
@@ -117,7 +117,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				return getVoid().type;
 			}
 		};
-		scope->defineStmt(MincBlockExpr::parseCTplt("return"), new ReturnKernel2());
+		pawsScope->defineStmt(MincBlockExpr::parseCTplt("return"), new ReturnKernel2(), scope);
 	}
 	else
 	{
@@ -140,7 +140,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				return getVoid().type;
 			}
 		};
-		scope->defineStmt(MincBlockExpr::parseCTplt("return $E"), new ReturnKernel3());
+		pawsScope->defineStmt(MincBlockExpr::parseCTplt("return $E"), new ReturnKernel3(), scope);
 
 		// Define return statement with correct type in function scope
 		struct ReturnKernel4 : public MincKernel
@@ -164,7 +164,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				return getVoid().type;
 			}
 		};
-		scope->defineStmt(MincBlockExpr::parseCTplt(("return $E<" + scope->lookupSymbolName(returnType, "UNKNOWN_TYPE") + ">").c_str()), new ReturnKernel4());
+		pawsScope->defineStmt(MincBlockExpr::parseCTplt(("return $E<" + scope->lookupSymbolName(returnType, "UNKNOWN_TYPE") + ">").c_str()), new ReturnKernel4(), scope);
 
 		// Define return statement without type in function scope
 		class ReturnKernel5 : public MincKernel
@@ -188,7 +188,7 @@ void definePawsReturnStmt(MincBlockExpr* scope, const MincObject* returnType, co
 				return getVoid().type;
 			}
 		};
-		scope->defineStmt(MincBlockExpr::parseCTplt("return"), new ReturnKernel5(funcName));
+		pawsScope->defineStmt(MincBlockExpr::parseCTplt("return"), new ReturnKernel5(funcName), scope);
 	}
 }
 

@@ -26,6 +26,7 @@
 #include <assert.h>
 #include "minc_api.hpp"
 
+#define MIN_SCORE -2147483648
 extern MincObject ERROR_TYPE, NONE_TYPE;
 extern unsigned long long EXPR_RESOLVE_COUNTER, STMT_RESOLVE_COUNTER;
 unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
@@ -344,27 +345,48 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
-void MincStatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt)
+void MincStatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt, MincBlockExpr* scope, MincBlockExpr* refScope)
 {
-	stmtreg[tplt] = stmt;
+	unsigned int refDepth = 0;
+	for (; scope; scope = scope->parent)
+	{
+		if (scope == refScope)
+		{
+			stmtreg[tplt] = RegisteredKernel(stmt, refDepth);
+			return;
+		}
+		for (const MincBlockExpr* ref: scope->references)
+		{
+			refDepth += 0x1;
+			if (ref == refScope)
+			{
+				stmtreg[tplt] = RegisteredKernel(stmt, refDepth);
+				return;
+			}
+		}
+		refDepth &= 0xFFFF0000;
+		refDepth += 0x10000;
+	}
+
+	throw CompileError("Statement defined outside of reference scope");
 }
 
-std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
+std::pair<const MincListExpr*, MincStatementRegister::RegisteredKernel> MincStatementRegister::lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, unsigned int refDepth, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
 	ResolvingMincExprIter currentStmtEnd;
-	std::pair<const MincListExpr*, MincKernel*> bestStmt = {nullptr, nullptr};
-	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
+	std::pair<const MincListExpr*, RegisteredKernel> bestStmt = {nullptr, RegisteredKernel()};
+	for (const std::pair<const MincListExpr*, RegisteredKernel>& iter: stmtreg)
 	{
 #ifdef DEBUG_STMTREG
 		printf("%scandidate `%s`", indent.c_str(), iter.first->shortStr().c_str());
 #endif
 		currentScore = 0;
 		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), stmt, currentScore, &currentStmtEnd))
-#ifdef DEBUG_STMTREG
 		{
-#endif
-			if (currentScore > bestScore)
+			if (currentScore > bestScore || // If currentKernel scores higher than the previous best kernel, or ...
+				(currentScore == bestScore &&  // currentKernel scores as high as the previous best kernel and ...
+				iter.second.refDepth < refDepth)) // currentKernel was defined less deep in the reference tree than the previous best kernel
 			{
 				bestScore = currentScore;
 				bestStmt = iter;
@@ -372,7 +394,9 @@ std::pair<const MincListExpr*, MincKernel*> MincStatementRegister::lookupStmt(co
 			}
 #ifdef DEBUG_STMTREG
 			printf(" \e[94mMATCH(score=%i)\e[0m", currentScore);
+#endif
 		}
+#ifdef DEBUG_STMTREG
 		printf("\n");
 #endif
 	}
@@ -383,11 +407,11 @@ void MincStatementRegister::lookupStmtCandidates(const MincBlockExpr* block, con
 {
 	MatchScore score;
 	ResolvingMincExprIter stmtEnd;
-	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
+	for (const std::pair<const MincListExpr*, RegisteredKernel>& iter: stmtreg)
 	{
 		score = 0;
 		if (matchStmt(block, iter.first->exprs.cbegin(), iter.first->exprs.cend(), ResolvingMincExprIter(block, stmt->exprs), score, &stmtEnd) && stmtEnd.done())
-			candidates.insert({ score, iter });
+			candidates.insert({ score, std::make_pair(iter.first, iter.second.kernel) });
 	}
 }
 
@@ -398,19 +422,19 @@ size_t MincStatementRegister::countStmts() const
 
 void MincStatementRegister::iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const
 {
-	for (const std::pair<const MincListExpr*, MincKernel*>& iter: stmtreg)
-		cbk(iter.first, iter.second);
+	for (const std::pair<const MincListExpr*, RegisteredKernel>& iter: stmtreg)
+		cbk(iter.first, iter.second.kernel);
 }
 
 void MincStatementRegister::defineExpr(const MincExpr* tplt, MincKernel* expr)
 {
-	exprreg[tplt->exprtype][tplt] = expr;
+	exprreg[tplt->exprtype][tplt] = RegisteredKernel(expr, 0 /*TODO: Implement reference scopes for exprs*/);
 }
 
-std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const
+std::pair<const MincExpr*, MincStatementRegister::RegisteredKernel> MincStatementRegister::lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const
 {
 	MatchScore currentScore;
-	std::pair<const MincExpr*, MincKernel*> bestExpr = {nullptr, nullptr};
+	std::pair<const MincExpr*, RegisteredKernel> bestExpr = {nullptr, RegisteredKernel()};
 	for (auto& iter: exprreg[expr->exprtype])
 	{
 #ifdef DEBUG_STMTREG
@@ -440,7 +464,7 @@ std::pair<const MincExpr*, MincKernel*> MincStatementRegister::lookupExpr(const 
 		printf("%scandidate `%s`", indent.c_str(), iter.first->shortStr().c_str());
 #endif
 		currentScore = 0;
-		expr->resolvedKernel = iter.second; // Set kernel to enable type-aware matching
+		expr->resolvedKernel = iter.second.kernel; // Set kernel to enable type-aware matching
 		if (iter.first->match(block, expr, currentScore))
 #ifdef DEBUG_STMTREG
 		{
@@ -469,29 +493,29 @@ void MincStatementRegister::lookupExprCandidates(const MincBlockExpr* block, con
 	{
 		score = 0;
 		if (iter.first->match(block, expr, score))
-			candidates.insert({ score, iter });
+			candidates.insert({ score, std::make_pair(iter.first, iter.second.kernel) });
 	}
 	for (auto& iter: exprreg[MincExpr::PLCHLD])
 	{
 		score = 0;
 		if (iter.first->match(block, expr, score))
-			candidates.insert({ score, iter });
+			candidates.insert({ score, std::make_pair(iter.first, iter.second.kernel) });
 	}
 }
 
 size_t MincStatementRegister::countExprs() const
 {
 	size_t numExprs = 0;
-	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
+	for (const std::map<const MincExpr*, RegisteredKernel>& exprreg: this->exprreg)
 		numExprs += exprreg.size();
 	return numExprs;
 }
 
 void MincStatementRegister::iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const
 {
-	for (const std::map<const MincExpr*, MincKernel*>& exprreg: this->exprreg)
-		for (const std::pair<const MincExpr*, MincKernel*>& iter: exprreg)
-			cbk(iter.first, iter.second);
+	for (const std::map<const MincExpr*, RegisteredKernel>& exprreg: this->exprreg)
+		for (const std::pair<const MincExpr*, RegisteredKernel>& iter: exprreg)
+			cbk(iter.first, iter.second.kernel);
 }
 
 bool MincBlockExpr::lookupExpr(MincExpr* expr) const
@@ -504,8 +528,8 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 #endif
 	expr->resolvedParams.clear();
 	MincKernel* defaultExprKernel = nullptr;
-	MatchScore currentScore, score = -2147483648;
-	std::pair<const MincExpr*, MincKernel*> currentKernel, kernel = {nullptr, nullptr};
+	MatchScore currentScore, score = MIN_SCORE;
+	std::pair<const MincExpr*, MincStatementRegister::RegisteredKernel> currentKernel, kernel = {nullptr, MincStatementRegister::RegisteredKernel()};
 	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		currentScore = score;
@@ -515,7 +539,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 			kernel = currentKernel;
 			score = currentScore;
 		}
-		else if (currentScore == -2147483648 && defaultExprKernel == nullptr)
+		else if (currentScore == MIN_SCORE && defaultExprKernel == nullptr)
 			defaultExprKernel = block->defaultExprKernel;
 		for (const MincBlockExpr* ref: block->references)
 		{
@@ -526,7 +550,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 				kernel = currentKernel;
 				score = currentScore;
 			}
-			else if (currentScore == -2147483648 && defaultExprKernel == nullptr)
+			else if (currentScore == MIN_SCORE && defaultExprKernel == nullptr)
 				defaultExprKernel = ref->defaultExprKernel;
 		}
 	}
@@ -540,7 +564,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 		size_t paramIdx = 0;
 		if (kernel.first->exprtype == MincExpr::PLCHLD)
 		{
-			expr->resolvedKernel = kernel.second; // Set kernel before collectParams() to enable type-aware matching
+			expr->resolvedKernel = kernel.second.kernel; // Set kernel before collectParams() to enable type-aware matching
 			expr->resolvedParams.push_back(expr); // Set first kernel parameter to self to enable type-aware matching
 			std::vector<MincExpr*> collectedParams;
 			kernel.first->collectParams(this, expr, collectedParams, paramIdx);
@@ -551,7 +575,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 		{
 			// Don't set kernel before collectParams(), because resolvedParams are not yet set, which results in undefined behavior when using the kernel
 			kernel.first->collectParams(this, expr, expr->resolvedParams, paramIdx);
-			expr->resolvedKernel = kernel.second;
+			expr->resolvedKernel = kernel.second.kernel;
 		}
 		return true;
 	}
@@ -605,7 +629,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 	ResolvingMincExprIter stmtEnd;
 	MatchScore score;
 	MincKernel* defaultStmtKernel;
-	std::pair<const MincListExpr*, MincKernel*> kernel = lookupStmt(stmtBegin, stmtEnd, score, &defaultStmtKernel);
+	std::pair<const MincListExpr*, MincStatementRegister::RegisteredKernel> kernel = lookupStmt(stmtBegin, stmtEnd, score, &defaultStmtKernel);
 
 #ifdef DEBUG_STMTREG
 	indent = indent.substr(0, indent.size() - 1);
@@ -644,7 +668,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 		// Set resolved kernel and collect kernel parameters
 		size_t paramIdx = 0;
 		collectStmt(this, kernel.first->cbegin(), kernel.first->cend(), stmtBegin, stmt.resolvedParams, paramIdx);
-		stmt.resolvedKernel = kernel.second;
+		stmt.resolvedKernel = kernel.second.kernel;
 	}
 	else // If no matching kernel was found, ...
 	{
@@ -652,7 +676,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 		stmt.resolvedKernel = &UNRESOLVABLE_STMT_KERNEL;
 	}
 
-	if (defaultStmtKernel != nullptr)// If a default kernel was encountered before any other kernel matched, ...
+	if (defaultStmtKernel != nullptr) // If a default kernel was encountered before any other kernel matched, ...
 	{
 		// Store the regular kernel (or UNRESOLVABLE_STMT_KERNEL) as a parameter to the default kernel
 		MincStmt* regularStmt = new MincStmt(stmt.begin, stmt.end, stmt.resolvedKernel);
@@ -665,38 +689,54 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 	return stmt.resolvedKernel != &UNRESOLVABLE_STMT_KERNEL;
 }
 
-std::pair<const MincListExpr*, MincKernel*> MincBlockExpr::lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const
+std::pair<const MincListExpr*, MincStatementRegister::RegisteredKernel> MincBlockExpr::lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const
 {
-	bestScore = -2147483648;
+	bestScore = MIN_SCORE;
 	*defaultStmtKernel = nullptr;
 	MatchScore currentScore;
 	ResolvingMincExprIter currentStmtEnd;
-	std::pair<const MincListExpr*, MincKernel*> currentKernel, bestKernel = {nullptr, nullptr};
+	std::pair<const MincListExpr*, MincStatementRegister::RegisteredKernel> currentKernel, bestKernel = {nullptr, MincStatementRegister::RegisteredKernel()};
+	unsigned int lookupDepth = 0;
 	for (const MincBlockExpr* block = this; block; block = block->parent)
 	{
 		currentScore = bestScore;
-		currentKernel = block->stmtreg.lookupStmt(this, stmt, currentStmtEnd, currentScore);
-		if (currentScore > bestScore)
+		currentKernel = block->stmtreg.lookupStmt(this, stmt, bestKernel.second.refDepth - lookupDepth, currentStmtEnd, currentScore);
+		currentKernel.second.refDepth += lookupDepth;
+		if (currentScore > bestScore || // If currentKernel scores higher than the previous best kernel (this implicates that currentKernel is valid), or ...
+			(currentKernel.first != nullptr && // currentKernel is valid and ...
+			currentScore == bestScore &&  // currentKernel scores as high as the previous best kernel and ...
+			currentKernel.second.refDepth < bestKernel.second.refDepth)) // currentKernel was defined less deep in the reference tree than the previous best kernel
 		{
 			bestKernel = currentKernel;
 			bestScore = currentScore;
 			bestStmtEnd = currentStmtEnd;
 		}
-		else if (currentScore == -2147483648 && *defaultStmtKernel == nullptr)
+		else if (currentScore == MIN_SCORE && *defaultStmtKernel == nullptr)
+			*defaultStmtKernel = block->defaultStmtKernel;
+		if (bestKernel.first != nullptr && bestKernel.second.refDepth > lookupDepth && *defaultStmtKernel == nullptr)
 			*defaultStmtKernel = block->defaultStmtKernel;
 		for (const MincBlockExpr* ref: block->references)
 		{
+			lookupDepth += 0x1;
 			currentScore = bestScore;
-			currentKernel = ref->stmtreg.lookupStmt(this, stmt, currentStmtEnd, currentScore);
-			if (currentScore > bestScore)
+			currentKernel = ref->stmtreg.lookupStmt(this, stmt, bestKernel.second.refDepth - lookupDepth, currentStmtEnd, currentScore);
+			currentKernel.second.refDepth += lookupDepth;
+			if (currentScore > bestScore || // If currentKernel scores higher than the previous best kernel (this implicates that currentKernel is valid), or ...
+				(currentKernel.first != nullptr && // currentKernel is valid and ...
+				currentScore == bestScore &&  // currentKernel scores as high as the previous best kernel and ...
+				currentKernel.second.refDepth < bestKernel.second.refDepth)) // currentKernel was defined less deep in the reference tree than the previous best kernel
 			{
 				bestKernel = currentKernel;
 				bestScore = currentScore;
 				bestStmtEnd = currentStmtEnd;
 			}
-			else if (currentScore == -2147483648 && *defaultStmtKernel == nullptr)
+			else if (currentScore == MIN_SCORE && *defaultStmtKernel == nullptr)
+				*defaultStmtKernel = ref->defaultStmtKernel;
+			if (bestKernel.first != nullptr && bestKernel.second.refDepth > lookupDepth && *defaultStmtKernel == nullptr)
 				*defaultStmtKernel = ref->defaultStmtKernel;
 		}
+		lookupDepth &= 0xFFFF0000;
+		lookupDepth += 0x10000;
 	}
 
 	// Forget future expressions

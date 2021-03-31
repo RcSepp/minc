@@ -160,18 +160,26 @@ namespace std
 
 class MincStatementRegister
 {
-private:
-	std::map<const MincListExpr*, MincKernel*> stmtreg;
-	std::array<std::map<const MincExpr*, MincKernel*>, MincExpr::NUM_EXPR_TYPES> exprreg;
 public:
-	void defineStmt(const MincListExpr* tplt, MincKernel* stmt);
-	std::pair<const MincListExpr*, MincKernel*> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
+	struct RegisteredKernel
+	{
+		MincKernel* kernel;
+		unsigned int refDepth;
+		RegisteredKernel() {}
+		RegisteredKernel(MincKernel* kernel, unsigned int refDepth) : kernel(kernel), refDepth(refDepth) {}
+	};
+private:
+	std::map<const MincListExpr*, RegisteredKernel> stmtreg;
+	std::array<std::map<const MincExpr*, RegisteredKernel>, MincExpr::NUM_EXPR_TYPES> exprreg;
+public:
+	void defineStmt(const MincListExpr* tplt, MincKernel* stmt, MincBlockExpr* scope, MincBlockExpr* refScope);
+	std::pair<const MincListExpr*, RegisteredKernel> lookupStmt(const MincBlockExpr* block, ResolvingMincExprIter stmt, unsigned int refDepth, ResolvingMincExprIter& stmtEnd, MatchScore& score) const;
 	void lookupStmtCandidates(const MincBlockExpr* block, const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const;
 
 	void defineExpr(const MincExpr* tplt, MincKernel* expr);
-	std::pair<const MincExpr*, MincKernel*> lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const;
+	std::pair<const MincExpr*, RegisteredKernel> lookupExpr(const MincBlockExpr* block, MincExpr* expr, MatchScore& bestScore) const;
 	void lookupExprCandidates(const MincBlockExpr* block, const MincExpr* expr, std::multimap<MatchScore, const std::pair<const MincExpr*, MincKernel*>>& candidates) const;
 	size_t countExprs() const;
 	void iterateExprs(std::function<void(const MincExpr* tplt, MincKernel* expr)> cbk) const;
@@ -272,12 +280,12 @@ public:
 	void *user, *userType;
 
 	MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* exprs);
-	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt);
-	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run);
-	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run);
+	void defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt, MincBlockExpr* scope=nullptr);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincBlockExpr* scope=nullptr);
+	void defineStmt(const std::vector<MincExpr*>& tplt, std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincBlockExpr* scope=nullptr);
 	bool lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, MincStmt& stmt) const;
 	void lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const;
-	std::pair<const MincListExpr*, MincKernel*> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
+	std::pair<const MincListExpr*, MincStatementRegister::RegisteredKernel> lookupStmt(ResolvingMincExprIter stmt, ResolvingMincExprIter& bestStmtEnd, MatchScore& bestScore, MincKernel** defaultStmtKernel) const;
 	size_t countStmts() const;
 	void iterateStmts(std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk) const;
 	void defineDefaultStmt(MincKernel* stmt);

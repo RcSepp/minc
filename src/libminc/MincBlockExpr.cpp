@@ -238,21 +238,20 @@ MincBlockExpr::MincBlockExpr(const MincLocation& loc, std::vector<MincExpr*>* ex
 {
 }
 
-void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, MincKernel* stmt, MincBlockExpr* scope)
 {
-	if (isBuilt())
+	if (scope == nullptr)
+		scope = this;
+	if (scope->isBuilt())
 		throw CompileError("defining statement after block has been built", loc);
 
 	for (MincExpr* tpltExpr: tplt)
 		tpltExpr->resolve(this);
-	stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt);
+	scope->stmtreg.defineStmt(new MincListExpr('\0', tplt), stmt, scope, this);
 }
 
-void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
+void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincBlockExpr* scope)
 {
-	if (isBuilt())
-		throw CompileError("defining statement after block has been built", loc);
-
 	struct StmtKernel : public MincKernel
 	{
 		const std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> runCbk;
@@ -262,16 +261,13 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt, std::function
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { return runCbk(runtime, params); }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
-	defineStmt(tplt, new StmtKernel(run));
+	defineStmt(tplt, new StmtKernel(run), scope);
 }
 
 void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
 							   std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> build,
-							   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run)
+							   std::function<bool(MincRuntime&, const std::vector<MincExpr*>&)> run, MincBlockExpr* scope)
 {
-	if (isBuilt())
-		throw CompileError("defining statement after block has been built", loc);
-
 	struct StmtKernel : public MincKernel
 	{
 		const std::function<void(MincBuildtime&, std::vector<MincExpr*>&)> buildCbk;
@@ -284,7 +280,7 @@ void MincBlockExpr::defineStmt(const std::vector<MincExpr*>& tplt,
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) { if (runCbk != nullptr) return runCbk(runtime, params); return false; }
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return VOID.type; }
 	};
-	defineStmt(tplt, new StmtKernel(build, run));
+	defineStmt(tplt, new StmtKernel(build, run), scope);
 }
 
 void MincBlockExpr::lookupStmtCandidates(const MincListExpr* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates) const
@@ -1194,44 +1190,44 @@ extern "C"
 		return new MincBlockExpr(expr->loc, new std::vector<MincExpr*>(1, expr));
 	}
 
-	void defineStmt1(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, RunBlock codeBlock, void* stmtArgs)
+	void defineStmt1(MincBlockExpr* refScope, const std::vector<MincExpr*>& tplt, RunBlock codeBlock, void* stmtArgs, MincBlockExpr* scope)
 	{
-		scope->defineStmt(tplt, new StaticStmtKernel(codeBlock, stmtArgs));
+		refScope->defineStmt(tplt, new StaticStmtKernel(codeBlock, stmtArgs), scope);
 	}
 
-	void defineStmt2(MincBlockExpr* scope, const char* tpltStr, RunBlock codeBlock, void* stmtArgs)
+	void defineStmt2(MincBlockExpr* refScope, const char* tpltStr, RunBlock codeBlock, void* stmtArgs, MincBlockExpr* scope)
 	{
-		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel(codeBlock, stmtArgs));
+		refScope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel(codeBlock, stmtArgs), scope);
 	}
 
-	void defineStmt3(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, MincKernel* stmt)
+	void defineStmt3(MincBlockExpr* refScope, const std::vector<MincExpr*>& tplt, MincKernel* stmt, MincBlockExpr* scope)
 	{
 		if (!tplt.empty() && (tplt.back()->exprtype == MincExpr::ExprType::STOP
 						   || (tplt.back()->exprtype == MincExpr::ExprType::PLCHLD && ((MincPlchldExpr*)tplt.back())->p1 == 'B')
 						   || (tplt.back()->exprtype == MincExpr::ExprType::LIST && ((MincListExpr*)tplt.back())->size() == 1
 							   && ((MincListExpr*)tplt.back())->at(0)->exprtype == MincExpr::ExprType::PLCHLD && ((MincPlchldExpr*)((MincListExpr*)tplt.back())->at(0))->p1 == 'B')))
-			scope->defineStmt(tplt, stmt);
+			refScope->defineStmt(tplt, stmt, scope);
 		else
 		{
 			std::vector<MincExpr*> stoppedTplt(tplt);
 			stoppedTplt.push_back(new MincStopExpr(MincLocation{}));
-			scope->defineStmt(stoppedTplt, stmt);
+			refScope->defineStmt(stoppedTplt, stmt, scope);
 		}
 	}
 
-	void defineStmt4(MincBlockExpr* scope, const char* tpltStr, MincKernel* stmt)
+	void defineStmt4(MincBlockExpr* refScope, const char* tpltStr, MincKernel* stmt, MincBlockExpr* scope)
 	{
-		scope->defineStmt(parseCTplt(tpltStr), stmt);
+		refScope->defineStmt(parseCTplt(tpltStr), stmt, scope);
 	}
 
-	void defineStmt5(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, void* stmtArgs)
+	void defineStmt5(MincBlockExpr* refScope, const char* tpltStr, BuildBlock buildBlock, void* stmtArgs, MincBlockExpr* scope)
 	{
-		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel2(buildBlock, stmtArgs));
+		refScope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel2(buildBlock, stmtArgs), scope);
 	}
 
-	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, RunBlock runBlock, void* stmtArgs)
+	void defineStmt6(MincBlockExpr* refScope, const char* tpltStr, BuildBlock buildBlock, RunBlock runBlock, void* stmtArgs, MincBlockExpr* scope)
 	{
-		scope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel3(buildBlock, runBlock, stmtArgs));
+		refScope->defineStmt(parseCTplt(tpltStr), new StaticStmtKernel3(buildBlock, runBlock, stmtArgs), scope);
 	}
 
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates)

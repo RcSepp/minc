@@ -1057,6 +1057,47 @@ PawsVoid test_mutable_exprs()
 	assert("" * "" == "d");
 }
 
+PawsVoid test_stmt_resolver()
+{
+	import paws.extend;
+
+
+	// A no-op return defined in function scope shadows a regular return defined in file scope reference paws.subroutine
+	i = 0;
+	PawsVoid a()
+	{
+		stmt return {} // Define no-op return stmt
+		return; // no-op return
+		++i;
+	}
+	a();
+	assert(i == 1);
+
+	// A no-op return defined in parent function scope shadows a regular return defined in file scope reference paws.subroutine
+	i = 0;
+	stmt return {} // Define no-op return stmt
+	PawsVoid b()
+	{
+		return; // no-op return
+		++i;
+	}
+	b();
+	assert(i == 1);
+
+	// A no-op return defined in parent function scope shadows a regular return defined in parent function reference paws.subroutine before the no-op return definition
+	i = 0;
+	stmt return {} // Define no-op return stmt
+	PawsVoid c()
+	{
+		return; // no-op return
+		++i;
+	}
+	c();
+	assert(i == 1);
+
+	//TODO: Test imported no-op return
+}
+
 measure("test time")
 	for (t = 0; t << 2; t = t + 1) // Run all tests twice to test cached behaviour
 	{
@@ -1073,6 +1114,7 @@ measure("test time")
 		test_paws_fileio();
 		test_paws_extend();
 		test_mutable_exprs();
+		test_stmt_resolver();
 	}
 
 // Test file-scope `return $E<PawsInt>` statement

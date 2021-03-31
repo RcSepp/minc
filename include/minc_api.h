@@ -69,12 +69,12 @@ extern "C"
 	bool ExprIsBlock(const MincExpr* expr);
 	MincBlockExpr* createEmptyBlockExpr();
 	MincBlockExpr* wrapExpr(MincExpr* expr);
-	void defineStmt1(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, RunBlock codeBlock, void* stmtArgs=nullptr);
-	void defineStmt2(MincBlockExpr* scope, const char* tpltStr, RunBlock codeBlock, void* stmtArgs=nullptr);
-	void defineStmt3(MincBlockExpr* scope, const std::vector<MincExpr*>& tplt, MincKernel* stmt);
-	void defineStmt4(MincBlockExpr* scope, const char* tpltStr, MincKernel* stmt);
-	void defineStmt5(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, void* stmtArgs=nullptr);
-	void defineStmt6(MincBlockExpr* scope, const char* tpltStr, BuildBlock buildBlock, RunBlock runBlock, void* stmtArgs=nullptr);
+	void defineStmt1(MincBlockExpr* refScope, const std::vector<MincExpr*>& tplt, RunBlock codeBlock, void* stmtArgs=nullptr, MincBlockExpr* scope=nullptr);
+	void defineStmt2(MincBlockExpr* refScope, const char* tpltStr, RunBlock codeBlock, void* stmtArgs=nullptr, MincBlockExpr* scope=nullptr);
+	void defineStmt3(MincBlockExpr* refScope, const std::vector<MincExpr*>& tplt, MincKernel* stmt, MincBlockExpr* scope=nullptr);
+	void defineStmt4(MincBlockExpr* refScope, const char* tpltStr, MincKernel* stmt, MincBlockExpr* scope=nullptr);
+	void defineStmt5(MincBlockExpr* refScope, const char* tpltStr, BuildBlock buildBlock, void* stmtArgs=nullptr, MincBlockExpr* scope=nullptr);
+	void defineStmt6(MincBlockExpr* refScope, const char* tpltStr, BuildBlock buildBlock, RunBlock runBlock, void* stmtArgs=nullptr, MincBlockExpr* scope=nullptr);
 	void lookupStmtCandidates(const MincBlockExpr* scope, const MincStmt* stmt, std::multimap<MatchScore, const std::pair<const MincListExpr*, MincKernel*>>& candidates);
 	size_t countBlockExprStmts(const MincBlockExpr* expr);
 	void iterateBlockExprStmts(const MincBlockExpr* expr, std::function<void(const MincListExpr* tplt, MincKernel* stmt)> cbk);

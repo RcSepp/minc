@@ -473,8 +473,8 @@ void MincBlockExpr::defineCast(MincCast* cast)
 		return;
 
 #ifdef DETECT_UNDEFINED_TYPE_CASTS
-	if (lookupSymbolName1(this, cast->fromType) == nullptr || lookupSymbolName1(this, cast->toType) == nullptr)
-		throw CompileError("type-cast defined from " + lookupSymbolName2(this, cast->fromType, "UNKNOWN_TYPE") + " to " + lookupSymbolName2(this, cast->toType, "UNKNOWN_TYPE"));
+	if (lookupSymbolName(cast->fromType) == nullptr || lookupSymbolName(cast->toType) == nullptr)
+		throw CompileError("type-cast defined from " + lookupSymbolName(cast->fromType, "UNKNOWN_TYPE") + " to " + lookupSymbolName(cast->toType, "UNKNOWN_TYPE"));
 #endif
 
 	castreg.defineDirectCast(cast);

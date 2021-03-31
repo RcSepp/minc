@@ -13,6 +13,8 @@ UndefinedIdentifierException::UndefinedIdentifierException(const MincIdExpr* id)
 	: CompileError('`' + id->str() + "` was not declared in this scope", id->loc) {}
 InvalidTypeException::InvalidTypeException(const MincPlchldExpr* plchld)
 	: CompileError('`' + std::string(plchld->p2) + "` is not a type", plchld->loc) {}
+TooManyErrorsException::TooManyErrorsException(const MincLocation& loc)
+	: CompileError("Too many errors", loc) {}
 
 MincException::MincException(const char* msg, MincLocation loc)
 	: refcount(new int(1)), msg(new char*()), loc(loc)

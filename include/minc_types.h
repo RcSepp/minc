@@ -51,12 +51,6 @@ struct MincStackSymbol
 	MincStackSymbol(MincObject* type, MincBlockExpr* scope, size_t location) : type(type), scope(scope), location(location) {}
 };
 
-struct MincBuildtime
-{
-	MincBlockExpr* parentBlock;
-	MincSymbol result;
-};
-
 struct MincStackFrame
 {
 	union {
@@ -67,61 +61,6 @@ struct MincStackFrame
 	MincStackFrame* next; //TODO: Only used for heap frame. Consider separating this struct into MincStackFrame and MincHeapFrame
 
 	MincStackFrame() : heapPointer(nullptr), next(nullptr) {}
-};
-
-struct MincRuntime
-{
-	const MincBlockExpr* parentBlock;
-	const MincExpr* currentExpr;
-	MincObject* result;
-	MincObject* exceptionType;
-	bool resume;
-	MincStackFrame* const stackFrames;
-	MincStackFrame* heapFrame;
-	size_t currentStackPointerIndex;
-	const size_t stackSize;
-	unsigned char* const stack;
-	size_t currentStackSize;
-
-	MincRuntime();
-	MincRuntime(MincBlockExpr* parentBlock, bool resume);
-	~MincRuntime();
-};
-
-struct MincEnteredBlockExpr
-{
-private:
-	MincRuntime& runtime;
-	const MincBlockExpr* block;
-	MincStackFrame* const prevStackFrame;
-
-public:
-	MincEnteredBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
-	~MincEnteredBlockExpr();
-	bool run();
-	void exit();
-};
-
-struct MincKernel
-{
-	virtual ~MincKernel() {}
-	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { return this; }
-	virtual void dispose(MincKernel* kernel) {}
-	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) = 0;
-	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
-};
-
-struct MincCast
-{
-	MincObject* const fromType;
-	MincObject* const toType;
-	MincKernel* const kernel;
-	MincCast() = default;
-	MincCast(const MincCast&) = default;
-	MincCast(MincObject* fromType, MincObject* toType, MincKernel* kernel)
-		: fromType(fromType), toType(toType), kernel(kernel) {}
-	virtual int getCost() const = 0;
-	virtual MincCast* derive() const = 0;
 };
 
 struct MincLocation
@@ -156,21 +95,85 @@ struct CompileError : public MincException
 	CompileError(const MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
 	CompileError(MincBlockExpr* scope, MincLocation loc, const char* fmt, ...);
 };
-struct UndefinedStmtException : public CompileError
+struct UndefinedStmtException : public CompileError { UndefinedStmtException(const MincStmt* stmt); };
+struct UndefinedExprException : public CompileError { UndefinedExprException(const MincExpr* expr); };
+struct UndefinedIdentifierException : public CompileError { UndefinedIdentifierException(const MincIdExpr* id); };
+struct InvalidTypeException : public CompileError { InvalidTypeException(const MincPlchldExpr* plchld); };
+struct TooManyErrorsException : public CompileError { TooManyErrorsException(const MincLocation& loc); };
+
+struct MincBuildtime
 {
-	UndefinedStmtException(const MincStmt* stmt);
+	MincBlockExpr* parentBlock;
+	MincSymbol result;
+	struct Settings
+	{
+		bool debug;
+		unsigned maxErrors;
+	} settings;
+	struct Hooks
+	{
+	} hooks;
+	struct Outputs
+	{
+		std::vector<CompileError> errors;
+	} outputs;
+
+	MincBuildtime(MincBlockExpr* parentBlock=nullptr);
 };
-struct UndefinedExprException : public CompileError
+
+struct MincRuntime
 {
-	UndefinedExprException(const MincExpr* expr);
+	const MincBlockExpr* parentBlock;
+	const MincExpr* currentExpr;
+	MincObject* result;
+	MincObject* exceptionType;
+	bool resume;
+	MincStackFrame* const stackFrames;
+	MincStackFrame* heapFrame;
+	size_t currentStackPointerIndex;
+	const size_t stackSize;
+	unsigned char* const stack;
+	size_t currentStackSize;
+
+	MincRuntime();
+	MincRuntime(MincBlockExpr* parentBlock, bool resume);
+	~MincRuntime();
 };
-struct UndefinedIdentifierException : public CompileError
+
+struct MincKernel
 {
-	UndefinedIdentifierException(const MincIdExpr* id);
+	virtual ~MincKernel() {}
+	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { return this; }
+	virtual void dispose(MincKernel* kernel) {}
+	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) = 0;
+	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };
-struct InvalidTypeException : public CompileError
+
+struct MincEnteredBlockExpr
 {
-	InvalidTypeException(const MincPlchldExpr* plchld);
+private:
+	MincRuntime& runtime;
+	const MincBlockExpr* block;
+	MincStackFrame* const prevStackFrame;
+
+public:
+	MincEnteredBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
+	~MincEnteredBlockExpr();
+	bool run();
+	void exit();
+};
+
+struct MincCast
+{
+	MincObject* const fromType;
+	MincObject* const toType;
+	MincKernel* const kernel;
+	MincCast() = default;
+	MincCast(const MincCast&) = default;
+	MincCast(MincObject* fromType, MincObject* toType, MincKernel* kernel)
+		: fromType(fromType), toType(toType), kernel(kernel) {}
+	virtual int getCost() const = 0;
+	virtual MincCast* derive() const = 0;
 };
 
 typedef void (*BuildBlock)(MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* exprArgs);

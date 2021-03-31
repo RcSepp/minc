@@ -995,10 +995,26 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 	{
 		builtStmts.push_back(MincStmt());
 		MincStmt& currentStmt = builtStmts.back();
+
+		// Resolve statement
 		if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
 			throw UndefinedStmtException(&currentStmt);
+
+		// Build statement
 		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
-		currentStmt.build(buildtime);
+		if (buildtime.settings.maxErrors == 0)
+			currentStmt.build(buildtime);
+		else
+			try
+			{
+				currentStmt.build(buildtime);
+			}
+			catch (const CompileError& err)
+			{
+				if (buildtime.outputs.errors.size() >= buildtime.settings.maxErrors)
+					throw TooManyErrorsException(err.loc);
+				buildtime.outputs.errors.push_back(err);
+			}
 
 		// Advance beginning of next statement to end of current statement
 		stmtBeginExpr = currentStmt.end;

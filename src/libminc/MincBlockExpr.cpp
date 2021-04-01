@@ -569,20 +569,20 @@ void MincBlockExpr::defineSymbol(std::string name, MincObject* type, MincObject*
 	if (isBuilt())
 		throw CompileError("defining symbol after block has been built", loc);
 
-	auto inserted = symbolMap.insert(std::make_pair(name, std::make_pair(symbols.size(), SymbolType::BUILDTIME))); // Insert forward mapping if not already present
+	auto inserted = symbolMap.insert(std::make_pair(name, SymbolMapEntry(symbols.size(), SymbolType::BUILDTIME))); // Insert forward mapping if not already present
 	if (inserted.second || // If name refers to a new symbol or ...
-		inserted.first->second.second != SymbolType::BUILDTIME || // ... existing symbol is a stack symbol or ...
-		type != symbols[inserted.first->second.first]->type) // ... existing symbol is of a different type
+		inserted.first->second.type != SymbolType::BUILDTIME || // ... existing symbol is a stack symbol or ...
+		type != symbols[inserted.first->second.index]->type) // ... existing symbol is of a different type
 	{
 		// Insert new symbol
-		inserted.first->second.first = symbols.size();
-		inserted.first->second.second = SymbolType::BUILDTIME;
+		inserted.first->second.index = symbols.size();
+		inserted.first->second.type = SymbolType::BUILDTIME;
 		symbols.push_back(new MincSymbol(type, value)); // Insert symbol
 	}
 	else
 	{
 		// Update existing symbol
-		MincSymbol* symbol = symbols[inserted.first->second.first];
+		MincSymbol* symbol = symbols[inserted.first->second.index];
 		symbol->type = type; // Update symbol type
 		symbol->value = value; // Update symbol value
 	}
@@ -593,13 +593,13 @@ const MincSymbol* MincBlockExpr::lookupSymbol(const std::string& name) const
 {
 	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
 	{
-		std::map<std::string, std::pair<size_t, SymbolType>>::const_iterator symbolIter;
+		std::map<std::string, SymbolMapEntry>::const_iterator symbolIter;
 		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
-			return symbolIter->second.second == SymbolType::BUILDTIME ? block->symbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
+			return symbolIter->second.type == SymbolType::BUILDTIME ? block->symbols[symbolIter->second.index] : nullptr; // Symbol found in local scope
 
 		for (const MincBlockExpr* ref: block->references)
 			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
-				return symbolIter->second.second == SymbolType::BUILDTIME ? ref->symbols[symbolIter->second.first] : nullptr; // Symbol found in ref scope
+				return symbolIter->second.type == SymbolType::BUILDTIME ? ref->symbols[symbolIter->second.index] : nullptr; // Symbol found in ref scope
 	}
 	return nullptr; // Symbol not found
 }
@@ -642,38 +642,38 @@ size_t MincBlockExpr::countSymbols() const
 size_t MincBlockExpr::countSymbols(SymbolType symbolType) const
 {
 	size_t c = 0;
-	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
-		c += iter.second.second == symbolType;
+	for (const std::pair<std::string, SymbolMapEntry>& iter: symbolMap)
+		c += iter.second.type == symbolType;
 	return c;
 }
 
 void MincBlockExpr::iterateBuildtimeSymbols(std::function<void(const std::string& name, const MincSymbol& symbol)> cbk) const
 {
-	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
-		if (iter.second.second == SymbolType::BUILDTIME)
-			cbk(iter.first, *symbols[iter.second.first]);
+	for (const std::pair<std::string, SymbolMapEntry>& iter: symbolMap)
+		if (iter.second.type == SymbolType::BUILDTIME)
+			cbk(iter.first, *symbols[iter.second.index]);
 }
 
 void MincBlockExpr::iterateStackSymbols(std::function<void(const std::string& name, const MincStackSymbol& symbol)> cbk) const
 {
-	for (const std::pair<std::string, std::pair<size_t, SymbolType>>& iter: symbolMap)
-		if (iter.second.second == SymbolType::STACK)
-			cbk(iter.first, *stackSymbols[iter.second.first]);
+	for (const std::pair<std::string, SymbolMapEntry>& iter: symbolMap)
+		if (iter.second.type == SymbolType::STACK)
+			cbk(iter.first, *stackSymbols[iter.second.index]);
 }
 
 MincSymbol* MincBlockExpr::importSymbol(const std::string& name)
 {
-	std::map<std::string, std::pair<size_t, SymbolType>>::iterator symbolIter;
+	std::map<std::string, SymbolMapEntry>::iterator symbolIter;
 	if ((symbolIter = symbolMap.find(name)) != symbolMap.end())
-		return symbolIter->second.second == SymbolType::BUILDTIME ? symbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
+		return symbolIter->second.type == SymbolType::BUILDTIME ? symbols[symbolIter->second.index] : nullptr; // Symbol found in local scope
 
 	MincSymbol* symbol;
 	for (MincBlockExpr* ref: references)
 		if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.end())
 		{
-			if (symbolIter->second.second != SymbolType::BUILDTIME)
+			if (symbolIter->second.type != SymbolType::BUILDTIME)
 				continue;
-			symbol = ref->symbols[symbolIter->second.first]; // Symbol found in ref scope
+			symbol = ref->symbols[symbolIter->second.index]; // Symbol found in ref scope
 
 			if (ref->scopeType == nullptr || scopeType == nullptr)
 				return symbol; // Scope type undefined for either ref scope or local scope
@@ -753,23 +753,23 @@ const MincStackSymbol* MincBlockExpr::allocStackSymbol(const std::string& name, 
 	if (isBuilt())
 		throw CompileError("defining symbol after block has been built", loc);
 
-	auto inserted = symbolMap.insert(std::make_pair(name, std::make_pair(stackSymbols.size(), SymbolType::STACK))); // Insert stack symbol if not already present
+	auto inserted = symbolMap.insert(std::make_pair(name, SymbolMapEntry(stackSymbols.size(), SymbolType::STACK))); // Insert stack symbol if not already present
 	if (inserted.second) // If name refers to a new symbol
 	{
 		// Insert new symbol
 		stackSymbols.push_back(new MincStackSymbol(type, this, stackSize)); // Insert symbol
 		stackSize += size; // Grow stack
 	}
-	else if (inserted.first->second.second != SymbolType::STACK || // If the existing symbol is a build time symbol or ...
-			 type != stackSymbols[inserted.first->second.first]->type) // ... the existing symbol is of a different type
+	else if (inserted.first->second.type != SymbolType::STACK || // If the existing symbol is a build time symbol or ...
+			 type != stackSymbols[inserted.first->second.index]->type) // ... the existing symbol is of a different type
 	{
 		// Replace symbol
-		symbolMap[name] = std::make_pair(stackSymbols.size(), SymbolType::STACK); // Replace symbol in symbol map
+		symbolMap[name] = SymbolMapEntry(stackSymbols.size(), SymbolType::STACK); // Replace symbol in symbol map
 		stackSymbols.push_back(new MincStackSymbol(type, this, stackSize)); // Insert symbol
 		stackSize += size; // Grow stack
 	}
 
-	return stackSymbols[inserted.first->second.first];
+	return stackSymbols[inserted.first->second.index];
 }
 
 const MincStackSymbol* MincBlockExpr::allocStackSymbol(MincObject* type, size_t size)
@@ -787,13 +787,13 @@ const MincStackSymbol* MincBlockExpr::lookupStackSymbol(const std::string& name)
 {
 	for (const MincBlockExpr* block = this; block != nullptr; block = block->parent)
 	{
-		std::map<std::string, std::pair<size_t, SymbolType>>::const_iterator symbolIter;
+		std::map<std::string, SymbolMapEntry>::const_iterator symbolIter;
 		if ((symbolIter = block->symbolMap.find(name)) != block->symbolMap.cend())
-			return symbolIter->second.second == SymbolType::STACK ? block->stackSymbols[symbolIter->second.first] : nullptr; // Symbol found in local scope
+			return symbolIter->second.type == SymbolType::STACK ? block->stackSymbols[symbolIter->second.index] : nullptr; // Symbol found in local scope
 
 		for (const MincBlockExpr* ref: block->references)
 			if ((symbolIter = ref->symbolMap.find(name)) != ref->symbolMap.cend())
-				return symbolIter->second.second == SymbolType::STACK ? ref->stackSymbols[symbolIter->second.first] : nullptr; // Symbol found in ref scope
+				return symbolIter->second.type == SymbolType::STACK ? ref->stackSymbols[symbolIter->second.index] : nullptr; // Symbol found in ref scope
 	}
 	return nullptr; // Symbol not found
 }

@@ -250,11 +250,18 @@ public:
 		BUILDTIME, STACK
 	};
 private:
+	struct SymbolMapEntry
+	{
+		size_t index;
+		SymbolType type;
+		SymbolMapEntry() = default;
+		SymbolMapEntry(size_t index, SymbolType type) : index(index), type(type) {}
+	};
 	MincStatementRegister stmtreg;
 	MincKernel *defaultStmtKernel, *defaultExprKernel;
 	std::vector<MincSymbol*> symbols;
 	std::vector<MincStackSymbol*> stackSymbols;
-	std::map<std::string, std::pair<size_t, SymbolType>> symbolMap;
+	std::map<std::string, SymbolMapEntry> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	MincCastRegister castreg;
 	std::vector<MincStmt> builtStmts;

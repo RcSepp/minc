@@ -321,7 +321,7 @@ MincPackage PAWS_ARRAY("paws.array", [](MincBlockExpr* pkgScope) {
 			if (arr->get()->empty())
 				return false;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
-			MincObject* iter = body->getStackSymbolOfNextStackFrame(runtime, iterId);
+			MincObject* iter = runtime.getStackSymbolOfNextStackFrame(iterId);
 			for (MincObject* value: *arr->get())
 			{
 				((PawsType*)iterId->type)->copyTo(value, iter);

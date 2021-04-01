@@ -29,7 +29,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 		}
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			MincObject* var = runtime.parentBlock->getStackSymbol(runtime, varId);
+			MincObject* var = runtime.getStackSymbol(varId);
 			runtime.result = new PawsDouble(cbk(((PawsDouble*)var)->get()));
 			return false;
 		}
@@ -129,7 +129,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsDouble* const val = (PawsDouble*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() + ((PawsDouble*)runtime.result)->get());
@@ -167,7 +167,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsDouble* const val = (PawsDouble*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() - ((PawsDouble*)runtime.result)->get());
@@ -205,7 +205,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsDouble* const val = (PawsDouble*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() * ((PawsDouble*)runtime.result)->get());
@@ -243,7 +243,7 @@ MincPackage PAWS_DOUBLE("paws.double", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsDouble* const val = (PawsDouble*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsDouble* const val = (PawsDouble*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() / ((PawsDouble*)runtime.result)->get());

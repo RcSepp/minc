@@ -85,7 +85,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			{
 				if (runtime.parentBlock->isInstance(PawsException::TYPE, catchType))
 				{
-					MincObject* errValue = ((MincBlockExpr*)params[3])->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
+					MincObject* errValue = runtime.getStackSymbolOfNextStackFrame(stackSymbol);
 					new(errValue) MincException(err);
 					return params[3]->run(runtime);
 				}
@@ -96,7 +96,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			{
 				if (runtime.parentBlock->isInstance(err.type, catchType))
 				{
-					MincObject* errValue = ((MincBlockExpr*)params[3])->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
+					MincObject* errValue = runtime.getStackSymbolOfNextStackFrame(stackSymbol);
 					((PawsType*)stackSymbol->type)->copyToNew(err.value, errValue);
 					return params[3]->run(runtime);
 				}
@@ -109,7 +109,7 @@ MincPackage PAWS_EXCEPTION("paws.exception", [](MincBlockExpr* pkgScope) {
 			}
 			if (runtime.parentBlock->isInstance(runtime.exceptionType, catchType))
 			{
-				MincObject* errValue = ((MincBlockExpr*)params[3])->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
+				MincObject* errValue = runtime.getStackSymbolOfNextStackFrame(stackSymbol);
 				((PawsType*)stackSymbol->type)->copyToNew(runtime.result, errValue);
 				return params[3]->run(runtime);
 			}

@@ -854,7 +854,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				if (argExprs[i]->run(runtime))
 					return true;
-				MincObject* var = frame->body->getStackSymbol(runtime, frame->args[i]);
+				MincObject* var = runtime.getStackSymbol(frame->args[i]);
 				((PawsType*)frame->args[i]->type)->copyToNew(runtime.result, var);
 			}
 
@@ -864,7 +864,7 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			{
 				if (pair.second.initExpr->run(runtime))
 					return true;
-				MincObject* var = frame->body->getStackSymbol(runtime, pair.second.symbol);
+				MincObject* var = runtime.getStackSymbol(pair.second.symbol);
 				((PawsType*)pair.second.symbol->type)->copyToNew(runtime.result, var);
 				instance->variables[pair.first] = var;
 			}

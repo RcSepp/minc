@@ -28,7 +28,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 		}
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			MincObject* var = runtime.parentBlock->getStackSymbol(runtime, varId);
+			MincObject* var = runtime.getStackSymbol(varId);
 			runtime.result = new PawsInt(cbk(((PawsInt*)var)->get()));
 			return false;
 		}
@@ -121,7 +121,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() + ((PawsInt*)runtime.result)->get());
@@ -159,7 +159,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() - ((PawsInt*)runtime.result)->get());
@@ -197,7 +197,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() * ((PawsInt*)runtime.result)->get());
@@ -235,7 +235,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() / ((PawsInt*)runtime.result)->get());
@@ -273,7 +273,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() & ((PawsInt*)runtime.result)->get());
@@ -311,7 +311,7 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			PawsInt* const val = (PawsInt*)runtime.parentBlock->getStackSymbol(runtime, varId);
+			PawsInt* const val = (PawsInt*)runtime.getStackSymbol(varId);
 			if (params[1]->run(runtime))
 				return true;
 			val->set(val->get() ^ ((PawsInt*)runtime.result)->get());

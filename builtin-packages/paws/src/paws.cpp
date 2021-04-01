@@ -627,7 +627,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
 		{
-			runtime.result = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
+			runtime.result = runtime.getStackSymbol(stackSymbol);
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
@@ -734,7 +734,7 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 			if (params[1]->run(runtime))
 				return true;
 
-			MincObject* value = runtime.parentBlock->getStackSymbol(runtime, stackSymbol);
+			MincObject* value = runtime.getStackSymbol(stackSymbol);
 			((PawsType*)stackSymbol->type)->copyToNew(runtime.result, value);
 			runtime.result = value;
 			return false;

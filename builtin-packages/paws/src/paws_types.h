@@ -442,7 +442,7 @@ template<class R> void defineExpr(MincBlockExpr* scope, const char* tpltStr, R (
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)());
 			return false;
 		}
@@ -477,7 +477,7 @@ template<class R, class P0> void defineExpr(MincBlockExpr* scope, const char* tp
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get()));
 			return false;
 		}
@@ -515,7 +515,7 @@ template<class R, class P0, class P1> void defineExpr(MincBlockExpr* scope, cons
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get()));
 			return false;
 		}
@@ -556,7 +556,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get()));
 			return false;
 		}
@@ -600,7 +600,7 @@ template<class R, class P0, class P1, class P2, class P3> void defineExpr(MincBl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get()));
 			return false;
 		}
@@ -647,7 +647,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4> void defineE
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get()));
 			return false;
 		}
@@ -697,7 +697,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5> vo
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get()));
 			return false;
 		}
@@ -750,7 +750,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get()));
 			return false;
 		}
@@ -806,7 +806,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get()));
 			return false;
 		}
@@ -865,7 +865,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get()));
 			return false;
 		}
@@ -927,7 +927,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get()));
 			return false;
 		}
@@ -992,7 +992,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get()));
 			return false;
 		}
@@ -1060,7 +1060,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get()));
 			return false;
 		}
@@ -1131,7 +1131,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get()));
 			return false;
 		}
@@ -1205,7 +1205,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get()));
 			return false;
 		}
@@ -1282,7 +1282,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get()));
 			return false;
 		}
@@ -1362,7 +1362,7 @@ template<class R, class P0, class P1, class P2, class P3, class P4, class P5, cl
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*exprFunc)(p0->get(), p1->get(), p2->get(), p3->get(), p4->get(), p5->get(), p6->get(), p7->get(), p8->get(), p9->get(), p10->get(), p11->get(), p12->get(), p13->get(), p14->get(), p15->get()));
 			return false;
 		}
@@ -1399,7 +1399,7 @@ template<class P0> void defineExpr(MincBlockExpr* scope, const char* tpltStr, Mi
 			if (params[0]->run(runtime)) return true;
 			PawsValue<P0>* p0 = (PawsValue<P0>*)runtime.result;
 			runtime.result = (*exprFunc)(p0->get());
-			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
+			MincObject* resultValue = runtime.getStackSymbol(result);
 			((PawsType*)result->type)->copyToNew(runtime.result, resultValue);
 			runtime.result = resultValue;
 			return false;
@@ -1440,7 +1440,7 @@ template<class P0, class P1> void defineExpr(MincBlockExpr* scope, const char* t
 			if (params[1]->run(runtime)) return true;
 			PawsValue<P1>* p1 = (PawsValue<P1>*)runtime.result;
 			runtime.result = (*exprFunc)(p0->get(), p1->get());
-			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
+			MincObject* resultValue = runtime.getStackSymbol(result);
 			((PawsType*)result->type)->copyToNew(runtime.result, resultValue);
 			runtime.result = resultValue;
 			return false;
@@ -1485,7 +1485,7 @@ template<class R, class P0, class P1, class P2> void defineExpr(MincBlockExpr* s
 			if (params[2]->run(runtime)) return true;
 			PawsValue<P2>* p2 = (PawsValue<P2>*)runtime.result;
 			runtime.result = (*exprFunc)(p0->get(), p1->get(), p2->get());
-			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
+			MincObject* resultValue = runtime.getStackSymbol(result);
 			((PawsType*)result->type)->copyToNew(runtime.result, resultValue);
 			runtime.result = resultValue;
 			return false;
@@ -1530,7 +1530,7 @@ template<class R, class P0> void defineTypeCast(MincBlockExpr* scope, R (*castFu
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*castFunc)(p0->get()));
 			return false;
 		}
@@ -1568,7 +1568,7 @@ template<class R, class P0> void defineInheritanceCast(MincBlockExpr* scope, R (
 				runtime.result = nullptr;
 			}
 			else
-				new(runtime.result = runtime.parentBlock->getStackSymbol(runtime, result))
+				new(runtime.result = runtime.getStackSymbol(result))
 					PawsValue<R>((*castFunc)(p0->get()));
 			return false;
 		}

@@ -54,7 +54,7 @@ MincPackage PAWS_FILEIO("paws.fileio", [](MincBlockExpr* pkgScope) {
 
 			std::shared_ptr<std::fstream> file = std::make_shared<std::fstream>();
 			file->open(filename, openmode);
-			MincObject* var = block->getStackSymbolOfNextStackFrame(runtime, varId);
+			MincObject* var = runtime.getStackSymbolOfNextStackFrame(varId);
 			new(var) PawsFile(file);
 
 			try

@@ -123,8 +123,8 @@ extern "C"
 	const MincStackSymbol* allocStackSymbol(MincBlockExpr* scope, const char* name, MincObject* type, size_t size);
 	const MincStackSymbol* allocAnonymousStackSymbol(MincBlockExpr* scope, MincObject* type, size_t size);
 	const MincStackSymbol* lookupStackSymbol(const MincBlockExpr* scope, const char* name);
-	MincObject* getStackSymbol(const MincBlockExpr* expr, MincRuntime& runtime, const MincStackSymbol* stackSymbol);
-	MincObject* getStackSymbolOfNextStackFrame(const MincBlockExpr* expr, MincRuntime& runtime, const MincStackSymbol* stackSymbol);
+	MincObject* getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol);
+	MincObject* getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol);
 	MincBlockExpr* cloneBlockExpr(MincBlockExpr* expr);
 	void resetBlockExpr(MincBlockExpr* expr);
 	void resetBlockExprCache(MincBlockExpr* block, size_t targetState);

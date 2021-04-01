@@ -155,7 +155,7 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 				return true;
 			PawsString* str = (PawsString*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[2];
-			PawsString* iter = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, iterId);
+			PawsString* iter = (PawsString*)runtime.getStackSymbolOfNextStackFrame(iterId);
 			PawsString::TYPE->allocTo(iter);
 			for (char c: str->get())
 			{
@@ -257,8 +257,8 @@ MincPackage PAWS_STRING("paws.string", [](MincBlockExpr* pkgScope) {
 				return true;
 			PawsStringMap* map = (PawsStringMap*)runtime.result;
 			MincBlockExpr* body = (MincBlockExpr*)params[3];
-			PawsString* key = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, keyId);
-			PawsString* value = (PawsString*)body->getStackSymbolOfNextStackFrame(runtime, valueId);
+			PawsString* key = (PawsString*)runtime.getStackSymbolOfNextStackFrame(keyId);
+			PawsString* value = (PawsString*)runtime.getStackSymbolOfNextStackFrame(valueId);
 			PawsString::TYPE->allocTo(key);
 			PawsString::TYPE->allocTo(value);
 			for (std::pair<const std::string, std::string> pair: map->get())

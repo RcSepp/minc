@@ -259,7 +259,6 @@ private:
 	MincCastRegister castreg;
 	std::vector<MincStmt> builtStmts;
 	size_t stackSize;
-	mutable MincStackFrame* stackFrame;
 
 public:
 	MincBlockExpr* parent;
@@ -267,6 +266,7 @@ public:
 	std::vector<MincExpr*>* exprs;
 	MincScopeType* scopeType;
 	std::vector<MincSymbol> blockParams;
+	mutable MincStackFrame* stackFrame;
 #ifdef CACHE_RESULTS
 	mutable std::vector<std::pair<MincObject*, bool>> resultCache;
 #endif
@@ -319,8 +319,6 @@ public:
 	const MincStackSymbol* allocStackSymbol(const std::string& name, MincObject* type, size_t size);
 	const MincStackSymbol* allocStackSymbol(MincObject* type, size_t size);
 	const MincStackSymbol* lookupStackSymbol(const std::string& name) const;
-	MincObject* getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
-	MincObject* getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const;
 	const std::vector<MincSymbol>* getBlockParams() const;
 	void enter(MincEnteredBlockExpr& entered);
 	bool run(MincRuntime& runtime) const;

@@ -798,24 +798,6 @@ const MincStackSymbol* MincBlockExpr::lookupStackSymbol(const std::string& name)
 	return nullptr; // Symbol not found
 }
 
-MincObject* MincBlockExpr::getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const
-{
-	const MincStackFrame* stackFrame = stackSymbol->scope->stackFrame;
-	if (stackFrame == nullptr)
-		throw CompileError(this, loc, "accessing symbol in stack frame of inactive block `%S`", stackSymbol->scope->name);
-
-	if (stackSymbol->scope->isResumable)
-		return (MincObject*)(stackFrame->heapPointer + stackSymbol->location);
-	else
-		return (MincObject*)(runtime.stack + stackFrame->stackPointer + stackSymbol->location);
-}
-
-MincObject* MincBlockExpr::getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol) const
-{
-	size_t location = runtime.currentStackSize + stackSymbol->location;
-	return (MincObject*)(runtime.stack + location);
-}
-
 const std::vector<MincSymbol>* MincBlockExpr::getBlockParams() const
 {
 	for (const MincBlockExpr* block = this; block; block = block->parent)
@@ -1483,14 +1465,14 @@ extern "C"
 		return scope->lookupStackSymbol(name);
 	}
 
-	MincObject* getStackSymbol(const MincBlockExpr* scope, MincRuntime& runtime, const MincStackSymbol* stackSymbol)
+	MincObject* getStackSymbol(MincRuntime& runtime, const MincStackSymbol* stackSymbol)
 	{
-		return scope->getStackSymbol(runtime, stackSymbol);
+		return runtime.getStackSymbol(stackSymbol);
 	}
 
-	MincObject* getStackSymbolOfNextStackFrame(const MincBlockExpr* scope, MincRuntime& runtime, const MincStackSymbol* stackSymbol)
+	MincObject* getStackSymbolOfNextStackFrame(MincRuntime& runtime, const MincStackSymbol* stackSymbol)
 	{
-		return scope->getStackSymbolOfNextStackFrame(runtime, stackSymbol);
+		return runtime.getStackSymbolOfNextStackFrame(stackSymbol);
 	}
 
 	MincBlockExpr* cloneBlockExpr(MincBlockExpr* expr)

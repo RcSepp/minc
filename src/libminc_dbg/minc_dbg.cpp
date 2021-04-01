@@ -361,7 +361,7 @@ public:
 					auto cbk = [&](const std::string& name, const MincStackSymbol& symbol) {
 						dap::Variable var;
 						var.name = name;
-						if (!getValueStr(block, MincSymbol(symbol.type, block->getStackSymbol(*runtime, &symbol)), &var.value))
+						if (!getValueStr(block, MincSymbol(symbol.type, runtime->getStackSymbol(&symbol)), &var.value))
 							var.value = "UNKNOWN";
 						var.type = block->lookupSymbolName(symbol.type, "UNKNOWN_TYPE");
 						variables.push_back(var);

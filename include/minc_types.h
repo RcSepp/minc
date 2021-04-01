@@ -138,6 +138,8 @@ struct MincRuntime
 	MincRuntime();
 	MincRuntime(MincBlockExpr* parentBlock, bool resume);
 	~MincRuntime();
+	MincObject* getStackSymbol(const MincStackSymbol* stackSymbol);
+	MincObject* getStackSymbolOfNextStackFrame(const MincStackSymbol* stackSymbol);
 };
 
 struct MincKernel

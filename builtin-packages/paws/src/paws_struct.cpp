@@ -553,7 +553,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					// Assign member variable in struct scope
 					if (pair.second.initExpr->run(runtime))
 						return true;
-					MincObject* var = strct->body->getStackSymbol(runtime, pair.second.symbol);
+					MincObject* var = runtime.getStackSymbol(pair.second.symbol);
 					((PawsType*)pair.second.symbol->type)->copyToNew(runtime.result, var);
 				}
 				if (strct->base != nullptr) //TODO: Create baseInstance within StructInstance
@@ -567,7 +567,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 						// Assign member variable in struct base scope
 						if (pair.second.initExpr->run(runtime))
 							return true;
-						MincObject* var = strct->body->getStackSymbol(runtime, pair.second.symbol);
+						MincObject* var = runtime.getStackSymbol(pair.second.symbol);
 						((PawsType*)pair.second.symbol->type)->copyToNew(runtime.result, var);
 					}
 				}
@@ -587,7 +587,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					if (strct->body != nullptr)
 					{
 						// Assign "this" variable in struct scope
-						MincObject* thisValue = strct->body->getStackSymbol(runtime, strct->thisSymbol);
+						MincObject* thisValue = runtime.getStackSymbol(strct->thisSymbol);
 						strct->copyToNew(self.value, thisValue);
 					}
 					if (constructor->call(runtime, argExprs, &self))
@@ -601,7 +601,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 					if (strct->body != nullptr)
 					{
 						// Assign "this" variable in struct scope
-						MincObject* thisValue = strct->body->getStackSymbol(runtime, strct->thisSymbol);
+						MincObject* thisValue = runtime.getStackSymbol(strct->thisSymbol);
 						strct->copyToNew(self.value, thisValue);
 					}
 				}
@@ -612,7 +612,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 				if (strct->body != nullptr)
 				{
 					// Assign "this" variable in struct scope
-					MincObject* thisValue = strct->body->getStackSymbol(runtime, strct->thisSymbol);
+					MincObject* thisValue = runtime.getStackSymbol(strct->thisSymbol);
 					strct->copyToNew(self.value, thisValue);
 				}
 			}
@@ -674,11 +674,11 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			{
 				runtime.heapFrame = &instance->base->heapFrame; // Assign heap frame
 				MincEnteredBlockExpr entered(runtime, strct->base->body);
-				runtime.result = strct->body->getStackSymbol(runtime, member);
+				runtime.result = runtime.getStackSymbol(member);
 			}
 			else
 			{
-				runtime.result = strct->body->getStackSymbol(runtime, member);
+				runtime.result = runtime.getStackSymbol(member);
 			}
 			return false;
 		}
@@ -750,7 +750,7 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			//auto pair = strct->variables.find(memberName);
 			if (params[2]->run(runtime))
 				return true;
-			MincObject* const val = strct->body->getStackSymbol(runtime, member);
+			MincObject* const val = runtime.getStackSymbol(member);
 			((PawsType*)member->type)->copyTo(runtime.result, val);
 			runtime.result = val;
 			return false;

@@ -81,7 +81,7 @@ bool PawsRegularFunc::call(MincRuntime& runtime, const std::vector<MincExpr*>& a
 	{
 		if (argExprs[i]->run(runtime))
 			return true;
-		MincObject* var = body->getStackSymbolOfNextStackFrame(runtime, args[i]);
+		MincObject* var = runtime.getStackSymbolOfNextStackFrame(args[i]);
 		((PawsType*)args[i]->type)->copyToNew(runtime.result, var);
 	}
 
@@ -226,7 +226,7 @@ MincPackage PAWS_SUBROUTINE("paws.subroutine", [](MincBlockExpr* pkgScope) {
 			// Call function
 			if (func->call(runtime, argExprs))
 				return true;
-			MincObject* resultValue = runtime.parentBlock->getStackSymbol(runtime, result);
+			MincObject* resultValue = runtime.getStackSymbol(result);
 			func->returnType->copyTo(runtime.result, resultValue);
 			runtime.result = resultValue;
 			return false;

@@ -173,7 +173,7 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 
 			// Store measured runtime as `varName`
-			new(runtime.parentBlock->getStackSymbol(runtime, stackSymbol)) PawsDuration(endTime - startTime);
+			new(runtime.getStackSymbol(stackSymbol)) PawsDuration(endTime - startTime);
 			return false;
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const

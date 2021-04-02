@@ -13,6 +13,7 @@ bool MincLiteralExpr::match(const MincBlockExpr* block, const MincExpr* expr, Ma
 
 void MincLiteralExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
+	expr->resolvedKernel = &UNUSED_KERNEL;
 }
 
 std::string MincLiteralExpr::str() const

@@ -144,12 +144,22 @@ struct MincRuntime
 
 struct MincKernel
 {
-	virtual ~MincKernel() {}
-	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params) { return this; }
-	virtual void dispose(MincKernel* kernel) {}
+	virtual ~MincKernel();
+	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params);
+	virtual void dispose(MincKernel* kernel);
 	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) = 0;
 	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
 };
+extern struct UnresolvableExprKernel : public MincKernel
+{
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params);
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
+} UNRESOLVABLE_EXPR_KERNEL, UNUSED_KERNEL;
+extern struct UnresolvableStmtKernel : public MincKernel
+{
+	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params);
+	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
+} UNRESOLVABLE_STMT_KERNEL;
 
 struct MincEnteredBlockExpr
 {

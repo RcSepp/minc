@@ -1014,6 +1014,7 @@ bool MincBlockExpr::match(const MincBlockExpr* block, const MincExpr* expr, Matc
 
 void MincBlockExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
+	expr->resolvedKernel = &UNUSED_KERNEL;
 }
 
 std::string MincBlockExpr::str() const

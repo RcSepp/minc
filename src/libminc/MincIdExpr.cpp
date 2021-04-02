@@ -12,6 +12,7 @@ bool MincIdExpr::match(const MincBlockExpr* block, const MincExpr* expr, MatchSc
 
 void MincIdExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
+	expr->resolvedKernel = &UNUSED_KERNEL;
 }
 
 std::string MincIdExpr::str() const

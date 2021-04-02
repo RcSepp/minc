@@ -22,6 +22,7 @@ LIBMINC_OBJS = \
 	libminc/MincEncOpExpr.o \
 	libminc/MincExpr.o \
 	libminc/MincIdExpr.o \
+	libminc/MincKernel.o \
 	libminc/MincListExpr.o \
 	libminc/MincLiteralExpr.o \
 	libminc/MincParamExpr.o \

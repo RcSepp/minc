@@ -39,6 +39,7 @@ bool MincParamExpr::match(const MincBlockExpr* block, const MincExpr* expr, Matc
 
 void MincParamExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, std::vector<MincExpr*>& params, size_t& paramIdx) const
 {
+	expr->resolvedKernel = &UNUSED_KERNEL;
 }
 
 void MincParamExpr::forget()

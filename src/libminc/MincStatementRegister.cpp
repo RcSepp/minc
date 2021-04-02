@@ -34,28 +34,14 @@ unsigned long long EXPR_RESOLVE_COUNTER = 0, STMT_RESOLVE_COUNTER = 0;
 std::string indent;
 #endif
 
-// A mock kernel applied to expressions that can't be resolved, to avoid repeated attempts to resolve those expressions.
+// # Use of UNRESOLVABLE_EXPR_KERNEL and UNRESOLVABLE_STMT_KERNEL
+//
+// UNRESOLVABLE_EXPR_KERNEL and UNRESOLVABLE_STMT_KERNEL are mock kernels applied to expressions that can't be resolved,
+// to avoid repeated attempts to resolve those expressions.
 //
 // Example: Keyword identifiers such as "if" or "while" can't be resolved to symbols. If the kernel of such expressions
 // were left at null, subsequent calls to MincExpr::resolve() would keep reattempting to resolve these identifiers.
 // Instead we mark the kernel as UNRESOLVABLE_EXPR_KERNEL or UNRESOLVABLE_STMT_KERNEL.
-static struct UnresolvableExprKernel : public MincKernel
-{
-	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
-	{
-		throw UndefinedExprException{runtime.currentExpr};
-	}
-	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
-} UNRESOLVABLE_EXPR_KERNEL;
-static struct UnresolvableStmtKernel : public MincKernel
-{
-	bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
-	{
-assert(runtime.currentExpr->exprtype == MincExpr::ExprType::STMT);
-		throw UndefinedStmtException{(MincStmt*)runtime.currentExpr};
-	}
-	MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const { return &ERROR_TYPE; }
-} UNRESOLVABLE_STMT_KERNEL;
 
 void storeParam(MincExpr* param, std::vector<MincExpr*>& params, size_t paramIdx)
 {

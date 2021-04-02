@@ -32,7 +32,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 	// (This is the same reason why casts are defined on AST blocks, instead of globally.)
 
 	defineExpr3(pkgScope, "$L",
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		[](MincRuntime& runtime, const std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 			const char* value = getLiteralExprValue((MincLiteralExpr*)params[0]);
 			const char* valueEnd = value + strlen(value) - 1;
 
@@ -59,7 +59,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params, void* stmtArgs) {
 			buildExpr(params[0], buildtime);
 		},
-		[](MincRuntime& runtime, std::vector<MincExpr*>& params, void* exprArgs) -> bool {
+		[](MincRuntime& runtime, const std::vector<MincExpr*>& params, void* exprArgs) -> bool {
 			if (runExpr(params[0], runtime))
 				return true;
 			String* const message = (String*)runtime.result;

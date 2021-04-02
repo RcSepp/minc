@@ -178,7 +178,7 @@ public:
 		pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
 
 		pkgScope->defineExpr(MincBlockExpr::parseCTplt("$L")[0],
-			[&](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
+			[&](MincRuntime& runtime, const std::vector<MincExpr*>& params) -> bool {
 				const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
 				if (value.back() == '"' || value.back() == '\'')
@@ -213,7 +213,7 @@ public:
 			[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
 				params[0]->build(buildtime);
 			},
-			[&](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
+			[&](MincRuntime& runtime, const std::vector<MincExpr*>& params) -> bool {
 				if (params[0]->run(runtime))
 					return true;
 				Object* const message = (Object*)runtime.result;

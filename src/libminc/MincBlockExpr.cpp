@@ -976,12 +976,35 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 
 		// Resolve statement
 		if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
+		{
+			buildtime.parentBlock = parent; // Restore parent
+			isBusy = false;
+
+			if (fileBlock == this)
+				fileBlock = oldFileBlock;
+
 			throw UndefinedStmtException(&currentStmt);
+		}
 
 		// Build statement
 		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
 		if (buildtime.settings.maxErrors == 0)
-			currentStmt.build(buildtime);
+		{
+			try
+			{
+				currentStmt.build(buildtime);
+			}
+			catch (...)
+			{
+				buildtime.parentBlock = parent; // Restore parent
+				isBusy = false;
+
+				if (fileBlock == this)
+					fileBlock = oldFileBlock;
+
+				throw;
+			}
+		}
 		else
 			try
 			{
@@ -990,8 +1013,26 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 			catch (const CompileError& err)
 			{
 				if (buildtime.outputs.errors.size() >= buildtime.settings.maxErrors)
+				{
+					buildtime.parentBlock = parent; // Restore parent
+					isBusy = false;
+
+					if (fileBlock == this)
+						fileBlock = oldFileBlock;
+
 					throw TooManyErrorsException(err.loc);
+				}
 				buildtime.outputs.errors.push_back(err);
+			}
+			catch (...)
+			{
+				buildtime.parentBlock = parent; // Restore parent
+				isBusy = false;
+
+				if (fileBlock == this)
+					fileBlock = oldFileBlock;
+
+				throw;
 			}
 
 		// Advance beginning of next statement to end of current statement

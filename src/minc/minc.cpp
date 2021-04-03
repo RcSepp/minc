@@ -12,6 +12,25 @@
 #include "minc_cli.h"
 #include "minc_dbg.h"
 #include "minc_pkgmgr.h"
+#include "minc_svr.h"
+
+const char* HELP_MESSAGE =
+	"Minimal Compiler\n"
+	"\n"
+	"Usage: minc [command] [file]\n"
+	"\n"
+	"Commands:\n"
+	"  run (default) : Build and run the provided source file\n"
+	"  debug         : Launch debug adapter\n"
+	"  server        : Launch language server\n"
+	"  help          : Show this help message and exit\n"
+	"\n"
+	"Arguments:\n"
+	"  command : The command to execute (see 'Commands' section above)\n"
+	"  file    : Source file to apply the command onto\n"
+	"          : The file extension determines which parser to use\n"
+	"          : (default: C Parser)\n"
+;
 
 int ARGC;
 char **ARGV;
@@ -36,20 +55,27 @@ int main(int argc, char** argv)
 	const bool use_stdin = argc == 1;
 
 	enum Mode {
-		RUN, DEBUG
+		RUN, DEBUG, SERVER, HELP
 	} mode = RUN;
-	if (argc > 2)
+	if (argc > 1)
 	{
 		if (strcmp(argv[1], "run") == 0)
 			mode = RUN;
 		else if (strcmp(argv[1], "debug") == 0)
 			mode = DEBUG;
-		else
+		else if (strcmp(argv[1], "server") == 0)
+			mode = SERVER;
+		else if (strcmp(argv[1], "help") == 0)
+			mode = HELP;
+		else if (argc > 2)
 		{
-			std::cerr << "\e[31merror:\e[0m Invalid mode '" << std::string(argv[1]) << "'. Should be one of 'run' or 'debug'\n";
+			std::cerr << "\e[31merror:\e[0m Invalid mode '" << std::string(argv[1]) << "'. Should be one of 'run', 'debug', 'server' or 'help'\n";
 			return -1;
 		}
-
+	}
+	
+	if (argc > 2)
+	{
 		// Remove mode flag from command line arguments
 		argv[1] = argv[0];
 		++argv;
@@ -65,6 +91,14 @@ int main(int argc, char** argv)
 		argv[1] = argv[0];
 		++argv;
 		--argc;
+	}
+
+	if (mode == SERVER)
+		return launchLanguageServer(argc, argv);
+	else if (mode == HELP)
+	{
+		std::cout << HELP_MESSAGE;
+		return 0;
 	}
 
 	// Store command line arguments
@@ -86,7 +120,7 @@ int main(int argc, char** argv)
 	int result = 0;
 	if (mode == DEBUG)
 		result = launchDebugClient(realPath);
-	else
+	else if (mode == RUN)
 	{
 		// Parse source code from file or stdin into AST
 		MincBlockExpr* rootBlock = nullptr;

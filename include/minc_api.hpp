@@ -264,11 +264,11 @@ private:
 	std::map<std::string, SymbolMapEntry> symbolMap;
 	std::map<const MincObject*, std::string> symbolNameMap;
 	MincCastRegister castreg;
-	std::vector<MincStmt> builtStmts;
 	size_t stackSize;
 
 public:
 	MincBlockExpr* parent;
+	std::vector<MincStmt> builtStmts;
 	std::vector<MincBlockExpr*> references;
 	std::vector<MincExpr*>* exprs;
 	MincScopeType* scopeType;

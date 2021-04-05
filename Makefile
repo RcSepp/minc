@@ -60,7 +60,13 @@ LIBMINC_DBG_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_DBG_OBJS})
 LIBMINC_SVR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_SVR_OBJS})
 MINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${MINC_OBJS})
 
+ifeq ($(PREFIX),)
+	PREFIX := /usr/local
+endif
+
 all: ${BIN_DIR}minc builtin
+
+.PHONY: clean depend coverage install uninstall
 
 clean:
 	-rm -r ${TMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so ${BIN_DIR}minc
@@ -84,6 +90,39 @@ coverage: ${TMP_DIR}/minc/minc.gcda
 
 ${TMP_DIR}/minc/minc.gcda: ${BIN_DIR}minc
 	${BIN_DIR}minc ${PKG_DIR}paws/test/test.minc #TODO: Create separate coverage test for minc
+
+# Installation
+
+install:
+	install -d $(DESTDIR)$(PREFIX)/bin/
+	install -m 755 ${BIN_DIR}minc $(DESTDIR)$(PREFIX)/bin/
+	install -d $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 ${BIN_DIR}libminc.so $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 ${BIN_DIR}libminc_pkgmgr.so $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 ${BIN_DIR}libminc_dbg.so $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 ${BIN_DIR}libminc_svr.so $(DESTDIR)$(PREFIX)/lib/
+	install -d $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_types.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_api.hpp $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_api.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_cli.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_pkgmgr.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_dbg.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_svr.h $(DESTDIR)$(PREFIX)/include/
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/minc
+	rm -f $(DESTDIR)$(PREFIX)/lib/libminc.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_pkgmgr.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_dbg.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_svr.so
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_types.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_api.hpp
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_api.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_cli.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_pkgmgr.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_dbg.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_svr.h
 
 # Builtin packages
 

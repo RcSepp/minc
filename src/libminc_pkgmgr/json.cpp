@@ -50,6 +50,16 @@ namespace Json
 					case '[': mode.top() = ARRAY; mode.push(ANY); value.top()->arr.push_back(Value()); value.push(&value.top()->arr.back()); break;
 					case '{': mode.top() = KEY; break;
 					case ']': mode.pop(); if (mode.top() != ARRAY) err = true; mode.pop(); value.pop(); value.top()->arr.clear(); break;
+					case 'f':
+						mode.pop();
+						err = file.get() != 'a' || file.get() != 'l' || file.get() != 's' || file.get() != 'e';
+						value.top()->str = "false";
+						break;
+					case 't':
+						mode.pop();
+						err = file.get() != 'r' || file.get() != 'u' || file.get() != 'e';
+						value.top()->str = "true";
+						break;
 					default: if (std::isalnum(c)) *currentString += c; else err = true; mode.top() = VALUE; currentString = &value.top()->str; break;
 					}
 					break;

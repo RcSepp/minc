@@ -218,7 +218,6 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 	);
 
 	// Load extensions
-//return;
 	for (std::string extSearchPath: extSearchPaths)
 		for (const auto& entry: std::filesystem::directory_iterator(extSearchPath))
 			if (entry.is_directory())
@@ -235,6 +234,10 @@ void MincPackageManager::definePackage(MincBlockExpr* pkgScope)
 				extJsonFile.close();
 				if (!success)
 					throw CompileError(("error parsing extension configuration " + extJsonPath).c_str());
+
+				auto enabled = extJson.lst.find("enabled");
+				if (enabled != extJson.lst.end() && enabled->second.str == "false")
+					continue;
 
 				auto type = extJson.lst.find("type");
 				if (type == extJson.lst.end())

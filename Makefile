@@ -87,6 +87,7 @@ clean:
 depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(LIBMINC_SVR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
 
 ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
+	@mkdir -p `dirname $@`
 	$(CXX) $(CPPFLAGS) -MM -MT ${TMP_DIR}$*.o $^ > $@;
 
 -include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(LIBMINC_SVR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
@@ -142,51 +143,51 @@ builtin:
 # minc binary
 
 ${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so
-	-mkdir -p ${BIN_DIR}
+	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg -lminc_svr ${MINC_LIBS}
 
 # libminc.so library
 
 ${BIN_DIR}libminc.so: ${LIBMINC_OBJPATHS}
-	-mkdir -p ${BIN_DIR}
+	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_OBJPATHS}
 
 # libminc_pkgmgr.so library
 
 ${BIN_DIR}libminc_pkgmgr.so: ${LIBMINC_PKGMGR_OBJPATHS}
-	-mkdir -p ${BIN_DIR}
+	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_PKGMGR_OBJPATHS}
 
 # libminc_dbg.so library
 
 ${BIN_DIR}libminc_dbg.so: ${LIBMINC_DBG_OBJPATHS}
-	-mkdir -p ${BIN_DIR}
+	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_DBG_OBJPATHS} third_party/cppdap/lib/libcppdap.a
 
 # libminc_svr.so library
 
 ${BIN_DIR}libminc_svr.so: ${LIBMINC_SVR_OBJPATHS}
-	-mkdir -p ${BIN_DIR}
+	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_SVR_OBJPATHS} third_party/LspCpp/lib/liblsp.a
 
 # Parser code
 
 ${TMP_DIR}%.yy.cc: ${SRC_DIR}%.l ${TMP_DIR}%.o
-	-mkdir -p `dirname $@`
+	@mkdir -p `dirname $@`
 	$(LEX) -o $@ $<
 
 ${TMP_DIR}%.cc: ${SRC_DIR}%.y
-	-mkdir -p `dirname $@`
+	@mkdir -p `dirname $@`
 	$(YACC) -o $@ $<
 
 # Generated parser code
 
 ${TMP_DIR}%.o: ${TMP_DIR}%.cc
-	-mkdir -p `dirname $@`
+	@mkdir -p `dirname $@`
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<
 
 # Compiler code
 
 ${TMP_DIR}%.o: ${SRC_DIR}%.cpp
-	-mkdir -p `dirname $@`
+	@mkdir -p `dirname $@`
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<

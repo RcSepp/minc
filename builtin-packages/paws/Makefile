@@ -37,6 +37,7 @@ clean:
 depend: $(OBJPATHS:.o=.d)
 
 ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
+	@mkdir -p `dirname $@`
 	$(CXX) $(CPPFLAGS) -MM -MT ${TMP_DIR}$*.o $^ > $@;
 
 -include $(OBJPATHS:.o=.d)
@@ -53,11 +54,11 @@ ${TMP_DIR}/minc/minc.gcda: ${OUT_DIR}paws.so
 # paws.so library
 
 ${OUT_DIR}paws.so: ${OBJPATHS}
-	-mkdir -p ${OUT_DIR}
+	@mkdir -p ${OUT_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${OBJPATHS} -L${MINC_BIN} -lminc -lminc_pkgmgr
 
 # Compiler code
 
 ${TMP_DIR}%.o: ${SRC_DIR}%.cpp
-	-mkdir -p `dirname $@`
+	@mkdir -p `dirname $@`
 	$(CXX) ${CPPFLAGS} -o $@ -c -fPIC $<

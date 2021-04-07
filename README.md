@@ -147,6 +147,9 @@ The screenshots below show language server and debug adapter usage with the hell
 git clone https://github.com/RcSepp/minc.git
 cd minc
 
+# Install dependencies
+apt-get install build-essential flex bison libboost-chrono-dev libboost-thread-dev
+
 # Build and install
 make
 sudo make install
@@ -157,7 +160,7 @@ minc help
 
 ### Dependencies
 
-* The core Minc framework (`libminc.so`) has zero dependencies.
+* The core Minc framework (`libminc.so`) depends on [GNU Flex](https://www.gnu.org/software/flex/) and [GNU Bison](https://www.gnu.org/software/bison/).
 * The package manager (`libminc_pkg.so`) optionally depends on Python and Node.js to load Minc languages defined in Python or node. Note: this feature depends on currently unreleased language bindings for libminc.
 * The language server (`libminc_svr.so`) depends on https://github.com/kuafuwang/LspCpp. LspCpp requires https://github.com/Tencent/rapidjson and [boost](https://www.boost.org/).
 * The debug adapter (`libminc_dbg.so`) depends on https://github.com/google/cppdap.

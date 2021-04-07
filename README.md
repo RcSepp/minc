@@ -1,65 +1,119 @@
 ![Minc Logo](logo.png)
 
-Language compilers and interpreters are complex programs that can take years to develop. With Minc you can create one in a few hours ...
+Minc - the Minimal Compiler - is an ultra flexible programming language, that can load other languages by importing them from code.
+The main advantages of Minc are:
 
-## Just how easy can it be?
+* Mix any number of compiled or interpreted programming languages within a single file with zero glue code
+* Use a single tool chain to manage entire multilingual projects
+* Easily create new languages using the Minc API and embed them within existing languages
 
-Any language created with Minc consists of 4 components: **packages**, **symbols**, **statements** and **expressions**.
+*Note: Minc is an open source project under active development. If you like the project and would like to accelerate its development, please click the star button, spread the word or [contribute](#Contributing-to-Minc).*
+
+
+## Multilingual programming
+
+The following example demonstrates tuning a code section written in an interpreted language by embedding a compiled lanaguage.
+We implement a recursive fibonacci algorithm in Minc's builtin interpreted language Paws and tune it by gradually replacing parts of the algorithm with compiled C code.
+
+We will first look at the [code](#Code), then describe each [section](#Sections) (a) through (d) and finally evaluate the [runtimes](#Output) of each section in the program output.
+
+### Code
+
+The colors in this code section indicate the programming language each expression will be executed in. Language conversions are handled by implicit type casts.
+| Color  | Language                  |
+|--------|---------------------------|
+| White  | None (builtin statements) |
+| Blue   | Paws (interpreted)        |
+| Orange | C (compiled)              |
+
+![Fibonacci example colored by language](/fibonacci_languages.png)
+
+### Sections
+
+* Lines 1-4 import Minc's builtin interpreted language Paws. Each statement is invoked by the Minc interpreter.
+* Section (a) calculates fibonnacci number F<sub>30</sub> using a recursive Paws function
+* Lines 20 and 21 import the compiled language C. From this point on, C is the host language. Literals such as `30` or `"ms"` are now expressed as C constants and Paws statements are executed from C code by invoking the Minc interpreter.
+* Section (b) is identical to section (a), but we already gain some performance, because the if statement, as well as operators `<=` and `-` are executed from C. Note that the `+` operator is still executed in Paws, because both operands are of type `PawsInt`.
+* Section (c) reduces the number of implicit type casts by explicitly casting to local C variable `cn`.
+* Section (d) replaces the entire Paws function with a C function by changing the return- and argument types of the function from `PawsInt` to `int`. This results in a significant performance boost by saving the cost of copying arguments and growing the stack in the runtime interpreter.
+
+### Output
+
+The program output shows how runtimes gradually decrease between sections (a) and (c) with a significant speedup in section (d).
+
+```
+./minc accelerated_fibonacci
+Pure Paws fib(30) took 474ms
+Paws fib(30) after C import took 416ms
+Paws fib(30) with less type casts took 378ms
+Pure C fib(30) took 65ms
+```
+
+## Add or extend languages with few lines of code
+
+Any language created with Minc consists of 5 components: **packages**, **symbols**, **statements**, **expressions** and **casts**.
 A programming language that can run hello world programs can be defined in less than 100 lines of code:
 
 1. Define a package, so that your language can be imported in `minc`:
 
-```C++
-MincPackage HELLOWORLD_PKG("helloworld", [](MincBlockExpr* pkgScope) {
-	...
-});
-```
+	```C++
+	// Create `helloworld` package
+	MincPackage HELLOWORLD_PKG("helloworld", [](MincBlockExpr* pkgScope) {
+		...
+	});
+	```
 
 2. Define the language's symbols:
 
-```C++
-// Create `string` data type
-pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
-```
+	```C++
+	// Create `string` data type
+	MincObject STRING_TYPE, META_TYPE;
+	pkgScope->defineSymbol("string", &META_TYPE, &STRING_TYPE);
+	```
 
 3. Define the language's expressions:
 
-```C++
-// Create expression kernel for interpreting literal expressions
-pkgScope->defineExpr("$L",
-	[](MincRuntime& runtime, std::vector<MincExpr*>& params) -> bool {
-		const std::string& value = ((MincLiteralExpr*)params[0])->value;
+	```C++
+	// Create expression kernel for literal expressions
+	// Examples of literals are "foo", 128 or 3.14159
+	// For this example we only allow string expressions, like "foo" or 'bar'
+	pkgScope->defineExpr(MincBlockExpr::parseCTplt("$L")[0],
+		[](MincRuntime& runtime, const std::vector<MincExpr*>& params) -> bool {
+			const std::string& value = ((MincLiteralExpr*)params[0])->value;
 
-		if (value.back() == '"' || value.back() == '\'')
-			runtime.result = MincSymbol(&STRING_TYPE, new String(value.substr(1, value.size() - 2)));
-		else
-			raiseCompileError("Non-string literals not implemented", params[0]);
-		return false;
-	},
-	[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
-		const std::string& value = ((MincLiteralExpr*)params[0])->value;
-		if (value.back() == '"' || value.back() == '\'')
-			return &STRING_TYPE;
-		else
-			return nullptr;
-	}
-);
-```
+			if (value.back() == '"' || value.back() == '\'')
+				runtime.result = new std::string(value.substr(1, value.size() - 2));
+			else
+				raiseCompileError("Non-string literals not implemented", params[0]);
+			return false;
+		},
+		[](const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) -> MincObject* {
+			const std::string& value = ((MincLiteralExpr*)params[0])->value;
+			if (value.back() == '"' || value.back() == '\'')
+				return &STRING_TYPE;
+			else
+				return getErrorType();
+		}
+	);
+	```
 
 4. Define the language's statements:
 
-```C++
-// Create statement kernel for interpreting the `print(...)` statement
-pkgScope->defineStmt("print($E<string>)",
-	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-		params[0]->build(parentBlock);
-	},
-	[](MincBlockExpr* parentBlock, std::vector<MincExpr*>& params) {
-		String* const message = (String*)params[0]->run(parentBlock).value;
-		std::cout << *message << '\n';
-	}
-);
-```
+	```C++
+	// Create statement kernel for interpreting the `print(...)` statement
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt("print($E<string>)"),
+		[](MincBuildtime& buildtime, std::vector<MincExpr*>& params) {
+			params[0]->build(buildtime);
+		},
+		[](MincRuntime& runtime, const std::vector<MincExpr*>& params) -> bool {
+			if (params[0]->run(runtime))
+				return true;
+			std::string* const message = (std::string*)runtime.result;
+			std::cout << *message << '\n';
+			return false;
+		}
+	);
+	```
 
 Et voilà!
 
@@ -71,79 +125,61 @@ Et voilà!
 
 You just wrote a programming language!
 
-Note: You may have noticed we didn't declare the "import" statement. Import and export are the only predefined statements in Minc (hence the term: *minimal* compiler).
+Note: You may have noticed we didn't declare the "import" statement. Import and export are the only predefined statements in Minc (hence the term: *minimal* compiler). To dive deeper into the helloworld language example, consider going though [the extended tutorial](doc/helloworld_explained.md).
 
-## Where to go from here
+## Many languages - One tool chain
 
-Arbitrarily powerful programming languages can be designed using the same 4 components as our `helloworld` language. Arithmetic expressions, "if" statements, "class" types, ... Just add as many as you like.
+Every Minc language supports the complete Minc toolchain, like language-aware syntax highlighting and runtime debugging.
 
-The Paws programming language is an excellent reference on how to implement many of the classic programming language constructs, but feel free to be creative!
+The screenshots below show language server and debug adapter usage with the helloworld language defined above.
 
-## High Level Goals
+![Minc language server](Minc_language_server.png)
+![Minc debug adapter](Minc_debug_adapter.png)
 
-Minc brings significant contributions in the field of modern software architecture. The following high level goals have directed the design of this library.
+---
 
-* Proliferation of programming languages
+## Installation
 
-An ever growing amount of outstanding programming languages have made writing quality code both easier and more complex at the same time. The question about the best language for a specific domain often has no right answer, while wrong answers can incur significant cost to development.
+### Build from source
 
-Minc's goal is to eventually support all major programming languages, with transparent wrappers between any two of them built in. This eliminates the need for countless wrapper libraries and answers the unanswerable question: The best programming language is a super-set of all languages. By choosing Minc as the platform for an enterprise scale software system, the architect allows engineers of different teams and backgrounds to collaborate on a shared codebase using each individual's language of choice.
+```bash
+# Clone source code from GitHub
+git clone https://github.com/RcSepp/minc.git
+cd minc
 
-* Abstraction of higher level responsibilities from the core language
+# Build and install
+make
+sudo make install
 
-Many higher level tasks are traditionally performed by the programming languages itself or by language specific tools. Examples of these tasks are software configuration and version management. Each traditional language introduces separate tool chains and best practices, contributing significantly to the time it takes a programmer to master a new language.
+# Check if minc was installed successfully
+minc help
+```
 
-Minc enables the creation of software-agnostic tools that consistently manage the entire software stack.
+### Dependencies
 
-* Decoupling of software dependencies
+* The core Minc framework (`libminc.so`) has zero dependencies.
+* The package manager (`libminc_pkg.so`) optionally depends on Python and Node.js to load Minc languages defined in Python or node. Note: this feature depends on currently unreleased language bindings for libminc.
+* The language server (`libminc_svr.so`) depends on https://github.com/kuafuwang/LspCpp. LspCpp requires https://github.com/Tencent/rapidjson and [boost](https://www.boost.org/).
+* The debug adapter (`libminc_dbg.so`) depends on https://github.com/google/cppdap.
 
-Before the advent of the internet, software development was a linear process. Each application started at the design phase, went through some iterations of implementation and testing and eventually ended up being frozen into a final release in the form of a set of floppy disks or a CD. The possibility to update software post-release gave rise to the vicious circle of software maintenance. Today a software that is not under constant development is considered stale and outdated. Even if one were to create a perfect piece of code without any bugs, eventually one of its dependencies will introduce breaking changes with the implementation of a critical security fix or an important new feature. This will force the previously perfect code to be adapted, potentially introducing new bugs and forcing dependent code to propagate the update. With each layer of dependencies, the problem grows exponentially. A program that cannot keep up or whose developers have moved on to other projects will be marked obsolete and replaced by newer tools engineered to relive the same challenges until it will too fall out of the never ending dependency cycle.
+Please consider the licensing information in the corresponding [third_party](third_party/) sub-folders when forking or redistributing Minc.
 
-The dependency cycle cannot be fully broken, but it's exponential blast radius can. By introducing the ability to transparently mix different programming languages and even different versions of the same language, smaller dependency cycles can be isolated on a per-import basis. It allows using old-and-proven software libraries side-by-side with cutting-edge new packages, preserving the validity of software beyond its retirement date. By shifting development efforts from maintenance. to improvement, Minc has the capability to reshape the present circular redevelopment industry into the goal oriented innovation machinery of the future.
+## Documentation
 
-## Features
+Documentation for many open source projects is scarce. Unfortunatelly Minc is no exception. Please consider the [doc folder](doc/) as a starting point.
 
-**TODO**
+## Contributing to Minc
 
-## Limitations
+* To report a bug or submit a feature, please open an [issue](https://github.com/RcSepp/minc/issues).
 
-### Compiling source code
+* If you prefer to fix the bug or implement the feature yourself, please create a [pull request](https://github.com/RcSepp/minc/pulls).
 
-Minc matches source code against statements and expressions and executes associated code kernels. To improve execution performance, most modern languages don't execute such kernels directly, but rather emit an intermediate byte-code or compiled program binary that can then be executed separately. LLVM is a powerful compiler framework used by many languages such as Go and Ruby. The [helloworld-llvm](examples/helloworld/helloworld-llvm/helloworld-llvm.cpp) extends our helloworld example to produce executable program binaries.
+* To become an active developer or to publish/promote a new langauge created with Minc (Minc does not have a package repository yet), please send [me](https://github.com/RcSepp) an email.
 
-**TODO: Write heLLVMoworld using LLVM**
+Any contributions, big or small, are greatly appreciated!
 
-### Selecting a parser
+### Developers
 
-One of the many bold goals of Minc is to be able to compile any programming language in existence, but even an infinite improbability drive requires coordinates [Quote](https://www.imdb.com/title/tt0371724/quotes/qt0351150).
+* Primary developer: [RcSepp](https://github.com/RcSepp)
 
-These coordinates are the language grammar. Currently statements and expressions aren't interpreted from raw source code, but from a static abstract syntax tree (AST), generated by a parser ([GNU Bison](https://www.gnu.org/software/bison/)). The difference between Minc's parser and any regular parser for a static language is that Minc's parsers are designed to be as flexible as possible within the boundaries of the underlying language. They can be seen as laying some ground rules for the language. For example: C-flavored languages delimit lines with ";" and surround blocks with "{ ... }", while Python-flavored languages specify blocks with ":" and increased indentation.
-
-At the moment Minc supports two parsers:
-
-* C-Parser
-* Python-Parser
-
-The language flavor can only be switched between files. A parser-free resolver that directly matches statements and expressions from source code is one of the stretch goals of Minc. It will allow switching flavors anywhere in code and can truly compile any language (even textual data file formats, like Markdown or XML).
-
-Until that time being restricted by the lean boundaries of the Minc parsers should be seen as more of an advantage than a hindrance. (The more unrestricted your language, the more your users (the programmers) have to scratch their heads before they can efficiently code with it.)
-
-**TODO: Rename parsers "styles" or "flavors"**
-
-## Roadmap
-
-* Free memory
-
-	*All memory leaks will be fixed before the release of Minc 1.0.*
-
-* Add thread-safety
-
-	*At the momemnt Minc is not thread-safe. The release version of Minc will lock individual AST branches during execution.*
-
-* Add continuations
-
-	*The main difficulty in implementing resumable functions is to ensure reentry into suspended statement- and expression kernels does not duplicate state. Continuations may be included in Minc 1.0 or a later release.*
-
-* Develop parser-free resolver
-
-	Static parsers enforce major limitations on to the flexibility of Minc. Replacing it with a parser-free expression resolver is an important step towards unleashing the full potential of Minc. Minc 1.0 will likely still ship with static parsers.
+* Logo design: [Susan Boltan Design Agency](https://www.fiverr.com/susanboltan)

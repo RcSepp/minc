@@ -138,7 +138,7 @@ uninstall:
 # Builtin packages
 
 builtin:
-	$(MAKE) -C ${PKG_DIR}*/
+	$(MAKE) -C ${PKG_DIR}*/ MINC_BIN=$(realpath ${BIN_DIR}) MINC_INCLUDE=$(realpath ${INC_DIR})
 
 # minc binary
 

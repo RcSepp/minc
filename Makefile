@@ -51,8 +51,18 @@ MINC_OBJS = \
 	minc/minc.o \
 
 YACC = bison
-CPPFLAGS =  --coverage -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include -Ithird_party/LspCpp/include -Ithird_party/rapidjson/include `pkg-config --cflags python-3.7`
-MINC_LIBS = `pkg-config --libs python-3.7` -lutil -pthread -ldl -rdynamic -lnode -lboost_thread -lboost_chrono
+CPPFLAGS =  --coverage -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -Ithird_party/LspCpp/include -Ithird_party/rapidjson/include
+MINC_LIBS = -lutil -pthread -ldl -rdynamic -lboost_thread -lboost_chrono
+
+ifneq (${USE_NODE_PACKAGES},)
+	CPPFLAGS := ${CPPFLAGS} -DUSE_NODE_PACKAGES -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include
+	MINC_LIBS := -lnode ${MINC_LIBS}
+endif
+
+ifneq (${USE_PYTHON_PACKAGES},)
+	CPPFLAGS := ${CPPFLAGS} -DUSE_PYTHON_PACKAGES `pkg-config --cflags python-3.7`
+	MINC_LIBS := `pkg-config --libs python-3.7` ${MINC_LIBS}
+endif
 
 LIBMINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_PKGMGR_OBJS})

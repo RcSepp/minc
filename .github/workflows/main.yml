@@ -1,0 +1,27 @@
+name: Build and test
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      MINC_BIN: ${{github.workspace}}/bin
+      MINC_INCLUDE: ${{github.workspace}}/include
+      MINC_PATH: ${{github.workspace}}/builtin-packages
+      MINC_EXT: ''
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install dependencies
+      run: sudo apt-get install -y libfl-dev libboost-chrono-dev libboost-thread-dev
+    - name: make
+      run: make
+    - name: make install
+      run: sudo make install && sudo ldconfig
+    - name: test
+      run: bin/minc builtin-packages/paws/test/test.minc

@@ -106,6 +106,11 @@ MincPackage PAWS_TIME("paws.time", [](MincBlockExpr* pkgScope) {
 			std::this_thread::sleep_for(std::chrono::seconds(seconds));
 		}
 	);
+	defineStmt(pkgScope, "sleep($E<PawsDouble>)",
+		+[] (double seconds) {
+			std::this_thread::sleep_for(duration(seconds));
+		}
+	);
 
 	// Define function to print measured runtime
 	class MeasureKernel : public MincKernel

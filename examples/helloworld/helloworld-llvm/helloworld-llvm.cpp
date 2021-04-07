@@ -205,7 +205,7 @@ public:
 				if (value.back() == '"' || value.back() == '\'')
 					return &STRING_TYPE;
 				else
-					return nullptr;
+					return getErrorType();
 			}
 		);
 

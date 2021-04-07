@@ -51,7 +51,7 @@ MincPackage HELLOWORLD_C_PKG("helloworld-C", [](MincBlockExpr* pkgScope) {
 			if (*valueEnd == '"' || *valueEnd == '\'')
 				return &STRING_TYPE;
 			else
-				return nullptr;
+				return getErrorType();
 		}
 	);
 

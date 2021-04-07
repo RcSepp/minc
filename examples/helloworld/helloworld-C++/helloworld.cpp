@@ -34,7 +34,7 @@ MincPackage HELLOWORLD_CPP_PKG("helloworld-C++", [](MincBlockExpr* pkgScope) {
 			if (value.back() == '"' || value.back() == '\'')
 				return &STRING_TYPE;
 			else
-				return nullptr;
+				return getErrorType();
 		}
 	);
 

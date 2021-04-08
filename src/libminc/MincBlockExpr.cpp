@@ -955,8 +955,9 @@ bool MincBlockExpr::run(MincRuntime& runtime) const
 
 MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 {
-	if (builtStmts.size() != 0)
-		return buildtime.result = MincSymbol(nullptr, nullptr); // Already built
+	if (exprs == nullptr || // If empty or ...
+		builtStmts.size() != 0) // ... if already built
+		return buildtime.result = MincSymbol(nullptr, nullptr);
 
 	isBusy = true;
 	parent = buildtime.parentBlock;

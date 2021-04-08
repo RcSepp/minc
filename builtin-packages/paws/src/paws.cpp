@@ -283,6 +283,26 @@ PawsKernel::PawsKernel(MincBlockExpr* body, MincObject* type, MincBuildtime& bui
 	};
 	kernelDefScope->defineStmt(MincBlockExpr::parseCTplt("build:"), new BuildPhaseSelectorKernel());
 
+	// Allow empty statement before build phase selector
+	struct EmptyStmtKernel : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			return this;
+		}
+
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	kernelDefScope->defineStmt(MincBlockExpr::parseCTplt(""), new EmptyStmtKernel());
+
 	// Define run phase selector statement
 	struct RunPhaseSelectorKernel : public MincKernel
 	{
@@ -492,6 +512,26 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 	pkgScope->defineExpr(MincBlockExpr::parseCTplt("getFileScope()")[0], new GetFileScopeKernel());
 
 	pkgScope->defineSymbol("FILE_SCOPE_TYPE", PawsScopeType::TYPE, new PawsScopeType(FILE_SCOPE_TYPE));
+
+	// Define empty statement
+	struct EmptyStmtKernel : public MincKernel
+	{
+		MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+		{
+			return this;
+		}
+
+		bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+		{
+			return false;
+		}
+
+		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+		{
+			return getVoid().type;
+		}
+	};
+	pkgScope->defineStmt(MincBlockExpr::parseCTplt(""), new EmptyStmtKernel());
 
 	// Define single-expr statement
 	struct SingleExprKernel : public MincKernel

@@ -387,6 +387,26 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 			};
 			structDefScope->defineStmt(MincBlockExpr::parseCTplt("$I($E<PawsType> $I, ...) $B"), new ConstructorDefinitionKernel());
 
+			// Allow empty statement in struct body
+			struct EmptyStmtKernel : public MincKernel
+			{
+				MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+				{
+					return this;
+				}
+
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+				{
+					return false;
+				}
+
+				MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+				{
+					return getVoid().type;
+				}
+			};
+			structDefScope->defineStmt(MincBlockExpr::parseCTplt(""), new EmptyStmtKernel());
+
 			// Disallow any other statements in struct body
 			struct DefaultKernel : public MincKernel
 			{

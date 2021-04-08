@@ -662,6 +662,26 @@ void PawsFramePackage::definePackage(MincBlockExpr* pkgScope)
 			};
 			block->defineStmt(MincBlockExpr::parseCTplt("public $I = $E<PawsBase>"), new FrameVariableDeclarationKernel());
 
+			// Allow empty statement before frame variable assignment
+			struct EmptyStmtKernel : public MincKernel
+			{
+				MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+				{
+					return this;
+				}
+
+				bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+				{
+					return false;
+				}
+
+				MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+				{
+					return getVoid().type;
+				}
+			};
+			block->defineStmt(MincBlockExpr::parseCTplt(""), new EmptyStmtKernel());
+
 			struct DefaultKernel : public MincKernel
 			{
 				MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)

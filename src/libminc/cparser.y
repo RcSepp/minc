@@ -117,6 +117,7 @@ single_expr_list
 
 expr_lists
 	: expr_list { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
+	| expr_list ',' { $$ = new MincListExpr(';'); $$->exprs.push_back($1); }
 	| expr_lists ';' expr_list { ($$ = $1)->exprs.push_back($3); }
 	| expr_lists ';' ELLIPSIS { ($$ = $1)->exprs.back() = new MincEllipsisExpr(getloc(@3, @3), $1->exprs.back()); }
 ;

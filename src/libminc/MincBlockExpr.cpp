@@ -4,7 +4,7 @@
 
 #define DETECT_UNDEFINED_TYPE_CASTS
 
-const MincSymbol VOID = MincSymbol(new MincObject(), nullptr);
+extern const MincSymbol VOID = MincSymbol(new MincObject(), nullptr);
 MincBlockExpr* const rootBlock = new MincBlockExpr({0}, {});
 MincBlockExpr* fileBlock = nullptr;
 std::map<std::pair<MincScopeType*, MincScopeType*>, std::map<MincObject*, ImptBlock>> importRules;

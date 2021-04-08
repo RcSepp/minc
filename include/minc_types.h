@@ -147,8 +147,8 @@ struct MincKernel
 	virtual ~MincKernel();
 	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params);
 	virtual void dispose(MincKernel* kernel);
-	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params) = 0;
-	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const = 0;
+	virtual bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params);
+	virtual MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const;
 };
 extern struct UnresolvableExprKernel : public MincKernel
 {

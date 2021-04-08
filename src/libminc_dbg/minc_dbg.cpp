@@ -657,8 +657,12 @@ auto t = std::thread([](Debugger* debugger, MincBlockExpr* rootBlock2) {
 			// Parse source code into AST
 			const char* const PY_EXT = ".py";
 			const int LEN_PY_EXT = 3;
+			const char* const GO_EXT = ".go";
+			const int LEN_GO_EXT = 3;
 			if (strncmp(path + strlen(path) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
 				rootBlock = MincBlockExpr::parsePythonFile(path);
+			else if (strncmp(path + strlen(path) - LEN_GO_EXT, GO_EXT, LEN_GO_EXT) == 0)
+				rootBlock = MincBlockExpr::parseGoFile(path);
 			else
 				rootBlock = MincBlockExpr::parseCFile(path);
 

@@ -126,11 +126,15 @@ int main(int argc, char** argv)
 		MincBlockExpr* rootBlock = nullptr;
 		const char* const PY_EXT = ".py";
 		const int LEN_PY_EXT = 3;
+		const char* const GO_EXT = ".go";
+		const int LEN_GO_EXT = 3;
 		try {
 			if (use_stdin)
 				rootBlock = MincBlockExpr::parseCStream(*in);
 			else if (strncmp(realPath + strlen(realPath) - LEN_PY_EXT, PY_EXT, LEN_PY_EXT) == 0)
 				rootBlock = MincBlockExpr::parsePythonFile(realPath);
+			else if (strncmp(realPath + strlen(realPath) - LEN_GO_EXT, GO_EXT, LEN_GO_EXT) == 0)
+				rootBlock = MincBlockExpr::parseGoFile(realPath);
 			else
 				rootBlock = MincBlockExpr::parseCFile(realPath);
 		} catch (const CompileError& err) {

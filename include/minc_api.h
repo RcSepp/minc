@@ -25,6 +25,13 @@ extern "C"
 	MincBlockExpr* parsePythonCode(const char* code);
 	const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
 
+	// >>> Go Parser
+
+	MincBlockExpr* parseGoStream(std::istream& stream);
+	MincBlockExpr* parseGoFile(const char* filename);
+	MincBlockExpr* parseGoCode(const char* code);
+	const std::vector<MincExpr*> parseGoTplt(const char* tpltStr);
+
 	// >>> MincException
 
 	void raiseCompileError(const char* msg, const MincExpr* loc=nullptr);
@@ -155,6 +162,7 @@ extern "C"
 	void deregisterStepEventListener(StepEvent listener);
 	void evalCBlock(const char* code, MincBlockExpr* scope);
 	void evalPythonBlock(const char* code, MincBlockExpr* scope);
+	void evalGoBlock(const char* code, MincBlockExpr* scope);
 	MincEnteredBlockExpr* enterBlockExpr(MincRuntime& runtime, const MincBlockExpr* block);
 	void exitBlockExpr(MincEnteredBlockExpr* enteredBlock);
 

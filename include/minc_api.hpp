@@ -350,6 +350,12 @@ public:
 	static MincBlockExpr* parsePythonCode(const char* code);
 	static const std::vector<MincExpr*> parsePythonTplt(const char* tpltStr);
 	static void evalPythonCode(const char* code, MincBlockExpr* scope);
+
+	static MincBlockExpr* parseGoStream(std::istream& stream);
+	static MincBlockExpr* parseGoFile(const char* filename);
+	static MincBlockExpr* parseGoCode(const char* code);
+	static const std::vector<MincExpr*> parseGoTplt(const char* tpltStr);
+	static void evalGoCode(const char* code, MincBlockExpr* scope);
 };
 
 class MincStopExpr : public MincExpr

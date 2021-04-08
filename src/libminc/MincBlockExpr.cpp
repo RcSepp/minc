@@ -1198,6 +1198,31 @@ void MincBlockExpr::evalPythonCode(const char* code, MincBlockExpr* scope)
 	::evalPythonBlock(code, scope);
 }
 
+MincBlockExpr* MincBlockExpr::parseGoStream(std::istream& stream)
+{
+	return ::parseGoStream(stream);
+}
+
+MincBlockExpr* MincBlockExpr::parseGoFile(const char* filename)
+{
+	return ::parseGoFile(filename);
+}
+
+MincBlockExpr* MincBlockExpr::parseGoCode(const char* code)
+{
+	return ::parseGoCode(code);
+}
+
+const std::vector<MincExpr*> MincBlockExpr::parseGoTplt(const char* tpltStr)
+{
+	return ::parseGoTplt(tpltStr);
+}
+
+void MincBlockExpr::evalGoCode(const char* code, MincBlockExpr* scope)
+{
+	::evalGoBlock(code, scope);
+}
+
 extern "C"
 {
 	bool ExprIsBlock(const MincExpr* expr)
@@ -1683,6 +1708,16 @@ extern "C"
 	void evalPythonBlock(const char* code, MincBlockExpr* scope)
 	{
 		MincBlockExpr* block = ::parsePythonCode(code);
+		MincBuildtime buildtime = { scope };
+		block->build(buildtime);
+		MincRuntime runtime(scope, false);
+		block->run(runtime);
+		delete block;
+	}
+
+	void evalGoBlock(const char* code, MincBlockExpr* scope)
+	{
+		MincBlockExpr* block = ::parseGoCode(code);
 		MincBuildtime buildtime = { scope };
 		block->build(buildtime);
 		MincRuntime runtime(scope, false);

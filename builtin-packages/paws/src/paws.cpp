@@ -1381,6 +1381,21 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 		}
 	);
 
+	defineExpr(pkgScope, "parseGoFile($E<PawsString>)",
+		+[](std::string filename) -> MincBlockExpr* {
+			// Unbind parseCFile filename parameter lifetime from local filename parameter
+			char* fname = new char[filename.size() + 1];
+			strcpy(fname, filename.c_str());
+			return MincBlockExpr::parseGoFile(fname);
+		}
+	);
+
+	defineExpr(pkgScope, "parseGoCode($E<PawsString>)",
+		+[](std::string code) -> MincBlockExpr* {
+			return MincBlockExpr::parseGoCode(code.c_str());
+		}
+	);
+
 	class PawsExprTypeKernel : public MincKernel
 	{
 		PawsType* const type;

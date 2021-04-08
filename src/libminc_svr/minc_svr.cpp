@@ -319,9 +319,13 @@ public:
 			// Parse source code into AST
 			const char* const PY_EXT = ".py";
 			const int LEN_PY_EXT = 3;
+			const char* const GO_EXT = ".go";
+			const int LEN_GO_EXT = 3;
 			std::istringstream fileStream(content);
 			if (path.size() > LEN_PY_EXT && path.compare(path.size() - LEN_PY_EXT, LEN_PY_EXT, PY_EXT) == 0)
 				validationRootBlock = MincBlockExpr::parsePythonStream(fileStream);
+			else if (path.size() > LEN_GO_EXT && path.compare(path.size() - LEN_GO_EXT, LEN_GO_EXT, GO_EXT) == 0)
+				rootBlock = MincBlockExpr::parseGoStream(fileStream);
 			else
 				validationRootBlock = MincBlockExpr::parseCStream(fileStream);
 

@@ -11,6 +11,8 @@ LIBMINC_OBJS = \
 	libminc/cparser.yy.o \
 	libminc/pyparser.o \
 	libminc/pyparser.yy.o \
+	libminc/goparser.o \
+	libminc/goparser.yy.o \
 	libminc/MincException.o \
 	libminc/MincArgOpExpr.o \
 	libminc/MincBinOpExpr.o \

@@ -974,9 +974,56 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 	{
 		builtStmts.push_back(MincStmt());
 		MincStmt& currentStmt = builtStmts.back();
+		bool stmtIsDirty = true;
 
-		// Resolve statement
-		if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
+		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
+		try
+		{
+			// Resolve statement
+			if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
+			{
+				stmtIsDirty = false;
+				throw UndefinedStmtException(&currentStmt);
+			}
+			stmtIsDirty = false;
+
+			// Build statement
+			currentStmt.build(buildtime);
+		}
+		catch (const CompileError& err)
+		{
+			if (stmtIsDirty)
+			{
+				// Advance stmtBeginExpr to beginning of next statement
+				while ((*stmtBeginExpr)->exprtype != MincExpr::ExprType::STOP &&
+					   (*stmtBeginExpr)->exprtype != MincExpr::ExprType::BLOCK &&
+					   ((*stmtBeginExpr)->exprtype != MincExpr::ExprType::POSTOP || ((MincPostfixExpr*)*stmtBeginExpr)->opstr != ":"))
+					++stmtBeginExpr;
+				++stmtBeginExpr;
+
+				// Remove interrupted statement
+				builtStmts.pop_back();
+			}
+
+			if (buildtime.outputs.errors.size() >= buildtime.settings.maxErrors)
+			{
+				buildtime.parentBlock = parent; // Restore parent
+				isBusy = false;
+
+				if (fileBlock == this)
+					fileBlock = oldFileBlock;
+
+				if (buildtime.settings.maxErrors == 0)
+					throw;
+				else
+					throw TooManyErrorsException(err.loc);
+			}
+			buildtime.outputs.errors.push_back(err);
+
+			if (stmtIsDirty)
+				continue; // stmtBeginExpr already advanced
+		}
+		catch (...)
 		{
 			buildtime.parentBlock = parent; // Restore parent
 			isBusy = false;
@@ -984,57 +1031,8 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 			if (fileBlock == this)
 				fileBlock = oldFileBlock;
 
-			throw UndefinedStmtException(&currentStmt);
+			throw;
 		}
-
-		// Build statement
-		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
-		if (buildtime.settings.maxErrors == 0)
-		{
-			try
-			{
-				currentStmt.build(buildtime);
-			}
-			catch (...)
-			{
-				buildtime.parentBlock = parent; // Restore parent
-				isBusy = false;
-
-				if (fileBlock == this)
-					fileBlock = oldFileBlock;
-
-				throw;
-			}
-		}
-		else
-			try
-			{
-				currentStmt.build(buildtime);
-			}
-			catch (const CompileError& err)
-			{
-				if (buildtime.outputs.errors.size() >= buildtime.settings.maxErrors)
-				{
-					buildtime.parentBlock = parent; // Restore parent
-					isBusy = false;
-
-					if (fileBlock == this)
-						fileBlock = oldFileBlock;
-
-					throw TooManyErrorsException(err.loc);
-				}
-				buildtime.outputs.errors.push_back(err);
-			}
-			catch (...)
-			{
-				buildtime.parentBlock = parent; // Restore parent
-				isBusy = false;
-
-				if (fileBlock == this)
-					fileBlock = oldFileBlock;
-
-				throw;
-			}
 
 		// Advance beginning of next statement to end of current statement
 		stmtBeginExpr = currentStmt.end;

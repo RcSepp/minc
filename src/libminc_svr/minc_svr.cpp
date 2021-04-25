@@ -365,7 +365,7 @@ public:
 		for (const CompileError& err: buildtime.outputs.errors)
 		{
 			lsRange range;
-			if (err.loc.begin_line == 0)
+			if (err.loc.begin_line == 0 || err.loc.filename == nullptr)
 			{
 				range.start = lsPosition(0, 0);
 				range.end = lsPosition(0, 1);

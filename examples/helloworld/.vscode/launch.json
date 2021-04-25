@@ -36,8 +36,7 @@
             "name": "Minc: Debug current file",
             "program": "${file}",
             "args": [
-                "debug",
-                "/home/sepp/Development/minc/examples/test.acc"
+                "debug"
             ],
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,

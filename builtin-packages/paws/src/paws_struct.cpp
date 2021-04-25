@@ -643,7 +643,8 @@ MincPackage PAWS_STRUCT("paws.struct", [](MincBlockExpr* pkgScope) {
 		}
 		MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
 		{
-			assert(params[0]->exprtype == MincExpr::ExprType::CAST);
+			if (params[0]->exprtype != MincExpr::ExprType::CAST)
+				return getErrorType();
 			return ((PawsTpltType*)((MincCastExpr*)params[0])->getSourceExpr()->getType(parentBlock))->tpltType;
 		}
 	};

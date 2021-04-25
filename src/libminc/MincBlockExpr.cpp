@@ -1148,6 +1148,36 @@ void MincBlockExpr::clearCache(size_t targetSize) const
 #endif
 }
 
+MincFlavor MincBlockExpr::flavorFromFile(const std::string& filename)
+{
+	return ::flavorFromFile(filename.c_str());
+}
+
+MincFlavor MincBlockExpr::flavorFromFile(const char* filename)
+{
+	return ::flavorFromFile(filename);
+}
+
+MincBlockExpr* MincBlockExpr::parseStream(std::istream& stream, MincFlavor flavor)
+{
+	return ::parseStream(stream, flavor);
+}
+
+MincBlockExpr* MincBlockExpr::parseFile(const char* filename, MincFlavor flavor)
+{
+	return ::parseFile(filename, flavor);
+}
+
+MincBlockExpr* MincBlockExpr::parseCode(const char* code, MincFlavor flavor)
+{
+	return ::parseCode(code, flavor);
+}
+
+const std::vector<MincExpr*> MincBlockExpr::parseTplt(const char* tpltStr, MincFlavor flavor)
+{
+	return ::parseTplt(tpltStr, flavor);
+}
+
 MincBlockExpr* MincBlockExpr::parseCStream(std::istream& stream)
 {
 	return ::parseCStream(stream);

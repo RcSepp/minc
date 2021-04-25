@@ -28,6 +28,7 @@ LIBMINC_OBJS = \
 	libminc/MincListExpr.o \
 	libminc/MincLiteralExpr.o \
 	libminc/MincParamExpr.o \
+	libminc/MincParser.o \
 	libminc/MincPlchldExpr.o \
 	libminc/MincPostfixExpr.o \
 	libminc/MincPrefixExpr.o \

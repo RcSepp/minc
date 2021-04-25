@@ -339,6 +339,13 @@ public:
 	void reset() const;
 	void clearCache(size_t targetSize) const;
 
+	static MincFlavor flavorFromFile(const std::string& filename);
+	static MincFlavor flavorFromFile(const char* filename);
+	static MincBlockExpr* parseStream(std::istream& stream, MincFlavor flavor);
+	static MincBlockExpr* parseFile(const char* filename, MincFlavor flavor=MincFlavor::C_FLAVOR);
+	static MincBlockExpr* parseCode(const char* code, MincFlavor flavor);
+	static const std::vector<MincExpr*> parseTplt(const char* tpltStr, MincFlavor flavor);
+
 	static MincBlockExpr* parseCStream(std::istream& stream);
 	static MincBlockExpr* parseCFile(const char* filename);
 	static MincBlockExpr* parseCCode(const char* code);

@@ -30,6 +30,8 @@ class MincVarBinOpExpr;
 
 typedef int MatchScore;
 
+enum MincFlavor { C_FLAVOR, PYTHON_FLAVOR, GO_FLAVOR, UNKNOWN_FLAVOR };
+
 enum StepEventType { STEP_IN, STEP_OUT, STEP_SUSPEND, STEP_RESUME };
 
 struct MincSymbol

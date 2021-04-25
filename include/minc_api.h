@@ -11,6 +11,14 @@
 
 extern "C"
 {
+	// >>> Parser
+
+	MincFlavor flavorFromFile(const char* filename);
+	MincBlockExpr* parseStream(std::istream& stream, MincFlavor flavor);
+	MincBlockExpr* parseFile(const char* filename, MincFlavor flavor=MincFlavor::C_FLAVOR);
+	MincBlockExpr* parseCode(const char* code, MincFlavor flavor);
+	const std::vector<MincExpr*> parseTplt(const char* tpltStr, MincFlavor flavor);
+
 	// >>> C Parser
 
 	MincBlockExpr* parseCStream(std::istream& stream);

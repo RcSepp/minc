@@ -79,11 +79,11 @@ endif
 
 all: ${BIN_DIR}minc builtin
 
-.PHONY: clean depend coverage install uninstall
+.PHONY: clean depend coverage install uninstall builtin
 
 clean:
 	-rm -r ${TMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so ${BIN_DIR}minc
-	$(MAKE) -C ${PKG_DIR}*/ clean
+	$(foreach DIR, $(wildcard ${PKG_DIR}*/), $(MAKE) -C ${DIR} clean;)
 
 # Dependency management
 
@@ -141,7 +141,7 @@ uninstall:
 # Builtin packages
 
 builtin:
-	$(MAKE) -C ${PKG_DIR}*/ MINC_BIN=$(realpath ${BIN_DIR}) MINC_INCLUDE=$(realpath ${INC_DIR})
+	$(foreach DIR, $(wildcard ${PKG_DIR}*/), $(MAKE) -C ${DIR} all MINC_BIN=$(realpath ${BIN_DIR}) MINC_INCLUDE=$(realpath ${INC_DIR});)
 
 # minc binary
 

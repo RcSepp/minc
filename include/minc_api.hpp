@@ -208,7 +208,7 @@ private:
 public:
 	MincCastRegister(MincBlockExpr* block);
 	void defineDirectCast(MincCast* cast);
-	void defineIndirectCast(const MincCastRegister& castreg, MincCast* cast);
+	void defineIndirectCast(const MincCastRegister& castreg, const MincCast* cast);
 	const MincCast* lookupCast(MincObject* fromType, MincObject* toType) const;
 	bool isInstance(MincObject* derivedType, MincObject* baseType) const;
 	void listAllCasts(std::list<std::pair<MincObject*, MincObject*>>& casts) const;

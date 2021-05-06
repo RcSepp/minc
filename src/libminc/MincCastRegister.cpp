@@ -32,10 +32,10 @@ MincCast* TypeCast::derive() const
 
 struct IndirectCast : public MincCast, public MincKernel
 {
-	MincCast* first;
-	MincCast* second;
+	const MincCast* first;
+	const MincCast* second;
 
-	IndirectCast(MincCast* first, MincCast* second)
+	IndirectCast(const MincCast* first, const MincCast* second)
 		: MincCast(first->fromType, second->toType, this), first(first), second(second) {}
 	int getCost() const { return first->getCost() + second->getCost(); }
 	MincCast* derive() const
@@ -85,7 +85,7 @@ void MincCastRegister::defineDirectCast(MincCast* cast)
 // 	std::cout << "    " << fromTypeName << "-->|" << cast->getCost() << "|" << toTypeName << ";\n";
 }
 
-void MincCastRegister::defineIndirectCast(const MincCastRegister& castreg, MincCast* cast)
+void MincCastRegister::defineIndirectCast(const MincCastRegister& castreg, const MincCast* cast)
 {
 	std::map<std::pair<MincObject*, MincObject*>, MincCast*>::const_iterator existingCast;
 

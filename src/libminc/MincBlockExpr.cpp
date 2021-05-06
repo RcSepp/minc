@@ -545,6 +545,7 @@ void MincBlockExpr::iterateBases(MincObject* derivedType, std::function<void(Min
 void MincBlockExpr::import(MincBlockExpr* importBlock)
 {
 	const MincBlockExpr* block;
+	const size_t numReferenceBeforeImport = references.size();
 
 	// Import all references of importBlock
 	for (MincBlockExpr* importRef: importBlock->references)
@@ -562,6 +563,15 @@ void MincBlockExpr::import(MincBlockExpr* importBlock)
 			break;
 	if (block == nullptr)
 		references.insert(references.begin(), importBlock);
+
+	// Create indirect casts between casts of old references and casts of new references
+	//TODO: This is a `num_old_references * num_new_references * num_casts^2` operation. Think of ways to speed this up
+	const size_t numReferenceafterImport = references.size(), numNewReferences = numReferenceafterImport - numReferenceBeforeImport;
+	for (size_t i = 0; i != numNewReferences; ++i)
+		for (size_t j = numNewReferences; j != numReferenceafterImport; ++j)
+			references[i]->iterateCasts([&](const MincCast* cast) {
+				castreg.defineIndirectCast(references[j]->castreg, cast);
+			});
 }
 
 void MincBlockExpr::defineSymbol(std::string name, MincObject* type, MincObject* value)

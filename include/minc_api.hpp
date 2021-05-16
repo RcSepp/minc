@@ -63,6 +63,7 @@ public:
 	virtual MincExpr* clone() const = 0;
 	MincExpr* getSourceExpr();
 	MincExpr* getDerivedExpr();
+	int exec(MincBuildtime& buildtime);
 
 	static MincSymbol evalCCode(const char* code, MincBlockExpr* scope);
 
@@ -268,7 +269,8 @@ private:
 
 public:
 	MincBlockExpr* parent;
-	std::vector<MincStmt> builtStmts;
+	std::vector<MincStmt*> builtStmts;
+	std::vector<const MincStmt*> runStmts;
 	std::vector<MincBlockExpr*> references;
 	std::vector<MincExpr*>* exprs;
 	MincScopeType* scopeType;

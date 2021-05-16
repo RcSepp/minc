@@ -182,8 +182,7 @@ extern "C"
 		stmt.resolve(scope);
 		MincBuildtime buildtime = { scope };
 		stmt.build(buildtime);
-		MincRuntime runtime(scope, false);
-		stmt.run(runtime);
+		stmt.exec(buildtime);
 	}
 
 	void evalPythonStmt(const char* code, MincBlockExpr* scope)
@@ -193,7 +192,6 @@ extern "C"
 		stmt.resolve(scope);
 		MincBuildtime buildtime = { scope };
 		stmt.build(buildtime);
-		MincRuntime runtime(scope, false);
-		stmt.run(runtime);
+		stmt.exec(buildtime);
 	}
 }

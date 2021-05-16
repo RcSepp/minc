@@ -24,6 +24,7 @@ LIBMINC_OBJS = \
 	libminc/MincEncOpExpr.o \
 	libminc/MincExpr.o \
 	libminc/MincIdExpr.o \
+	libminc/MincInterpreter.o \
 	libminc/MincKernel.o \
 	libminc/MincListExpr.o \
 	libminc/MincLiteralExpr.o \
@@ -32,6 +33,7 @@ LIBMINC_OBJS = \
 	libminc/MincPlchldExpr.o \
 	libminc/MincPostfixExpr.o \
 	libminc/MincPrefixExpr.o \
+	libminc/MincRunner.o \
 	libminc/MincRuntime.o \
 	libminc/MincStatementRegister.o \
 	libminc/MincStmt.o \

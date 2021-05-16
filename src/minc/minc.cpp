@@ -1,11 +1,10 @@
 // STD
 #include <chrono>
 #include <cstring>
-#include <string>
-#include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <stdio.h>
+#include <string>
 
 // Local includes
 #include "minc_api.hpp"
@@ -161,13 +160,8 @@ int main(int argc, char** argv)
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
 			std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 			std::cout << "build took " << diff.count() << "ms" << std::endl;
-			MincRuntime runtime(nullptr, false);
-			if (rootBlock->run(runtime))
-			{
-				std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(runtime.exceptionType, "UNKNOWN_TYPE") << ">\n";
-				result = -1;
-			}
-		} catch (ExitException err) {
+			result = rootBlock->exec(buildtime);
+		} catch (const ExitException& err) {
 			result = err.code;
 		} catch (const MincException& err) {
 			err.print(std::cerr);
@@ -177,6 +171,9 @@ int main(int argc, char** argv)
 			result = -1;
 		} catch (const MincSymbol& err) {
 			std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(err.type, "UNKNOWN_TYPE") << ">\n";
+			result = -1;
+		} catch (MincObject* err) {
+			std::cerr << "\e[31merror:\e[0m terminate called after throwing an instance of <" << rootBlock->lookupSymbolName(err, "UNKNOWN_TYPE") << ">\n";
 			result = -1;
 		}
 		delete rootBlock;

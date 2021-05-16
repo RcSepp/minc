@@ -135,8 +135,8 @@ private:
 				const MincBlockExpr* prevExprScope = exprScope;
 				exprScope = (MincBlockExpr*)expr;
 				//TODO: Replace linear search with binary search
-				for (const MincStmt& stmt: ((MincBlockExpr*)expr)->builtStmts)
-					if (match(&stmt)) return true;
+				for (const MincStmt* stmt: ((MincBlockExpr*)expr)->builtStmts)
+					if (match(stmt)) return true;
 				exprScope = prevExprScope; // Reset exprScope to hierarchical parent if expr == exprScope
 			}
 		default:
@@ -233,8 +233,8 @@ private:
 			match(((MincPostfixExpr*)expr)->a);
 			break;
 		case MincExpr::ExprType::BLOCK:
-			for (const MincStmt& stmt: ((MincBlockExpr*)expr)->builtStmts)
-				match(&stmt);
+			for (const MincStmt* stmt: ((MincBlockExpr*)expr)->builtStmts)
+				match(stmt);
 			break;
 		default:
 			break;

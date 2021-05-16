@@ -844,7 +844,7 @@ MincEnteredBlockExpr::MincEnteredBlockExpr(MincRuntime& runtime, const MincBlock
 		block->stackFrame->stackPointer = runtime.currentStackSize; // Set stack pointer for this block to the bottom of the stack
 		runtime.currentStackSize += block->stackSize; // Grow the stack by this block's stack size
 
-		if (runtime.currentStackSize >= runtime.stackSize) //TODO: Replace hardcoded stack size
+		if (runtime.currentStackSize >= runtime.stackSize)
 			throw CompileError("Stack overflow", block->loc);
 	}
 }
@@ -900,14 +900,10 @@ bool MincEnteredBlockExpr::run()
 
 	try
 	{
-		const size_t numBuiltStmts = block->builtStmts.size();
-		for (; block->stackFrame->stmtIndex < numBuiltStmts; ++block->stackFrame->stmtIndex)
+		for (const size_t numRunStmts = block->runStmts.size(); block->stackFrame->stmtIndex < numRunStmts; ++block->stackFrame->stmtIndex)
 		{
-			const MincStmt& currentStmt = block->builtStmts.at(block->stackFrame->stmtIndex);
-			if (!currentStmt.isResolved())
-				throw UndefinedStmtException(&currentStmt);
 			runtime.parentBlock = block; // Set parent of block expr statement to block expr
-			if (currentStmt.run(runtime))
+			if (block->runStmts.at(block->stackFrame->stmtIndex)->run(runtime))
 			{
 				block->resultCacheIdx = 0;
 
@@ -977,28 +973,54 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 
 	MincBlockExpr* oldFileBlock = fileBlock;
 	if (fileBlock == nullptr)
+	{
 		fileBlock = this;
+		buildtime.fileRunners.clear();
+	}
+
+	buildtime.currentFileRunners = loc.filename == nullptr ? nullptr : &buildtime.fileRunners.insert(std::make_pair(loc.filename, std::set<MincRunner*>())).first->second;
 
 	// Resolve and build statements from expressions
 	for (MincExprIter stmtBeginExpr = exprs->cbegin(); stmtBeginExpr != exprs->cend();)
 	{
-		builtStmts.push_back(MincStmt());
-		MincStmt& currentStmt = builtStmts.back();
+		MincStmt* currentStmt = new MincStmt();
+		builtStmts.push_back(currentStmt);
 		bool stmtIsDirty = true;
 
 		buildtime.parentBlock = this; // Set parent of block expr statement to block expr
 		try
 		{
 			// Resolve statement
-			if (!lookupStmt(stmtBeginExpr, exprs->end(), currentStmt))
+			if (!lookupStmt(stmtBeginExpr, exprs->end(), *currentStmt))
 			{
 				stmtIsDirty = false;
-				throw UndefinedStmtException(&currentStmt);
+				throw UndefinedStmtException(currentStmt);
 			}
 			stmtIsDirty = false;
 
+			// Update runners
+			MincRunner& runner = currentStmt->resolvedKernel->runner;
+			if (buildtime.runners.insert(&runner).second) // If this is the first kernel with this runner
+			{
+				if (buildtime.currentRunner == nullptr) // If this is the first kernel of the build
+					buildtime.currentRunner = &runner; // Set current runner to statement runner, because execution will start with the first runner
+				runner.buildBegin(buildtime);
+			}
+			if (buildtime.currentFileRunners != nullptr && buildtime.currentFileRunners->insert(&runner).second) // If this is the first kernel in this file
+				runner.buildBeginFile(buildtime, loc.filename);
+
 			// Build statement
-			currentStmt.build(buildtime);
+			buildtime.result = MincSymbol(nullptr, nullptr);
+			if (&runner != buildtime.currentRunner)
+			{
+				buildtime.currentRunner->buildSuspendStmt(buildtime, currentStmt);
+				buildtime.currentRunner = &runner;
+				runner.buildResumeStmt(buildtime, currentStmt);
+				runner.buildStmt(buildtime, currentStmt);
+			}
+			else
+				runner.buildStmt(buildtime, currentStmt);
+			buildtime.result.type = currentStmt->resolvedType = getVoid().type;
 		}
 		catch (const CompileError& err)
 		{
@@ -1045,14 +1067,32 @@ MincSymbol& MincBlockExpr::build(MincBuildtime& buildtime)
 		}
 
 		// Advance beginning of next statement to end of current statement
-		stmtBeginExpr = currentStmt.end;
+		stmtBeginExpr = currentStmt->end;
 	}
 
 	buildtime.parentBlock = parent; // Restore parent
 	isBusy = false;
 
 	if (fileBlock == this)
+	{
 		fileBlock = oldFileBlock;
+
+		// Update runners
+		if (buildtime.currentFileRunners != nullptr)
+		{
+			for (auto& runner: *buildtime.currentFileRunners)
+				runner->buildEndFile(buildtime, loc.filename);
+			buildtime.fileRunners.erase(loc.filename);
+			buildtime.currentFileRunners = nullptr;
+		}
+	}
+
+	if (parent == rootBlock)
+	{
+		// Update runners
+		for (auto& runner: buildtime.runners)
+			runner->buildEnd(buildtime);
+	}
 
 	return buildtime.result = MincSymbol(nullptr, nullptr);
 }
@@ -1738,8 +1778,7 @@ extern "C"
 		MincBlockExpr* block = ::parseCCode(code);
 		MincBuildtime buildtime = { scope };
 		block->build(buildtime);
-		MincRuntime runtime(scope, false);
-		block->run(runtime);
+		block->exec(buildtime);
 		delete block;
 	}
 
@@ -1748,8 +1787,7 @@ extern "C"
 		MincBlockExpr* block = ::parsePythonCode(code);
 		MincBuildtime buildtime = { scope };
 		block->build(buildtime);
-		MincRuntime runtime(scope, false);
-		block->run(runtime);
+		block->exec(buildtime);
 		delete block;
 	}
 
@@ -1758,8 +1796,7 @@ extern "C"
 		MincBlockExpr* block = ::parseGoCode(code);
 		MincBuildtime buildtime = { scope };
 		block->build(buildtime);
-		MincRuntime runtime(scope, false);
-		block->run(runtime);
+		block->exec(buildtime);
 		delete block;
 	}
 

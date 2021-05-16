@@ -36,7 +36,7 @@ struct IndirectCast : public MincCast, public MincKernel
 	const MincCast* second;
 
 	IndirectCast(const MincCast* first, const MincCast* second)
-		: MincCast(first->fromType, second->toType, this), first(first), second(second) {}
+		: MincCast(first->fromType, second->toType, this), MincKernel(&second->kernel->runner), first(first), second(second) {}
 	int getCost() const { return first->getCost() + second->getCost(); }
 	MincCast* derive() const
 	{

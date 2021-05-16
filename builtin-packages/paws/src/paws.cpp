@@ -383,7 +383,8 @@ MincKernel* PawsKernel::build(MincBuildtime& buildtime, std::vector<MincExpr*>& 
 	body->defineSymbol("parentBlock", PawsBlockExpr::TYPE, new PawsBlockExpr(buildtime.parentBlock));
 
 	// Execute expression code block
-	MincRuntime runtime(body->parent, false);
+	MincInteropData interopData;
+	MincRuntime runtime(body->parent, false, interopData);
 	if (body->run(runtime))
 	{
 		if (runtime.exceptionType != &PAWS_RETURN_TYPE)
@@ -1669,13 +1670,15 @@ MincPackage PAWS("paws", [](MincBlockExpr* pkgScope) {
 
 	defineExpr(pkgScope, "$E<PawsBlockExpr>.run($E<PawsBlockExpr>)",
 		+[](MincExpr* expr, MincBlockExpr* scope) -> void {
-			MincRuntime runtime(scope, false);
+			MincInteropData interopData;
+			MincRuntime runtime(scope, false, interopData);
 			expr->run(runtime);
 		}
 	);
 	defineExpr(pkgScope, "$E<PawsBlockExpr>.run($E<PawsNull>)",
 		+[](MincBlockExpr* pkgScope) -> void {
-			MincRuntime runtime(nullptr, false);
+			MincInteropData interopData;
+			MincRuntime runtime(nullptr, false, interopData);
 			pkgScope->run(runtime);
 		}
 	);

@@ -615,7 +615,8 @@ public:
 		createThread();
 
 		MincBuildtime buildtime = { nullptr };
-		runtime = new MincRuntime(nullptr, false);
+		MincInteropData interopData;
+		runtime = new MincRuntime(nullptr, false, interopData);
 
 #ifdef DEBUG_MULTITHREADING
 const char* path = "/home/sepp/Development/minc/paws/example11.minc";

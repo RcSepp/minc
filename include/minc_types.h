@@ -3,7 +3,10 @@
 
 #include <exception>
 #include <iostream>
+#include <map>
+#include <set>
 #include <string>
+#include <threads.h>
 #include <vector>
 
 struct MincObject {};
@@ -27,6 +30,9 @@ class MincPrefixExpr;
 class MincPostfixExpr;
 class MincBinOpExpr;
 class MincVarBinOpExpr;
+
+struct MincRunner;
+struct MincKernel;
 
 typedef int MatchScore;
 
@@ -119,8 +125,18 @@ struct MincBuildtime
 	{
 		std::vector<CompileError> errors;
 	} outputs;
+	std::set<MincRunner*> runners;
+	std::map<const char*, std::set<MincRunner*>> fileRunners;
+	MincRunner* currentRunner;
+	std::set<MincRunner*>* currentFileRunners;
 
 	MincBuildtime(MincBlockExpr* parentBlock=nullptr);
+};
+
+struct MincInteropData
+{
+	MincExpr* followupExpr;
+	MincObject* exprResult;
 };
 
 struct MincRuntime
@@ -136,16 +152,49 @@ struct MincRuntime
 	const size_t stackSize;
 	unsigned char* const stack;
 	size_t currentStackSize;
+	MincInteropData& interopData;
 
-	MincRuntime();
-	MincRuntime(MincBlockExpr* parentBlock, bool resume);
+	MincRuntime(MincBlockExpr* parentBlock, bool resume, MincInteropData& interopData);
 	~MincRuntime();
 	MincObject* getStackSymbol(const MincStackSymbol* stackSymbol);
 	MincObject* getStackSymbolOfNextStackFrame(const MincStackSymbol* stackSymbol);
 };
 
+struct MincRunner
+{
+	const char* const name;
+	mtx_t mutex;
+	MincRunner(const char* name) : name(name) {}
+	virtual void buildBegin(MincBuildtime& buildtime) {}
+	virtual void buildEnd(MincBuildtime& buildtime) {}
+	virtual void buildBeginFile(MincBuildtime& buildtime, const char* path) {}
+	virtual void buildEndFile(MincBuildtime& buildtime, const char* path) {}
+	virtual void buildStmt(MincBuildtime& buildtime, MincStmt* stmt);
+	virtual void buildSuspendStmt(MincBuildtime& buildtime, MincStmt* stmt) {}
+	virtual void buildResumeStmt(MincBuildtime& buildtime, MincStmt* stmt) {}
+	virtual void buildExpr(MincBuildtime& buildtime, MincExpr* expr);
+	virtual void buildNestedExpr(MincBuildtime& buildtime, MincExpr* expr, MincRunner& next);
+	virtual void buildSuspendExpr(MincBuildtime& buildtime, MincExpr* expr) {}
+	virtual void buildResumeExpr(MincBuildtime& buildtime, MincExpr* expr) {}
+	virtual int run(MincExpr* expr, MincInteropData& interopData) = 0;
+};
+
+extern struct MincInterpreter : public MincRunner
+{
+	MincInterpreter();
+	void buildStmt(MincBuildtime& buildtime, MincStmt* stmt);
+	void buildSuspendStmt(MincBuildtime& buildtime, MincStmt* stmt);
+	void buildExpr(MincBuildtime& buildtime, MincExpr* expr);
+	void buildNestedExpr(MincBuildtime& buildtime, MincExpr* expr, MincRunner& next);
+	void buildSuspendExpr(MincBuildtime& buildtime, MincExpr* expr);
+	int run(MincExpr* expr, MincInteropData& interopData);
+} MINC_INTERPRETER;
+
 struct MincKernel
 {
+	MincRunner& runner;
+
+	MincKernel(MincRunner* runner=&MINC_INTERPRETER) : runner(*runner) {}
 	virtual ~MincKernel();
 	virtual MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params);
 	virtual void dispose(MincKernel* kernel);

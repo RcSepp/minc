@@ -124,12 +124,12 @@ bool MincPlchldExpr::match(const MincBlockExpr* block, const MincExpr* expr, Mat
 		{
 			int cost = cast->getCost();
 			if (cost != 0 && flags == Flags::NO_TYPECAST)
-				return false;
+				return false; // Prohibit illegal match
 			score += 3; // Reward inexact match (inheritance or type-cast)
 			score -= cost; // Penalize type-cast
 			return true;
 		}
-		return false;
+		return false; // Prohibit mismatch
 	}
 }
 
@@ -140,19 +140,15 @@ void MincPlchldExpr::collectParams(const MincBlockExpr* block, MincExpr* expr, s
 	else if (p2 != nullptr && p1 != 'L' && p1 != 'I')
 	{
 		MincObject* exprType = expr->getType(block);
-		if (exprType == &ERROR_TYPE)
+		if (exprType != &ERROR_TYPE)
 		{
-			storeParam(expr, params, paramIdx++);
-			return;
-		}
-		MincObject* tpltType = getType(block);
-		if (exprType != tpltType)
-		{
-			const MincCast* cast = block->lookupCast(exprType, tpltType);
-			assert(cast != nullptr);
-			MincExpr* castExpr = new MincCastExpr(cast, expr);
-			storeParam(castExpr, params, paramIdx++);
-			return;
+			MincObject* tpltType = getType(block);
+			if (exprType != tpltType)
+			{
+				const MincCast* cast = block->lookupCast(exprType, tpltType);
+				assert(cast != nullptr);
+				expr = new MincCastExpr(cast, expr);
+			}
 		}
 	}
 	storeParam(expr, params, paramIdx++);

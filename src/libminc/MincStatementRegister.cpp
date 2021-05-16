@@ -331,6 +331,27 @@ void collectStmt(const MincBlockExpr* block, MincExprIter tplt, const MincExprIt
 	assert(tplt == tpltEnd); // We have a match if tplt has been fully traversed
 }
 
+void resolveExpr(const MincBlockExpr* scope, MincExpr* expr, const MincExpr* tplt, MincKernel* kernel)
+{
+	// Set resolved kernel and collect kernel parameters
+	size_t paramIdx = 0;
+	if (tplt->exprtype == MincExpr::PLCHLD)
+	{
+		expr->resolvedKernel = kernel; // Set kernel before collectParams() to enable type-aware matching
+		expr->resolvedParams.push_back(expr); // Set first kernel parameter to self to enable type-aware matching
+		std::vector<MincExpr*> collectedParams;
+		tplt->collectParams(scope, expr, collectedParams, paramIdx);
+		expr->resolvedParams.pop_back(); // Remove first kernel parameter
+		expr->resolvedParams = collectedParams; // Replace parameters with collected parameters
+	}
+	else
+	{
+		// Don't set kernel before collectParams(), because resolvedParams are not yet set, which results in undefined behavior when using the kernel
+		tplt->collectParams(scope, expr, expr->resolvedParams, paramIdx);
+		expr->resolvedKernel = kernel;
+	}
+}
+
 void MincStatementRegister::defineStmt(const MincListExpr* tplt, MincKernel* stmt, MincBlockExpr* scope, MincBlockExpr* refScope)
 {
 	unsigned int refDepth = 0;
@@ -546,30 +567,12 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 
 	if (kernel.first != nullptr) // If a matching kernel was found, ...
 	{
-		// Set resolved kernel and collect kernel parameters
-		size_t paramIdx = 0;
-		if (kernel.first->exprtype == MincExpr::PLCHLD)
-		{
-			expr->resolvedKernel = kernel.second.kernel; // Set kernel before collectParams() to enable type-aware matching
-			expr->resolvedParams.push_back(expr); // Set first kernel parameter to self to enable type-aware matching
-			std::vector<MincExpr*> collectedParams;
-			kernel.first->collectParams(this, expr, collectedParams, paramIdx);
-			expr->resolvedParams.pop_back(); // Remove first kernel parameter
-			expr->resolvedParams = collectedParams; // Replace parameters with collected parameters
-		}
-		else
-		{
-			// Don't set kernel before collectParams(), because resolvedParams are not yet set, which results in undefined behavior when using the kernel
-			kernel.first->collectParams(this, expr, expr->resolvedParams, paramIdx);
-			expr->resolvedKernel = kernel.second.kernel;
-		}
-		return true;
+		resolveExpr(this, expr, kernel.first, kernel.second.kernel);
 	}
 	else // If no matching kernel was found, ...
 	{
 		// Mark expr as unresolvable
 		expr->resolvedKernel = &UNRESOLVABLE_EXPR_KERNEL;
-		return false;
 	}
 
 	if (defaultExprKernel != nullptr)// If a default kernel was encountered before any other kernel matched, ...
@@ -581,6 +584,7 @@ bool MincBlockExpr::lookupExpr(MincExpr* expr) const
 		expr->resolvedParams.clear();
 		expr->resolvedParams.push_back(regularExpr);
 		expr->resolvedKernel = defaultExprKernel;
+		return true;
 	}
 
 	return expr->resolvedKernel != &UNRESOLVABLE_EXPR_KERNEL;
@@ -670,6 +674,7 @@ bool MincBlockExpr::lookupStmt(MincExprIter beginExpr, MincExprIter endExpr, Min
 		stmt.resolvedParams.clear();
 		stmt.resolvedParams.push_back(regularStmt);
 		stmt.resolvedKernel = defaultStmtKernel;
+		return true;
 	}
 
 	return stmt.resolvedKernel != &UNRESOLVABLE_STMT_KERNEL;

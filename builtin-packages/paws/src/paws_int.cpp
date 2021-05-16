@@ -451,4 +451,81 @@ MincPackage PAWS_INT("paws.int", [](MincBlockExpr* pkgScope) {
 			return !a;
 		}
 	);
+
+
+	if (MINC_PACKAGE_MANAGER().tryImportPackage(pkgScope, "interop"))
+	{
+		MincObject* minc_i32 = pkgScope->lookupSymbol("minc_i32")->value;
+		class IntImportKernel : public MincKernel
+		{
+		private:
+			MincObject* const minc_i32;
+			const MincStackSymbol* const stackSymbol;
+		public:
+			IntImportKernel(MincObject* minc_i32, const MincStackSymbol* stackSymbol=nullptr) : minc_i32(minc_i32), stackSymbol(stackSymbol) {}
+
+			MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+			{
+				params[0]->build(buildtime);
+				buildtime.result.type = PawsInt::TYPE;
+				return new IntImportKernel(minc_i32, buildtime.parentBlock->allocStackSymbol(PawsInt::TYPE, PawsInt::TYPE->size));
+			}
+
+			void dispose(MincKernel* kernel)
+			{
+				delete kernel;
+			}
+
+			bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+			{
+				if (params[0]->run(runtime))
+					return true;
+				PawsInt value = PawsInt(*((int32_t*)runtime.result));
+
+				runtime.result = runtime.getStackSymbol(stackSymbol);
+				((PawsType*)stackSymbol->type)->copyToNew(&value, runtime.result);
+				return false;
+			}
+
+			MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+			{
+				return PawsInt::TYPE;
+			}
+		};
+		pkgScope->defineCast(new TypeCast(minc_i32, PawsInt::TYPE, new IntImportKernel(minc_i32)));
+
+		class IntExportKernel : public MincKernel
+		{
+		private:
+			MincObject* const minc_i32;
+		public:
+			IntExportKernel(MincObject* minc_i32) : minc_i32(minc_i32) {}
+
+			MincKernel* build(MincBuildtime& buildtime, std::vector<MincExpr*>& params)
+			{
+				params[0]->build(buildtime);
+				buildtime.result.type = minc_i32;
+				return this;
+			}
+
+			void dispose(MincKernel* kernel)
+			{
+				delete kernel;
+			}
+
+			bool run(MincRuntime& runtime, const std::vector<MincExpr*>& params)
+			{
+				if (params[0]->run(runtime))
+					return true;
+				runtime.result = (MincObject*)&((PawsInt*)runtime.result)->get();
+				return false;
+			}
+
+			MincObject* getType(const MincBlockExpr* parentBlock, const std::vector<MincExpr*>& params) const
+			{
+				return minc_i32;
+			}
+		};
+		pkgScope->defineCast(new TypeCast(PawsInt::TYPE, minc_i32, new IntExportKernel(minc_i32)));
+	}
 });

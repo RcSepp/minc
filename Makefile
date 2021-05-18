@@ -52,28 +52,54 @@ LIBMINC_DBG_OBJS = \
 LIBMINC_SVR_OBJS = \
 	libminc_svr/minc_svr.o \
 
+LIBMINC_LLVM_OBJS = \
+	libminc_llvm/Module.o \
+	libminc_llvm/LlvmRunner.o \
+
 MINC_OBJS = \
 	minc/minc.o \
 
+MINC_LIBS = \
+	${BIN_DIR}libminc.so \
+	${BIN_DIR}libminc_pkgmgr.so \
+	${BIN_DIR}libminc_dbg.so \
+	${BIN_DIR}libminc_svr.so \
+
+ifneq (${USE_LLVM},)
+	MINC_LIBS := ${BIN_DIR}libminc_llvm.so
+endif
+
 YACC = bison
 CPPFLAGS =  --coverage -g -Wall -std=c++1z -I${INC_DIR} -Ithird_party/cppdap/include -Ithird_party/LspCpp/include -Ithird_party/rapidjson/include
-MINC_LIBS = -lutil -pthread -ldl -rdynamic -lboost_thread -lboost_chrono
+LDFLAGS = -lutil -pthread -ldl -rdynamic -lboost_thread -lboost_chrono
 
 ifneq (${USE_NODE_PACKAGES},)
 	CPPFLAGS := ${CPPFLAGS} -DUSE_NODE_PACKAGES -I/usr/include/nodejs/src -I/usr/include/nodejs/deps/v8/include -Ithird_party/node/include
-	MINC_LIBS := -lnode ${MINC_LIBS}
+	LDFLAGS := -lnode ${LDFLAGS}
 endif
 
 ifneq (${USE_PYTHON_PACKAGES},)
 	CPPFLAGS := ${CPPFLAGS} -DUSE_PYTHON_PACKAGES `pkg-config --cflags python-3.7`
-	MINC_LIBS := `pkg-config --libs python-3.7` ${MINC_LIBS}
+	LDFLAGS := `pkg-config --libs python-3.7` ${LDFLAGS}
 endif
 
 LIBMINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_OBJS})
 LIBMINC_PKGMGR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_PKGMGR_OBJS})
 LIBMINC_DBG_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_DBG_OBJS})
 LIBMINC_SVR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_SVR_OBJS})
+LIBMINC_LLVM_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_LLVM_OBJS})
 MINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${MINC_OBJS})
+
+ALL_OBJPATHS = \
+	${LIBMINC_OBJPATHS} \
+	${LIBMINC_PKGMGR_OBJPATHS} \
+	${LIBMINC_DBG_OBJPATHS} \
+	${LIBMINC_SVR_OBJPATHS} \
+	${MINC_OBJPATHS} \
+
+ifneq (${USE_LLVM},)
+	ALL_OBJPATHS := ${LIBMINC_LLVM_OBJPATHS}
+endif
 
 ifeq ($(PREFIX),)
 	PREFIX := /usr/local
@@ -84,18 +110,18 @@ all: ${BIN_DIR}minc builtin
 .PHONY: clean depend coverage install uninstall builtin
 
 clean:
-	-rm -r ${TMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so ${BIN_DIR}minc
+	-rm -r ${TMP_DIR}* ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so ${BIN_DIR}libminc_llvm.so ${BIN_DIR}minc
 	$(foreach DIR, $(wildcard ${PKG_DIR}*/), $(MAKE) -C ${DIR} clean;)
 
 # Dependency management
 
-depend: $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(LIBMINC_SVR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+depend: $(ALL_OBJPATHS:.o=.d)
 
 ${TMP_DIR}%.d: ${SRC_DIR}%.cpp
 	@mkdir -p `dirname $@`
 	$(CXX) $(CPPFLAGS) -MM -MT ${TMP_DIR}$*.o $^ > $@;
 
--include $(LIBMINC_OBJPATHS:.o=.d) $(LIBMINC_PKGMGR_OBJPATHS:.o=.d) $(LIBMINC_DBG_OBJPATHS:.o=.d) $(LIBMINC_SVR_OBJPATHS:.o=.d) $(MINC_OBJPATHS:.o=.d)
+-include $(ALL_OBJPATHS:.o=.d)
 
 # Coverage
 
@@ -117,6 +143,9 @@ install:
 	install -m 644 ${BIN_DIR}libminc_pkgmgr.so $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 ${BIN_DIR}libminc_dbg.so $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 ${BIN_DIR}libminc_svr.so $(DESTDIR)$(PREFIX)/lib/
+ifneq ("$(wildcard ${BIN_DIR}libminc_llvm.so)","")
+	install -m 644 ${BIN_DIR}libminc_llvm.so $(DESTDIR)$(PREFIX)/lib/
+endif
 	install -d $(DESTDIR)$(PREFIX)/include/
 	install -m 644 ${INC_DIR}minc_types.h $(DESTDIR)$(PREFIX)/include/
 	install -m 644 ${INC_DIR}minc_api.hpp $(DESTDIR)$(PREFIX)/include/
@@ -125,6 +154,7 @@ install:
 	install -m 644 ${INC_DIR}minc_pkgmgr.h $(DESTDIR)$(PREFIX)/include/
 	install -m 644 ${INC_DIR}minc_dbg.h $(DESTDIR)$(PREFIX)/include/
 	install -m 644 ${INC_DIR}minc_svr.h $(DESTDIR)$(PREFIX)/include/
+	install -m 644 ${INC_DIR}minc_llvm.h $(DESTDIR)$(PREFIX)/include/
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/minc
@@ -132,6 +162,7 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_pkgmgr.so
 	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_dbg.so
 	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_svr.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/libminc_llvm.so
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_types.h
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_api.hpp
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_api.h
@@ -139,6 +170,7 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_pkgmgr.h
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_dbg.h
 	rm -f $(DESTDIR)$(PREFIX)/include/minc_svr.h
+	rm -f $(DESTDIR)$(PREFIX)/include/minc_llvm.h
 
 # Builtin packages
 
@@ -147,9 +179,10 @@ builtin:
 
 # minc binary
 
-${BIN_DIR}minc: ${MINC_OBJPATHS} ${BIN_DIR}libminc.so ${BIN_DIR}libminc_pkgmgr.so ${BIN_DIR}libminc_dbg.so ${BIN_DIR}libminc_svr.so
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${MINC_LIBS}
 	@mkdir -p ${BIN_DIR}
-	${CXX} ${CPPFLAGS} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg -lminc_svr ${MINC_LIBS}
+	${CXX} ${CPPFLAGS} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg -lminc_svr ${LDFLAGS}
+	@echo -e "\e[1;32mBUILD SUCCEEDED\e[0m"
 
 # libminc.so library
 
@@ -174,6 +207,12 @@ ${BIN_DIR}libminc_dbg.so: ${LIBMINC_DBG_OBJPATHS}
 ${BIN_DIR}libminc_svr.so: ${LIBMINC_SVR_OBJPATHS}
 	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_SVR_OBJPATHS} third_party/LspCpp/lib/liblsp.a
+
+# libminc_llvm.so library
+
+${BIN_DIR}libminc_llvm.so: ${LIBMINC_LLVM_OBJPATHS}
+	@mkdir -p ${BIN_DIR}
+	${CXX} ${CPPFLAGS} -shared -o $@ ${LIBMINC_LLVM_OBJPATHS}
 
 # Parser code
 

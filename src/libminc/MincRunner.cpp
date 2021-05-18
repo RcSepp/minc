@@ -14,3 +14,12 @@ void MincRunner::buildNestedExpr(MincBuildtime& buildtime, MincExpr* expr, MincR
 {
 	expr->resolvedKernel->build(buildtime, expr->resolvedParams);
 }
+
+void MincRunner::handover(MincRunner& next)
+{
+	if (mtx_trylock(&next.mutex) == thrd_success)
+		{ do { mtx_unlock(&next.mutex); } while (mtx_trylock(&next.mutex) == thrd_success); }
+	else
+		mtx_unlock(&next.mutex);
+	mtx_lock(&mutex);
+}

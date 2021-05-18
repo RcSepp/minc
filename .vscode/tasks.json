@@ -5,10 +5,11 @@
       "label": "make",
       "command": "make",
       "args": [
-        "-j", "8"
+        "-j", "8",
+        "USE_LLVM=1",
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
       },
       "problemMatcher": {
         "base": "$gcc",
@@ -16,7 +17,7 @@
       },
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": true,
       }
     }
   ],

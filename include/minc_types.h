@@ -177,6 +177,7 @@ struct MincRunner
 	virtual void buildSuspendExpr(MincBuildtime& buildtime, MincExpr* expr) {}
 	virtual void buildResumeExpr(MincBuildtime& buildtime, MincExpr* expr) {}
 	virtual int run(MincExpr* expr, MincInteropData& interopData) = 0;
+	void handover(MincRunner& next);
 };
 
 extern struct MincInterpreter : public MincRunner

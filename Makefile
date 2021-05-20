@@ -60,13 +60,13 @@ MINC_OBJS = \
 	minc/minc.o \
 
 MINC_LIBS = \
-	${BIN_DIR}libminc.so \
-	${BIN_DIR}libminc_pkgmgr.so \
-	${BIN_DIR}libminc_dbg.so \
-	${BIN_DIR}libminc_svr.so \
+	libminc.so \
+	libminc_pkgmgr.so \
+	libminc_dbg.so \
+	libminc_svr.so \
 
 ifneq (${USE_LLVM},)
-	MINC_LIBS := ${BIN_DIR}libminc_llvm.so
+	MINC_LIBS := ${MINC_LIBS} libminc_llvm.so
 endif
 
 YACC = bison
@@ -89,6 +89,7 @@ LIBMINC_DBG_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_DBG_OBJS})
 LIBMINC_SVR_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_SVR_OBJS})
 LIBMINC_LLVM_OBJPATHS = $(addprefix ${TMP_DIR}, ${LIBMINC_LLVM_OBJS})
 MINC_OBJPATHS = $(addprefix ${TMP_DIR}, ${MINC_OBJS})
+MINC_LIBPATHS = $(addprefix ${BIN_DIR}, ${MINC_LIBS})
 
 ALL_OBJPATHS = \
 	${LIBMINC_OBJPATHS} \
@@ -98,7 +99,7 @@ ALL_OBJPATHS = \
 	${MINC_OBJPATHS} \
 
 ifneq (${USE_LLVM},)
-	ALL_OBJPATHS := ${LIBMINC_LLVM_OBJPATHS}
+	ALL_OBJPATHS := ${ALL_OBJPATHS} ${LIBMINC_LLVM_OBJPATHS}
 endif
 
 ifeq ($(PREFIX),)
@@ -179,10 +180,9 @@ builtin:
 
 # minc binary
 
-${BIN_DIR}minc: ${MINC_OBJPATHS} ${MINC_LIBS}
+${BIN_DIR}minc: ${MINC_OBJPATHS} ${MINC_LIBPATHS}
 	@mkdir -p ${BIN_DIR}
 	${CXX} ${CPPFLAGS} -o $@ ${MINC_OBJPATHS} -L${BIN_DIR} -lminc -lminc_pkgmgr -lminc_dbg -lminc_svr ${LDFLAGS}
-	@echo -e "\e[1;32mBUILD SUCCEEDED\e[0m"
 
 # libminc.so library
 

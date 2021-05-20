@@ -1,8 +1,22 @@
 #include <stack>
 #include <threads.h>
 
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+
 extern llvm::LLVMContext context;
 extern llvm::IRBuilder<> builder;
+
+namespace llvm
+{
+	class ExecutionEngine;
+	namespace legacy
+	{
+		class FunctionPassManager;
+		class PassManager;
+	}
+}
 
 class Module : public llvm::Module
 {

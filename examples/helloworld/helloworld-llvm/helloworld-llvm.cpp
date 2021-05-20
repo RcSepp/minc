@@ -3,25 +3,6 @@
 #include <iostream>
 #include "minc_api.hpp"
 #include "minc_pkgmgr.h"
-
-// LLVM IR creation
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Verifier.h>
-
-// LLVM compilation
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/ExecutionEngine/MCJIT.h>
-
-// LLVM optimization
-#include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/PassManagerBuilder.h>
-#include <llvm/IR/LegacyPassManager.h>
-
 #include "minc_llvm.h"
 
 using namespace llvm;

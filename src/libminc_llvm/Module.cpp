@@ -30,9 +30,11 @@
 
 using namespace llvm;
 
-TargetMachine* target;
-LLVMContext* context;
-IRBuilder<>* builder;
+// Create context
+LLVMContext context;
+
+// Create builder
+IRBuilder<> builder(context);
 
 // Reference: https://lists.llvm.org/pipermail/llvm-dev/2018-May/123569.html
 class DeadCodeEliminationPass : public llvm::FunctionPass
@@ -51,6 +53,16 @@ public:
 ::Module::Module(StringRef ModuleID, LLVMContext& C)
 	: llvm::Module(ModuleID, C), name(ModuleID), executionEngine(nullptr)
 {
+	static llvm::TargetMachine* target = nullptr;
+	if (target == nullptr)
+	{
+		// Initialize target
+		InitializeNativeTarget();
+		InitializeNativeTargetAsmPrinter();
+		InitializeNativeTargetAsmParser();
+		target = EngineBuilder().selectTarget();
+	}
+
 	setTargetTriple(sys::getDefaultTargetTriple());
 	setDataLayout(target->createDataLayout());
 

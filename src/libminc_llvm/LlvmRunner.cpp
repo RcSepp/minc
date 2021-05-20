@@ -50,32 +50,32 @@ void LlvmRunner::buildBegin(MincBuildtime& buildtime)
 {
 	// Create >>> Create minc types
 
-	mincRunnerType = llvm::StructType::create(*context, "struct.MincRunner");
-	mincExprType = llvm::StructType::create(*context, "class.MincExpr");
-	mincBlockExprType = llvm::StructType::create(*context, "class.MincBlockExpr");
-	mincObjectType = llvm::StructType::create(*context, "struct.MincObject");
-	llvm::StructType* mincStackFrameType = llvm::StructType::create(*context, "struct.MincStackFrame");
+	mincRunnerType = llvm::StructType::create(context, "struct.MincRunner");
+	mincExprType = llvm::StructType::create(context, "class.MincExpr");
+	mincBlockExprType = llvm::StructType::create(context, "class.MincBlockExpr");
+	mincObjectType = llvm::StructType::create(context, "struct.MincObject");
+	llvm::StructType* mincStackFrameType = llvm::StructType::create(context, "struct.MincStackFrame");
 	mincRuntimeType = llvm::StructType::create("struct.MincRuntime",
 		mincBlockExprType->getPointerTo(),
 		mincExprType->getPointerTo(),
 		mincObjectType->getPointerTo(),
 		mincObjectType->getPointerTo(),
-		builder->getInt8Ty(),
+		builder.getInt8Ty(),
 		mincStackFrameType->getPointerTo(),
 		mincStackFrameType->getPointerTo(),
-		builder->getInt64Ty(),
-		builder->getInt64Ty(),
-		builder->getInt8PtrTy(),
-		builder->getInt64Ty()
+		builder.getInt64Ty(),
+		builder.getInt64Ty(),
+		builder.getInt8PtrTy(),
+		builder.getInt64Ty()
 	);
 	mincKernelType = llvm::StructType::create("struct.MincKernel",
-		llvm::FunctionType::get(builder->getInt32Ty(), true)->getPointerTo()->getPointerTo(),
+		llvm::FunctionType::get(builder.getInt32Ty(), true)->getPointerTo()->getPointerTo(),
 		mincRunnerType->getPointerTo()
 	);
 	mincStackSymbolType = llvm::StructType::create("struct.MincStackSymbol",
 		mincObjectType->getPointerTo(),
 		mincBlockExprType->getPointerTo(),
-		builder->getInt64Ty()
+		builder.getInt64Ty()
 	);
 	mincEnteredBlockExprType = llvm::StructType::create("struct.MincEnteredBlockExpr",
 		mincRuntimeType->getPointerTo(),
@@ -102,19 +102,19 @@ void LlvmRunner::buildBeginFile(MincBuildtime& buildtime, const char* path)
 	c = filename.find('.');
 	if (c != (size_t)-1)
 		filename = filename.substr(0, c);
-	module = new ::Module(filename, *context);
+	module = new ::Module(filename, context);
 
 	// >>> Create threading extern functions
 
 	handoverFunc = llvm::Function::Create(
-		llvm::FunctionType::get(builder->getVoidTy(), {mincRunnerType->getPointerTo(), mincRunnerType->getPointerTo()}, false),
+		llvm::FunctionType::get(builder.getVoidTy(), {mincRunnerType->getPointerTo(), mincRunnerType->getPointerTo()}, false),
 		llvm::Function::ExternalLinkage, "handover", module
 	);
 	handoverFunc->setDSOLocal(true);
 
 	// >>> Create minc extern functions
 
-	llvm::FunctionType* runExprFuncType = llvm::FunctionType::get(builder->getInt8Ty(), {mincExprType->getPointerTo(), mincRuntimeType->getPointerTo()}, false);
+	llvm::FunctionType* runExprFuncType = llvm::FunctionType::get(builder.getInt8Ty(), {mincExprType->getPointerTo(), mincRuntimeType->getPointerTo()}, false);
 	runExprFunc = llvm::Function::Create(runExprFuncType, llvm::Function::ExternalLinkage, "runExpr", module);
 	runExprFunc->setDSOLocal(true);
 	// runExprFunc->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::AttrKind::ZExt);
@@ -129,7 +129,7 @@ void LlvmRunner::buildBeginFile(MincBuildtime& buildtime, const char* path)
 	enterBlockExprFunc->setDSOLocal(true);
 	// enterBlockExprFunc->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::AttrKind::ZExt);
 
-	llvm::FunctionType* exitBlockExprFuncType = llvm::FunctionType::get(builder->getVoidTy(), {mincEnteredBlockExprType->getPointerTo()}, false);
+	llvm::FunctionType* exitBlockExprFuncType = llvm::FunctionType::get(builder.getVoidTy(), {mincEnteredBlockExprType->getPointerTo()}, false);
 	exitBlockExprFunc = llvm::Function::Create(exitBlockExprFuncType, llvm::Function::ExternalLinkage, "exitBlockExpr", module);
 	exitBlockExprFunc->setDSOLocal(true);
 	// exitBlockExprFunc->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::AttrKind::ZExt);
@@ -147,14 +147,14 @@ void LlvmRunner::buildBeginFile(MincBuildtime& buildtime, const char* path)
 	mincInteropDataValue->setAlignment(llvm::Align(8));
 
 	// Create mincMain function
-	llvm::FunctionType* mincMainType = llvm::FunctionType::get(builder->getVoidTy(), {
+	llvm::FunctionType* mincMainType = llvm::FunctionType::get(builder.getVoidTy(), {
 		mincInteropDataType->getPointerTo()
 	}, false);
 	llvm::Function* mincMainFunction = module->createFunction(mincMainType, llvm::Function::ExternalLinkage, "mincMain");
 	mincMainFunction->setDSOLocal(true);
 	mincMainFunction->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::AttrKind::NoInline);
-	builder->SetInsertPoint(llvm::BasicBlock::Create(*context, "entry", mincMainFunction));
-	builder->CreateStore(mincMainFunction->getArg(0), mincInteropDataValue);
+	builder.SetInsertPoint(llvm::BasicBlock::Create(context, "entry", mincMainFunction));
+	builder.CreateStore(mincMainFunction->getArg(0), mincInteropDataValue);
 
 	exprSwitchStack.push(ExprSwitch(mincInteropDataValue));
 }
@@ -166,11 +166,11 @@ void LlvmRunner::buildEndFile(MincBuildtime& buildtime, const char* path)
 
 	// Set interopData.followupExpr = nullptr
 	llvm::Value* nullValue = llvm::Constant::getNullValue(mincExprType->getPointerTo());
-	llvm::Value* followupExprValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(0) });
-	builder->CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
+	llvm::Value* followupExprValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(0) });
+	builder.CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
 
 	// Finalize mincMain function and file module
-	builder->CreateRetVoid();
+	builder.CreateRetVoid();
 	module->finalize();
 #ifdef DUMP_LLVM_IR
 	module->dump();
@@ -191,13 +191,13 @@ void LlvmRunner::buildSuspendStmt(MincBuildtime& buildtime, MincStmt* stmt)
 {
 	// Set interopData.followupExpr = nullptr
 	llvm::Value* nullValue = llvm::Constant::getNullValue(mincExprType->getPointerTo());
-	llvm::Value* followupExprValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(0) });
-	builder->CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
+	llvm::Value* followupExprValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(0) });
+	builder.CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
 
 	// Handover to stmt->resolvedKernel->runner
 	llvm::Value* thisRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)this, true));
 	llvm::Value* nextRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)&stmt->resolvedKernel->runner, true));
-	builder->CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
+	builder.CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
 
 	exprSwitchStack.push(ExprSwitch(mincInteropDataValue));
 }
@@ -213,13 +213,13 @@ void LlvmRunner::buildSuspendExpr(MincBuildtime& buildtime, MincExpr* expr)
 
 	// Set interopData.followupExpr = expr
 	llvm::Value* exprValue = llvm::Constant::getIntegerValue(mincExprType->getPointerTo(), llvm::APInt(64, (uint64_t)expr, true));
-	llvm::Value* followupExprValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(0) });
-	builder->CreateStore(exprValue, followupExprValue)->setAlignment(llvm::Align(8));
+	llvm::Value* followupExprValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(0) });
+	builder.CreateStore(exprValue, followupExprValue)->setAlignment(llvm::Align(8));
 
 	// Handover to expr->resolvedKernel->runner
 	llvm::Value* thisRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)this, true));
 	llvm::Value* nextRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)&expr->resolvedKernel->runner, true));
-	builder->CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
+	builder.CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
 }
 
 void LlvmRunner::buildResumeExpr(MincBuildtime& buildtime, MincExpr* expr)
@@ -228,7 +228,7 @@ void LlvmRunner::buildResumeExpr(MincBuildtime& buildtime, MincExpr* expr)
 
 	//TODO: Test this with switch stack. It may have to be moved to the end of buildSuspendExpr(), in which currentRunner->buildSuspendExpr
 	//		would have to be moved after resolvedKernel->runner.buildNestedExpr in case MincExpr::build() to avoid overwriting buildtime.result.value
-	llvm::Value* exprResultValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(1) });
+	llvm::Value* exprResultValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(1) });
 	buildtime.result.value = (MincObject*)exprResultValue;
 }
 
@@ -240,18 +240,18 @@ void LlvmRunner::buildNestedExpr(MincBuildtime& buildtime, MincExpr* expr, MincR
 
 	// Set interopData.followupExpr = nullptr
 	llvm::Value* nullValue = llvm::Constant::getNullValue(mincExprType->getPointerTo());
-	llvm::Value* followupExprValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(0) });
-	builder->CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
+	llvm::Value* followupExprValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(0) });
+	builder.CreateStore(nullValue, followupExprValue)->setAlignment(llvm::Align(8));
 
 	// Set interopData.exprResult = buildtime.result.value
 	llvm::Value* exprResult = buildtime.result.value == nullptr ? llvm::Constant::getNullValue(mincObjectType->getPointerTo()) : (llvm::Value*)buildtime.result.value;
-	llvm::Value* exprResultValue = builder->CreateInBoundsGEP(mincInteropDataType, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(1) });
-	builder->CreateStore(exprResult, exprResultValue)->setAlignment(llvm::Align(8));
+	llvm::Value* exprResultValue = builder.CreateInBoundsGEP(mincInteropDataType, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(1) });
+	builder.CreateStore(exprResult, exprResultValue)->setAlignment(llvm::Align(8));
 
 	// Handover to next
 	llvm::Value* thisRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)this, true));
 	llvm::Value* nextRunnerValue = llvm::Constant::getIntegerValue(mincRunnerType->getPointerTo(), llvm::APInt(64, (uint64_t)&next, true));
-	builder->CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
+	builder.CreateCall(handoverFunc, {thisRunnerValue, nextRunnerValue});
 
 	// End expr-switch case
 	exprSwitchStack.top().endCast();
@@ -265,20 +265,20 @@ int LlvmRunner::run(MincExpr* expr, MincInteropData& interopData)
 
 void LlvmRunner::ExprSwitch::beginExprSwitch()
 {
-	llvm::Function* const currentFunction = builder->GetInsertBlock()->getParent();
-	switchBlock = llvm::BasicBlock::Create(*context, "beginExprSwitch", currentFunction);
-	builder->CreateBr(switchBlock);
-	builder->SetInsertPoint(switchBlock);
+	llvm::Function* const currentFunction = builder.GetInsertBlock()->getParent();
+	switchBlock = llvm::BasicBlock::Create(context, "beginExprSwitch", currentFunction);
+	builder.CreateBr(switchBlock);
+	builder.SetInsertPoint(switchBlock);
 
-	defaultBlock = llvm::BasicBlock::Create(*context, "endExprSwitch", currentFunction);
-	llvm::Value* followupExprValue = builder->CreateInBoundsGEP(nullptr, builder->CreateLoad(mincInteropDataValue), { builder->getInt64(0), builder->getInt32(0) });
-	llvm::Value* switchValue = builder->CreatePtrToInt(builder->CreateLoad(followupExprValue), builder->getInt64Ty());
+	defaultBlock = llvm::BasicBlock::Create(context, "endExprSwitch", currentFunction);
+	llvm::Value* followupExprValue = builder.CreateInBoundsGEP(nullptr, builder.CreateLoad(mincInteropDataValue), { builder.getInt64(0), builder.getInt32(0) });
+	llvm::Value* switchValue = builder.CreatePtrToInt(builder.CreateLoad(followupExprValue), builder.getInt64Ty());
 	//TODO: Can we evaluate expr addresses to indices at compile using a map<> time to enable switch jump table optimizations?
-	switchInst = builder->CreateSwitch(switchValue, defaultBlock);
+	switchInst = builder.CreateSwitch(switchValue, defaultBlock);
 }
 void LlvmRunner::ExprSwitch::endExprSwitch()
 {
-	builder->SetInsertPoint(defaultBlock);
+	builder.SetInsertPoint(defaultBlock);
 }
 
 LlvmRunner::ExprSwitch::ExprSwitch(llvm::GlobalVariable* mincInteropDataValue)
@@ -297,15 +297,15 @@ void LlvmRunner::ExprSwitch::beginCast(MincExpr* expr)
 	if (switchInst == nullptr) // Defer switch creation until it's actually needed
 		beginExprSwitch();
 
-	prevBlock = builder->GetInsertBlock();
-	llvm::BasicBlock* caseBlock = llvm::BasicBlock::Create(*context, "exprCase", prevBlock->getParent());
-	switchInst->addCase((llvm::ConstantInt*)llvm::Constant::getIntegerValue(builder->getInt64Ty(), llvm::APInt(64, (uint64_t)expr, true)), caseBlock);
+	prevBlock = builder.GetInsertBlock();
+	llvm::BasicBlock* caseBlock = llvm::BasicBlock::Create(context, "exprCase", prevBlock->getParent());
+	switchInst->addCase((llvm::ConstantInt*)llvm::Constant::getIntegerValue(builder.getInt64Ty(), llvm::APInt(64, (uint64_t)expr, true)), caseBlock);
 
-	builder->SetInsertPoint(caseBlock);
+	builder.SetInsertPoint(caseBlock);
 }
 
 void LlvmRunner::ExprSwitch::endCast()
 {
-	builder->CreateBr(switchBlock);
-	builder->SetInsertPoint(prevBlock);
+	builder.CreateBr(switchBlock);
+	builder.SetInsertPoint(prevBlock);
 }

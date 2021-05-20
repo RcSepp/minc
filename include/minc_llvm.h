@@ -1,9 +1,8 @@
 #include <stack>
 #include <threads.h>
 
-extern llvm::TargetMachine* target;
-extern llvm::LLVMContext* context;
-extern llvm::IRBuilder<>* builder;
+extern llvm::LLVMContext context;
+extern llvm::IRBuilder<> builder;
 
 class Module : public llvm::Module
 {

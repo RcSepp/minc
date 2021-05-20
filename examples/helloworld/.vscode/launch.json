@@ -17,7 +17,7 @@
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",
-                    "value": "${workspaceFolder}/../../bin/minc"
+                    "value": "${workspaceFolder}/../../bin"
                 }
             ],
             "externalConsole": false,

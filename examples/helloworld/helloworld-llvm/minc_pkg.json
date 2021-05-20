@@ -1,3 +1,3 @@
 {
-	"libs": [ "libLLVM-10.so" ]
+	"libs": [ "libLLVM-12.so", "libminc_llvm.so" ]
 }
